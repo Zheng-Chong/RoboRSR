@@ -19,9 +19,9 @@ LINK_MATERIALS = {
     r"torso_link|AGV_link|LZ_.*_Link|.*_(shoulder_.*|elbow|wrist_.*)_link": "metal",
     r".*_dex1_.*|Yaw_Link|Pitching_Link|head_link|logo_link|.*_Wheel_Link": "black",
 }
-# Only the ribbed ring of the elbow link (3.5-7.5 cm along the forearm, link frame x) is black; the elbow bracket
-# and the neck to the wrist roll stay metal.
-RING_LINKS, RING_X = r".*_elbow_link", (0.035, 0.075)
+# Only the forearm ring at the end of the elbow link (link frame x > 7.5 cm, just below the curved wrist link) is
+# black; the elbow bracket and the ribbed motor section stay metal.
+RING_LINKS, RING_X = r".*_elbow_link", (0.075, 0.2)
 
 
 def _paint_ring(link, material):
