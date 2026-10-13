@@ -15,20 +15,20 @@ gripper_bias: 0.12              # dex1_base_link origin -> fingertip centre (m)
 gripper_scale: [-0.02, 0.0245]  # finger travel: closed .. open
 delta_matrix: [[1,0,0],[0,1,0],[0,0,1]]
 grasp_camera_reference_axis: [1, 0, 0]
-# Camera mounts are calibration knobs: the head pose is the G1 D435 frame, the wrist pose is a guess.
+# Camera mounts are calibration knobs, fitted by eye to real G1-D head/wrist recordings.
 # ori is a wxyz quaternion from the link frame (x forward, z up) to the USD camera (-z forward, +y up).
 camera:
   -
     link: "d435_link"
     name: "cam_head"
-    type: d435
+    type: Gemini_345Lg  # wide-angle (~96 x 71 deg); the real G1-D head view shows the table, wall and chest
     mesh: pinhole
-    pos: [0.05, 0, 0]  # 5 cm along the optical axis, in front of the G1-D head shell
-    ori: [0.5, 0.5, -0.5, -0.5]
+    pos: [0, 0, 0]  # inside the head shell (hidden from rendering in robot_config/g1d.py)
+    ori: [0.5104, 0.4894, -0.4894, -0.5104]  # D435 frame + 2.4 deg down (50 deg total): a little chest visible as on the real robot
   -
     link: "left_dex1_base_link"
     name: "cam_wrist"
     type: d435
     mesh: pinhole
-    pos: [0.06, 0, 0.06]
-    ori: [0.5792, 0.4056, -0.4056, -0.5792]  # looks along the fingers, 20 deg down
+    pos: [0.055, 0, 0.095]  # fitted to the real wrist view: finger roots and slot visible, housing out of frame
+    ori: [0.6485, 0.282, -0.282, -0.6485]  # looks along the fingers, 43 deg down

@@ -22,5 +22,5 @@ camera:
     name: "cam_wrist"
     type: d435
     mesh: pinhole
-    pos: [0.06, 0, 0.06]
-    ori: [0.5792, 0.4056, -0.4056, -0.5792]
+    pos: [0.055, 0, 0.095]  # fitted to the real wrist view: finger roots and slot visible, housing out of frame
+    ori: [0.6485, 0.282, -0.282, -0.6485]

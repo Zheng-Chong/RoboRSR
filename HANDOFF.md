@@ -22,7 +22,9 @@
 - 环境：Isaac Sim 5.1、IsaacLab、cuRobo、41 GB 资产安装完成；`robodojo.sh doctor` 14 项通过。
 - G1-D 接入：`env/robot_manager/robot_config/g1d.py`（直接加载 URDF，`merge_fixed_joints=False` 保留相机/末端坐标系）、`robot_class/g1d.py`（G1DLeft/G1DRight）、注册表、`env_cfg/g1d.yml`、`env_cfg/robot/g1d.yml`、`scripts/g1d/`。
 - `robot_class/x5.py` 增加可选类属性 `config_key`，子类可读 `<key>_robot_config.yml`；X5 行为不变。
-- 相机：头部相机挂在 `d435_link`，沿光轴前移 5 cm 以穿出 G1-D 头壳（原位置在头壳内，画面全黑）；腕部相机挂在 `*_dex1_base_link` 上方，前视 20° 俯角（位置为估计值）。
+- 相机（按真机录像目测对齐）：头部相机在 `d435_link` 原位（头壳内，头壳 `head_link/visuals` 设为不渲染），在 D435 姿态上再俯 2.4°（共约 50°），用广角类型 `Gemini_345Lg`（约 96°×71°），画面上方见墙、底部露一点胸口，与真机一致；腕部相机在 `*_dex1_base_link` 的 (0.055, 0, 0.095)、沿手指 43° 俯视，几何拟合真机画面：指尖约在画面一半高度，手指根部与凹槽可见，夹爪外壳在画外，零位时画面上方不露墙。
+- 外观（按产品图 + 真机头部/腕部画面逐段核对）：URDF 颜色只有漫反射，加载后按连杆名绑定材质（`robot_config/g1d.py` 的 `LINK_MATERIALS`）。黑色：Dex1 整体、腰部 `Yaw_Link`/`Pitching_Link`、头、颈部 `logo_link`、轮子，以及 `*_elbow_link` 网格中沿小臂 x∈(0.035, 0.075) m 的棱纹环（用 GeomSubset 按面绑定，见 `_paint_ring`）；其余（躯干、肩/大臂、肘关节支架、`wrist_*`、升降柱、底盘）为中灰哑光金属（diffuse 0.62、metallic 1.0、roughness 0.5）。绑定前须关闭 `visuals` 的 instanceable，否则 IsaacLab 会跳过绑定。
+- URDF 转换结果缓存在 `Assets/Robots/g1d/usd`（按 URDF/配置哈希复用），不再每次往 `/tmp/IsaacLab` 写新目录。
 
 ### 关键决策
 - 用 IsaacLab `UrdfFileCfg` 直接加载 URDF，省去单独 USD 转换步骤；USD 缓存在 TMPDIR。
@@ -37,14 +39,15 @@
 
 ### 验证
 - 服务器（profile 标签 gpu-4090-isaacsim51，custom 环境）隔离目录：ruff check/format、task_inventory、build_asset、`stack_bowls` + demo_policy（零动作）分别跑 arx_x5 与 g1d，各 1 轮，退出码 0，`_result.json` 中 `eval_time >= 1`；成功率 0 为零动作策略的预期结果。
-- 人工检查渲染帧：侧视图中 G1-D 站在桌沿，手臂在桌面上方；头部相机看到桌面、双夹爪和碗；腕部相机看到手指和碗；无物理不稳定。
+- 人工检查渲染帧：侧视图中 G1-D 站在桌沿，手臂在桌面上方；头部相机看到桌面、双夹爪和碗；腕部相机看到手指和碗；配色与真机头部画面对比一致（肘部棱纹环黑、其余哑光金属、Dex1 全黑）；头部/双腕三视角与真机训练录像对比一致；无物理不稳定。
 
 ## 剩余事项与风险
 
 - G1 手臂在桌面高度的可达范围约 0.45 m；RoboDojo 现有任务（为桌面上的 X5 设计）有物体距肩部 0.4–0.7 m，部分不可达。自有任务的物体应放在 y≈[-0.55, -0.25]，或利用腰部前倾（`Yaw_Joint`）。
-- 腕部相机安装位姿、头部相机 5 cm 偏移都是估计值，需要按真机标定。
+- 相机内参是借用的现有类型（头部 Gemini_345Lg、腕部 d435），位姿为目测/几何拟合；拿到真机相机型号和内参后应替换为实测值。头壳被隐藏，第三视角里机器人没有头部外壳。
 - 末端位姿（ee）动作未支持：需写 G1-D cuRobo 配置；且 `RobotManager` 的 planner 以 `robot_name` 为键，coupled 左右臂会共用同一个 planner，需要改成按手臂区分。
 - `_task.yml` 中指定了 `robot_config`/`scene_config` 的任务（如 x5+franka 竞赛任务、传送带任务）会覆盖 g1d 机器人或场景。
+- 棱纹环按 `elbow_link` 网格的 x 区间切分（换 URDF/网格后需重新核对 `RING_X`）；材质参数为目测，仿真房间光照比真机亮，金属会显得偏亮。
 - 服务器上 `/usr/local/bin/ffmpeg` 不带 libx264，已在仿真环境 bin 中链接系统 ffmpeg；新建环境需同样处理，否则录视频时 BrokenPipe。
 
 ## 下一会话
@@ -54,4 +57,5 @@
 
 ## 最近历史
 
+- 2026-10-13：按产品图与真机录像调整全身配色（肘部棱纹环/夹爪/腰部黑，其余哑光金属）和头部/腕部相机；URDF 转换结果缓存到资产目录。
 - 2026-10-13：搭建服务器环境；接入 G1-D + Dex1（关节角控制），X5 与 G1-D 冒烟评测通过。
