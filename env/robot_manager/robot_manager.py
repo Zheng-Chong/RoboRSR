@@ -681,10 +681,15 @@ ROBOT_CLASS_REGISTRY = {
         "module": "x5",
         "classes": ("X5",),
     },
+    "g1d": {
+        "module": "g1d",
+        "classes": ("G1DLeft", "G1DRight"),
+    },
 }
 
 
 ROBOT_CONFIG_REGISTRY = {
     "franka": "franka",
     "x5": "x5",
+    "g1d": "g1d",
 }

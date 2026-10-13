@@ -1,0 +1,26 @@
+# Unitree G1-D right arm + Dex1-1 gripper (G1DRight). Copied to Assets/Robots/g1d/ by build_asset.py.
+# The head camera is declared on the left arm only; coupled robots mount scene cameras once.
+urdf_path: "./g1d_dex1.urdf"
+ee_joints: "right_wrist_yaw_joint"
+ee_link: "right_dex1_base_link"
+ee_type: "gripper"
+base_link: "torso_link"
+arm_joints_name: ['right_shoulder_pitch_joint', 'right_shoulder_roll_joint', 'right_shoulder_yaw_joint', 'right_elbow_joint',
+                  'right_wrist_roll_joint', 'right_wrist_pitch_joint', 'right_wrist_yaw_joint']
+gripper_joints_name: ['right_dex1_finger_joint_1', 'right_dex1_finger_joint_2']
+gripper_move:
+    base: "right_dex1_finger_joint_1"
+    sign: 1.0
+    mimic: ["right_dex1_finger_joint_2", 1., 0.]
+gripper_bias: 0.12
+gripper_scale: [-0.02, 0.0245]
+delta_matrix: [[1,0,0],[0,1,0],[0,0,1]]
+grasp_camera_reference_axis: [1, 0, 0]
+camera:
+  -
+    link: "right_dex1_base_link"
+    name: "cam_wrist"
+    type: d435
+    mesh: pinhole
+    pos: [0.06, 0, 0.06]
+    ori: [0.5792, 0.4056, -0.4056, -0.5792]

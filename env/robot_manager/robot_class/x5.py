@@ -15,7 +15,9 @@ class X5:
         self.grasp_perfect_direction = cfg.get("grasp_perfect_direction", None)
         self.SceneCfg = None
         self.static_camera_list = None
-        self.robot_cfg = get_embodiment_config_by_robot_type(robot_type=self.robot_type, robot_name=self.robot_name)
+        self.robot_cfg = get_embodiment_config_by_robot_type(
+            robot_type=self.robot_type, robot_name=self.robot_name, key=getattr(self, "config_key", None)
+        )
 
         self.robot_file = self.robot_cfg["robot_file"]
         self.robot_args = self.robot_cfg["robot_config"]

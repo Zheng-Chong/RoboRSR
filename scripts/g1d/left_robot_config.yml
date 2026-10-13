@@ -1,0 +1,34 @@
+# Unitree G1-D left arm + Dex1-1 gripper (G1DLeft). Copied to Assets/Robots/g1d/ by build_asset.py.
+urdf_path: "./g1d_dex1.urdf"
+ee_joints: "left_wrist_yaw_joint"
+ee_link: "left_dex1_base_link"
+ee_type: "gripper"
+base_link: "torso_link"
+arm_joints_name: ['left_shoulder_pitch_joint', 'left_shoulder_roll_joint', 'left_shoulder_yaw_joint', 'left_elbow_joint',
+                  'left_wrist_roll_joint', 'left_wrist_pitch_joint', 'left_wrist_yaw_joint']
+gripper_joints_name: ['left_dex1_finger_joint_1', 'left_dex1_finger_joint_2']
+gripper_move:
+    base: "left_dex1_finger_joint_1"
+    sign: 1.0
+    mimic: ["left_dex1_finger_joint_2", 1., 0.]
+gripper_bias: 0.12              # dex1_base_link origin -> fingertip centre (m)
+gripper_scale: [-0.02, 0.0245]  # finger travel: closed .. open
+delta_matrix: [[1,0,0],[0,1,0],[0,0,1]]
+grasp_camera_reference_axis: [1, 0, 0]
+# Camera mounts are calibration knobs: the head pose is the G1 D435 frame, the wrist pose is a guess.
+# ori is a wxyz quaternion from the link frame (x forward, z up) to the USD camera (-z forward, +y up).
+camera:
+  -
+    link: "d435_link"
+    name: "cam_head"
+    type: d435
+    mesh: pinhole
+    pos: [0.05, 0, 0]  # 5 cm along the optical axis, in front of the G1-D head shell
+    ori: [0.5, 0.5, -0.5, -0.5]
+  -
+    link: "left_dex1_base_link"
+    name: "cam_wrist"
+    type: d435
+    mesh: pinhole
+    pos: [0.06, 0, 0.06]
+    ori: [0.5792, 0.4056, -0.4056, -0.5792]  # looks along the fingers, 20 deg down
