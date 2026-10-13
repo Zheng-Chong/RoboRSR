@@ -1,6 +1,7 @@
 from collections.abc import Sequence, Sequence as SequenceABC
 from typing import Any
 
+import carb
 import gymnasium as gym
 from isaaclab.envs import DirectRLEnvCfg
 from isaaclab.scene import InteractiveSceneCfg
@@ -79,6 +80,8 @@ def _apply_physx_settings(physx_cfg, config):
 
 
 def _apply_render_settings(render_cfg, render_config, frequency_settings):
+    # Register before SimulationContext; screen-space refraction can occlude nearby opaque parts.
+    carb.settings.get_settings().set_float("/rtx/translucency/worldEps", 0.0)
     for key in _RENDER_KEYS:
         setattr(render_cfg, key, render_config[key])
 
