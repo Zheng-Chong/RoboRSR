@@ -217,7 +217,14 @@ def main():
                 a, b = prev[crossed], local[crossed]
                 u = (plane - a[:, 2]) / (b[:, 2] - a[:, 2])
                 hit = a + u[:, None] * (b - a)
-                case["opening"][crossed] = hit[:, 0] <= -shape.R_CI + shape.SPOUT_OPEN + BUFFER
+                xc = -shape.R_CI + shape.SPOUT_OPEN
+                mouth_y = np.sqrt(shape.R_C**2 - xc**2)
+                # Bound the opening: the rotating plane may also sweep over distant spilled particles.
+                case["opening"][crossed] = (
+                    (hit[:, 0] <= xc + BUFFER)
+                    & (hit[:, 0] >= -shape.R_C - shape.SPOUT_LEN - BUFFER)
+                    & (np.abs(hit[:, 1]) <= mouth_y + BUFFER)
+                )
                 case["crossed"] |= crossed
             case["previous"] = local
             if step + 1 == round(SETTLE / DT):
