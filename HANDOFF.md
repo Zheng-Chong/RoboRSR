@@ -97,8 +97,18 @@
 - 可达性探测（隔离目录 `scripts/g1d/probe.py`，不入库）：原布局杯子 y≈-0.28（吧台坐标）持杯手任何姿态都够不到（最小误差 5.7 cm）；y≈-0.40、杯口上方附近可达。因此 `build_asset.py` 增加 `POUR_CUP_PULL=-0.09`（杯子比壶近 9 cm）和 `POUR_MIN_GAP=0.03`（与壶间隙不足的布局丢弃），150 → 140 个倒水布局；`g1d_pour_water_into_cup.yml` 杯子 ylim 说明同步为 [-0.39, -0.29]。本机/共享资产库的布局尚未重建（需运行 `build_asset.py`）。
 - 验证（隔离目录，各 1 轮，退出码 0，eval_time=1）：seed 1（壶左、右手持杯）抓壶、持杯、倾倒全程成功，第 450 步出壶 20%、在杯 17%，因 step_lim=480 用尽判失败；seed 0（壶右）右手插把手时把壶推偏 2 cm 没抓住，左手也没抬起杯子，失败。视频 `output/counter_pour_bimanual/seed1_grid.mp4`。
 - ruff check/format 通过；未跑 task_inventory / doctor（未改任务注册）。
+- 倾杯迎流（`CUP_TILT`，杯口随壶倾角同步朝壶倾斜，绕夹持点转并平移补偿手掌、杯口高度取倾斜后的最高点）：seed 1 实测 25° 手腕够不到并撞掉壶；15° 能倾到位，但上方抓杯的手掌/杯子进入倾斜壶身下方，两者相撞脱手（SPOUT_GAIN 积分在碰撞时继续把壶往杯上推）。默认设为 0（行为等同未倾杯版本）。
+
+## 实验室操作台 real2sim 场景 real_scene3（2026-10-14）
+
+- `Assets/sim_scene_lab/`（只在本机，gitignored）：用户提供四张围着实验室白色折叠培训桌拍的照片（`reference/p1–p4.jpg`）。流程照搬 real_scene2：`fit_photo.py` 联合拟合四台相机和尺寸，`build_scene.py` 生成 `usd/` 和 Room 入口 `real_scene3.usd`，`check_scene.py`、`preview.py` 做离线检查和预览。详细尺寸、置信度和接入方法见该目录下的 `PLAN.md`。
+- 结果：桌面 1.369 × 0.686 m，高 0.749 m，板厚 21 mm。尺度只来自“桌高 0.75 m”这一个先验，长宽与标准 1.4 × 0.7 m 相差约 2%，可以作为交叉验证。挡板在 +Y（底边离地 0.456 m）；两根斜立柱向外倾约 15°，偏向挡板一侧 8.6 cm；走线盒是桌面贴图，没有几何体。桌面贴图取四张照片矫正后的逐像素中值；墙是照片背景板（墙前的工位等被压平到墙上）；地毯从照片按真实尺度矫正。
+- 约定：机器人站在没有挡板的 −Y 一侧（这是假设，真机若站在另一侧就把 Room 转 180°）。Room `default_pos` 取 (0, −0.257, 0)，使桌沿落在 y=−0.60；G1-D 默认站位不会碰到桌腿（桌下净深 0.63 m）；桌面比 real_scene1 高 0.069 m，需要用升降柱补偿、物体同步抬高。
+- 验证：只做了本机离线检查。`check_scene.py` 19/19 通过；`preview/compare_photo.jpg` 中，桌子模型边缘在四个拟合视角下都与照片贴合；拟合残差大多在 0.3–4 px（脚轮位于暗处，最大约 20 px）。未上服务器，未跑 Isaac（RTX 渲染、PhysX 静置、机器人可达性都没有验证）；未改代码，也没有安装到 `Assets/Room/`。
 
 ## 剩余事项与风险
+
+- real_scene3：尺寸没有实测（量一下桌长或桌高，再用 `--scale-correction` 修正）；灯光强度没有标定；需要拷到服务器 `Assets/Room/real_scene3/`，并在 Isaac 里用头部相机渲染一帧和真机画面对比。
 
 - 双臂倒水：step_lim=480 不够（颗粒流速约 0.1%/步，需 ≥20% 出壶），需提高 `g1d_pour_water_into_cup` 的 step_lim 或提高流速；右臂抓壶（壶在右、y≈-0.28）插把手会推壶，需调接近路径；持杯手在可达边缘，杯子 y 更远的布局（-0.46）未测。
 - G1 手臂在桌面高度的可达范围约 0.45 m；RoboDojo 现有任务（为桌面上的 X5 设计）有物体距肩部 0.4–0.7 m，部分不可达。自有任务的物体应放在 y≈[-0.55, -0.25]，或利用腰部前倾（`Yaw_Joint`）。
@@ -107,7 +117,7 @@
 - `_task.yml` 中指定了 `robot_config`/`scene_config` 的任务（如 x5+franka 竞赛任务、传送带任务）会覆盖 g1d 机器人或场景。
 - 棱纹环按 `elbow_link` 网格的 x 区间切分（换 URDF/网格后需重新核对 `RING_X`）；材质参数为目测，仿真房间光照比真机亮，金属会显得偏亮。
 - 服务器上 `/usr/local/bin/ffmpeg` 不带 libx264，已在仿真环境 bin 中链接系统 ffmpeg；新建环境需同样处理，否则录视频时 BrokenPipe。
-- 自建资产入库：`.gitignore` 改为 `/Assets/*` 并放行 `Assets/scene3_pour_pack/`（排除 `preview/`、`*.bak`）；其中 `*.usdc`/`*.STL` 走 Git LFS（`.gitattributes`），clone 后需 `git lfs install && git lfs pull`。本机 git-lfs 为官方二进制，装在 `~/.local/bin`（Homebrew 在此机会从源码编译整条依赖链，不要用）。`Assets/sim_scene_counter`、`Assets/sim_scene_opus` 仍只在本机，未入库。
+- 自建资产入库：`.gitignore` 改为 `/Assets/*` 并放行 `Assets/scene3_pour_pack/`（排除 `preview/`、`*.bak`）；其中 `*.usdc`/`*.STL` 走 Git LFS（`.gitattributes`），clone 后需 `git lfs install && git lfs pull`。本机 git-lfs 为官方二进制，装在 `~/.local/bin`（Homebrew 在此机会从源码编译整条依赖链，不要用）。`Assets/sim_scene_counter`、`Assets/sim_scene_opus`、`Assets/sim_scene_lab` 仍只在本机，未入库。
 
 ## 下一会话
 
@@ -116,6 +126,7 @@
 
 ## 最近历史
 
+- 2026-10-14：用四张照片重建实验室操作台 real_scene3（`Assets/sim_scene_lab/`，本机，gitignored），离线检查 19/19 通过，未在 Isaac 中验证。
 - 2026-10-14：修复 `g1d_general_pickup` 与 `g1d_stack_blocks` 脚本抓取与叠块（TCP 雅可比 + 关节限位内缩投影、方块线性 PD 自动定心、侧向抓取手腕朝向肩部），远端验证两任务均拿到 `success_rate = 1.0`；倒水脚本改为双臂协同，倒水布局杯子拉近 9 cm。
 
 - 2026-10-14：`README.md` 按 Notion「Real2Sim2Real」页面改写为中文项目说明（目标、现状、快速开始、TODO、月度目标、零样本上真机路线），保留上游致谢/引用/许可证。Notion 写"scripted_demo 已成功倒过一次水"，与本文件验证记录冲突，README 按验证记录写为三个演示均未成功。
