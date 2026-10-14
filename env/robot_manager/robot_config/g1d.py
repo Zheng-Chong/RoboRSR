@@ -1,3 +1,4 @@
+import json
 import re
 
 from isaaclab.actuators import ImplicitActuatorCfg
@@ -5,7 +6,7 @@ from isaaclab.assets.articulation import ArticulationCfg
 import isaaclab.sim as sim_utils
 from isaaclab.sim.spawners.from_files import from_files
 import numpy as np
-from pxr import Usd, UsdGeom, UsdShade, Vt
+from pxr import Usd, UsdGeom, UsdPhysics, UsdShade, Vt
 
 from env.global_configs import ROBOTS_PATH
 
@@ -64,8 +65,13 @@ def _spawn_g1d(prim_path, cfg, *args, **kwargs):
             _paint_ring(link, materials["black"])
         else:
             sim_utils.bind_visual_material(str(visuals.GetPath()), str(materials[name].GetPath()))
-    # The head camera sits inside the head shell, as on the real robot; hide the shell so it does not block the view.
-    UsdGeom.Imageable(prim.GetChild("head_link").GetChild("visuals")).MakeInvisible()
+    # Dex1-1 rack/carrier hulls overlap inside the gripper housing, and some neighbours are not parent-child:
+    # filter the pairs listed with the v4 asset (scripts/g1d/build_asset.py).
+    contract = json.loads(open(f"{ROBOTS_PATH}/g1d/physics_contract.json").read())
+    pairs = [(a, b) for a, others in contract["filtered_pairs"].items() for b in others]
+    for a, b in pairs + contract["additional_internal_slider_carrier_pairs"]:
+        rel = UsdPhysics.FilteredPairsAPI.Apply(prim.GetChild(a)).CreateFilteredPairsRel()
+        rel.AddTarget(prim.GetChild(b).GetPath())
     return prim
 
 
@@ -99,9 +105,9 @@ def get_robot_config():
                 "Yaw_Joint": 0.0,  # waist pitch (forward lean) despite the Unitree name
                 "torso_Joint": 0.0,  # waist yaw
                 ".*_shoulder_.*": 0.0,
-                ".*_elbow_joint": 0.0,  # G1 elbow 0 = forearm pointing forward
+                ".*_elbow_joint": -1.0,  # forearms raised (0 = forward at table height, through the objects)
                 ".*_wrist_.*": 0.0,
-                ".*_dex1_finger_joint_.*": 0.0245,  # open
+                ".*_dex1_finger_joint_.*": -0.02,  # open (Dex1-1: positive closes)
             },
         ),
         actuators={
@@ -121,8 +127,8 @@ def get_robot_config():
             ),
             "gripper": ImplicitActuatorCfg(
                 joint_names_expr=[".*_dex1_finger_joint_.*"],
-                effort_limit_sim=100.0,
-                stiffness=2300,
+                effort_limit_sim=20.0,  # Dex1-1 rating per finger
+                stiffness=1e4,  # full force within 2 mm, so thin handles are still squeezed before the stroke ends
                 damping=100,
             ),
         },

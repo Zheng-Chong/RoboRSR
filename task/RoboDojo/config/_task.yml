@@ -98,6 +98,16 @@ tasks:
   pour_liquid_into_cup_random:
     data_source: "teleop"
     eval_nums: 25
+
+  g1d_pour_water_into_cup:
+    data_source: "teleop"
+    eval_nums: 25
+
+  g1d_general_pickup:
+    eval_nums: 25
+
+  g1d_stack_blocks:
+    eval_nums: 25
   
   press_by_number:
     robot_self_collision: false

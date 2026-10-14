@@ -278,6 +278,9 @@ class LayoutManager:
         self.instance_type_by_env[env_idx][inst_name] = "room"
         if "random" in room_cfg:
             room_cfg.pop("random")
+        table_height = room_cfg.pop("table_height", None)  # a room that brings its own table (no Table entry)
+        if table_height is not None:
+            self.table_info[env_idx] = {"height": table_height}
         room_cfg["usd_path"] = usd_path
         room_cfg["prim_path"] = prim_path
         room_cfg["inst_name"] = inst_name

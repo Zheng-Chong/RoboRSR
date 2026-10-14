@@ -1,0 +1,135 @@
+# G1-D version of general_pickup: targets that fit the 90 mm Dex1-1 jaw (narrow horizontal side <= 80 mm, height >= 20 mm)
+# and the same lift check. Eval layouts are general_pickup's with object (x, y) scaled by 0.6 and shifted -0.33 m toward
+# the robot, clutter overlapping after the squeeze removed, in the real office scene (scripts/g1d/build_asset.py).
+Rigid:
+  -
+    common:
+      xlim: [-0.4, 0.4]
+      ylim: [-0.2, 0.05]
+      rotate_deg: 20
+      rotate_rand: True
+      relative_plane: "Table" # Table surface (initial placement plane)
+
+    category:
+      -
+        name: pepper
+        index: [0]
+      -
+        name: bottle
+        index: [61]
+      -
+        name: bottle_opener
+        index: [0]
+      -
+        name: bread
+        index: [1]
+      -
+        name: cactus
+        index: [0]
+      -
+        name: can
+        index: [0]
+      -
+        name: car
+        index: [8, 9, 10, 11]
+      -
+        name: cassette
+        index: [0]
+      -
+        name: chick
+        index: [0]
+      -
+        name: clock
+        index: [0]
+      -
+        name: corkscrew
+        index: [0]
+      -
+        name: correction_tape
+        index: [0]
+      -
+        name: cup
+        index: [7]
+      -
+        name: drawing_compass
+        index: [0]
+      -
+        name: glasses
+        index: [0]
+      -
+        name: glue
+        index: [0]
+      -
+        name: juice_carton
+        index: [0]
+      -
+        name: lighter
+        index: [0]
+      -
+        name: mouse
+        index: [8]
+      -
+        name: music_player
+        index: [0]
+      -
+        name: nail_clippers
+        index: [0]
+      -
+        name: pen
+        index: [10]
+      -
+        name: piler
+        index: [0]
+      -
+        name: power_bank
+        index: [2]
+      -
+        name: remote
+        index: [0]
+      -
+        name: saw
+        index: [0]
+      -
+        name: scan
+        index: [0]
+      -
+        name: sickle
+        index: [0]
+      -
+        name: stapler
+        index: [0]
+      -
+        name: tape_dispense
+        index: [0]
+      -
+        name: tape_roll
+        index: [0]
+      -
+        name: teddy_bear
+        index: [0]
+      -
+        name: toy
+        index: [2]
+      -
+        name: wooden_toy
+        index: [0]
+      -
+        name: wrench
+        index: [1, 2]
+
+    select_mode:
+      nums: 1 # spawn count
+      mode: "unique" # asset uniqueness mode
+      label: ["target"] # scene label (unique object name)
+
+Clutter:
+  -
+    xlim: [-0.45, 0.45]
+    ylim: [-0.2, 0.05]
+    relative_plane: "Table"
+    yaml_path: "Clutter/clutter.yml"
+    nums: 10
+    mode: "category_unique" # allow_duplicate (default), unique, category_unique
+    rotate_rand: True
+    rotate_deg: 30
+    margin: 0.02

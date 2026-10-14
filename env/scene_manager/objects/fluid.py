@@ -142,7 +142,7 @@ class FluidObject:
             self_collision=True,
             fluid=True,
             particle_group=0,
-            particle_mass=0.0005,
+            particle_mass=self.physics_cfg.get("particle_mass", 0.0005),
             density=0.0,
         )
 

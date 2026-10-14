@@ -1,0 +1,67 @@
+# G1-D version of pour_liquid_into_cup: our fridge jug (pitcher) instead of the bottle, y ranges shifted -0.20 m toward
+# the robot (G1-D stands behind the table). Eval layouts come from scripts/g1d/build_asset.py; these ranges document the
+# workspace. The eval layouts put the task in the reconstructed office scene (Room real_scene1: white lift table with
+# its top at 0.68 m, robot-side edge at y=-0.60), replacing the stock table/ground/HDR dome; z follows that tabletop.
+Rigid:
+  -
+    common:
+      xlim: [[-0.30, -0.05], [0.05, 0.30]]
+      ylim: [-0.40, -0.15]
+      rotate_rand: False
+      rotate_deg: 0
+      relative_plane: "Table"
+      qpos: [1, 0, 0, 0]
+      margin: 0.04
+
+    category:
+      -
+        name: "pitcher"
+        index: [0, 1, 2]
+
+    select_mode:
+      nums: [1]
+      mode: "unique"
+      label: ["bottle"]  # reward label, the object is our fridge jug
+
+  -
+    common:
+      xlim: [-0.05, 0.05]
+      ylim: [-0.30, -0.20]
+      rotate_rand: False
+      rotate_deg: 0
+      relative_plane: "Table"
+      qpos: [1, 0, 0, 0]
+      margin: 0.04
+
+    category:
+      -
+        name: "mug"
+        index: [15, 16]
+      -
+        name: "goblet"
+        index: [6]
+
+    select_mode:
+      nums: [1]
+      mode: "unique"
+      label: ["cup"]
+
+Fluid:
+  -
+    common:
+      xlim: [0.0, 0.0]
+      ylim: [0.0, 0.0]
+      zlim: [-0.0695, -0.0695]
+      rotate_rand: False
+      relative_plane: "bottle"
+      check_mode: "enforce"
+
+    category:
+      -
+        name: "wuliangye"
+        index: [0]
+
+    select_mode:
+      nums: [1]
+      mode: "unique"
+      label: ["wine"]

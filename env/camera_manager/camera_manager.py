@@ -28,6 +28,7 @@ REAL_MAP = {
     "third_view": THIRD_VIEW,
     "d435": D435,
     "large_d435": LARGE_D435,
+    "dex1_rgb": DEX1_RGB,
 }
 
 VISUAL_MAP = {

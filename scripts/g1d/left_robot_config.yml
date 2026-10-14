@@ -9,10 +9,10 @@ arm_joints_name: ['left_shoulder_pitch_joint', 'left_shoulder_roll_joint', 'left
 gripper_joints_name: ['left_dex1_finger_joint_1', 'left_dex1_finger_joint_2']
 gripper_move:
     base: "left_dex1_finger_joint_1"
-    sign: 1.0
+    sign: -1.0  # Dex1-1: positive q closes
     mimic: ["left_dex1_finger_joint_2", 1., 0.]
 gripper_bias: 0.12              # dex1_base_link origin -> fingertip centre (m)
-gripper_scale: [-0.02, 0.0245]  # finger travel: closed .. open
+gripper_scale: [-0.02, 0.0245]  # finger travel: open .. closed
 delta_matrix: [[1,0,0],[0,1,0],[0,0,1]]
 grasp_camera_reference_axis: [1, 0, 0]
 # Camera mounts are calibration knobs, fitted by eye to real G1-D head/wrist recordings.
@@ -20,11 +20,21 @@ grasp_camera_reference_axis: [1, 0, 0]
 camera:
   -
     link: "d435_link"
-    name: "cam_head"
+    name: "cam_head"  # left eye of the head stereo pair, as in the real training recordings
     type: Gemini_345Lg  # wide-angle (~96 x 71 deg); the real G1-D head view shows the table, wall and chest
     mesh: pinhole
-    pos: [0, 0, 0]  # inside the head shell (hidden from rendering in robot_config/g1d.py)
-    ori: [0.5104, 0.4894, -0.4894, -0.5104]  # D435 frame + 2.4 deg down (50 deg total): a little chest visible as on the real robot
+    # Stereo calibration: eyes at y = +-29.8 mm from the head centre, optical axes 47.6 deg down (= d435_link pitch).
+    # d435_link sits 17.5 mm left of the centre, 20 mm behind the face; the eyes are moved 25 mm forward (horizontally;
+    # (0.0169, 0, 0.0185) in the pitched d435_link frame) to just outside the head shell, so the shell stays visible.
+    pos: [0.0169, 0.0123, 0.0185]
+    ori: [0.5, 0.5, -0.5, -0.5]  # along d435_link x
+  -
+    link: "d435_link"
+    name: "cam_head_right"  # right eye
+    type: Gemini_345Lg
+    mesh: pinhole
+    pos: [0.0169, -0.0473, 0.0185]
+    ori: [0.5, 0.5, -0.5, -0.5]
   -
     link: "left_dex1_base_link"
     name: "cam_wrist"

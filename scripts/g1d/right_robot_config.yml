@@ -10,7 +10,7 @@ arm_joints_name: ['right_shoulder_pitch_joint', 'right_shoulder_roll_joint', 'ri
 gripper_joints_name: ['right_dex1_finger_joint_1', 'right_dex1_finger_joint_2']
 gripper_move:
     base: "right_dex1_finger_joint_1"
-    sign: 1.0
+    sign: -1.0  # Dex1-1: positive q closes
     mimic: ["right_dex1_finger_joint_2", 1., 0.]
 gripper_bias: 0.12
 gripper_scale: [-0.02, 0.0245]

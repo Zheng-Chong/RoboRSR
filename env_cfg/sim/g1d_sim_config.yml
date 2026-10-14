@@ -1,0 +1,6 @@
+decimation: 1
+dt: 0.0033333333333333335  # 1/300 (exact float repr): 10 physics steps per action at the real G1-D's 30 Hz
+render_interval: 10
+scene:
+  num_envs: 10
+  env_spacing: 7
