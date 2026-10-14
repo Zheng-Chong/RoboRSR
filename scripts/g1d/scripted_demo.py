@@ -4,7 +4,7 @@ Runs src/eval_client/main.py in-process with the policy swapped for a Cartesian 
 least-squares IK on the simulator's Jacobian. Videos and _result.json land in eval_result/ like a normal eval,
 under policy name "scripted_demo".
     g1d_pour_water_into_cup   grasp the pitcher handle from the robot side, lift, carry it beside the cup, roll the
-                              wrist until a quarter of the coffee has left the jug, roll back upright
+                              wrist until a quarter of the beans have left the jug, roll back upright
     g1d_general_pickup        top-down grasp across the target's narrow side, lift 15 cm
     g1d_stack_blocks          stack the two outer blocks on the middle one, each with the arm on its side; arms back
 
@@ -38,7 +38,7 @@ TILT = np.deg2rad(115)
 TILT_RATE, RETURN_RATE = np.deg2rad(1.25), np.deg2rad(2.5)  # per action
 POUR_TARGET = 0.25  # of the half-full jug (~130 ml, 2/3 of a mug); the stream in flight tops it up
 MAX_HOLD = 48  # actions at full tilt
-FLOW = 0.0033  # of the coffee per action (~50 ml/s): hold the tilt above this
+FLOW = 0.0033  # of the beans per action (~50 ml/s): hold the tilt above this
 DAMPING = 0.05
 GRASP_ROT = Rotation.from_euler("z", 90, degrees=True)  # fingers forward (+y), wrist camera up: the G1-D zero pose
 # Pick and place
@@ -137,12 +137,12 @@ def pour_actions(env):
     check = env.pour_check()
 
     def left_jug():
-        """Fraction of the coffee outside the jug's bounding box (in the cup, in flight or spilled)."""
+        """Fraction of the beans outside the jug's bounding box (in the cup, in flight or spilled)."""
         jug_pos, jug_quat = lm.get_instance_pose(0, label="bottle")
-        local = from_wxyz(as_np(jug_quat)).inv().apply(coffee() - as_np(jug_pos))
+        local = from_wxyz(as_np(jug_quat)).inv().apply(beans() - as_np(jug_pos))
         return np.mean(np.any(np.abs(local) > BBOX_HALF, axis=1))
 
-    def coffee():
+    def beans():
         return np.asarray(fluid.get_particle_positions()[0]).reshape(-1, 3) + fluid.init_pos
 
     def act(point, rot, grip):
@@ -166,7 +166,7 @@ def pour_actions(env):
     step = 0
     for target in waypoints(arm.grasp_point(), arm.pose()[1], keys):
         yield act(*target)
-    theta, held, prev = 0.0, 0, 0.0  # tilt until enough coffee has left the jug, then back upright
+    theta, held, prev = 0.0, 0, 0.0  # tilt until enough beans have left the jug, then back upright
     while (now := left_jug()) < POUR_TARGET and held < MAX_HOLD:
         if now - prev < FLOW:  # tilt further only while the stream is weak: a surge overshoots the cup
             theta = min(theta + TILT_RATE, TILT)
@@ -299,6 +299,9 @@ def eval_one_episode(TASK_ENV, model_client):
         if TASK_ENV.is_episode_end():
             break
         TASK_ENV.get_obs()  # streams the camera frames into the episode videos
+    if not TASK_ENV.end_flag[0]:  # EvalEnv starts each episode with success=True: running out of script is a fail
+        TASK_ENV.success[0] = False
+        TASK_ENV.end_flag[0] = True
 
 
 class NoServer:

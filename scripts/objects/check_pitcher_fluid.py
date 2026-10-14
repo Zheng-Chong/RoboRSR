@@ -2,9 +2,10 @@
 
 An open pitcher and an otherwise identical pitcher with a blocked pour opening follow
 the same prescribed motion. This isolates vessel/particle collisions from robot control.
-Uses the benchmark's wuliangye fluid asset and particle/material parameters unchanged.
+Uses the benchmark's wuliangye fluid asset and particle/material parameters unchanged, or with --red-beans the
+granular red beans of g1d_pour_water_into_cup (scripts/g1d/build_asset.py; run it first for RedBean.mdl).
 
-PYTHONPATH=. python scripts/objects/check_pitcher_fluid.py --device cpu
+PYTHONPATH=. python scripts/objects/check_pitcher_fluid.py --device cpu [--red-beans --out output/pitcher/beans]
 The CPU state pipeline allows particle USD readback; PBD physics still requires a GPU.
 Writes metrics.json and upright/pouring/final.png under --out.
 """
@@ -17,6 +18,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--pitcher-dir", default="Assets/Object/RoboDojo/Rigid/pitcher/00002")
 parser.add_argument("--fluid-dir", default="Assets/Object/RoboDojo/Fluid/wuliangye/00000")
 parser.add_argument("--out", default="output/pitcher/fluid")
+parser.add_argument("--red-beans", action="store_true", help="granular red beans instead of the asset's liquid")
 AppLauncher.add_app_launcher_args(parser)
 parser.set_defaults(device="cpu")
 args = parser.parse_args()
@@ -46,6 +48,7 @@ import torch  # noqa: E402
 
 from env.scene_manager.objects.fluid import FluidObject  # noqa: E402
 from env.scene_manager.objects.rigid import RigidObject  # noqa: E402
+from scripts.g1d.build_asset import RED_BEAN_MDL, RED_BEAN_PHYSICS  # noqa: E402
 from scripts.objects import make_pitcher as shape  # noqa: E402
 
 DT = 0.004
@@ -87,6 +90,9 @@ def main():
     pitcher_dir, fluid_dir = Path(args.pitcher_dir).resolve(), Path(args.fluid_dir).resolve()
     meta = json.loads((pitcher_dir / "metadata.json").read_text())
     fluid_cfg = json.loads((fluid_dir / "metadata.json").read_text())
+    if args.red_beans:
+        fluid_cfg["physics"] = dict(fluid_cfg["physics"], **RED_BEAN_PHYSICS)
+        fluid_cfg["visual"]["visual_mdl_path"] = RED_BEAN_MDL
     # Resolve the same asset-root placeholder as RoboDojo's metadata loader.
     asset_root = fluid_dir.parents[4]
     fluid_cfg["visual"]["visual_mdl_path"] = fluid_cfg["visual"]["visual_mdl_path"].replace(

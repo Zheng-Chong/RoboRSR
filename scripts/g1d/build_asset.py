@@ -8,8 +8,8 @@ Writes:
                                            {left,right}_robot_config.yml
     Assets/Eval_Layout/RoboDojo/g1d/       arx_x5 layouts minus the camera stand (it would sit inside the robot),
                                            plus layouts for the G1-D tasks in G1D_TASKS (bottle swapped for our
-                                           pitcher of coffee, set in the real office scene Room/real_scene1)
-    Assets/Material/Fluid/Coffee.mdl
+                                           pitcher of red beans, set in the real office scene Room/real_scene1)
+    Assets/Material/Fluid/RedBean.mdl
     Assets/Room/real_scene1/               with --scene: real_scene1.usd (room + table + lights) over the copied usd/
 
 Usage:
@@ -71,17 +71,44 @@ def Xform "Scene"
     }
 }
 """
-# Black coffee: Water_Opaque.mdl (glossy, rippled normal map) with a dark-brown base colour (linear RGB).
-COFFEE_COLOR = "color(0.045, 0.014, 0.005)"
-COFFEE_MDL = "$Robodojo_ASSETS/Material/Fluid/Coffee.mdl"
+# Red (adzuki) beans: Water_Opaque.mdl (glossy) with a dark maroon base colour (linear RGB).
+RED_BEAN_COLOR = "color(0.15, 0.008, 0.01)"
+RED_BEAN_MDL = "$Robodojo_ASSETS/Material/Fluid/RedBean.mdl"
+# Beans are PBD solid (granular) particles: 4 mm spheres of 0.06 g, smooth (friction 0.2), no cohesion. The 13 mm
+# pitcher pour opening jams 5 mm beans, or 4 mm ones at friction 0.4 (check_pitcher_fluid.py --red-beans).
+RED_BEAN_PHYSICS = {
+    "granular": True,
+    "particle_mass": 6e-5,
+    "particle_system": {
+        "particle_contact_offset": 0.0024,
+        "contact_offset": 0.0024,
+        "rest_offset": 0.002,
+        "solid_rest_offset": 0.002,
+        "fluid_rest_offset": 0.0012,
+        "max_velocity": 2.5,
+        "smoothing": False,
+        "anisotropy": False,
+        "isosurface": False,  # render the particles as beans, not a liquid surface
+    },
+    "particle_material": {
+        "friction": 0.2,
+        "particle_friction_scale": 1.0,
+        "damping": 0.0,
+        "adhesion": 0.0,
+        "particle_adhesion_scale": 0.0,
+        "cohesion": 0.0,
+        "viscosity": 0.0,
+        "surface_tension": 0.0,
+        "drag": 0.0,
+        "lift": 0.0,
+    },
+}
 # Half-full pitcher: FluidObject fills the fluid mesh (a 60 x 60 x 70 mm ellipsoid, 130 ml) scaled by visual.scale with
 # particles, then scales the particle set again by scale * visual.scale; scale = 1 / visual.scale keeps the spacing.
 # 1.2 x 1.2 x 2.7 -> 72 x 72 x 189 mm (513 ml, about half of the 1.1 l jug), standing on the inside bottom.
 PITCHER_FILL = (1.2, 1.2, 2.7)
 PITCHER_FLUID_Z = -0.017  # fluid centre relative to the pitcher centre
 PITCHER_AXIS_X = -0.0137  # body axis in the pitcher frame (metadata contact_circle): the bbox centre is off-axis
-# FluidObject defaults to 0.5 g particles, ~18x water; use water density at the 3 mm particle spacing.
-WATER_PARTICLE_MASS = 1000 * 0.003**3
 OBJECT_SECTIONS = ("Rigid", "Geometry", "Fluid", "Articulation", "Garment", "Clutter", "Dynamic")
 # Dex1-1 camera module placement (m, dex1 link frame), fitted by eye to the real gripper: the body block top, and how
 # far the module moves forward from the v4 post so it sits over the block.
@@ -127,7 +154,9 @@ def build_urdf(v4, src, out):
         (out / mesh).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(v4 / mesh, out / mesh)
     seat_wrist_camera(out / "meshes/dex1_1/base_link.STL")
+    recess_carrier_hulls(g1d, out)
     shutil.copy(v4 / "physics_contract.json", out)
+    shutil.rmtree(out / "usd", ignore_errors=True)  # UrdfFileCfg hashes only the URDF path, not mesh files
     ET.ElementTree(g1d).write(out / "g1d_dex1.urdf", encoding="utf-8", xml_declaration=True)
     print(f"wrote {out / 'g1d_dex1.urdf'} ({len(movable)} movable joints)")
 
@@ -146,6 +175,22 @@ def seat_wrist_camera(stl):
     bracket = bracket.slice_plane([0, 0, WRIST_CAM_BODY_TOP], [0, 0, -1], cap=True)  # keep the back plate
     camera.apply_translation([0, WRIST_CAM_FORWARD, WRIST_CAM_BODY_TOP - camera.bounds[0, 2]])
     trimesh.util.concatenate([*body, bracket, camera]).export(stl)
+
+
+def recess_carrier_hulls(g1d, out):
+    """Link{1,2}_2 is L-shaped (slider lug + finger beam); its single convex hull bridges the L and sticks 3.4 mm
+    past the frictionless carrier into the grip zone ahead of the Link{1,2}_3 pad. Trim the lug on the collision copy
+    so the carrier hull stays 0.5 mm behind the pad face."""
+    import numpy as np
+    import trimesh
+
+    for idx, clip in ((1, lambda x: np.maximum(x, -0.002)), (2, lambda x: np.minimum(x, 0.002))):
+        rel = f"meshes/dex1_1/Link{idx}_2_col.STL"
+        mesh = trimesh.load(out / f"meshes/dex1_1/Link{idx}_2.STL", process=False)
+        mesh.vertices[:, 0] = clip(mesh.vertices[:, 0])
+        mesh.export(out / rel)
+        for el in g1d.findall(f".//link/collision/geometry/mesh[@filename='meshes/dex1_1/Link{idx}_2.STL']"):
+            el.set("filename", rel)
 
 
 def shift_objects(layout, offset):
@@ -194,19 +239,19 @@ def swap_bottle_for_pitcher(layout, assets, layout_index, table_top):
     fluid = layout["Fluid"]["wuliangye"][0]
     fluid["zlim"] = [PITCHER_FLUID_Z] * 2
     fluid["default_pos"] = [x - PITCHER_AXIS_X if flip else x + PITCHER_AXIS_X, y, z + PITCHER_FLUID_Z]
-    fluid["physics"]["particle_mass"] = WATER_PARTICLE_MASS
-    fluid["visual"]["visual_mdl_path"] = COFFEE_MDL
+    fluid["physics"] = dict(fluid["physics"], **RED_BEAN_PHYSICS)
+    fluid["visual"]["visual_mdl_path"] = RED_BEAN_MDL
     fluid["visual"]["scale"] = list(PITCHER_FILL)
     fluid["scale"] = [1 / s for s in PITCHER_FILL]
     return layout
 
 
-def build_coffee_material(assets):
+def build_red_bean_material(assets):
     fluid = assets / "Material" / "Fluid"
     mdl = (fluid / "Water_Opaque.mdl").read_text()
-    coffee = mdl.replace("Water_Opaque(", "Coffee(").replace("color(0.008, 0.02, 0.03)", COFFEE_COLOR)
-    assert coffee.count("Coffee(") == 1 and COFFEE_COLOR in coffee, "Water_Opaque.mdl changed"
-    (fluid / "Coffee.mdl").write_text(coffee)
+    bean = mdl.replace("Water_Opaque(", "RedBean(").replace("color(0.008, 0.02, 0.03)", RED_BEAN_COLOR)
+    assert bean.count("RedBean(") == 1 and RED_BEAN_COLOR in bean, "Water_Opaque.mdl changed"
+    (fluid / "RedBean.mdl").write_text(bean)
 
 
 def build_room(scene, assets):
@@ -325,7 +370,7 @@ def main():
     build_urdf(args.v4, args.src, out)
     for side in ("left", "right"):
         shutil.copy(HERE / f"{side}_robot_config.yml", out)
-    build_coffee_material(args.assets)
+    build_red_bean_material(args.assets)
     build_layouts(args.assets)
 
 

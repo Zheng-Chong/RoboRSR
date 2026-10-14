@@ -1,4 +1,5 @@
-# G1-D version of pour_liquid_into_cup: our fridge jug (pitcher) instead of the bottle, y ranges shifted -0.20 m toward
+# G1-D version of pour_liquid_into_cup: our fridge jug (pitcher) of red beans (granular "Fluid" particles, physics set
+# in build_asset.py) instead of the bottle of liquor, y ranges shifted -0.20 m toward
 # the robot (G1-D stands behind the table). Eval layouts come from scripts/g1d/build_asset.py; these ranges document the
 # workspace. The eval layouts put the task in the reconstructed office scene (Room real_scene1: white lift table with
 # its top at 0.68 m, robot-side edge at y=-0.60), replacing the stock table/ground/HDR dome; z follows that tabletop.

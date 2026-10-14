@@ -124,8 +124,13 @@ class FluidObject:
         )
         self.visual_scale = visual_scale
         cloud_points = cloud_points_base * self.visual_scale
-        fluid_rest_offset = inst_particle_system_cfg.get("fluid_rest_offset", 0.0135)
-        particleSpacing = 2.0 * fluid_rest_offset
+        # Granular media (beans, grains) are PBD solid particles: friction but no fluid density/viscosity solve.
+        granular = self.physics_cfg.get("granular", False)
+        if granular:
+            particle_radius = inst_particle_system_cfg.get("solid_rest_offset", 0.0225)
+        else:
+            particle_radius = inst_particle_system_cfg.get("fluid_rest_offset", 0.0135)
+        particleSpacing = 2.0 * particle_radius
         self.init_particle_positions, self.init_particle_velocities = generate_particles_in_convex_mesh(
             vertices=cloud_points, sphere_diameter=particleSpacing
         )
@@ -140,7 +145,7 @@ class FluidObject:
             velocities=Vt.Vec3fArray(self.init_particle_velocities),
             particle_system_path=self.particle_system_path,
             self_collision=True,
-            fluid=True,
+            fluid=not granular,
             particle_group=0,
             particle_mass=self.physics_cfg.get("particle_mass", 0.0005),
             density=0.0,
@@ -169,7 +174,7 @@ class FluidObject:
         self.particle_prototype_path = proto_path
 
         particle_prototype_sphere = UsdGeom.Sphere.Get(self.stage, proto_path)
-        particle_prototype_sphere.CreateRadiusAttr().Set(fluid_rest_offset)
+        particle_prototype_sphere.CreateRadiusAttr().Set(particle_radius)
         if inst_particle_system_cfg.get("isosurface", True):
             UsdGeom.Imageable(particle_prototype_sphere).MakeInvisible()
 
