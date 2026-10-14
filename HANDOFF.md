@@ -76,10 +76,31 @@
 - 渲染输出：服务器 `/data2/tmp/robodojo/bean_render/`，本机 `output/bean_render/`（壶对照截图、三个任务的五路视频），不入 Git。
 - 远程运行备注：服务器负载高时 SSH 长连接约 15 分钟断开（退出码 255）会杀掉仿真；改为在隔离目录用 `nohup setsid` 后台跑。验证脚本会拒绝子模块条目，本次上传时跳过 gitlink（服务器上替换为共享软链接）。
 
+## `g1d_general_pickup` 与 `g1d_stack_blocks` 抓取与叠块修复（2026-10-14）
+
+- **碰撞体与布局根因（已入 `build_asset.py`）**：
+  1. Dex1-1 滑块连杆 `Link1_2.STL` / `Link2_2.STL` 为 L 形（后方滑块凸耳 + 前方指梁），PhysX 单个凸包将内角连成斜面，在俯仰 `-60°` 时比指垫 `Link1_3` / `Link2_3` 内表面突出 `1.6 mm`，先于指垫无摩擦顶走物体或互相卡死。`recess_carrier_hulls` 生成修剪后的 `Link{1,2}_2_col.STL`（`x_mesh` 截断至 `±0.002 m`）并清除 `Assets/Robots/g1d/usd` 缓存强制重转 USD。
+  2. `g1d_general_pickup`（偏移 `y = -0.36 m`）过滤掉窄边 `> 80 mm` 或高度 `< 15 mm` 的目标物体，并剔除 `0.6x` 缩放后与目标间距 `< 20 mm` 或彼此 `< 5 mm` 的干扰物；`g1d_stack_blocks` 偏移设为 `y = -0.35 m`。
+- **运动学（IK）与夹持定心根因（`scripts/g1d/scripted_demo.py`）**：
+  1. **TCP 雅可比与关节限位投影**：`Arm.ik()` 将雅可比从 `dex1_base_link` 原点平移到指尖抓取点 `pos + rot.apply([PAD_REACH, 0, 0])`（`jac[:3] - np.cross(r, jac[3:].T).T`），姿态权重设为 `0.3`、阻尼 `0.02`，并将关节限位内缩 `0.025 rad` 后按预测步 `q + dq` 投影零化越界关节列。解决了叠三层方块时 `right_wrist_pitch_joint` 在 `1.595 rad` 被 PhysX 限位挡住却未触发列零化、导致指尖在 `y` 方向偏差 `22 mm` 并在下降时甩落方块的问题。
+  2. **双指力饱和失稳与线性 PD 定心**：两指独立驱动且 `effort_limit_sim = 20 N`、`stiffness = 10000 N/m` 时，若对 `35 mm` 方块（接触位 `q ≈ 0.0076 m`）直接指令 `u = 0`（`q_target = 0.0245 m`），两指同时饱和在 `20 N`，差模定心刚度为 0，离桌后单指会将方块推偏 `16 mm`。现改为先在桌面合拢让两指停在物体表面，再对方块取实测均值加 `1.5 mm` 压入量（`close_cmd = clip((0.023 - fingers.mean()) / 0.0445, 0, 1)`，约 `15 N` 处于线性 PD 区，具备 `10,000 N/m` 自动定心恢复力，抬起偏移 `< 0.2 mm`）；对通用抓取（锥面/曲面重物如 `0.45 kg` 小车）保持全闭 `close=True` 持续施加满额 `20 N`。
+  3. **侧向抓取手腕朝向与接近高度**：`|yaw| > 60°` 时将手腕朝向肩部内侧（右臂 `yaw < 0`、左臂 `yaw > 0`），使 `dex1_base_link` 落在肩正前方可达区（`x ≈ 0.148 m`），并以 `grip + [0, 0, lift]` 高度接近避免旋转时扫碰桌面物体。
+- **验证（`gpu-4090-isaacsim51`，运行 ID `20261014-201423-9ccaf38f`）**：
+  - `ruff check`、`ruff format --check`、`task_inventory.py --check`、`build_asset.py` 全部通过。
+  - `g1d_general_pickup`（seed 0，`car/00011`）：第 119 步将小车从 `z = 0.698 m` 稳稳抓起至 `z = 0.801 m` 触发成功退出，`_result.json` 中 `eval_time = 1`、`success_rate = 1.0`。
+  - `g1d_stack_blocks`（seed 0）：依次将 `block_2`（`z = 0.732 m`）与 `block_1`（`z = 0.767 m`）叠放到 `block_0`（`[0.147, -0.486, 0.697]`）上，水平对齐误差 `≤ 2 mm`，双臂回零后在第 605 步触发成功退出，`_result.json` 中 `eval_time = 1`、`success_rate = 1.0`。
+
+## 双臂倒水脚本 + 吧台场景（2026-10-14）
+
+- 吧台 real2sim 场景 `Assets/sim_scene_counter/`（只在本机，gitignored）：两张照片联合拟合，`build_scene.py` 生成 `real_scene2.usd`；水龙头鹅颈改为连续扫掠管（`swept_tube`）。服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/counter-pour-20261014-163053` 以 Room=real_scene2 跑倒水（机器人根 y=-0.80、升降柱各 0.075，物体整体 y-0.07、z+0.15），共享资产库未改。
+- `scripted_demo.py` 倒水改为双臂：离壶近的手臂抓壶把手，另一臂用 TOP_ROT 斜向下（手腕内转 60°）夹杯身、抬起 4 cm；倾倒时抓壶手按“实际壶嘴 vs 实际杯口”闭环修正（`SPOUT_GAIN`），补偿壶在手里打滑；倾倒保持不再固定 48 步，用满 step_lim 余量；先竖直提壶再横移、限速 `JUG_SPEED`（斜着拉会把壶拽倒）；0–80° 快倾。
+- 可达性探测（隔离目录 `scripts/g1d/probe.py`，不入库）：原布局杯子 y≈-0.28（吧台坐标）持杯手任何姿态都够不到（最小误差 5.7 cm）；y≈-0.40、杯口上方附近可达。因此 `build_asset.py` 增加 `POUR_CUP_PULL=-0.09`（杯子比壶近 9 cm）和 `POUR_MIN_GAP=0.03`（与壶间隙不足的布局丢弃），150 → 140 个倒水布局；`g1d_pour_water_into_cup.yml` 杯子 ylim 说明同步为 [-0.39, -0.29]。本机/共享资产库的布局尚未重建（需运行 `build_asset.py`）。
+- 验证（隔离目录，各 1 轮，退出码 0，eval_time=1）：seed 1（壶左、右手持杯）抓壶、持杯、倾倒全程成功，第 450 步出壶 20%、在杯 17%，因 step_lim=480 用尽判失败；seed 0（壶右）右手插把手时把壶推偏 2 cm 没抓住，左手也没抬起杯子，失败。视频 `output/counter_pour_bimanual/seed1_grid.mp4`。
+- ruff check/format 通过；未跑 task_inventory / doctor（未改任务注册）。
+
 ## 剩余事项与风险
 
-- 倒红豆脚本演示需重新标定：颗粒流速低于液体，需更大倾角（130°）和更长保持；当前 step_lim=480 下动作已用约 434 步，可能要压缩接近阶段或提高 step_lim。
-- `g1d_general_pickup`、`g1d_stack_blocks` 的脚本抓取实际未成功，需排查夹持（指尖开度/闭合力/接触）。
+- 双臂倒水：step_lim=480 不够（颗粒流速约 0.1%/步，需 ≥20% 出壶），需提高 `g1d_pour_water_into_cup` 的 step_lim 或提高流速；右臂抓壶（壶在右、y≈-0.28）插把手会推壶，需调接近路径；持杯手在可达边缘，杯子 y 更远的布局（-0.46）未测。
 - G1 手臂在桌面高度的可达范围约 0.45 m；RoboDojo 现有任务（为桌面上的 X5 设计）有物体距肩部 0.4–0.7 m，部分不可达。自有任务的物体应放在 y≈[-0.55, -0.25]，或利用腰部前倾（`Yaw_Joint`）。
 - 相机内参是借用的现有类型（头部 Gemini_345Lg、腕部 d435），位姿为目测/几何拟合；拿到真机相机型号和内参后应替换为实测值。头壳被隐藏，第三视角里机器人没有头部外壳。
 - 末端位姿（ee）动作未支持：需写 G1-D cuRobo 配置；且 `RobotManager` 的 planner 以 `robot_name` 为键，coupled 左右臂会共用同一个 planner，需要改成按手臂区分。
@@ -94,6 +115,8 @@
 2. 下一步建议：加入自有物体（`Assets/Object/RoboDojo/<类别>/<编号>/object.usd`）并写第一个 G1-D 专用任务及其评测布局。
 
 ## 最近历史
+
+- 2026-10-14：修复 `g1d_general_pickup` 与 `g1d_stack_blocks` 脚本抓取与叠块（TCP 雅可比 + 关节限位内缩投影、方块线性 PD 自动定心、侧向抓取手腕朝向肩部），远端验证两任务均拿到 `success_rate = 1.0`；倒水脚本改为双臂协同，倒水布局杯子拉近 9 cm。
 
 - 2026-10-14：`README.md` 按 Notion「Real2Sim2Real」页面改写为中文项目说明（目标、现状、快速开始、TODO、月度目标、零样本上真机路线），保留上游致谢/引用/许可证。Notion 写"scripted_demo 已成功倒过一次水"，与本文件验证记录冲突，README 按验证记录写为三个演示均未成功。
 - 2026-10-14：`Assets/scene3_pour_pack`（代码、场景/物体 USD、G1+Dex1 机器人 USD 与网格，约 102 MB，170 个 LFS 文件）入库，commit `9934da5`。

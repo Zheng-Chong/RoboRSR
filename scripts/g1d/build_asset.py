@@ -109,6 +109,11 @@ RED_BEAN_PHYSICS = {
 PITCHER_FILL = (1.2, 1.2, 2.7)
 PITCHER_FLUID_Z = -0.017  # fluid centre relative to the pitcher centre
 PITCHER_AXIS_X = -0.0137  # body axis in the pitcher frame (metadata contact_circle): the bbox centre is off-axis
+# The second arm picks the cup and holds it under the spout: it reaches the cup's rim only ~0.40 m in front of the
+# robot root (scripts/g1d/scripted_demo.py), so the cup comes this much closer than the jug; layouts where it then
+# overlaps the jug are dropped.
+POUR_CUP_PULL = -0.09
+POUR_MIN_GAP = 0.03  # m between the jug's and the cup's footprints
 OBJECT_SECTIONS = ("Rigid", "Geometry", "Fluid", "Articulation", "Garment", "Clutter", "Dynamic")
 # Dex1-1 camera module placement (m, dex1 link frame), fitted by eye to the real gripper: the body block top, and how
 # far the module moves forward from the v4 post so it sits over the block.
@@ -224,7 +229,8 @@ def move_into_real_scene(layout, xy, table_top):
 
 
 def swap_bottle_for_pitcher(layout, assets, layout_index, table_top):
-    """Replace the wuliangye bottle (and the fluid inside it) by our fridge jug, spout turned toward the cup."""
+    """Replace the wuliangye bottle (and the fluid inside it) by our fridge jug, spout turned toward the cup, and pull
+    the cup POUR_CUP_PULL toward the robot; None if the cup then sits too close to the jug."""
     index = layout_index % 3  # jug colour variant
     meta = json.loads((assets / "Object/RoboDojo/Rigid/pitcher" / f"{index:05d}/metadata.json").read_text())
     bottle = layout["Rigid"].pop("wuliangye")[0]
@@ -243,6 +249,10 @@ def swap_bottle_for_pitcher(layout, assets, layout_index, table_top):
     fluid["visual"]["visual_mdl_path"] = RED_BEAN_MDL
     fluid["visual"]["scale"] = list(PITCHER_FILL)
     fluid["scale"] = [1 / s for s in PITCHER_FILL]
+    cup = next(e for es in layout["Rigid"].values() for e in es if e.get("label") == "cup")
+    cup["default_pos"][1] += POUR_CUP_PULL
+    if _gap_xy(_obb(assets, "Rigid", "pitcher", pitcher), _obb(assets, "Rigid", cup["category"], cup)) < POUR_MIN_GAP:
+        return None
     return layout
 
 
@@ -314,8 +324,8 @@ def filter_pickup(layout, assets, layout_index, table_top):
 # task: (benchmark task, (x, y) offset, (x, y) squeeze, post-filter/swap or None)
 G1D_TASKS = {
     "g1d_pour_water_into_cup": ("pour_liquid_into_cup", (0.0, -0.20), (1.0, 1.0), swap_bottle_for_pitcher),
-    "g1d_general_pickup": ("general_pickup", (0.0, -0.33), (0.6, 0.6), filter_pickup),
-    "g1d_stack_blocks": ("stack_blocks", (0.0, -0.30), (0.6, 0.6), None),
+    "g1d_general_pickup": ("general_pickup", (0.0, -0.36), (0.6, 0.6), filter_pickup),
+    "g1d_stack_blocks": ("stack_blocks", (0.0, -0.35), (0.6, 0.6), None),
 }
 
 

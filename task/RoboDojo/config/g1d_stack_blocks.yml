@@ -1,5 +1,5 @@
 # G1-D version of stack_blocks: same objects and success check. Eval layouts are stack_blocks's with object (x, y) scaled
-# by 0.6 and shifted -0.30 m toward the robot, in the real office scene (scripts/g1d/build_asset.py).
+# by 0.6 and shifted -0.35 m toward the robot, in the real office scene (scripts/g1d/build_asset.py).
 Rigid:
   -
     common:

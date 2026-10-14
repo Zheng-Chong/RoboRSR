@@ -27,7 +27,7 @@ Rigid:
   -
     common:
       xlim: [-0.05, 0.05]
-      ylim: [-0.30, -0.20]
+      ylim: [-0.39, -0.29]  # build_asset.py POUR_CUP_PULL: 9 cm closer than the jug, within the cup arm's reach
       rotate_rand: False
       rotate_deg: 0
       relative_plane: "Table"

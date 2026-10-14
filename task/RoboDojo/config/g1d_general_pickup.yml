@@ -1,5 +1,5 @@
 # G1-D version of general_pickup: targets that fit the 90 mm Dex1-1 jaw (narrow horizontal side <= 80 mm, height >= 20 mm)
-# and the same lift check. Eval layouts are general_pickup's with object (x, y) scaled by 0.6 and shifted -0.33 m toward
+# and the same lift check. Eval layouts are general_pickup's with object (x, y) scaled by 0.6 and shifted -0.36 m toward
 # the robot, clutter overlapping after the squeeze removed, in the real office scene (scripts/g1d/build_asset.py).
 Rigid:
   -
