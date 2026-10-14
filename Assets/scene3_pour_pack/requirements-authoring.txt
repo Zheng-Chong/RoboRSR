@@ -1,0 +1,5 @@
+# Separate authoring environment only; do not install over Isaac Sim's USD.
+numpy>=1.26
+scipy>=1.11
+trimesh>=4.5
+usd-core>=24.5

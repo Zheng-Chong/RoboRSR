@@ -1,0 +1,487 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Xform "Table" (
+        prepend references = @./table.usdc@
+    )
+    {
+        quatf xformOp:orient = (1, 0, 0, 0)
+        double3 xformOp:translate = (0, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+    }
+
+    def Xform "source_cup" (
+        prepend references = @./objects/source_cup.usdc@
+    )
+    {
+        quatf xformOp:orient = (1, 0, 0, 0)
+        double3 xformOp:translate = (-0.16, -0.105, 0.751)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+    }
+
+    def Xform "receiver_cup" (
+        prepend references = @./objects/receiver_cup.usdc@
+    )
+    {
+        quatf xformOp:orient = (1, 0, 0, 0)
+        double3 xformOp:translate = (-0.16, 0.1, 0.751)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+    }
+
+    def Xform "basket_right" (
+        prepend references = @./objects/basket_right.usdc@
+    )
+    {
+        bool physics:kinematicEnabled = 1
+        quatf xformOp:orient = (1, 0, 0, 0)
+        double3 xformOp:translate = (0.015, -0.415, 0.751)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+    }
+
+    def Xform "basket_left" (
+        prepend references = @./objects/basket_left.usdc@
+    )
+    {
+        bool physics:kinematicEnabled = 1
+        quatf xformOp:orient = (1, 0, 0, 0)
+        double3 xformOp:translate = (0.015, 0.415, 0.751)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+    }
+
+    def Xform "toy" (
+        prepend references = @./objects/toy.usdc@
+    )
+    {
+        bool physics:kinematicEnabled = 1
+        quatf xformOp:orient = (0.9659258, 0, 0, 0.25881904)
+        double3 xformOp:translate = (0.125, -0.085, 0.751)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+    }
+
+    def Xform "paper" (
+        prepend references = @./objects/paper.usdc@
+    )
+    {
+        bool physics:kinematicEnabled = 1
+        quatf xformOp:orient = (1, 0, 0, 0)
+        double3 xformOp:translate = (0.125, 0.13, 0.751)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+    }
+
+    def PhysicsScene "PhysicsScene" (
+        prepend apiSchemas = ["PhysxSceneAPI"]
+    )
+    {
+        vector3f physics:gravityDirection = (0, 0, -1)
+        float physics:gravityMagnitude = 9.81
+        custom token physxScene:broadphaseType = "GPU"
+        custom bool physxScene:enableCCD = 1
+        custom bool physxScene:enableGPUDynamics = 1
+        custom token physxScene:solverType = "TGS"
+        custom uint physxScene:timeStepsPerSecond = 240
+    }
+
+    def "Lighting"
+    {
+        def DomeLight "Fill"
+        {
+            color3f inputs:color = (0.89, 0.94, 1)
+            float inputs:intensity = 650
+        }
+
+        def RectLight "Key"
+        {
+            float inputs:height = 1.1
+            float inputs:intensity = 1800
+            float inputs:width = 1.3
+            double3 xformOp:translate = (-0.6, -0.6, 2.5)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+
+        def RectLight "Softbox"
+        {
+            float inputs:height = 1.2
+            float inputs:intensity = 900
+            float inputs:width = 0.7
+            double3 xformOp:translate = (0.8, 0.6, 2)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+
+    def "Cameras"
+    {
+        def Camera "Overview"
+        {
+            float2 clippingRange = (0.02, 100)
+            float focalLength = 35
+            matrix4d xformOp:transform = ( (0.6866235329637165, -0.7270131525498175, -2.7755575615628907e-17, 0), (0.26044198858758777, 0.24597298922161065, 0.9336312222467327, 0), (-0.6787621782045364, -0.6410531683042844, 0.35823559405239425, 0), (-1.8999999999999997, -1.6999999999999997, 1.65, 1) )
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+    }
+
+    def Xform "Robot" (
+        prepend references = @../robot/g1_dex1.usdc@
+    )
+    {
+        double3 xformOp:translate = (-0.47, -0.045, 0.7928637524222113)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        over "Joints"
+        {
+            over "root_fixed"
+            {
+                point3f physics:localPos0 = (-0.47, -0.045, 0.7928637)
+            }
+
+            over "left_shoulder_pitch_joint"
+            {
+                float drive:angular:physics:targetPosition = 63.159164
+            }
+
+            over "left_shoulder_roll_joint"
+            {
+                float drive:angular:physics:targetPosition = 21.580002
+            }
+
+            over "left_shoulder_yaw_joint"
+            {
+                float drive:angular:physics:targetPosition = 62.11472
+            }
+
+            over "left_elbow_joint"
+            {
+                float drive:angular:physics:targetPosition = -47.42564
+            }
+
+            over "left_wrist_roll_joint"
+            {
+                float drive:angular:physics:targetPosition = -68.15055
+            }
+
+            over "left_wrist_pitch_joint"
+            {
+                float drive:angular:physics:targetPosition = 12.441862
+            }
+
+            over "left_wrist_yaw_joint"
+            {
+                float drive:angular:physics:targetPosition = -29.609695
+            }
+
+            over "right_shoulder_pitch_joint"
+            {
+                float drive:angular:physics:targetPosition = 42.70985
+            }
+
+            over "right_shoulder_roll_joint"
+            {
+                float drive:angular:physics:targetPosition = 1.2877629
+            }
+
+            over "right_shoulder_yaw_joint"
+            {
+                float drive:angular:physics:targetPosition = 47.09584
+            }
+
+            over "right_elbow_joint"
+            {
+                float drive:angular:physics:targetPosition = -51.914604
+            }
+
+            over "right_wrist_roll_joint"
+            {
+                float drive:angular:physics:targetPosition = -27.530285
+            }
+
+            over "right_wrist_pitch_joint"
+            {
+                float drive:angular:physics:targetPosition = 17.264668
+            }
+
+            over "right_wrist_yaw_joint"
+            {
+                float drive:angular:physics:targetPosition = -17.730696
+            }
+
+            over "left_dex1_finger_joint_1"
+            {
+                float drive:linear:physics:targetPosition = 0.0245
+            }
+
+            over "left_dex1_finger_joint_2"
+            {
+                float drive:linear:physics:targetPosition = 0.0245
+            }
+
+            over "right_dex1_finger_joint_1"
+            {
+                float drive:linear:physics:targetPosition = 0.0245
+            }
+
+            over "right_dex1_finger_joint_2"
+            {
+                float drive:linear:physics:targetPosition = 0.0245
+            }
+        }
+
+        over "pelvis"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (0, 0, 0)
+        }
+
+        over "left_hip_pitch_link"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (0, 0.064452, -0.1027)
+        }
+
+        over "left_hip_roll_link"
+        {
+            quatf xformOp:orient = (0.9961787, 0, -0.08733858, 0)
+            double3 xformOp:translate = (0, 0.116452, -0.133165)
+        }
+
+        over "left_hip_yaw_link"
+        {
+            quatf xformOp:orient = (0.9961787, 0, -0.08733858, 0)
+            double3 xformOp:translate = (0.04621766286810567, 0.116452, -0.25104100281656194)
+        }
+
+        over "left_knee_link"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (-0.0000023260967810037614, 0.1186009, -0.4392957524222113)
+        }
+
+        over "left_ankle_pitch_link"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (-0.0000023260967810007112, 0.118506455, -0.7393057524222113)
+        }
+
+        over "left_ankle_roll_link"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (-0.0000023260967810005325, 0.118506455, -0.7568637524222113)
+        }
+
+        over "right_hip_pitch_link"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (0, -0.064452, -0.1027)
+        }
+
+        over "right_hip_roll_link"
+        {
+            quatf xformOp:orient = (0.9961787, 0, -0.08733858, 0)
+            double3 xformOp:translate = (0, -0.116452, -0.133165)
+        }
+
+        over "right_hip_yaw_link"
+        {
+            quatf xformOp:orient = (0.9961787, 0, -0.08733858, 0)
+            double3 xformOp:translate = (0.04621766286810567, -0.116452, -0.25104100281656194)
+        }
+
+        over "right_knee_link"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (-0.0000023260967810037614, -0.1186009, -0.4392957524222113)
+        }
+
+        over "right_ankle_pitch_link"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (-0.0000023260967810007112, -0.118506455, -0.7393057524222113)
+        }
+
+        over "right_ankle_roll_link"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (-0.0000023260967810005325, -0.118506455, -0.7568637524222113)
+        }
+
+        over "waist_yaw_link"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (0, 0, 0)
+        }
+
+        over "waist_roll_link"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (-0.0039635, 0, 0.044)
+        }
+
+        over "torso_link"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (-0.0039635, 0, 0.044)
+        }
+
+        over "logo_link"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (0, 0, 0)
+        }
+
+        over "head_link"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (0, 0, 0)
+        }
+
+        over "imu_in_torso"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (-0.0435535, -0.00224, 0.19191999999999998)
+        }
+
+        over "imu_in_pelvis"
+        {
+            quatf xformOp:orient = (1, 0, 0, 0)
+            double3 xformOp:translate = (0.04525, 0, -0.08339)
+        }
+
+        over "d435_link"
+        {
+            quatf xformOp:orient = (0.91495967, 0, 0.4035453, 0)
+            double3 xformOp:translate = (0.05366, 0.01753, 0.47386999999999996)
+        }
+
+        over "mid360_link"
+        {
+            quatf xformOp:orient = (6.121234e-17, 0.99967337, 1.5649494e-18, -0.025557565)
+            double3 xformOp:translate = (-0.00368, 0.00003, 0.47243399999999997)
+        }
+
+        over "left_shoulder_pitch_link"
+        {
+            quatf xformOp:orient = (0.8436122, 0.11863932, 0.51859564, 0.07281329)
+            double3 xformOp:translate = (-0.000007199999999999741, 0.10022, 0.29178)
+        }
+
+        over "left_shoulder_roll_link"
+        {
+            quatf xformOp:orient = (0.8368372, 0.15956302, 0.5215252, 0.047483396)
+            double3 xformOp:translate = (-0.012340532456476452, 0.13847137522936898, 0.29625412165458676)
+        }
+
+        over "left_shoulder_yaw_link"
+        {
+            quatf xformOp:orient = (0.6923811, 0.40574262, 0.3644473, 0.47239763)
+            double3 xformOp:translate = (-0.10344120355661865, 0.16681448057571624, 0.2564230570889795)
+        }
+
+        over "left_elbow_link"
+        {
+            quatf xformOp:orient = (0.78048867, 0.56146276, 0.055235077, 0.26934388)
+            double3 xformOp:translate = (-0.17039642459243123, 0.1993217802179581, 0.2218900980640859)
+        }
+
+        over "left_wrist_roll_link"
+        {
+            quatf xformOp:orient = (0.9610577, 0.027767379, -0.10515709, 0.2540453)
+            double3 xformOp:translate = (-0.09007922462180988, 0.2564586940256103, 0.24158996287540482)
+        }
+
+        over "left_wrist_pitch_link"
+        {
+            quatf xformOp:orient = (0.96679354, 0.000074875665, -0.0003952251, 0.25555828)
+            double3 xformOp:translate = (-0.05782459929347311, 0.27479234666935237, 0.24980679472638145)
+        }
+
+        over "left_wrist_yaw_link"
+        {
+            quatf xformOp:orient = (0.99999994, 0.00017338083, -0.0003629715, 0.000031809257)
+            double3 xformOp:translate = (-0.01348623956237427, 0.2999936994388154, 0.24984772081524456)
+        }
+
+        over "right_shoulder_pitch_link"
+        {
+            quatf xformOp:orient = (0.92227006, -0.1296802, 0.36061186, -0.050597504)
+            double3 xformOp:translate = (-0.000007199999999999741, -0.10021, 0.29178)
+        }
+
+        over "right_shoulder_roll_link"
+        {
+            quatf xformOp:orient = (0.9312845, 0.01040184, 0.34891158, -0.10421961)
+            double3 xformOp:translate = (-0.009380999832620349, -0.13954100055640284, 0.2924876955067006)
+        }
+
+        over "right_shoulder_yaw_link"
+        {
+            quatf xformOp:orient = (0.8953703, 0.14893137, 0.3157007, 0.27652213)
+            double3 xformOp:translate = (-0.07748060343814324, -0.13613927262847525, 0.21476993797423571)
+        }
+
+        over "right_elbow_link"
+        {
+            quatf xformOp:orient = (0.94322836, 0.2549413, -0.108051725, 0.18343925)
+            double3 xformOp:translate = (-0.11940917637310462, -0.11942390587414989, 0.14625101577820276)
+        }
+
+        over "right_wrist_roll_link"
+        {
+            quatf xformOp:orient = (0.97679955, 0.023184992, -0.1485964, 0.15246063)
+            double3 xformOp:translate = (-0.02661385572357243, -0.08663792097946782, 0.16668803767974905)
+        }
+
+        over "right_wrist_pitch_link"
+        {
+            quatf xformOp:orient = (0.9880375, 0.00003903112, -0.00030202154, 0.15421344)
+            double3 xformOp:translate = (0.007941433940732205, -0.07558157293194623, 0.17798799892163242)
+        }
+
+        over "right_wrist_yaw_link"
+        {
+            quatf xformOp:orient = (0.99999994, 0.00008511023, -0.00029239815, 0.00010181225)
+            double3 xformOp:translate = (0.05651568249151842, -0.060039970262889104, 0.1780190505495819)
+        }
+
+        over "left_dex1_base_link"
+        {
+            quatf xformOp:orient = (0.99999994, 0.00017338083, -0.0003629715, 0.000031809257)
+            double3 xformOp:translate = (0.028013749418533185, 0.29999633438347184, 0.24987784790645895)
+        }
+
+        over "left_dex1_finger_link_1"
+        {
+            quatf xformOp:orient = (0.99999994, 0.00017338083, -0.0003629715, 0.000031809257)
+            double3 xformOp:translate = (0.02801531115563564, 0.27549633590603606, 0.24986935281245823)
+        }
+
+        over "left_dex1_finger_link_2"
+        {
+            quatf xformOp:orient = (0.99999994, 0.00017338083, -0.0003629715, 0.000031809257)
+            double3 xformOp:translate = (0.02801218768143073, 0.3244963328609076, 0.24988634300045967)
+        }
+
+        over "right_dex1_base_link"
+        {
+            quatf xformOp:orient = (0.99999994, 0.00008511023, -0.00029239815, 0.00010181225)
+            double3 xformOp:translate = (0.09801567453493776, -0.060031521911938605, 0.17804332031465764)
+        }
+
+        over "right_dex1_finger_link_1"
+        {
+            quatf xformOp:orient = (0.99999994, 0.00008511023, -0.00029239815, 0.00010181225)
+            double3 xformOp:translate = (0.0980206645544546, -0.08453152104907381, 0.1780391513724538)
+        }
+
+        over "right_dex1_finger_link_2"
+        {
+            quatf xformOp:orient = (0.99999994, 0.00008511023, -0.00029239815, 0.00010181225)
+            double3 xformOp:translate = (0.09801068451542091, -0.0355315227748034, 0.17804748925686148)
+        }
+    }
+}
+

@@ -1,0 +1,23 @@
+{
+  "generator": "/root/unitree_sim_isaaclab/scene3_pour_pack/scripts/build_checklist_assets.py",
+  "kind": "source_cup",
+  "usd": "/root/unitree_sim_isaaclab/scene3_pour_pack/assets/objects/checklist/e097_source_s0p80_cup_new_f.usdc",
+  "usd_sha256": "1cc962996752ae413fb996eb1b251287a6197276b595324e9038b12cafd92e18",
+  "material": "cup_new_f",
+  "friction": 0.8,
+  "geometry": {
+    "height": 0.0944,
+    "radius_bottom": 0.022000000000000002,
+    "radius_top": 0.0292,
+    "wall": 0.0024000000000000002,
+    "bottom": 0.0048000000000000004
+  },
+  "mass_kg": 0.08448000000000003,
+  "ceramic_volume_m3": 4.291546255058047e-05,
+  "water_ml_checked": 45.0,
+  "water_particle_count": 1667,
+  "water_fill_max_z_m": 0.0468,
+  "grasp_height_m": 0.068,
+  "grasp_diameter_m": 0.054372881355932205,
+  "open_cavity": true
+}

@@ -1,0 +1,46 @@
+{
+  "prototype_id": "P06",
+  "family": "C2L1",
+  "title": "高窄源杯 + 标准接水杯，近距离无遮挡",
+  "task_difference": "抓取高度、空杯重心和搬运/对准净空随源杯变高变窄而变化；接水杯、布局和控制原语保持 C1L1 名义配置。",
+  "layout": {
+    "source_position_m": [-0.16, -0.105, 0.751],
+    "receiver_position_m": [-0.04, -0.04, 0.751],
+    "pour_direction_deg": 105
+  },
+  "source_cup": {
+    "label": "C2 高窄源杯",
+    "usd": "source_cup_c2_tall_narrow.usdc",
+    "position": [-0.16, -0.105, 0.751],
+    "height": 0.16,
+    "radius_bottom": 0.022,
+    "radius_top": 0.028,
+    "wall": 0.003,
+    "bottom": 0.006,
+    "mass": 0.158,
+    "yaw": 0
+  },
+  "receiver_cup": "standard C1 geometry in scene_spec.json",
+  "pour": {
+    "water_ml": 50,
+    "particle_spacing_m": 0.003,
+    "grasp_height_m": 0.08,
+    "lift_m": 0.16,
+    "ready_offset_m": [0.0, 0.0, 0.23],
+    "align_clearance_m": 0.2,
+    "max_tilt_deg": 105
+  },
+  "geometry_notes": {
+    "c1_reference_m": {
+      "height": 0.118,
+      "radius_bottom": 0.0275,
+      "radius_top": 0.0365,
+      "grasp_height_m": 0.06
+    },
+    "mass_model": "Scale empty-cup ceramic volume against C1 0.165 kg using outer minus inner frustum.",
+    "grasp_diameter_m": 0.05,
+    "inner_capacity_ml_approx": 238,
+    "align_clearance_reason": "At 0 deg the cup origin is lip_z - source_height. C1 used 0.15 m extra lip height; a 0.16 m cup would put the bottom below the receiver rim unless align clearance rises to 0.20 m.",
+    "ready_offset_reason": "trial01 used a 0.27 m vertical ready pose and recorded 76 N right_shoulder_yaw/torso contact. trial02 offset the ready TCP 100 mm back and the wrist went through the torso. The C1 ready TCP (source+[0,0,0.23]) is reused; it sits 70 mm above the taller rim."
+  }
+}

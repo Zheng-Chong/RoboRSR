@@ -1,0 +1,7 @@
+{
+  "generator": "/root/unitree_sim_isaaclab/scene3_pour_pack/scripts/build_checklist_assets.py",
+  "kind": "table",
+  "usd": "/root/unitree_sim_isaaclab/scene3_pour_pack/assets/checklist/e044_table_table_light_fabric.usdc",
+  "usd_sha256": "8f26edf4b19805fea40d543761cf1cfb69e53f8fd724b85f83b3f284db1d6897",
+  "material": "table_light_fabric"
+}

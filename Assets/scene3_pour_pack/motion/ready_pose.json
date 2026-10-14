@@ -1,0 +1,34 @@
+{
+  "joint_positions": {
+    "left_shoulder_pitch_joint": 1.1023353520792307,
+    "left_shoulder_roll_joint": 0.3766420887604754,
+    "left_shoulder_yaw_joint": 1.0841063978200531,
+    "left_elbow_joint": -0.8277335557989847,
+    "left_wrist_roll_joint": -1.1894515633723373,
+    "left_wrist_pitch_joint": 0.2171514619896665,
+    "left_wrist_yaw_joint": -0.5167866854797347,
+    "right_shoulder_pitch_joint": 0.7454275308639068,
+    "right_shoulder_roll_joint": 0.02247570155005926,
+    "right_shoulder_yaw_joint": 0.8219774467223191,
+    "right_elbow_joint": -0.9060807822957739,
+    "right_wrist_roll_joint": -0.48049410729071934,
+    "right_wrist_pitch_joint": 0.30132527809106513,
+    "right_wrist_yaw_joint": -0.30945903568416383,
+    "left_dex1_finger_joint_1": 0.0245,
+    "left_dex1_finger_joint_2": 0.0245,
+    "right_dex1_finger_joint_1": 0.0245,
+    "right_dex1_finger_joint_2": 0.0245
+  },
+  "method": "Bounded numerical IK from official URDF",
+  "note": "Initialization seed, not a tested physics result",
+  "ik_residuals": {
+    "left": {
+      "position_error_m": 4.322540389760667e-05,
+      "rotation_error_deg": 0.04623894651335903
+    },
+    "right": {
+      "position_error_m": 3.276257646390616e-05,
+      "rotation_error_deg": 0.03679552122091227
+    }
+  }
+}

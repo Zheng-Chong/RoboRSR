@@ -1,0 +1,142 @@
+{
+  "table": {
+    "length_m": 1.2,
+    "width_m": 0.6,
+    "height_m": 0.75,
+    "thickness_m": 0.025
+  },
+  "coordinates": {
+    "origin": "floor below table centre",
+    "x": "short dimension, from robot toward sofa",
+    "y": "long dimension, left from robot viewpoint",
+    "z": "up",
+    "unit": "metre",
+    "quaternion_order": "wxyz"
+  },
+  "source_images": [
+    "419e5c8119e20be87ef1280db0f7a43.jpg",
+    "918b5454e5cfb23a85a8e8cba29ca97.jpg",
+    "e1c19738ab8d49c73d4c65cc4bfc812.jpg",
+    "f21b8b55ff28171e668ad20fa415e44.jpg"
+  ],
+  "reconstruction": "Four-view manually interpreted parametric geometry. Table measured; object sizes and positions estimated.",
+  "objects": {
+    "source_cup": {
+      "label": "源杯 · 右手抓取",
+      "position": [
+        -0.16,
+        -0.105,
+        0.751
+      ],
+      "height": 0.118,
+      "radius_bottom": 0.0275,
+      "radius_top": 0.0365,
+      "wall": 0.003,
+      "bottom": 0.006,
+      "mass": 0.165,
+      "yaw": 0
+    },
+    "receiver_cup": {
+      "label": "接水杯",
+      "position": [
+        -0.16,
+        0.1,
+        0.751
+      ],
+      "height": 0.118,
+      "radius_bottom": 0.0275,
+      "radius_top": 0.0365,
+      "wall": 0.003,
+      "bottom": 0.006,
+      "mass": 0.165,
+      "yaw": 0
+    },
+    "basket_right": {
+      "label": "右侧篮子",
+      "position": [
+        0.015,
+        -0.415,
+        0.751
+      ],
+      "size": [
+        0.395,
+        0.27,
+        0.1
+      ],
+      "mass": 0.19,
+      "yaw": 0
+    },
+    "basket_left": {
+      "label": "左侧篮子",
+      "position": [
+        0.015,
+        0.415,
+        0.751
+      ],
+      "size": [
+        0.395,
+        0.27,
+        0.1
+      ],
+      "mass": 0.19,
+      "yaw": 0
+    },
+    "toy": {
+      "label": "棕色玩偶与绿色小龟",
+      "position": [
+        0.125,
+        -0.085,
+        0.751
+      ],
+      "mass": 0.075,
+      "yaw": 30
+    },
+    "paper": {
+      "label": "纸团",
+      "position": [
+        0.125,
+        0.13,
+        0.751
+      ],
+      "mass": 0.003,
+      "yaw": 0
+    }
+  },
+  "robot": {
+    "model": "Unitree G1 29DoF mode 15 + official Dex1-1",
+    "root_position": [
+      -0.47,
+      -0.045,
+      0.7928637524222113
+    ],
+    "root_quaternion_wxyz": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "fixed_base": true,
+    "note": "Fixed pelvis for tabletop manipulation; no G1-D base and no locomotion controller."
+  },
+  "pour": {
+    "water_ml": 50,
+    "particle_spacing_m": 0.003,
+    "density_kg_m3": 1000,
+    "grasp_height_m": 0.06,
+    "tcp_in_dex1_base_m": [
+      0.112,
+      0,
+      0
+    ],
+    "open_finger_m": 0.0245,
+    "closed_finger_target_m": -0.02,
+    "lift_m": 0.19,
+    "lip_clearance_m": 0.15,
+    "max_tilt_deg": 105,
+    "target_received_fraction": 0.75,
+    "max_spill_fraction": 0.2,
+    "control_hz": 120,
+    "neutral_finger_gap_m": 0.0458768345
+  },
+  "physics_note": "Empty-cup mass only; water is created by runtime PBD fluid. Material parameters are estimates."
+}

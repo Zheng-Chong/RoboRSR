@@ -1,0 +1,7 @@
+{
+  "generator": "/root/unitree_sim_isaaclab/scene3_pour_pack/scripts/build_checklist_assets.py",
+  "kind": "table",
+  "usd": "/root/unitree_sim_isaaclab/scene3_pour_pack/assets/checklist/e008_table_table_neutral_gray.usdc",
+  "usd_sha256": "e672a84a51b2e9488e9512692f8708f39783f245899eef12446825a68d3e496a",
+  "material": "table_neutral_gray"
+}

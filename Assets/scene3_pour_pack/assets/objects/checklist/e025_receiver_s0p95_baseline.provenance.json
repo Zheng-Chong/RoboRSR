@@ -1,0 +1,23 @@
+{
+  "generator": "/root/unitree_sim_isaaclab/scene3_pour_pack/scripts/build_checklist_assets.py",
+  "kind": "receiver_cup",
+  "usd": "/root/unitree_sim_isaaclab/scene3_pour_pack/assets/objects/checklist/e025_receiver_s0p95_baseline.usdc",
+  "usd_sha256": "3512f7fe97dfd9b9e592c1dfa10bbe3d491c21f5500af32828233ee2b9aae30d",
+  "material": "baseline",
+  "friction": 0.8,
+  "geometry": {
+    "height": 0.11209999999999999,
+    "radius_bottom": 0.026125,
+    "radius_top": 0.034675,
+    "wall": 0.00285,
+    "bottom": 0.0057
+  },
+  "mass_kg": 0.141466875,
+  "ceramic_volume_m3": 7.186454043809357e-05,
+  "water_ml_checked": 50.0,
+  "water_particle_count": 1852,
+  "water_fill_max_z_m": 0.03869999999999999,
+  "grasp_height_m": 0.056049999999999996,
+  "grasp_diameter_m": 0.06079999999999999,
+  "open_cavity": true
+}

@@ -1,0 +1,72 @@
+{
+  "prototype_id": "P11",
+  "family": "C3L1",
+  "title": "矮宽源杯 + 标准接水杯，近距离无遮挡",
+  "task_difference": "源杯高度降低、杯口和抓取处变宽，主要测试夹爪开口、抓取高度和低杯倾倒几何；接水杯、布局和控制原语保持 C1L1 名义配置。",
+  "layout": {
+    "source_position_m": [-0.16, -0.105, 0.751],
+    "receiver_position_m": [-0.04, -0.04, 0.751],
+    "pour_direction_deg": 105
+  },
+  "source_cup": {
+    "label": "C3 矮宽源杯",
+    "usd": "source_cup_c3_low_wide.usdc",
+    "position": [-0.16, -0.105, 0.751],
+    "height": 0.09,
+    "radius_bottom": 0.03,
+    "radius_top": 0.043,
+    "wall": 0.003,
+    "bottom": 0.006,
+    "mass": 0.159,
+    "yaw": 0
+  },
+  "receiver_cup": "standard C1 geometry in scene_spec.json",
+  "pour": {
+    "water_ml": 50,
+    "particle_spacing_m": 0.003,
+    "grasp_height_m": 0.055,
+    "lift_m": 0.16,
+    "ready_offset_m": [0.0, 0.0, 0.23],
+    "align_clearance_m": 0.13,
+    "max_tilt_deg": 105
+  },
+  "grasp_constraints": {
+    "max_nominal_grasp_diameter_m": 0.078,
+    "reason": "C3 deliberately pushes the cup wider than C1, but candidates beyond this nominal opening are rejected before simulation."
+  },
+  "grasp_candidates": [
+    {
+      "id": "low_mid_045",
+      "grasp_height_m": 0.045,
+      "priority": 40,
+      "note": "Original middle-height low-cup candidate; useful as a lower bound but trial01 showed shoulder contact during descent."
+    },
+    {
+      "id": "validated_mid_055",
+      "grasp_height_m": 0.055,
+      "priority": 100,
+      "note": "Validated nominal P11 grasp; keeps the wide-grasp condition and cleared self-contact checks."
+    },
+    {
+      "id": "upper_boundary_062",
+      "grasp_height_m": 0.062,
+      "priority": 60,
+      "note": "Near the configured grasp-diameter limit; retained as a boundary candidate for later sampling."
+    }
+  ],
+  "geometry_notes": {
+    "c1_reference_m": {
+      "height": 0.118,
+      "radius_bottom": 0.0275,
+      "radius_top": 0.0365,
+      "grasp_height_m": 0.06,
+      "grasp_diameter_m": 0.0642
+    },
+    "mass_model": "Scale empty-cup ceramic volume against C1 0.165 kg using outer minus inner frustum.",
+    "grasp_diameter_m": 0.0759,
+    "inner_capacity_ml_approx": 300,
+    "water_fill_height_m_approx": 0.03,
+    "align_clearance_reason": "Low source cup does not need the C2 0.20 m lift-over alignment. 0.13 m keeps the bottom roughly 40 mm above the receiver rim at 0 deg, similar to P06 but with lower wrist height.",
+    "grasp_height_reason": "The first 45 mm grasp completed the pour but caused a 42.7 N right_shoulder_yaw/torso contact during descent. Raising the grasp to 55 mm keeps the C3 wide-grasp condition while improving shoulder clearance."
+  }
+}

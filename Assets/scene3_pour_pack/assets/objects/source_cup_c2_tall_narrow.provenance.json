@@ -1,0 +1,15 @@
+{
+  "generator": "/root/unitree_sim_isaaclab/scene3_pour_pack/scripts/build_c2_source_cup.py",
+  "prototype": "/root/unitree_sim_isaaclab/scene3_pour_pack/prototypes/c2l1_tall_narrow.json",
+  "usd": "/root/unitree_sim_isaaclab/scene3_pour_pack/assets/objects/source_cup_c2_tall_narrow.usdc",
+  "usd_sha256": "ef863587b23efcb075fd2bd951df967025e3960bdcff9fee8c3c49c129941527",
+  "visuals": 5,
+  "colliders": 49,
+  "ceramic_volume_m3": 8.005406399877511e-05,
+  "mass_kg": 0.158,
+  "water_particle_count": 1852,
+  "water_fill_max_z_m": 0.05999999999999999,
+  "grasp_diameter_m": 0.05,
+  "open_cavity": true,
+  "note": "Compound wall+bottom colliders; interior is not a solid convex hull."
+}
