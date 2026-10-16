@@ -1,0 +1,271 @@
+{
+  "same_rigid_and_directly_connected_groups": true,
+  "mimic_joints": [
+    {
+      "follower": "/G1_D_upper_standalone_dex1_1_v4/joints/left_dex1_finger_joint_2",
+      "leader": "/G1_D_upper_standalone_dex1_1_v4/joints/left_dex1_finger_joint_1",
+      "equation": "q_follower-q_leader=0"
+    },
+    {
+      "follower": "/G1_D_upper_standalone_dex1_1_v4/joints/right_dex1_finger_joint_2",
+      "leader": "/G1_D_upper_standalone_dex1_1_v4/joints/right_dex1_finger_joint_1",
+      "equation": "q_follower-q_leader=0"
+    }
+  ],
+  "additional_internal_slider_carrier_pairs": [
+    [
+      "left_dex1_finger_link_1",
+      "left_dex1_finger_link_2_mid"
+    ],
+    [
+      "left_dex1_finger_link_2",
+      "left_dex1_finger_link_1_mid"
+    ],
+    [
+      "right_dex1_finger_link_1",
+      "right_dex1_finger_link_2_mid"
+    ],
+    [
+      "right_dex1_finger_link_2",
+      "right_dex1_finger_link_1_mid"
+    ]
+  ],
+  "reason": "Convex decomposition produced false internal rack/carrier contacts; native CAD occupancy samples at q=0,.01,.02 had no sampled overlap. Empty-jaw cycle verifies full symmetric stroke.",
+  "external_pad_cup_contacts_enabled": true,
+  "finger_carrier_and_pad_mutual_contacts_enabled": true,
+  "robot_self_collision_enabled": true,
+  "filtered_pairs": {
+    "torso_link": [
+      "head_link",
+      "left_shoulder_pitch_link",
+      "logo_link",
+      "right_shoulder_pitch_link"
+    ],
+    "logo_link": [
+      "head_link",
+      "left_shoulder_pitch_link",
+      "right_shoulder_pitch_link",
+      "torso_link"
+    ],
+    "head_link": [
+      "left_shoulder_pitch_link",
+      "logo_link",
+      "right_shoulder_pitch_link",
+      "torso_link"
+    ],
+    "left_shoulder_pitch_link": [
+      "head_link",
+      "left_shoulder_roll_link",
+      "logo_link",
+      "torso_link"
+    ],
+    "left_shoulder_roll_link": [
+      "left_shoulder_pitch_link",
+      "left_shoulder_yaw_link"
+    ],
+    "left_shoulder_yaw_link": [
+      "left_elbow_link",
+      "left_shoulder_roll_link"
+    ],
+    "left_elbow_link": [
+      "left_shoulder_yaw_link",
+      "left_wrist_roll_link"
+    ],
+    "left_wrist_roll_link": [
+      "left_elbow_link",
+      "left_wrist_pitch_link"
+    ],
+    "left_wrist_pitch_link": [
+      "left_dex1_base_link",
+      "left_dex1_model_base_link",
+      "left_wrist_roll_link",
+      "left_wrist_yaw_link"
+    ],
+    "left_wrist_yaw_link": [
+      "left_dex1_base_link",
+      "left_dex1_finger_link_1",
+      "left_dex1_finger_link_1_mid",
+      "left_dex1_finger_link_1_tip",
+      "left_dex1_finger_link_2",
+      "left_dex1_finger_link_2_mid",
+      "left_dex1_finger_link_2_tip",
+      "left_dex1_model_base_link",
+      "left_wrist_pitch_link"
+    ],
+    "right_shoulder_pitch_link": [
+      "head_link",
+      "logo_link",
+      "right_shoulder_roll_link",
+      "torso_link"
+    ],
+    "right_shoulder_roll_link": [
+      "right_shoulder_pitch_link",
+      "right_shoulder_yaw_link"
+    ],
+    "right_shoulder_yaw_link": [
+      "right_elbow_link",
+      "right_shoulder_roll_link"
+    ],
+    "right_elbow_link": [
+      "right_shoulder_yaw_link",
+      "right_wrist_roll_link"
+    ],
+    "right_wrist_roll_link": [
+      "right_elbow_link",
+      "right_wrist_pitch_link"
+    ],
+    "right_wrist_pitch_link": [
+      "right_dex1_base_link",
+      "right_dex1_model_base_link",
+      "right_wrist_roll_link",
+      "right_wrist_yaw_link"
+    ],
+    "right_wrist_yaw_link": [
+      "right_dex1_base_link",
+      "right_dex1_finger_link_1",
+      "right_dex1_finger_link_1_mid",
+      "right_dex1_finger_link_1_tip",
+      "right_dex1_finger_link_2",
+      "right_dex1_finger_link_2_mid",
+      "right_dex1_finger_link_2_tip",
+      "right_dex1_model_base_link",
+      "right_wrist_pitch_link"
+    ],
+    "left_dex1_base_link": [
+      "left_dex1_finger_link_1",
+      "left_dex1_finger_link_1_mid",
+      "left_dex1_finger_link_1_tip",
+      "left_dex1_finger_link_2",
+      "left_dex1_finger_link_2_mid",
+      "left_dex1_finger_link_2_tip",
+      "left_dex1_model_base_link",
+      "left_wrist_pitch_link",
+      "left_wrist_yaw_link"
+    ],
+    "left_dex1_model_base_link": [
+      "left_dex1_base_link",
+      "left_dex1_finger_link_1",
+      "left_dex1_finger_link_1_mid",
+      "left_dex1_finger_link_1_tip",
+      "left_dex1_finger_link_2",
+      "left_dex1_finger_link_2_mid",
+      "left_dex1_finger_link_2_tip",
+      "left_wrist_pitch_link",
+      "left_wrist_yaw_link"
+    ],
+    "left_dex1_finger_link_1": [
+      "left_dex1_base_link",
+      "left_dex1_finger_link_1_mid",
+      "left_dex1_finger_link_1_tip",
+      "left_dex1_finger_link_2_mid",
+      "left_dex1_model_base_link",
+      "left_wrist_yaw_link"
+    ],
+    "left_dex1_finger_link_1_mid": [
+      "left_dex1_base_link",
+      "left_dex1_finger_link_1",
+      "left_dex1_finger_link_1_tip",
+      "left_dex1_finger_link_2",
+      "left_dex1_model_base_link",
+      "left_wrist_yaw_link"
+    ],
+    "left_dex1_finger_link_1_tip": [
+      "left_dex1_base_link",
+      "left_dex1_finger_link_1",
+      "left_dex1_finger_link_1_mid",
+      "left_dex1_model_base_link",
+      "left_wrist_yaw_link"
+    ],
+    "left_dex1_finger_link_2": [
+      "left_dex1_base_link",
+      "left_dex1_finger_link_1_mid",
+      "left_dex1_finger_link_2_mid",
+      "left_dex1_finger_link_2_tip",
+      "left_dex1_model_base_link",
+      "left_wrist_yaw_link"
+    ],
+    "left_dex1_finger_link_2_mid": [
+      "left_dex1_base_link",
+      "left_dex1_finger_link_1",
+      "left_dex1_finger_link_2",
+      "left_dex1_finger_link_2_tip",
+      "left_dex1_model_base_link",
+      "left_wrist_yaw_link"
+    ],
+    "left_dex1_finger_link_2_tip": [
+      "left_dex1_base_link",
+      "left_dex1_finger_link_2",
+      "left_dex1_finger_link_2_mid",
+      "left_dex1_model_base_link",
+      "left_wrist_yaw_link"
+    ],
+    "right_dex1_base_link": [
+      "right_dex1_finger_link_1",
+      "right_dex1_finger_link_1_mid",
+      "right_dex1_finger_link_1_tip",
+      "right_dex1_finger_link_2",
+      "right_dex1_finger_link_2_mid",
+      "right_dex1_finger_link_2_tip",
+      "right_dex1_model_base_link",
+      "right_wrist_pitch_link",
+      "right_wrist_yaw_link"
+    ],
+    "right_dex1_model_base_link": [
+      "right_dex1_base_link",
+      "right_dex1_finger_link_1",
+      "right_dex1_finger_link_1_mid",
+      "right_dex1_finger_link_1_tip",
+      "right_dex1_finger_link_2",
+      "right_dex1_finger_link_2_mid",
+      "right_dex1_finger_link_2_tip",
+      "right_wrist_pitch_link",
+      "right_wrist_yaw_link"
+    ],
+    "right_dex1_finger_link_1": [
+      "right_dex1_base_link",
+      "right_dex1_finger_link_1_mid",
+      "right_dex1_finger_link_1_tip",
+      "right_dex1_finger_link_2_mid",
+      "right_dex1_model_base_link",
+      "right_wrist_yaw_link"
+    ],
+    "right_dex1_finger_link_1_mid": [
+      "right_dex1_base_link",
+      "right_dex1_finger_link_1",
+      "right_dex1_finger_link_1_tip",
+      "right_dex1_finger_link_2",
+      "right_dex1_model_base_link",
+      "right_wrist_yaw_link"
+    ],
+    "right_dex1_finger_link_1_tip": [
+      "right_dex1_base_link",
+      "right_dex1_finger_link_1",
+      "right_dex1_finger_link_1_mid",
+      "right_dex1_model_base_link",
+      "right_wrist_yaw_link"
+    ],
+    "right_dex1_finger_link_2": [
+      "right_dex1_base_link",
+      "right_dex1_finger_link_1_mid",
+      "right_dex1_finger_link_2_mid",
+      "right_dex1_finger_link_2_tip",
+      "right_dex1_model_base_link",
+      "right_wrist_yaw_link"
+    ],
+    "right_dex1_finger_link_2_mid": [
+      "right_dex1_base_link",
+      "right_dex1_finger_link_1",
+      "right_dex1_finger_link_2",
+      "right_dex1_finger_link_2_tip",
+      "right_dex1_model_base_link",
+      "right_wrist_yaw_link"
+    ],
+    "right_dex1_finger_link_2_tip": [
+      "right_dex1_base_link",
+      "right_dex1_finger_link_2",
+      "right_dex1_finger_link_2_mid",
+      "right_dex1_model_base_link",
+      "right_wrist_yaw_link"
+    ]
+  }
+}

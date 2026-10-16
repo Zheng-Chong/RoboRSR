@@ -4,7 +4,7 @@
 
 通过视频和多视角图像生成高保真 3D 资产与场景，在 Isaac Lab 中构建真实工位的仿真环境，利用仿真数据增强与 RL/IL 优化策略，再回到真实世界持续自进化。
 
-本仓库是 RoboDojo 的私有分支，在其仿真与评测框架上接入了 G1-D 机器人、自建资产和 G1-D 专用任务。
+本仓库是 RoboDojo 的分支，在其仿真与评测框架上接入了 G1-D 机器人、自建资产和 G1-D 专用任务。
 
 **要端到端证明的一件事**：用仿真生成的轨迹训练策略，能在真机上零样本（zero-shot）成功。
 
@@ -21,30 +21,56 @@
 - 程序化生成 3 款玻璃冷水壶（`scripts/objects/make_pitcher.py`），碰撞体保留壶内空腔和出水口。
 - 流体倒水物理已验证：开口壶倒出 99.4%，封口对照保留 99.98%（`scripts/objects/check_pitcher_fluid.py`）。
 - 倒水任务改为倒 4 mm 红豆（PBD 颗粒），开口壶可倒出 58.7%，封口对照保留 100%。
-- 场景包 `Assets/scene3_pour_pack`（场景、物体、G1+Dex1 机器人 USD）已通过 Git LFS 入库。
+- 程序化生成水杯 / 塑料杯（`scripts/objects/make_water_cup.py`）。
+- 3 个按实拍重建的数字孪生场景（办公室、台面、实验室）、倒水场景包和 G1-D v4 机器人 URDF 都在 `real2sim/` 下，二进制文件走 Git LFS。
 
 **任务和脚本专家**
 
-- 三个 G1-D 任务，放在重建的真实办公室场景 `real_scene1` 中：`g1d_pour_water_into_cup`、`g1d_general_pickup`、`g1d_stack_blocks`。
-- `scripts/g1d/scripted_demo.py`：用仿真中的物体真值位姿和雅可比逆运动学写出抓取、搬运、倾倒路点，不需要策略服务器。目前三个任务的脚本演示**均未成功**（倒豆量不足、夹持失败），需要重新标定。
+- 四个 G1-D 任务，默认放在重建的办公室场景 `real_scene1` 中：`g1d_pour_water_into_cup`（壶倒杯）、`g1d_pour_beans_cup_to_cup`（两杯空中对倒）、`g1d_general_pickup`、`g1d_stack_blocks`。
+- `scripts/g1d/scripted_demo.py`：用仿真中的物体真值位姿和雅可比逆运动学写出抓取、搬运、倾倒路点，不需要策略服务器。拾取和叠块 seed 0 成功；杯对杯倒豆 seed 0/2 成功、seed 1 失败；壶倒杯 seed 1 成功、seed 0 失败（详见 `HANDOFF.md`）。
 
 ## 快速开始
 
-基础环境（Isaac Sim、IsaacLab、cuRobo、官方资产）按 [RoboDojo 文档](https://robodojo-benchmark.com/doc/usage/install-and-download/) 安装，然后：
+资产分两部分，顺序是**先拉代码，再下载资产，最后在资产目录里生成自建内容**：
+
+- `real2sim/`（随仓库，Git LFS）：自建的场景、场景包和 G1-D v4 URDF，这些不能重新生成。
+- `Assets/`（不入库）：由 `scripts/init_assets.sh` 从 Hugging Face 下载 RoboDojo 官方资产（约 41 GB），`Assets` 是指向 `.cache/robodojo_assets_repo/Assets` 的软链接。G1-D 机器人、评测布局和自建物体都由下面的脚本生成到这里。
+
+需要 Linux + NVIDIA GPU（Isaac Sim 5.1），并提前装好 `git-lfs`。
 
 ```bash
-# 1. 拉取 LFS 资产（场景包里的 .usdc / .STL）
-git lfs install && git lfs pull
+# 1. 拉代码（含 LFS 文件）
+git lfs install
+git clone https://github.com/Zheng-Chong/RoboRSR.git RoboDojo && cd RoboDojo
+git lfs pull                                   # clone 前没装 git-lfs 时补拉
 
-# 2. 生成 cuRobo 配置（下载官方资产后必须运行一次）
+# 2. 安装环境：conda 环境 RoboDojo（Python 3.11）、子模块、Isaac Sim、IsaacLab、cuRobo
+bash scripts/install.sh -i
+conda activate RoboDojo
+
+# 3. 下载 RoboDojo 官方资产到 Assets/，并生成 cuRobo 配置（下载后必须运行一次）
+bash scripts/init_assets.sh
 python utils/update_embodiment_config_path.py
 
-# 3. 构建 G1-D 机器人资产和评测布局（写入 Assets/Robots/g1d/、Assets/Eval_Layout/RoboDojo/g1d/）
-python scripts/g1d/build_asset.py
+# 4. 生成自建物体（写入 Assets/Object/RoboDojo/Rigid/），然后刷新 uuid_map.json
+python scripts/objects/make_pitcher.py            # 冷水壶 pitcher
+python scripts/objects/make_water_cup.py          # 水杯 water_cup
+python scripts/objects/make_water_cup.py --plastic   # 塑料杯 plastic_cup
+python Assets/Object/RoboDojo/Rigid/format.py
 
-# 4. 生成冷水壶资产
-python scripts/objects/make_pitcher.py
+# 5. 构建 G1-D 机器人（读 real2sim/robot/g1d_v4，写 Assets/Robots/g1d/）、评测布局
+#    （Assets/Eval_Layout/RoboDojo/g1d/）、红豆材质，并安装办公室场景为 Room/real_scene1。
+#    会从 GitHub 拉 unitree_ros 的 G1 URDF；离线时用 --src 指向本地 unitree_ros 镜像。
+python scripts/g1d/build_asset.py --scene real2sim/scenes/real_scene1_office/usd
+
+# 6. 安装另外两个场景（目录里唯一的 .usd 即房间入口）
+cp -r real2sim/scenes/real_scene2_counter Assets/Room/real_scene2
+cp -r real2sim/scenes/real_scene3_lab     Assets/Room/real_scene3
 ```
+
+第 4 步必须在第 5 步之前：`build_asset.py` 生成布局时要读壶和杯子的 `metadata.json`。`build_asset.py` 目前只为 `real_scene1` 生成布局，任务换到 `real_scene2` / `real_scene3` 需要另外改布局里的 Room。
+
+可选：`bash scripts/RoboDojo/download_data.sh`、`bash scripts/RoboDojo/download_ckpt.sh` 下载 RoboDojo 官方数据和模型权重。官方安装细节见 [RoboDojo 文档](https://robodojo-benchmark.com/doc/usage/install-and-download/)。
 
 **脚本专家演示**（无策略服务器，视频和 `_result.json` 写入 `eval_result/`）：
 
@@ -84,11 +110,19 @@ env_cfg/g1d.yml                         G1-D 运行配置（30 Hz）
 env_cfg/sim/g1d_sim_config.yml          仿真步长 1/300 s
 env_cfg/camera/g1d_camera.yml           头部双目 + 双腕相机
 scripts/g1d/                            资产构建、脚本专家演示
-scripts/objects/                        冷水壶生成、刚体/流体物理检验
+scripts/objects/                        壶/杯生成、刚体/流体物理检验
 task/RoboDojo/{config,tasks}/g1d_*      G1-D 任务
-Assets/scene3_pour_pack/                自建倒水场景包（Git LFS）
+real2sim/                               自建资产（随仓库，二进制走 Git LFS）
+  robot/g1d_v4/                         G1-D + Dex1-1 v4 URDF、网格、physics_contract（build_asset.py 的输入）
+  scenes/real_scene1_office/            办公室孪生场景 → Room/real_scene1
+  scenes/real_scene2_counter/           台面孪生场景 → Room/real_scene2
+  scenes/real_scene3_lab/               实验室孪生场景 → Room/real_scene3
+  scene3_pour_pack/                     倒水场景包（场景、物体、运动学与规划脚本）
+Assets/                                 下载的官方资产 + 生成的 G1-D 资产（不入库，见快速开始）
 HANDOFF.md                              跨会话交接记录（当前状态、决策、验证、遗留问题）
 ```
+
+`real2sim/` 下各目录的 `preview/`、`demo/` 是本地生成的预览，不入库。
 
 ## TODO
 
@@ -141,7 +175,7 @@ HANDOFF.md                              跨会话交接记录（当前状态、�
 | 检验项 | 判据 |
 | :-- | :-- |
 | 落地静置 | 1 s 内稳定，倾斜 < 1°，速度 < 5 mm/s |
-| 碰撞体 | 与桌面、其他物体初始无穿插；容器口没被碰撞体封住（参照 `sim_scene_opus` 的射线检查） |
+| 碰撞体 | 与桌面、其他物体初始无穿插；容器口没被碰撞体封住（参照 `real2sim/scenes/real_scene1_office/check_scene.py` 的射线检查） |
 | 抓取 | Dex1 用脚本抓起，保持 3 s 不滑落 |
 | 盛液（仅容器） | 静置时液体保留率 ≥ 99%（参照 `check_pitcher_fluid.py`） |
 | 光照渲染 | 3 种灯光预设下截图，无穿透、黑面、折射错误；人工复核 |
@@ -218,7 +252,7 @@ agent 照着反馈迭代，优化目标就是"真机可执行"而不只是仿真
 
 ## 已知问题
 
-- 三个 G1-D 脚本演示目前都失败：倒豆需要更大倾角和更长保持（`step_lim` 可能不够），拾取和叠块的夹持需要排查（指尖开度、闭合力、接触）。
+- 倒豆脚本演示只在部分 seed 成功：壶在右侧时右手倒壶够不到杯口，或壶身撞上持杯手；杯对杯任务目标杯偏远时右手够不到。同一配置多次运行结果也会不同（仿真有随机性）。
 - G1 手臂在桌面高度的可达范围约 0.45 m，RoboDojo 原有任务中部分物体够不到；自有任务的物体应放在 y≈[-0.55, -0.25]。
 - 末端位姿（ee）动作还不支持，需要 G1-D 的 cuRobo 配置，并让 coupled 左右臂各用一个 planner。
 

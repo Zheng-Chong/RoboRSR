@@ -1,0 +1,42 @@
+{
+ "frame": "Z-up, meters; origin on the floor under the countertop centre; +X along the counter; +Y into the wall",
+ "scale_correction": 1.0,
+ "table": {
+  "top_z": 0.833,
+  "length": 2.432,
+  "width": 0.559,
+  "front_y": -0.2795,
+  "cabinet_front_y": -0.26,
+  "slab": 0.063
+ },
+ "columns": {
+  "left_w": 0.45,
+  "left_front": -0.261,
+  "right_front": -0.251
+ },
+ "sink": {
+  "cx": -0.223,
+  "cy": -0.021,
+  "sx": 0.504,
+  "sy": 0.347,
+  "depth": 0.2,
+  "r": 0.025
+ },
+ "microwave": {
+  "w": 0.485,
+  "d": 0.308,
+  "h": 0.29,
+  "x0": 0.672,
+  "front": -0.097
+ },
+ "shelf_top_z": [
+  1.502,
+  1.792
+ ],
+ "layers": {
+  "scene": "scene.usda",
+  "background": "background.usda",
+  "table": "counter.usda",
+  "lights": "lights.usda"
+ }
+}

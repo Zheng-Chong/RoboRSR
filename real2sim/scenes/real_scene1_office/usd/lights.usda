@@ -1,0 +1,66 @@
+#usda 1.0
+(
+    defaultPrim = "Lights"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "Lights"
+{
+    def DistantLight "Sun"
+    {
+        float inputs:angle = 0.53
+        color3f inputs:color = (1, 0.95, 0.88)
+        float inputs:intensity = 3000
+        quatf xformOp:orient = (-0.101383165, -0.045855552, 0.40954712, 0.9054777)
+        uniform token[] xformOpOrder = ["xformOp:orient"]
+    }
+
+    def RectLight "WindowFillNorth"
+    {
+        color3f inputs:color = (0.92, 0.96, 1)
+        float inputs:height = 1.35
+        float inputs:intensity = 400
+        float inputs:width = 3.93
+        float3 xformOp:rotateXYZ = (-90, 0, 0)
+        double3 xformOp:translate = (-0.6849999999999999, 1.83, 2.125)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+    }
+
+    def RectLight "WindowFillEast"
+    {
+        color3f inputs:color = (0.92, 0.96, 1)
+        float inputs:height = 1.35
+        float inputs:intensity = 250
+        float inputs:width = 2.84
+        float3 xformOp:rotateXYZ = (-90, 0, -90)
+        double3 xformOp:translate = (2.85, -0.13, 2.125)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+    }
+
+    def RectLight "CeilingPanel_0"
+    {
+        float inputs:height = 0.6
+        float inputs:intensity = 0
+        float inputs:width = 0.6
+        double3 xformOp:translate = (-1.2, 0, 2.78)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def RectLight "CeilingPanel_1"
+    {
+        float inputs:height = 0.6
+        float inputs:intensity = 0
+        float inputs:width = 0.6
+        double3 xformOp:translate = (1, 0, 2.78)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def DomeLight "AmbientDome"
+    {
+        color3f inputs:color = (0.9, 0.93, 1)
+        float inputs:intensity = 150
+    }
+}
+

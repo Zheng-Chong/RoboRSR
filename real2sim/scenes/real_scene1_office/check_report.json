@@ -1,0 +1,367 @@
+{
+ "checks": [
+  {
+   "name": "stage metadata background.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "metersPerUnit": 1.0,
+    "defaultPrim": "/Background"
+   }
+  },
+  {
+   "name": "stage metadata lights.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "metersPerUnit": 1.0,
+    "defaultPrim": "/Lights"
+   }
+  },
+  {
+   "name": "stage metadata objects\\blue_cup_a.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "metersPerUnit": 1.0,
+    "defaultPrim": "/blue_cup_a"
+   }
+  },
+  {
+   "name": "stage metadata objects\\blue_cup_b.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "metersPerUnit": 1.0,
+    "defaultPrim": "/blue_cup_b"
+   }
+  },
+  {
+   "name": "stage metadata objects\\paper_cup.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "metersPerUnit": 1.0,
+    "defaultPrim": "/paper_cup"
+   }
+  },
+  {
+   "name": "stage metadata objects\\plush_toy.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "metersPerUnit": 1.0,
+    "defaultPrim": "/plush_toy"
+   }
+  },
+  {
+   "name": "stage metadata objects\\tissue_pack.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "metersPerUnit": 1.0,
+    "defaultPrim": "/tissue_pack"
+   }
+  },
+  {
+   "name": "stage metadata scene.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "metersPerUnit": 1.0,
+    "defaultPrim": "/World"
+   }
+  },
+  {
+   "name": "stage metadata table.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "metersPerUnit": 1.0,
+    "defaultPrim": "/Table"
+   }
+  },
+  {
+   "name": "dependencies resolve",
+   "ok": true,
+   "detail": {
+    "layers": 9,
+    "assets": [
+     "carpet_tile.png",
+     "window_exterior.png"
+    ],
+    "unresolved": []
+   }
+  },
+  {
+   "name": "relocated copy opens with all assets",
+   "ok": true,
+   "detail": {
+    "unresolved": []
+   }
+  },
+  {
+   "name": "mesh validity (finite points, triangle indices, normals count, no degenerate faces)",
+   "ok": true,
+   "detail": {
+    "meshes": 160,
+    "triangles": 20138,
+    "bad": []
+   }
+  },
+  {
+   "name": "every render mesh has a bound material (ComputeBoundMaterial)",
+   "ok": true,
+   "detail": {
+    "unbound": []
+   }
+  },
+  {
+   "name": "object blue_cup_a: rigid body + mass + colliders",
+   "ok": true,
+   "detail": {
+    "mass_kg": 0.02199999988079071,
+    "collider_parts": 13
+   }
+  },
+  {
+   "name": "object blue_cup_a: rests on table top (no gap/penetration) and inside the top",
+   "ok": true,
+   "detail": {
+    "min_z": 0.68,
+    "table_top": 0.68
+   }
+  },
+  {
+   "name": "object blue_cup_b: rigid body + mass + colliders",
+   "ok": true,
+   "detail": {
+    "mass_kg": 0.02199999988079071,
+    "collider_parts": 13
+   }
+  },
+  {
+   "name": "object blue_cup_b: rests on table top (no gap/penetration) and inside the top",
+   "ok": true,
+   "detail": {
+    "min_z": 0.68,
+    "table_top": 0.68
+   }
+  },
+  {
+   "name": "object paper_cup: rigid body + mass + colliders",
+   "ok": true,
+   "detail": {
+    "mass_kg": 0.014000000432133675,
+    "collider_parts": 13
+   }
+  },
+  {
+   "name": "object paper_cup: rests on table top (no gap/penetration) and inside the top",
+   "ok": true,
+   "detail": {
+    "min_z": 0.68,
+    "table_top": 0.68
+   }
+  },
+  {
+   "name": "object tissue_pack: rigid body + mass + colliders",
+   "ok": true,
+   "detail": {
+    "mass_kg": 0.09000000357627869,
+    "collider_parts": 1
+   }
+  },
+  {
+   "name": "object tissue_pack: rests on table top (no gap/penetration) and inside the top",
+   "ok": true,
+   "detail": {
+    "min_z": 0.68,
+    "table_top": 0.68
+   }
+  },
+  {
+   "name": "object plush_toy: rigid body + mass + colliders",
+   "ok": true,
+   "detail": {
+    "mass_kg": 0.03500000014901161,
+    "collider_parts": 1
+   }
+  },
+  {
+   "name": "object plush_toy: rests on table top (no gap/penetration) and inside the top",
+   "ok": true,
+   "detail": {
+    "min_z": 0.68,
+    "table_top": 0.68
+   }
+  },
+  {
+   "name": "no initial interpenetration between task objects",
+   "ok": true,
+   "detail": {
+    "colliding_pairs": []
+   }
+  },
+  {
+   "name": "task objects do not intersect background / table frame colliders",
+   "ok": true,
+   "detail": {
+    "pairs": []
+   }
+  },
+  {
+   "name": "task table does not intersect background colliders",
+   "ok": true,
+   "detail": {
+    "pairs": [],
+    "min_clearance_m": 0.032,
+    "nearest": [
+     "/World/Table/Colliders/top",
+     "/World/Background/Colliders/Chair_corner"
+    ]
+   }
+  },
+  {
+   "name": "cup blue_cup_a: collision opening is not sealed (center ray first hits the bottom)",
+   "ok": true,
+   "detail": {
+    "first_hit_height_above_table_m": 0.004
+   }
+  },
+  {
+   "name": "cup blue_cup_b: collision opening is not sealed (center ray first hits the bottom)",
+   "ok": true,
+   "detail": {
+    "first_hit_height_above_table_m": 0.004
+   }
+  },
+  {
+   "name": "cup paper_cup: collision opening is not sealed (center ray first hits the bottom)",
+   "ok": true,
+   "detail": {
+    "first_hit_height_above_table_m": 0.004
+   }
+  },
+  {
+   "name": "static clearance of an estimated robot standing zone (cylinder r=0.22 m at y=-0.61)",
+   "ok": true,
+   "detail": {
+    "min_clearance_m": 0.08,
+    "nearest": [
+     "robot_zone",
+     "/World/Table/Colliders/top"
+    ],
+    "table_edge_to_zone_center_m": 0.3
+   }
+  },
+  {
+   "name": "lights: sun matches measured direction, window fills emit into the room",
+   "ok": true,
+   "detail": {
+    "Sun": {
+     "emits": [
+      0.166,
+      -0.732,
+      -0.66
+     ],
+     "into_room": null
+    },
+    "WindowFillNorth": {
+     "emits": [
+      0.0,
+      -1.0,
+      0.0
+     ],
+     "into_room": true
+    },
+    "WindowFillEast": {
+     "emits": [
+      -1.0,
+      0.0,
+      0.0
+     ],
+     "into_room": true
+    }
+   }
+  }
+ ],
+ "not_covered": [
+  "PhysX settling / stability (needs Isaac Sim)",
+  "IK reachability and grasping",
+  "RTX rendering, exposure and camera colour match",
+  "real material constants (friction/mass are estimates)"
+ ],
+ "objects": {
+  "blue_cup_a": {
+   "rigid_body": true,
+   "mass_kg": 0.02199999988079071,
+   "collider_parts": 13,
+   "min_z": 0.68,
+   "xy_min": [
+    -0.014,
+    -0.016
+   ],
+   "xy_max": [
+    0.074,
+    0.072
+   ]
+  },
+  "blue_cup_b": {
+   "rigid_body": true,
+   "mass_kg": 0.02199999988079071,
+   "collider_parts": 13,
+   "min_z": 0.68,
+   "xy_min": [
+    -0.202,
+    -0.219
+   ],
+   "xy_max": [
+    -0.114,
+    -0.131
+   ]
+  },
+  "paper_cup": {
+   "rigid_body": true,
+   "mass_kg": 0.014000000432133675,
+   "collider_parts": 13,
+   "min_z": 0.68,
+   "xy_min": [
+    0.12,
+    -0.213
+   ],
+   "xy_max": [
+    0.21,
+    -0.123
+   ]
+  },
+  "tissue_pack": {
+   "rigid_body": true,
+   "mass_kg": 0.09000000357627869,
+   "collider_parts": 1,
+   "min_z": 0.68,
+   "xy_min": [
+    -0.493,
+    -0.175
+   ],
+   "xy_max": [
+    -0.319,
+    0.003
+   ]
+  },
+  "plush_toy": {
+   "rigid_body": true,
+   "mass_kg": 0.03500000014901161,
+   "collider_parts": 1,
+   "min_z": 0.68,
+   "xy_min": [
+    -0.3,
+    0.072
+   ],
+   "xy_max": [
+    -0.166,
+    0.148
+   ]
+  }
+ }
+}

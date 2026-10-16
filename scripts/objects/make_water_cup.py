@@ -3,7 +3,7 @@
 the clear disposable cup of the real cup-to-cup bean pours (G1D-PourBeansPlus clips).
 
 Plain tapered cup without a handle: white enamel outside, steel inside. Dimensions from
-Assets/scene3_pour_pack/scene_spec.json (receiver_cup). The plastic cup is clear PP (OmniGlass), sized by eye against
+real2sim/scene3_pour_pack/scene_spec.json (receiver_cup). The plastic cup is clear PP (OmniGlass), sized by eye against
 the Dex1-1 fingers in the clips.
 
 Usage:

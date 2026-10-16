@@ -1,0 +1,169 @@
+{
+ "checks": [
+  {
+   "name": "stage metadata background.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "metersPerUnit": 1.0,
+    "defaultPrim": "/Background"
+   }
+  },
+  {
+   "name": "stage metadata counter.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "metersPerUnit": 1.0,
+    "defaultPrim": "/Counter"
+   }
+  },
+  {
+   "name": "stage metadata lights.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "metersPerUnit": 1.0,
+    "defaultPrim": "/Lights"
+   }
+  },
+  {
+   "name": "stage metadata scene.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "metersPerUnit": 1.0,
+    "defaultPrim": "/World"
+   }
+  },
+  {
+   "name": "dependencies resolve",
+   "ok": true,
+   "detail": {
+    "assets": [
+     "bin_label.png",
+     "marble.png",
+     "microwave_front.png",
+     "poster.png",
+     "terrazzo.png",
+     "wood.png"
+    ],
+    "unresolved": []
+   }
+  },
+  {
+   "name": "relocated copy resolves",
+   "ok": true,
+   "detail": {
+    "unresolved": []
+   }
+  },
+  {
+   "name": "every render mesh has a bound material",
+   "ok": true,
+   "detail": {
+    "render_meshes": 76,
+    "unbound": []
+   }
+  },
+  {
+   "name": "render triangle budget (< 100k)",
+   "ok": true,
+   "detail": {
+    "triangles": 5028
+   }
+  },
+  {
+   "name": "colliders are guide purpose (not rendered)",
+   "ok": true,
+   "detail": {
+    "colliders": 41,
+    "rendered": []
+   }
+  },
+  {
+   "name": "scene is static (no RigidBodyAPI)",
+   "ok": true,
+   "detail": {
+    "rigid": []
+   }
+  },
+  {
+   "name": "countertop collision surface at top_z",
+   "ok": true,
+   "detail": {
+    "top_z": 0.833,
+    "tops": [
+     0.833,
+     0.833,
+     0.833,
+     0.833
+    ]
+   }
+  },
+  {
+   "name": "sink opening is not sealed (first collider below the opening centre is the bowl bottom)",
+   "ok": true,
+   "detail": {
+    "first_hit": [
+     0.5730000138282776,
+     "sink_0"
+    ],
+    "bowl_bottom": 0.573
+   }
+  },
+  {
+   "name": "microwave stands on the countertop",
+   "ok": true,
+   "detail": {
+    "bottom": 0.833
+   }
+  },
+  {
+   "name": "shelf items rest on their shelves",
+   "ok": true,
+   "detail": {
+    "floating": []
+   }
+  },
+  {
+   "name": "cabinet front below the countertop overhang",
+   "ok": true,
+   "detail": {
+    "cabinet_front_y": -0.26,
+    "counter_front_y": -0.2795
+   }
+  },
+  {
+   "name": "G1-D stock stance clears the cabinets (else move the robot back)",
+   "ok": false,
+   "detail": {
+    "room_offset_y": -0.32,
+    "cabinet_front_in_robodojo": -0.58,
+    "stock_root_y": -0.73,
+    "max_root_y": -0.8,
+    "counter_edge_to_root": 0.2
+   }
+  },
+  {
+   "name": "lights present",
+   "ok": true,
+   "detail": {
+    "lights": [
+     "/World/Lights/CeilingPanel_0",
+     "/World/Lights/CeilingPanel_1",
+     "/World/Lights/CeilingPanel_2",
+     "/World/Lights/AmbientDome"
+    ]
+   }
+  }
+ ],
+ "not_covered": [
+  "PhysX settling / stability (needs Isaac Sim)",
+  "IK reach and grasping",
+  "RTX rendering, exposure and colour match against the photo",
+  "real sizes, friction and light intensities (estimates)"
+ ],
+ "passed": 16,
+ "total": 17
+}

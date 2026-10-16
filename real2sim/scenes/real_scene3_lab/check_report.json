@@ -1,0 +1,190 @@
+{
+ "checks": [
+  {
+   "name": "stage metadata background.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "defaultPrim": "/Background"
+   }
+  },
+  {
+   "name": "stage metadata lights.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "defaultPrim": "/Lights"
+   }
+  },
+  {
+   "name": "stage metadata scene.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "defaultPrim": "/World"
+   }
+  },
+  {
+   "name": "stage metadata table.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "defaultPrim": "/Table"
+   }
+  },
+  {
+   "name": "dependencies resolve (Room entry real_scene3.usd)",
+   "ok": true,
+   "detail": {
+    "assets": [
+     "carpet.png",
+     "panel.png",
+     "tabletop.png",
+     "wall_east.png",
+     "wall_north.png",
+     "wall_south.png",
+     "wall_west.png"
+    ],
+    "unresolved": []
+   }
+  },
+  {
+   "name": "relocated copy resolves",
+   "ok": true,
+   "detail": {
+    "unresolved": []
+   }
+  },
+  {
+   "name": "every render mesh has a bound material",
+   "ok": true,
+   "detail": {
+    "render_meshes": 22,
+    "unbound": []
+   }
+  },
+  {
+   "name": "render triangle budget (< 100k)",
+   "ok": true,
+   "detail": {
+    "triangles": 594
+   }
+  },
+  {
+   "name": "colliders are guide purpose (not rendered)",
+   "ok": true,
+   "detail": {
+    "colliders": 20,
+    "rendered": []
+   }
+  },
+  {
+   "name": "scene is static (no RigidBodyAPI)",
+   "ok": true,
+   "detail": {
+    "rigid": []
+   }
+  },
+  {
+   "name": "tabletop collider: top at top_z, covers length x width",
+   "ok": true,
+   "detail": {
+    "top_z": 0.749,
+    "top": 0.749,
+    "size": [
+     1.369,
+     0.686
+    ]
+   }
+  },
+  {
+   "name": "visible tabletop coincides with the collider",
+   "ok": true,
+   "detail": {
+    "z": 0.7490000128746033
+   }
+  },
+  {
+   "name": "nothing of the table sticks out above the tabletop",
+   "ok": true,
+   "detail": {
+    "above": []
+   }
+  },
+  {
+   "name": "four casters stand on the floor",
+   "ok": true,
+   "detail": {
+    "caster_pos_pos": 0.0,
+    "caster_pos_neg": 0.0,
+    "caster_neg_pos": 0.0,
+    "caster_neg_neg": 0.0
+   }
+  },
+  {
+   "name": "modesty panel hangs under the tabletop, inside its footprint",
+   "ok": true,
+   "detail": {
+    "z": [
+     0.456,
+     0.728
+    ],
+    "y": 0.285
+   }
+  },
+  {
+   "name": "table clears the walls",
+   "ok": true,
+   "detail": {
+    "clash": []
+   }
+  },
+  {
+   "name": "G1-D stock stance (root 0.13 m behind the edge) clears the legs and the panel",
+   "ok": true,
+   "detail": {
+    "room_offset_y": -0.257,
+    "root_in_scene": [
+     0.0,
+     -0.473
+    ],
+    "hits": [],
+    "free_under_table_from_front": 0.628
+   }
+  },
+  {
+   "name": "textures have no unfilled (black) areas (< 1%)",
+   "ok": true,
+   "detail": {
+    "carpet.png": 0.0,
+    "panel.png": 0.0,
+    "tabletop.png": 0.0,
+    "wall_east.png": 0.0005,
+    "wall_north.png": 0.001,
+    "wall_south.png": 0.0006,
+    "wall_west.png": 0.0004
+   }
+  },
+  {
+   "name": "lights present",
+   "ok": true,
+   "detail": {
+    "lights": [
+     "/World/Lights/CeilingPanel_0",
+     "/World/Lights/CeilingPanel_1",
+     "/World/Lights/CeilingPanel_2",
+     "/World/Lights/CeilingPanel_3",
+     "/World/Lights/AmbientDome"
+    ]
+   }
+  }
+ ],
+ "not_covered": [
+  "PhysX settling / stability (needs Isaac Sim)",
+  "IK reach and grasping",
+  "RTX rendering, exposure and colour match against the photos",
+  "real sizes (scale from the 0.75 m height prior), friction and light intensities (estimates)"
+ ],
+ "passed": 19,
+ "total": 19
+}

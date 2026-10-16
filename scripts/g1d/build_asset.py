@@ -1,7 +1,7 @@
 """Build the Unitree G1-D + Dex1-1 robot asset for RoboDojo.
 
 Takes the team's assembled G1-D + Dex1-1 (camera version) URDF, v4: official g1_d.urdf with the standalone
-dex1_1.urdf mounted on each wrist (assembled_v4_coupled/: g1_d_full_dex1_v4.urdf, meshes/, physics_contract.json),
+dex1_1.urdf mounted on each wrist (real2sim/robot/g1d_v4/: g1_d_full_dex1_v4.urdf, meshes/, physics_contract.json),
 strips the wrist camera module off the Dex1-1 mesh (standard gripper), adds the G1 head D435 frame from unitree_ros
 g1_29dof_mode_15_with_dex1_1.urdf and locks the wheels (tabletop only).
 Writes:
@@ -14,9 +14,9 @@ Writes:
     Assets/Room/real_scene1/               with --scene: real_scene1.usd (room + table + lights) over the copied usd/
 
 Usage:
-    python scripts/g1d/build_asset.py --v4 DIR              # fetch the unitree_ros G1 URDF from GitHub into --src
-    python scripts/g1d/build_asset.py --v4 DIR --src DIR    # DIR mirrors unitree_ros (robots/...); reused if present
-    python scripts/g1d/build_asset.py --v4 DIR --scene sim_scene_opus/usd   # also (re)install the real office scene
+    python scripts/g1d/build_asset.py              # fetch the unitree_ros G1 URDF from GitHub into --src
+    python scripts/g1d/build_asset.py --src DIR    # DIR mirrors unitree_ros (robots/...); reused if present
+    python scripts/g1d/build_asset.py --scene real2sim/scenes/real_scene1_office/usd  # also install the office scene
 """
 
 import argparse
@@ -32,10 +32,10 @@ ROOT = HERE.parents[1]
 UNITREE_RAW = "https://raw.githubusercontent.com/unitreerobotics/unitree_ros/master/"
 V4_URDF = "g1_d_full_dex1_v4.urdf"
 G1_DEX1_URDF = "robots/g1_description/g1_29dof_mode_15_with_dex1_1.urdf"
-# Office scene reconstructed from a phone video (sim_scene_opus/usd): room, white lift table and lights in one Room USD,
-# replacing the stock room, table cube, ground cube and HDR dome of the G1-D task layouts. Its robot-side table edge
-# (scene y=-0.31) lands on the stock one (y=-0.60) so the G1-D stance is unchanged; the tabletop keeps its real height
-# (0.68 m, build_params.json) and the objects move down onto it.
+# Office scene reconstructed from a phone video (real2sim/scenes/real_scene1_office/usd): room, white lift table and
+# lights in one Room USD, replacing the stock room, table cube, ground cube and HDR dome of the G1-D task layouts. Its
+# robot-side table edge (scene y=-0.31) lands on the stock one (y=-0.60) so the G1-D stance is unchanged; the tabletop
+# keeps its real height (0.68 m, build_params.json) and the objects move down onto it.
 REAL_SCENE = "real_scene1"
 REAL_SCENE_ROOM = {
     "default": REAL_SCENE,
@@ -315,7 +315,7 @@ def build_red_bean_material(assets):
 
 
 def build_room(scene, assets):
-    """Install the real-scene USD package (sim_scene_opus/usd) as Room category REAL_SCENE."""
+    """Install the real-scene USD package (real2sim/scenes/real_scene1_office/usd) as Room category REAL_SCENE."""
     room = assets / "Room" / REAL_SCENE
     shutil.copytree(scene, room / "usd", dirs_exist_ok=True)
     (room / f"{REAL_SCENE}.usd").write_text(REAL_SCENE_USD)
@@ -419,10 +419,12 @@ def build_layouts(assets):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--v4", type=Path, required=True, help="assembled_v4_coupled/ directory")
+    parser.add_argument("--v4", type=Path, default=ROOT / "real2sim" / "robot" / "g1d_v4",
+                        help="assembled v4 URDF directory")
     parser.add_argument("--src", type=Path, default=ROOT / ".cache" / "unitree_ros")
     parser.add_argument("--assets", type=Path, default=ROOT / "Assets")
-    parser.add_argument("--scene", type=Path, help=f"sim_scene_opus/usd/ to install as Room/{REAL_SCENE}")
+    parser.add_argument("--scene", type=Path,
+                        help=f"real2sim/scenes/real_scene1_office/usd/ to install as Room/{REAL_SCENE}")
     args = parser.parse_args()
 
     if args.scene:

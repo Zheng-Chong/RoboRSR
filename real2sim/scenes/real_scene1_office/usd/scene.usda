@@ -1,0 +1,82 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def PhysicsScene "PhysicsScene"
+    {
+        vector3f physics:gravityDirection = (0, 0, -1)
+    }
+
+    def "Background" (
+        prepend references = @./background.usda@
+    )
+    {
+    }
+
+    def "Table" (
+        prepend references = @./table.usda@
+    )
+    {
+    }
+
+    def "Lights" (
+        prepend references = @./lights.usda@
+    )
+    {
+    }
+
+    def Xform "Objects"
+    {
+        def "blue_cup_a" (
+            prepend references = @./objects/blue_cup_a.usda@
+        )
+        {
+            float xformOp:rotateZ = 0
+            double3 xformOp:translate = (0.03, 0.028, 0.68)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+        }
+
+        def "blue_cup_b" (
+            prepend references = @./objects/blue_cup_b.usda@
+        )
+        {
+            float xformOp:rotateZ = 0
+            double3 xformOp:translate = (-0.158, -0.175, 0.68)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+        }
+
+        def "paper_cup" (
+            prepend references = @./objects/paper_cup.usda@
+        )
+        {
+            float xformOp:rotateZ = 0
+            double3 xformOp:translate = (0.165, -0.168, 0.68)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+        }
+
+        def "tissue_pack" (
+            prepend references = @./objects/tissue_pack.usda@
+        )
+        {
+            float xformOp:rotateZ = 130
+            double3 xformOp:translate = (-0.406, -0.086, 0.68)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+        }
+
+        def "plush_toy" (
+            prepend references = @./objects/plush_toy.usda@
+        )
+        {
+            float xformOp:rotateZ = 0
+            double3 xformOp:translate = (-0.238, 0.11, 0.68)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+        }
+    }
+}
+

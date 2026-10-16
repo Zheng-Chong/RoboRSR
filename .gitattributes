@@ -1,3 +1,7 @@
-Assets/scene3_pour_pack/**/*.usdc filter=lfs diff=lfs merge=lfs -text
-Assets/scene3_pour_pack/**/*.STL filter=lfs diff=lfs merge=lfs -text
-Assets/scene3_pour_pack/**/*.stl filter=lfs diff=lfs merge=lfs -text
+real2sim/**/*.usdc filter=lfs diff=lfs merge=lfs -text
+real2sim/**/*.usd filter=lfs diff=lfs merge=lfs -text
+real2sim/**/*.STL filter=lfs diff=lfs merge=lfs -text
+real2sim/**/*.stl filter=lfs diff=lfs merge=lfs -text
+real2sim/**/*.png filter=lfs diff=lfs merge=lfs -text
+real2sim/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+real2sim/**/*.jpeg filter=lfs diff=lfs merge=lfs -text

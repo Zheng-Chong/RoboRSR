@@ -1,0 +1,41 @@
+{
+  "unresolved": [
+    "OmniPBR.mdl"
+  ],
+  "flattened_unresolved": [
+    "OmniPBR.mdl"
+  ],
+  "layers": [
+    "/root/unitree_sim_isaaclab/codex_pour/g1d_probe/assembled_v4_coupled/g1_d_upper_dex1_v4.usd",
+    "/root/unitree_sim_isaaclab/codex_pour/g1d_probe/assembled_v4_coupled/configuration/g1_d_upper_dex1_v4_base.usd",
+    "/root/unitree_sim_isaaclab/codex_pour/g1d_probe/assembled_v4_coupled/configuration/g1_d_upper_dex1_v4_physics.usd",
+    "/root/unitree_sim_isaaclab/codex_pour/g1d_probe/assembled_v4_coupled/configuration/g1_d_upper_dex1_v4_robot.usd",
+    "/root/unitree_sim_isaaclab/codex_pour/g1d_probe/assembled_v4_coupled/configuration/g1_d_upper_dex1_v4_sensor.usd"
+  ],
+  "external_assets": [],
+  "flattened_asset": "/root/unitree_sim_isaaclab/codex_pour/g1d_probe/assembled_v4_coupled/g1_d_upper_dex1_v4_flat.usdc",
+  "prismatic_joints": 4,
+  "drives": {
+    "left_dex1_finger_joint_1": {
+      "max_force": 20.0,
+      "stiffness": 2500.0,
+      "mimic": false
+    },
+    "left_dex1_finger_joint_2": {
+      "max_force": 0.0,
+      "stiffness": 0.0,
+      "mimic": true
+    },
+    "right_dex1_finger_joint_1": {
+      "max_force": 20.0,
+      "stiffness": 2500.0,
+      "mimic": false
+    },
+    "right_dex1_finger_joint_2": {
+      "max_force": 0.0,
+      "stiffness": 0.0,
+      "mimic": true
+    }
+  },
+  "passed": false
+}

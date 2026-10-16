@@ -13,7 +13,7 @@ def origin(e):
 
 class G1Kinematics:
     def __init__(self,path=None):
-        path=path or Path(__file__).resolve().parents[2]/'codex_pour/g1d_probe/assembled_v4_coupled/g1_d_upper_dex1_v4.urdf'
+        path=path or Path(__file__).resolve().parents[2]/'robot/g1d_v4/g1_d_upper_dex1_v4.urdf'
         self.path=Path(path);self.xml=ET.parse(path).getroot();self.links={x.get('name'):x for x in self.xml.findall('link')}
         self.joints=[]
         for e in self.xml.findall('joint'):

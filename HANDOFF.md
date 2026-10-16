@@ -9,7 +9,7 @@
 - 本仓库基于 RoboDojo（Isaac Sim 5.1 / IsaacLab 2.3）：`origin` = Zheng-Chong/RoboRSR（原 Zheng-Chong/RoboDojo，已改名；GitHub 上当前为公开仓库），`upstream` = RoboDojo-Benchmark/RoboDojo。2026-10-16 起只保留 `main`（`chongzheng/env-g1d-dex1` 已快进合并后删除，GitHub 默认分支改为 `main`）。
 - 已接入机器人 `g1d`：一个 articulation、两条 7 自由度手臂（coupled 模式）+ Dex1 两指夹爪；轮子锁死、升降柱和腰部关节保持初始值（只做桌面操作）。
 - 运行：`bash scripts/robodojo.sh eval ... --env-cfg g1d --action-type joint`。动作维度 `_robot_info.json`：arm [7, 7]，ee [1, 1]。
-- 资产不在 git 里：`python scripts/g1d/build_asset.py` 从 unitree_ros 取 G1-D URDF，嫁接 Dex1 和 G1 头部 D435 坐标系，写入 `Assets/Robots/g1d/`，并从 arx_x5 布局生成 `Assets/Eval_Layout/RoboDojo/g1d/`（去掉相机支架）。
+- 资产分两处：`real2sim/`（入库，二进制走 Git LFS）放不能重新生成的自建内容（`robot/g1d_v4` URDF、`scenes/real_scene{1_office,2_counter,3_lab}`、`scene3_pour_pack`）；`Assets/`（不入库，`scripts/init_assets.sh` 下载，是指向 `.cache/robodojo_assets_repo/Assets` 的软链接）放官方资产和生成物。`python scripts/g1d/build_asset.py`（`--v4` 默认 `real2sim/robot/g1d_v4`）嫁接 G1 头部 D435 坐标系，写入 `Assets/Robots/g1d/`，并从 arx_x5 布局生成 `Assets/Eval_Layout/RoboDojo/g1d/`（去掉相机支架）。完整顺序见 README「快速开始」。
 - 下载官方资产后必须运行一次 `python utils/update_embodiment_config_path.py` 生成 `Assets/Robots/*/curobo.yml`，否则 X5 任务启动即报错。
 - 服务器环境（Host 别名 `21196`）：仿真环境 `RoboDojo`、策略环境 `demo-policy`（XPolicyLab 需 websockets>=14，Isaac Sim 需 websockets==12，所以分开）。激活方式见本地 `.agent/remote-validation.local.toml`（不入库）。
 
@@ -92,8 +92,8 @@
 
 ## 双臂倒水：吧台场景 + 自建水杯（2026-10-15，2026-10-16 随杯对杯任务一起提交）
 
-- 吧台 real2sim 场景 `Assets/sim_scene_counter/`（只在本机，gitignored）：两张照片联合拟合，`build_scene.py` 生成 `real_scene2.usd`；水龙头鹅颈为连续扫掠管（`swept_tube`）。服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/counter-pour-20261014-163053` 以 Room=real_scene2 跑倒水（机器人根 y=-0.80、升降柱各 0.075，物体整体 y-0.07、z+0.15）；隔离目录的 `Assets/Object` 为叠加目录（`prep_water_cup.py`），共享资产库未改。
-- 新增 `scripts/objects/make_water_cup.py`：按 `Assets/scene3_pour_pack/scene_spec.json` 的接水杯生成 `Rigid/water_cup/00000`（白色搪瓷锥形杯，无把手，高 0.118 m、口径 73 mm、底径 55 mm、0.165 kg、约 300 ml；杯底 + 32 片杯壁凸包，中空）。`check_object.py` 通过（落地 z=0.059、倾角 0）。
+- 吧台 real2sim 场景 `real2sim/scenes/real_scene2_counter/`：两张照片联合拟合，`build_scene.py` 生成 `real_scene2.usd`；水龙头鹅颈为连续扫掠管（`swept_tube`）。服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/counter-pour-20261014-163053` 以 Room=real_scene2 跑倒水（机器人根 y=-0.80、升降柱各 0.075，物体整体 y-0.07、z+0.15）；隔离目录的 `Assets/Object` 为叠加目录（`prep_water_cup.py`），共享资产库未改。
+- 新增 `scripts/objects/make_water_cup.py`：按 `real2sim/scene3_pour_pack/scene_spec.json` 的接水杯生成 `Rigid/water_cup/00000`（白色搪瓷锥形杯，无把手，高 0.118 m、口径 73 mm、底径 55 mm、0.165 kg、约 300 ml；杯底 + 32 片杯壁凸包，中空）。`check_object.py` 通过（落地 z=0.059、倾角 0）。
 - `build_asset.py` 的 `swap_bottle_for_pitcher` 把马克杯换成 `water_cup`（仍前移 `POUR_CUP_PULL=-0.09`，与壶间隙 < `POUR_MIN_GAP` 的布局丢弃），隔离目录重建后 153 个倒水布局；`g1d_pour_water_into_cup.yml` 的杯子类别同步为 `water_cup`。step_lim 480 → 600（用户确认）。
 - `scripted_demo.py` 倒水：离壶近的手臂抓壶把手，另一臂侧握杯身——杯底以上 9 cm（杯沿下 2.8 cm）、手指下倾 35°、手腕内转 45°，沿手指方向斜着滑入后夹紧，杯口不被遮挡；杯子抬 1.5 cm（4 cm 时壶手倾倒姿态差 7.7 cm 够不到，回正时壶一跳把豆子洒出）；壶嘴落在离杯心 2.5 cm（近侧杯沿内）；倾倒时按“实际壶嘴 vs 实际杯口”闭环修正。
 - 可达性探测（隔离目录 `scripts/g1d/probe.py`，不入库，seed 0 杯位）：手指水平在杯底以上 6–10 cm、任何手腕转角都差 6–14 cm；下倾 35°、内转 30–60°、10 cm 高误差 1.1–1.4 cm。
@@ -131,7 +131,7 @@
 
 ## 实验室操作台 real2sim 场景 real_scene3（2026-10-14）
 
-- `Assets/sim_scene_lab/`（只在本机，gitignored）：用户提供四张围着实验室白色折叠培训桌拍的照片（`reference/p1–p4.jpg`）。流程照搬 real_scene2：`fit_photo.py` 联合拟合四台相机和尺寸，`build_scene.py` 生成 `usd/` 和 Room 入口 `real_scene3.usd`，`check_scene.py`、`preview.py` 做离线检查和预览。详细尺寸、置信度和接入方法见该目录下的 `PLAN.md`。
+- `real2sim/scenes/real_scene3_lab/`：用户提供四张围着实验室白色折叠培训桌拍的照片（`reference/p1–p4.jpg`）。流程照搬 real_scene2：`fit_photo.py` 联合拟合四台相机和尺寸，`build_scene.py` 生成 `usd/` 和 Room 入口 `real_scene3.usd`，`check_scene.py`、`preview.py` 做离线检查和预览。详细尺寸、置信度和接入方法见该目录下的 `PLAN.md`。
 - 结果：桌面 1.369 × 0.686 m，高 0.749 m，板厚 21 mm。尺度只来自“桌高 0.75 m”这一个先验，长宽与标准 1.4 × 0.7 m 相差约 2%，可以作为交叉验证。挡板在 +Y（底边离地 0.456 m）；两根斜立柱向外倾约 15°，偏向挡板一侧 8.6 cm；走线盒是桌面贴图，没有几何体。桌面贴图取四张照片矫正后的逐像素中值；墙是照片背景板（墙前的工位等被压平到墙上）；地毯从照片按真实尺度矫正。
 - 约定：机器人站在没有挡板的 −Y 一侧（这是假设，真机若站在另一侧就把 Room 转 180°）。Room `default_pos` 取 (0, −0.257, 0)，使桌沿落在 y=−0.60；G1-D 默认站位不会碰到桌腿（桌下净深 0.63 m）；桌面比 real_scene1 高 0.069 m，需要用升降柱补偿、物体同步抬高。
 - 验证：本机离线检查 `check_scene.py` 19/19 通过；四个拟合视角下桌子模型边缘与照片贴合，拟合残差大多在 0.3–4 px（脚轮最大约 20 px）。服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/lab-render-20261014-*`（共享资产库未改）以 Room=real_scene3 跑 `g1d_pour_water_into_cup` seed 0：物体 +0.069 m，升降柱各 0.0345，`cam_third` 换成 p3 位姿，GPU 0。退出码 0，RTX 渲染正常，第三视角与照片一致，桌面不过曝；倒水失败（脚本问题，同其他场景）。v1 画面偏黄：原因是 Isaac 相机没有白平衡，5000 K 色温再加上没有天花板、RoboDojo 默认的棕色摄影棚 HDR 从上方灌进房间。v2 加了天花板，改为 6500 K、强度 24000（扫了 6000/12000/24000 三档），地毯贴图亮度 ×0.67；第三视角桌面 R/B 1.01、地毯 1.10（照片为 1.05/1.06），桌面与地毯的亮度比 1.98（照片 2.03）。亮度参照的是手机照片，真机头部相机的曝光未核对。视频和帧在本机 `output/lab_render/`（`lab_render_grid_v2.mp4`、`compare_light.jpg`）。未改仓库代码，也未安装到共享 `Assets/Room/`。
@@ -148,7 +148,8 @@
 - `_task.yml` 中指定了 `robot_config`/`scene_config` 的任务（如 x5+franka 竞赛任务、传送带任务）会覆盖 g1d 机器人或场景。
 - 棱纹环按 `elbow_link` 网格的 x 区间切分（换 URDF/网格后需重新核对 `RING_X`）；材质参数为目测，仿真房间光照比真机亮，金属会显得偏亮。
 - 服务器上 `/usr/local/bin/ffmpeg` 不带 libx264，已在仿真环境 bin 中链接系统 ffmpeg；新建环境需同样处理，否则录视频时 BrokenPipe。
-- 自建资产入库：`.gitignore` 改为 `/Assets/*` 并放行 `Assets/scene3_pour_pack/`（排除 `preview/`、`*.bak`）；其中 `*.usdc`/`*.STL` 走 Git LFS（`.gitattributes`），clone 后需 `git lfs install && git lfs pull`。本机 git-lfs 为官方二进制，装在 `~/.local/bin`（Homebrew 在此机会从源码编译整条依赖链，不要用）。`Assets/sim_scene_counter`、`Assets/sim_scene_opus`、`Assets/sim_scene_lab` 仍只在本机，未入库。
+- 自建资产在 `real2sim/`，`real2sim/**` 下的 usd/usdc/STL/图片走 Git LFS（`.gitattributes`），`preview/`、`demo/`、`*.bak` 不入库。`.gitignore` 用锚定的 `/Assets`：macOS 大小写不敏感，不锚定会把 `real2sim/scene3_pour_pack/assets/` 一起忽略。不要再往 `Assets/` 里放要入库的文件：`init_assets.sh` 发现 `Assets/` 不完整会把它整个挪成 `Assets.partial.<时间戳>`。本机 git-lfs 为官方二进制，装在 `~/.local/bin`（Homebrew 在此机会从源码编译整条依赖链，不要用）。
+- 服务器上 `real2sim/scenes/*` 目前还没安装成 `Assets/Room/real_scene{2,3}`（共享资产库改动需用户同意）；`build_asset.py` 只为 real_scene1 生成布局。
 
 ## 下一会话
 
@@ -161,7 +162,17 @@
 - `build_asset.py`：`seat_wrist_camera`（把相机模块下移到机身上）改为 `strip_wrist_camera`，删掉相机模块和线缆插头，把支柱从机身顶面（z=0.0335）截掉，截面以下保留（这部分是机身的盖板，整块删掉会露出齿轮）。腕部相机**传感器**（robot config 的 `cam_wrist`）不变，仍然出腕部画面。对比图在本机 `output/dex1_std_compare2.png`。
 - 验证：只在服务器隔离目录 `c2c-20261016-105635-lab` 的 `Assets/Robots/g1d` 叠加副本里换了网格并重新转 USD，实验室场景 seed 0 跑了两次：一次成功（77% 进杯），一次失败（倒到一半源杯从手里滑落）。同一配置结果不同，说明仿真每次运行有随机性，不是网格造成的。四宫格视频 `output/c2c/lab_std/lab_std_grid_s0.mp4`。**共享资产库的 `Assets/Robots/g1d` 还是旧网格**，需要用户同意后运行 `build_asset.py`。
 
+## 资产目录重组：自建内容移到 `real2sim/`（2026-10-16）
+
+- 原因：`Assets/` 应该是拉代码后由 `init_assets.sh` 下载的目录，之前把 `Assets/scene3_pour_pack` 放进 git 会和下载脚本冲突；三个场景和 `build_asset.py` 依赖的 v4 URDF 只在本机或服务器 `/data2/tmp`，别人 clone 后无法复现。
+- 移动：`Assets/scene3_pour_pack` → `real2sim/scene3_pour_pack`；`Assets/sim_scene_opus` → `real2sim/scenes/real_scene1_office`；`Assets/sim_scene_counter` → `real2sim/scenes/real_scene2_counter`；`Assets/sim_scene_lab` → `real2sim/scenes/real_scene3_lab`；服务器 `/data2/tmp/robodojo/g1d_v4/`（不含 finalize.log）→ `real2sim/robot/g1d_v4`（47 个文件，46 MB；`sha256.json` 里 `g1_d_upper_dex1_v4.usd` 一项与文件不符，本机与服务器文件哈希一致，是清单本身过期）。`config.yaml` 里的原机器绝对路径是转换记录，未改。
+- 代码：`build_asset.py` 的 `--v4` 默认 `real2sim/robot/g1d_v4`（不再必填），文档字符串和 `--scene` 说明改为新路径；`scene3_pour_pack/motion/kinematics.py` 默认 URDF 改为 `real2sim/robot/g1d_v4/g1_d_upper_dex1_v4.urdf`；`make_water_cup.py` 和场景脚本注释里的旧目录名同步更新。
+- README「快速开始」改为完整流程：clone（LFS）→ `install.sh -i` → `init_assets.sh` → `update_embodiment_config_path.py` → 生成壶/杯 → `format.py` → `build_asset.py --scene real2sim/scenes/real_scene1_office/usd` → 拷贝场景 2/3 到 `Assets/Room/`；仓库结构加入 `real2sim/`。
+- 验证：`G1Kinematics()` 默认路径加载新 URDF（33 个 link、32 个 joint）；ruff、`git diff --check`；`git lfs ls-files` 确认 real2sim 二进制都走 LFS；旧路径在 git 中识别为重命名。未在 Isaac 中重跑 `build_asset.py`（本机无 Isaac，服务器共享资产库改动需用户同意）。
+
 ## 最近历史
+
+- 2026-10-16：自建资产从 `Assets/` 移到入库的 `real2sim/`（场景 1–3、倒水场景包、G1-D v4 URDF），README 写明 clone → 安装 → 下载资产 → 生成资产的顺序。
 
 - 2026-10-16：Dex1-1 改为不带相机模型的标准版（`strip_wrist_camera`），共享资产未同步。
 

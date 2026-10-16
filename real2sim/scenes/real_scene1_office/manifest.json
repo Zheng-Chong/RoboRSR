@@ -1,0 +1,244 @@
+{
+ "package": "real_scene1 office scene",
+ "frame": "Z-up, meters; origin on floor under task-table center; +X along table length; +Y from robot side toward sofa/window",
+ "scale": {
+  "meters_per_sfm_unit": 0.151,
+  "correction": 1.0,
+  "basis": "table length 1.20 m, desk height 0.75 m, 0.5 m carpet tiles (all agree; no direct measurement yet)"
+ },
+ "entry_points": {
+  "full_scene": "usd/scene.usda",
+  "isaaclab_cfg": "isaac/real_scene1_scene_cfg.py"
+ },
+ "assets": {
+  "table": {
+   "file": "table.usda",
+   "prim": "/Table",
+   "type": "static collider",
+   "dims_m": {
+    "length": 1.2,
+    "width": 0.62,
+    "top_z": 0.68,
+    "thickness": 0.025,
+    "corner_r": 0.05,
+    "column_x": 0.42,
+    "foot_len": 0.56
+   },
+   "collision": "top box (rounded corners ignored), 2 columns, 2 feet",
+   "confidence": "high: outline from multi-view back-projection, height from cup-base layer (scale-dependent)"
+  },
+  "blue_cup_a": {
+   "file": "objects/blue_cup_a.usda",
+   "prim": "/blue_cup_a",
+   "type": "rigid body",
+   "pose_on_table": {
+    "xy": [
+     0.03,
+     0.028
+    ],
+    "yaw_deg": 0.0
+   },
+   "mass_kg": 0.022,
+   "friction_static_dynamic": [
+    0.45,
+    0.4
+   ],
+   "collision": "12 convex wall segments + bottom disk (open top)",
+   "mass_and_friction": "estimated (not measured)",
+   "confidence": "position high (+-2 cm), height high (+-1 cm), diameters estimated",
+   "dims_m": {
+    "height": 0.166,
+    "r_top": 0.044,
+    "r_bot": 0.031,
+    "wall": 0.0015
+   }
+  },
+  "blue_cup_b": {
+   "file": "objects/blue_cup_b.usda",
+   "prim": "/blue_cup_b",
+   "type": "rigid body",
+   "pose_on_table": {
+    "xy": [
+     -0.158,
+     -0.175
+    ],
+    "yaw_deg": 0.0
+   },
+   "mass_kg": 0.022,
+   "friction_static_dynamic": [
+    0.45,
+    0.4
+   ],
+   "collision": "12 convex wall segments + bottom disk (open top)",
+   "mass_and_friction": "estimated (not measured)",
+   "confidence": "position high (+-2 cm), height high (+-1 cm), diameters estimated",
+   "dims_m": {
+    "height": 0.166,
+    "r_top": 0.044,
+    "r_bot": 0.031,
+    "wall": 0.0015
+   }
+  },
+  "paper_cup": {
+   "file": "objects/paper_cup.usda",
+   "prim": "/paper_cup",
+   "type": "rigid body",
+   "pose_on_table": {
+    "xy": [
+     0.165,
+     -0.168
+    ],
+    "yaw_deg": 0.0
+   },
+   "mass_kg": 0.014,
+   "friction_static_dynamic": [
+    0.55,
+    0.5
+   ],
+   "collision": "12 convex wall segments + bottom disk (open top)",
+   "mass_and_friction": "estimated (not measured)",
+   "confidence": "position high (+-2 cm), height high (+-1 cm), diameters estimated",
+   "dims_m": {
+    "height": 0.166,
+    "r_top": 0.045,
+    "r_bot": 0.03,
+    "wall": 0.0012
+   }
+  },
+  "tissue_pack": {
+   "file": "objects/tissue_pack.usda",
+   "prim": "/tissue_pack",
+   "type": "rigid body",
+   "pose_on_table": {
+    "xy": [
+     -0.406,
+     -0.086
+    ],
+    "yaw_deg": 130.0
+   },
+   "mass_kg": 0.09,
+   "friction_static_dynamic": [
+    0.45,
+    0.4
+   ],
+   "collision": "single box (tissue puff not collidable)",
+   "mass_and_friction": "estimated (not measured)",
+   "confidence": "position/yaw medium (front edge measured in 3 views), depth estimated, soft pack modeled as box",
+   "dims_m": {
+    "size": [
+     0.14,
+     0.11,
+     0.083
+    ]
+   }
+  },
+  "plush_toy": {
+   "file": "objects/plush_toy.usda",
+   "prim": "/plush_toy",
+   "type": "rigid body",
+   "pose_on_table": {
+    "xy": [
+     -0.238,
+     0.11
+    ],
+    "yaw_deg": 0.0
+   },
+   "mass_kg": 0.035,
+   "friction_static_dynamic": [
+    0.85,
+    0.8
+   ],
+   "collision": "convex hull of body+head",
+   "mass_and_friction": "estimated (not measured)",
+   "confidence": "position high, height high, shape approximated by ellipsoids, yaw estimated",
+   "dims_m": {
+    "size": [
+     0.12,
+     0.08,
+     0.097
+    ]
+   }
+  }
+ },
+ "background": {
+  "file": "background.usda",
+  "prim": "/Background",
+  "fidelity": "coarse",
+  "colliders": "/Background/Colliders/* (guide purpose, box/convex approximations)",
+  "layout_sources": {
+   "room": "W glass partition from point cloud x~-2.4..-2.7 and door-frame back-projection; E wall from E-window sill start (2.92,1.29) seen in 3 views; N wall from sofa back; S wall from TV corner triangulation (y=-2.11)",
+   "north_window": "sill end back-projected at z=1.0 in v0260; sill/band heights from v0160+v0260 rays",
+   "ne_block": "solid corner block between N window end and E window start",
+   "east_window": "E sill start (2.92,1.29); y0 estimate",
+   "door": "door-frame bottom back-projected near (-2.6,1.65); width est.",
+   "tv": "+X bottom corner triangulated (-0.60,-2.11,1.02); width est. (86in)",
+   "cabinets": "floor back-projection of cabinet ends in v0340/v0400",
+   "bench": "visible behind the real robot; size est.",
+   "sofa": "foot + arm back-projection in v0160, leather point extents",
+   "plant": "foliage point centroid + rim triangulation",
+   "desk_east": "front corners triangulated (0.60,0.33,0.77)/(0.59,-0.52); back edge v0300/v0340 at z=0.75",
+   "desk_west": "legs back-projected (-1.23..-1.34, -0.26..-0.44); near corner (-1.16,-0.32) at z=0.75",
+   "desk_west2": "orange points near x=-2.4; coarse",
+   "chairs": "star-base centers back-projected to the floor (v0040/v0160/v0480); seat centers at z=0.48"
+  }
+ },
+ "lights": {
+  "file": "lights.usda",
+  "sun_direction_to_sun": [
+   -0.166,
+   0.732,
+   0.66
+  ],
+  "note": "intensities are uncalibrated starting values; ceiling panels unobserved and set to 0"
+ },
+ "files": {
+  "usd/background.usda": {
+   "bytes": 1297122,
+   "sha256": "04aae5b33b37b865be1f1bee9f50ec934c93091b47e31932fffa662a70ee4479"
+  },
+  "usd/build_params.json": {
+   "bytes": 4889,
+   "sha256": "bbe61d3b01c52c4f5e300a1fe76d4203fe87b6e73fdba15e0afe8fef4badf5e2"
+  },
+  "usd/lights.usda": {
+   "bytes": 1871,
+   "sha256": "12cf20faacab577b6cfe436d2697090e64cbf276faef76e111887efb80bdd321"
+  },
+  "usd/objects/blue_cup_a.usda": {
+   "bytes": 56771,
+   "sha256": "c1114c00b82a43ded4fe569afee1f278a2ee1c3d4efa3989731f372d2488be6b"
+  },
+  "usd/objects/blue_cup_b.usda": {
+   "bytes": 56771,
+   "sha256": "8c7cc440bd4ae741b6c486fe2b91593fb31368553cd4f1106c208ee9a166ef54"
+  },
+  "usd/objects/paper_cup.usda": {
+   "bytes": 120797,
+   "sha256": "c3b0b3eab47789b0d8761d5669cbad0657926b0ae8d25d433e06a05d514accd9"
+  },
+  "usd/objects/plush_toy.usda": {
+   "bytes": 492956,
+   "sha256": "639a58add63aa7a6fedfb317fa4470d305b768df545a919ebeff8ca61a3e721d"
+  },
+  "usd/objects/tissue_pack.usda": {
+   "bytes": 58912,
+   "sha256": "be2ae6d7a67fcbfaac0b1600293d4e7b139dfc0465dc6f96c0e9e8e21c3a963b"
+  },
+  "usd/scene.usda": {
+   "bytes": 2036,
+   "sha256": "a73f85e8127934c6b1200e72c7c9e57cc49b6a3b7c8069aec15a75630332db21"
+  },
+  "usd/table.usda": {
+   "bytes": 39405,
+   "sha256": "a50e135126f16d1a190927c89ea4e44f2b2616d524ee8459a577672a4e6eb303"
+  },
+  "usd/textures/carpet_tile.png": {
+   "bytes": 375497,
+   "sha256": "67d8751ad05a2665388fa6b1aee469677a732da136c7e5eb8c452810140872e2"
+  },
+  "usd/textures/window_exterior.png": {
+   "bytes": 422015,
+   "sha256": "6d8cd5a5dd81d84f52986c8fb5348ea759fddbc42fcb7e181a613b5c1fa3a450"
+  }
+ }
+}
