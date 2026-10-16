@@ -2,7 +2,8 @@
 
 Takes the team's assembled G1-D + Dex1-1 (camera version) URDF, v4: official g1_d.urdf with the standalone
 dex1_1.urdf mounted on each wrist (assembled_v4_coupled/: g1_d_full_dex1_v4.urdf, meshes/, physics_contract.json),
-adds the G1 head D435 frame from unitree_ros g1_29dof_mode_15_with_dex1_1.urdf and locks the wheels (tabletop only).
+strips the wrist camera module off the Dex1-1 mesh (standard gripper), adds the G1 head D435 frame from unitree_ros
+g1_29dof_mode_15_with_dex1_1.urdf and locks the wheels (tabletop only).
 Writes:
     Assets/Robots/g1d/                     g1d_dex1.urdf, meshes/, physics_contract.json (self-collision filters),
                                            {left,right}_robot_config.yml
@@ -123,10 +124,8 @@ CUP_PAIR_X, CUP_PAIR_Y = (0.10, 0.16), (-0.39, -0.31)
 CUP_FILL = (0.77, 0.77, 0.71)
 CUP_FLUID_Z = -0.0175
 OBJECT_SECTIONS = ("Rigid", "Geometry", "Fluid", "Articulation", "Garment", "Clutter", "Dynamic")
-# Dex1-1 camera module placement (m, dex1 link frame), fitted by eye to the real gripper: the body block top, and how
-# far the module moves forward from the v4 post so it sits over the block.
+# Top of the Dex1-1 body block (m, mesh z): the camera post, module and cable plug of the v4 mesh sit above it.
 WRIST_CAM_BODY_TOP = 0.0335
-WRIST_CAM_FORWARD = 0.015
 D435_INERTIAL = (
     '<inertial><origin xyz="0 0 0" rpy="0 0 0"/><mass value="0.01"/>'
     '<inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/></inertial>'
@@ -166,7 +165,7 @@ def build_urdf(v4, src, out):
     for mesh in mesh_files(g1d):
         (out / mesh).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(v4 / mesh, out / mesh)
-    seat_wrist_camera(out / "meshes/dex1_1/base_link.STL")
+    strip_wrist_camera(out / "meshes/dex1_1/base_link.STL")
     recess_carrier_hulls(g1d, out)
     shutil.copy(v4 / "physics_contract.json", out)
     shutil.rmtree(out / "usd", ignore_errors=True)  # UrdfFileCfg hashes only the URDF path, not mesh files
@@ -174,20 +173,19 @@ def build_urdf(v4, src, out):
     print(f"wrote {out / 'g1d_dex1.urdf'} ({len(movable)} movable joints)")
 
 
-def seat_wrist_camera(stl):
-    """The v4 Dex1-1 mesh holds its camera module up on a ~6 cm post behind the body; on the real gripper the module
-    sits on the body. Cut the post off at the body top, drop the cable plug on it, and set the module (tilt kept) on
-    the body block. Mesh frame: dex1 link x = mesh y, link z = mesh z."""
+def strip_wrist_camera(stl):
+    """Standard Dex1-1 without the wrist camera (no model of the real camera module yet): the v4 mesh, identical to
+    the official dex1_1_service base_link.STL, holds a camera module up on a ~6 cm post behind the body. Drop the
+    module and the cable plug, and cut the post off at the body top; its lower part is the body's cover plate. The
+    wrist camera sensor (robot config cam_wrist) stays. Mesh frame: dex1 link x = mesh y, link z = mesh z."""
     import trimesh  # Isaac Sim env
 
     parts = trimesh.load(stl, process=True).split(only_watertight=False)
     bracket = max(parts, key=lambda p: p.bounds[1, 2])
     above = [p for p in parts if p.bounds[0, 2] > WRIST_CAM_BODY_TOP]  # camera module + cable plug on the post
-    camera = max(above, key=lambda p: p.extents[2])
     body = [p for p in parts if p is not bracket and all(p is not a for a in above)]
-    bracket = bracket.slice_plane([0, 0, WRIST_CAM_BODY_TOP], [0, 0, -1], cap=True)  # keep the back plate
-    camera.apply_translation([0, WRIST_CAM_FORWARD, WRIST_CAM_BODY_TOP - camera.bounds[0, 2]])
-    trimesh.util.concatenate([*body, bracket, camera]).export(stl)
+    bracket = bracket.slice_plane([0, 0, WRIST_CAM_BODY_TOP], [0, 0, -1], cap=True)
+    trimesh.util.concatenate([*body, bracket]).export(stl)
 
 
 def recess_carrier_hulls(g1d, out):

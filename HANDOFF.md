@@ -155,7 +155,15 @@
 1. 先看 `git log` 和本文件；服务器环境已可用，直接用 demo_policy 跑 `--env-cfg g1d` 复现。
 2. 下一步建议：加入自有物体（`Assets/Object/RoboDojo/<类别>/<编号>/object.usd`）并写第一个 G1-D 专用任务及其评测布局。
 
+## Dex1-1 改回标准版（不带腕部相机模型，2026-10-16）
+
+- 用户要求：在找到真实相机模型之前，夹爪用不带相机的标准版。真机 `dex1_1_service/urdf/meshes/base_link.STL`（已拷到本机 `.cache/unitree_official/urdf/meshes/`）与 v4 的 `base_link.STL` 逐字节相同，本身就带相机支柱和相机，所以没有现成的无相机网格。
+- `build_asset.py`：`seat_wrist_camera`（把相机模块下移到机身上）改为 `strip_wrist_camera`，删掉相机模块和线缆插头，把支柱从机身顶面（z=0.0335）截掉，截面以下保留（这部分是机身的盖板，整块删掉会露出齿轮）。腕部相机**传感器**（robot config 的 `cam_wrist`）不变，仍然出腕部画面。对比图在本机 `output/dex1_std_compare2.png`。
+- 验证：只在服务器隔离目录 `c2c-20261016-105635-lab` 的 `Assets/Robots/g1d` 叠加副本里换了网格并重新转 USD，实验室场景 seed 0 跑了两次：一次成功（77% 进杯），一次失败（倒到一半源杯从手里滑落）。同一配置结果不同，说明仿真每次运行有随机性，不是网格造成的。四宫格视频 `output/c2c/lab_std/lab_std_grid_s0.mp4`。**共享资产库的 `Assets/Robots/g1d` 还是旧网格**，需要用户同意后运行 `build_asset.py`。
+
 ## 最近历史
+
+- 2026-10-16：Dex1-1 改为不带相机模型的标准版（`strip_wrist_camera`），共享资产未同步。
 
 - 2026-10-16：新任务 `g1d_pour_beans_cup_to_cup`（两只塑料杯空中对倒红豆，左手倒），seed 0/2 成功、seed 1 失败；和 10-15 的壶倒杯 + 自建水杯改动一起提交。
 
