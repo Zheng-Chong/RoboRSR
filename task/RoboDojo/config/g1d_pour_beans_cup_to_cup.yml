@@ -1,0 +1,65 @@
+# G1-D cup-to-cup bean pour, as in the real G1D-PourBeansPlus clips: two clear plastic cups
+# (scripts/objects/make_water_cup.py --plastic), red beans in the source cup (granular "Fluid" particles, physics in
+# build_asset.py). Source on the robot's left (-x, the left hand pours), the target on its right. Eval layouts come
+# from scripts/g1d/build_asset.py (two_cups) in the office scene Room real_scene1 (tabletop at 0.68 m, robot-side edge
+# at y=-0.60); these ranges document the workspace (within the side grasp's reach).
+Rigid:
+  -
+    common:
+      xlim: [-0.16, -0.10]
+      ylim: [-0.39, -0.31]
+      rotate_rand: False
+      rotate_deg: 0
+      relative_plane: "Table"
+      qpos: [1, 0, 0, 0]
+      margin: 0.04
+
+    category:
+      -
+        name: "plastic_cup"
+        index: [0]
+
+    select_mode:
+      nums: [1]
+      mode: "unique"
+      label: ["source_cup"]
+
+  -
+    common:
+      xlim: [0.10, 0.16]
+      ylim: [-0.39, -0.31]
+      rotate_rand: False
+      rotate_deg: 0
+      relative_plane: "Table"
+      qpos: [1, 0, 0, 0]
+      margin: 0.04
+
+    category:
+      -
+        name: "plastic_cup"
+        index: [0]
+
+    select_mode:
+      nums: [1]
+      mode: "unique"
+      label: ["target_cup"]
+
+Fluid:
+  -
+    common:
+      xlim: [0.0, 0.0]
+      ylim: [0.0, 0.0]
+      zlim: [-0.0175, -0.0175]
+      rotate_rand: False
+      relative_plane: "source_cup"
+      check_mode: "enforce"
+
+    category:
+      -
+        name: "wuliangye"
+        index: [0]
+
+    select_mode:
+      nums: [1]
+      mode: "unique"
+      label: ["beans"]

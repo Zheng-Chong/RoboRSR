@@ -1,6 +1,6 @@
 # Project Handoff
 
-更新时间：2026-10-14
+更新时间：2026-10-16
 当前分支：chongzheng/env-g1d-dex1
 当前目标：在 RoboDojo 上接入 Unitree G1-D（Dex1-1 夹爪）做桌面操作仿真，后续加入自有物体和任务
 
@@ -90,16 +90,44 @@
   - `g1d_general_pickup`（seed 0，`car/00011`）：第 119 步将小车从 `z = 0.698 m` 稳稳抓起至 `z = 0.801 m` 触发成功退出，`_result.json` 中 `eval_time = 1`、`success_rate = 1.0`。
   - `g1d_stack_blocks`（seed 0）：依次将 `block_2`（`z = 0.732 m`）与 `block_1`（`z = 0.767 m`）叠放到 `block_0`（`[0.147, -0.486, 0.697]`）上，水平对齐误差 `≤ 2 mm`，双臂回零后在第 605 步触发成功退出，`_result.json` 中 `eval_time = 1`、`success_rate = 1.0`。
 
-## 双臂倒水脚本 + 吧台场景（2026-10-14）
+## 双臂倒水：吧台场景 + 自建水杯（2026-10-15，2026-10-16 随杯对杯任务一起提交）
 
-- 吧台 real2sim 场景 `Assets/sim_scene_counter/`（只在本机，gitignored）：两张照片联合拟合，`build_scene.py` 生成 `real_scene2.usd`；水龙头鹅颈改为连续扫掠管（`swept_tube`）。服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/counter-pour-20261014-163053` 以 Room=real_scene2 跑倒水（机器人根 y=-0.80、升降柱各 0.075，物体整体 y-0.07、z+0.15），共享资产库未改。
-- `scripted_demo.py` 倒水改为双臂：离壶近的手臂抓壶把手，另一臂用 TOP_ROT 斜向下（手腕内转 60°）夹杯身、抬起 4 cm；倾倒时抓壶手按“实际壶嘴 vs 实际杯口”闭环修正（`SPOUT_GAIN`），补偿壶在手里打滑；倾倒保持不再固定 48 步，用满 step_lim 余量；先竖直提壶再横移、限速 `JUG_SPEED`（斜着拉会把壶拽倒）；0–80° 快倾。
-- 可达性探测（隔离目录 `scripts/g1d/probe.py`，不入库）：原布局杯子 y≈-0.28（吧台坐标）持杯手任何姿态都够不到（最小误差 5.7 cm）；y≈-0.40、杯口上方附近可达。因此 `build_asset.py` 增加 `POUR_CUP_PULL=-0.09`（杯子比壶近 9 cm）和 `POUR_MIN_GAP=0.03`（与壶间隙不足的布局丢弃），150 → 140 个倒水布局；`g1d_pour_water_into_cup.yml` 杯子 ylim 说明同步为 [-0.39, -0.29]。本机/共享资产库的布局尚未重建（需运行 `build_asset.py`）。
-- 验证（隔离目录，各 1 轮，退出码 0，eval_time=1）：seed 1（壶左、右手持杯）抓壶、持杯、倾倒全程成功，第 450 步出壶 20%、在杯 17%，因 step_lim=480 用尽判失败；seed 0（壶右）右手插把手时把壶推偏 2 cm 没抓住，左手也没抬起杯子，失败。视频 `output/counter_pour_bimanual/seed1_grid.mp4`。
-- ruff check/format 通过；未跑 task_inventory / doctor（未改任务注册）。
-- 倾杯迎流（`CUP_TILT`，杯口随壶倾角同步朝壶倾斜，绕夹持点转并平移补偿手掌、杯口高度取倾斜后的最高点）：seed 1 实测 25° 手腕够不到并撞掉壶；15° 能倾到位，但上方抓杯的手掌/杯子进入倾斜壶身下方，两者相撞脱手（SPOUT_GAIN 积分在碰撞时继续把壶往杯上推）。默认设为 0（行为等同未倾杯版本）。
-- 胸前空中对倒（仿真机片段 `G1D-PourBeansPlusEps222_ep002.mp4`：侧握杯身、两手抬到胸前、接杯口朝源杯倾斜）：探测得持杯手在 y≈-0.40、z 1.05–1.12 能倾 30°。seed 1 实测三档全部失败：杯子抬 20 cm/倾 30°，壶手要到肩高，倾壶时肘部上翻、壶在手里转到 160° 后脱手；抬 13 cm/倾 20°，壶倾过 100° 后壶手 IK 误差 5–8 cm，送不到杯口，最后相撞；抬 8 cm/倾 15°，斜上方抓杯的手掌盖在杯口上，壶嘴对着右手腕倒，两手相撞。结论：上方抓杯 + 这个大壶做不了空中对倒，需要侧握杯身（桌面高度够不到，需换抓或调整物体/升降柱）或换小源杯。代码已恢复为 CUP_TILT=0 的低位版本。
-- `g1d_pour_water_into_cup` step_lim 480 → 600（用户确认）。seed 1 实测：全程不脱手，第 530 步出壶 27%、在杯 24%（比例 0.89 < IN_CUP 0.9），判失败；杯外的豆子堆在杯子靠壶一侧的台面上。试过但无效、已撤回：80° 以上回正放慢到 2°/步（结果不变）、壶嘴离杯沿 3 → 1.5 cm（不变）、`POUR_BACKOFF` 5 → 4/3 cm（壶身撞上持杯手、全部脱手）、杯子不抬起只在台面上扶住（`CUP_LIFT=0`：出壶 27%、在杯 23%，比例 0.85 更差，持杯手 IK 误差 3–5 cm，被台面顶住）。视频 `output/counter_pour_bimanual/seed1_steplim600_grid.mp4`。
+- 吧台 real2sim 场景 `Assets/sim_scene_counter/`（只在本机，gitignored）：两张照片联合拟合，`build_scene.py` 生成 `real_scene2.usd`；水龙头鹅颈为连续扫掠管（`swept_tube`）。服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/counter-pour-20261014-163053` 以 Room=real_scene2 跑倒水（机器人根 y=-0.80、升降柱各 0.075，物体整体 y-0.07、z+0.15）；隔离目录的 `Assets/Object` 为叠加目录（`prep_water_cup.py`），共享资产库未改。
+- 新增 `scripts/objects/make_water_cup.py`：按 `Assets/scene3_pour_pack/scene_spec.json` 的接水杯生成 `Rigid/water_cup/00000`（白色搪瓷锥形杯，无把手，高 0.118 m、口径 73 mm、底径 55 mm、0.165 kg、约 300 ml；杯底 + 32 片杯壁凸包，中空）。`check_object.py` 通过（落地 z=0.059、倾角 0）。
+- `build_asset.py` 的 `swap_bottle_for_pitcher` 把马克杯换成 `water_cup`（仍前移 `POUR_CUP_PULL=-0.09`，与壶间隙 < `POUR_MIN_GAP` 的布局丢弃），隔离目录重建后 153 个倒水布局；`g1d_pour_water_into_cup.yml` 的杯子类别同步为 `water_cup`。step_lim 480 → 600（用户确认）。
+- `scripted_demo.py` 倒水：离壶近的手臂抓壶把手，另一臂侧握杯身——杯底以上 9 cm（杯沿下 2.8 cm）、手指下倾 35°、手腕内转 45°，沿手指方向斜着滑入后夹紧，杯口不被遮挡；杯子抬 1.5 cm（4 cm 时壶手倾倒姿态差 7.7 cm 够不到，回正时壶一跳把豆子洒出）；壶嘴落在离杯心 2.5 cm（近侧杯沿内）；倾倒时按“实际壶嘴 vs 实际杯口”闭环修正。
+- 可达性探测（隔离目录 `scripts/g1d/probe.py`，不入库，seed 0 杯位）：手指水平在杯底以上 6–10 cm、任何手腕转角都差 6–14 cm；下倾 35°、内转 30–60°、10 cm 高误差 1.1–1.4 cm。
+- 验证（隔离目录，各 1 轮，退出码 0，eval_time=1）：**seed 1 成功**（出壶 27%、在杯 26%，比例约 0.96），视频 `output/counter_pour_water_cup/seed1_grid.mp4`。seed 0（壶在右、右手倒）失败：抓壶、抓杯都成功，但倾倒时右手 IK 差约 9 cm，在杯 9%/出壶 26%；把杯子带近到 y≈-0.39 后够得到，但壶倾到 70–100° 时撞上左边持杯手脱落（该改动已撤回）。
+- 历史结论（已撤回的尝试）：斜上方抓马克杯时手掌盖住杯口，倾杯迎流 15–25° 和胸前空中对倒（抬 8–20 cm）都撞手或壶手够不到；马克杯版本入杯比例卡在 0.85–0.89。
+- ruff check/format 通过（服务器 ruff 0.17）；未跑 task_inventory / doctor（未改任务注册）。
+
+## 官方 G1-D URDF 与真机三路相机对照、腕部相机拟合（2026-10-16）
+
+- 真机（ssh `unitree`，Jetson）上的官方模型：`/unitree/module/unitree_eai/xr_teleoperate/assets/g1_d/g1_d.urdf`（Dex3 手、无相机 link）和 `.../dex1_1_service/urdf/dex1_1.urdf`（无相机）。`~/g1d_infra_ewam/assets/g1_D/g1_d.urdf` 实为 G1 人形（robot name="g1"），不要用。已拷到本机 `.cache/unitree_official/`（gitignored）。
+- 与仿真 `g1d_dex1.urdf` 对比：24 个公共关节原点/轴全部一致；唯一差别是 v4 把腰部两个关节名互换了——官方 `torso_Joint` = 腰俯仰（Pitching_Link→Yaw_Link，绕 y），`Yaw_Joint` = 腰偏航（Yaw_Link→torso_link，绕 z）。回放真机关节状态时要按官方名映射。
+- 官方没有相机外参/内参。唯一来源是 `~/g1d_infra/teleop/utils/ego_camera_config.py` 抄的服务文档值：头部双目（Cherry Dual Camera，1280×480 SBS），左右眼 ±29.8 mm，FOV 115°×80°，光轴俯 47.6°（= unitree_ros G1 `d435_joint` 俯仰 0.8308 rad）。仿真 `cam_head` 位姿已按此设置。
+- 对照方法：真机运行记录 `~/Desktop/Results/G1/g1d_real_run_20260921/`（`observations.jsonl` 每帧 16 维关节状态，夹爪 5.4=全开、0=全闭）。一次性脚本 `/tmp/g1d_cam_check/render_real_frame.py`（不入库）在 21196 隔离目录 `camcheck-20261016-104337` 把仿真双臂开到第 5、11 帧关节角（误差 <0.001°），用 `g1d_general_pickup` seed 0（real_scene1）渲染全部相机，并在进程内追加 115° 头部和 dex1_rgb 腕部对照相机。并排图：本机 `output/cam_check/f{5,11}/compare_f*.jpg`。
+- 结论：
+  1. **真机录制里腕部两路是反的**：`wrist_left` 流 = 右手相机，`wrist_right` 流 = 左手相机（两帧都由物体相对位置确认）。已知问题：这台 Jetson 就是图像服务主机 192.168.123.164，`teleimager.service` 读 `~/unitree_eai_environment/service/teleimager/cam_config_server.yaml`，按序列号绑定 `left_wrist_camera`=JR0001（USB 1-3.2）、`right_wrist_camera`=JR0002（1-3.3）；`~/client/jepa_g1d_client/g1d_jepa_client.py` 记录 2026-09-25 真机遮挡测试：遮物理左腕相机时 `cam_right_wrist` 变黑，即 JR0001 装在右手；采集数据集（capybara_to_box、pick_3objects_to_basket）左右是对的，所以部署客户端默认 `SWAP_WRISTS=True`。09-21 这次运行早于该修正。sim2real 时：图像服务的 `left_wrist_camera` 对应仿真右腕。
+  - 硬件：头部 Sunplus `1bcf:2d4f`（"USB2.0 Camera RGB"，序列号 01.00.00），原生每眼 1920×1200（16:10），服务用 1280×480 SBS（每眼 640×480，4:3，是裁剪还是缩放未确认）；腕部 JR0001/JR0002（VID/PID 0001:0001 / 0002:0002，最高 1920×1080，服务用 640×480）。UVC 描述符里没有焦距（wObjectiveFocalLength=0），设备内无可读标定；相机被 root 服务独占，读控制量/切换模式需要停服务（需 sudo 密码）。
+  2. **头部已对齐，保持现状**：一次性脚本 `/tmp/g1d_cam_check/fit_head.py`（不入库）用第 0–11 帧关节角做正运动学，把 Dex1/腕/小臂网格投影到真机 head_left 上；第 3–11 帧夹爪黑色轮廓双向倒角拟合。当前配置（针孔 f=288 px，96°×80°，俯 47.6°）夹爪中位误差 6.6/8.4 px；针孔精修（f=294、多俯 0.8°、滚转约 2°、上移 1 cm）5.8/8.8 px，提升在分割噪声内，未采用；等距鱼眼（f=308，约 119°）7.2/12.7 px，且小臂明显压短，排除。画面底部带灯的是底盘前端（随升降/腰部变化），不是胸口，不能作约束。文档 115° 应是传感器全幅值，服务的 640×480 每眼模式实测与 96° 针孔吻合。叠加图在本机 `/tmp/g1d_cam_check/fit/`。
+  3. **腕部已按真机拟合并改配置（未提交）**：一次性脚本 `/tmp/g1d_cam_check/fit_wrist.py` 在 `*_dex1_base_link` 系下按真机夹爪开度投影手指网格，第 4–11 帧手指黑色轮廓双向倒角拟合（真机流先交换：仿真左腕 ← `wrist_right`）。结果：f 397→477 px（78°→约 68°×53°），相机下移 1.4 cm，俯角 43°→40.8°；中位误差左 16.8→7.3 px、右 12.6→6.9 px；左右分开拟合相差 <7 mm，用同一套；第 0 帧未参与拟合也对得上。改动：`env_cfg/camera/template.py` 的 `DEX1_RGB`（原为 mujoco 估计的约 111°，仅 G1-D 用）改为拟合值；`scripts/g1d/{left,right}_robot_config.yml` 的 `cam_wrist` 改 `type: dex1_rgb`、`pos [0.055, 0, 0.081]`、`ori [0.6429, 0.2944, -0.2944, -0.6429]`。Isaac 渲染验证（隔离目录，进程内读仓库 yml）：手指大小/位置与真机一致，旧配置底部露出的相机座基本出画；对比图本机 `output/cam_check/v2_f{5,11}/compare_wrist_f*.jpg`。**共享资产库 `Assets/Robots/g1d/*_robot_config.yml` 仍是旧值**，需运行 `build_asset.py` 才生效。局限：本次录制夹爪开度几乎不变，焦距与距离有耦合；补一段夹爪开合录像可复核。
+  4. real_scene1 的桌子/沙发相对机器人的位置与这次运行的真实摆放不同，背景不能用来对比。
+
+## 新任务 `g1d_pour_beans_cup_to_cup`：双手各拿一个塑料杯，空中杯对杯倒红豆（2026-10-16）
+
+- 参照真机片段 `~/Desktop/Results/G1/g1d_task_clips/G1D-PourBeansPlusEps222_ep002.mp4`（两只透明塑料杯，双手侧握抬到胸前，一杯倒进另一杯）。新任务，原壶倒杯任务保留。
+- 资产：`make_water_cup.py --plastic` 生成 `Rigid/plastic_cup/00000`（高 9.5 cm、口径 72 mm、30 g、OmniGlass 透明）。
+- 任务：`task/RoboDojo/{config,tasks}/g1d_pour_beans_cup_to_cup.*`，标签 `source_cup`/`target_cup`/`beans`，step_lim 600；成功 = 源杯回正（`is_axis_up` 上升沿）时 ≥60% 豆子离开源杯且其中 ≥90% 在目标杯里。已加入 `task_inventory.py` 的 custom 列表。
+- 布局：`build_asset.py` 的 `two_cups`（G1D_TASKS 条目，从 arx_x5 `pour_liquid_into_cup` 布局生成）。随机数用原布局瓶子位置做种子（只用布局序号的话每个 seed 文件夹的 `_0` 都一样，seed 0/1/2 拿到同一布局）。**源杯固定在机器人左边（左手倒）**，|x| ∈ [0.10, 0.16]，y ∈ [-0.39, -0.31]。
+- 脚本（`scripted_demo.py` 的 `cup_to_cup_actions`）：两手同时按 `cup_grasp` 侧握（杯沿下 2 cm，下倾 35°、内转 45°），先竖直提 6 cm 再送到胸前，目标杯底抬 12 cm；等两手误差 <1 cm 后实测杯子在手里的位姿；源杯**绕手指轴滚转（手腕 roll）**倾倒，杯口最低点按实际方向落在目标杯近侧杯沿内 2.4 cm、高 2.5 cm，闭环修正；60° 前 2°/步，之后豆流弱时 1°/步。
+- 排查结论（试过、已撤回）：
+  - 提杯同时转手腕（内转 45° → 0°）会把杯子从右手拽掉；绕世界 y 轴倾杯时 35° 下倾的手 15° 内就顶到关节限位；手指朝前（yaw 0/20）滚转幅度不够倒空。
+  - **右手倒不出来**：每次都是杯子在两指间转动（手指轴与杯轴夹角 125°→160°），倾到 85° 左右豆子流得很慢。日志显示 Dex1 一根手指停在张开限位（q=-0.02），另一根推到 -0.0013，两只手都这样；但两只夹爪是同一个零件、装法相同，所以这根限位手指相对倒的方向，左右手分别在杯子两侧。已试且无效：目标杯迎向源杯倾 20°/35°（更糟，左手也失败）、杯子 static_friction 1.5、夹得更低 5.5/6.5 cm（提杯时掉）、右手绕手指轴翻 180°（够不到）、右手内转 30°/60°。
+  - 运行时刚体只读 `physics.static_friction`/`dynamic_friction`（默认 0.6/1.5），metadata 里的 `friction` 不生效。
+- 验证（服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/c2c-20261016-105635`，Room=real_scene1，各 1 轮，退出码 0，`_result.json` eval_time=1）：**seed 0、seed 2 成功**（源杯倒出 87–89%，目标杯 87–89%）；**seed 1 失败**：目标杯在 (0.159, -0.320)，右手提杯够不到胸前位置（误差恒为 0.107，杯子比计划低 6 cm），只有 59% 进杯。四宫格视频（第三视角 | 头部 / 左腕 | 右腕）在本机 `output/c2c/final/grid_s{0,1,2}.mp4`。
+- ruff check/format 通过。没跑 task_inventory --check、doctor。
+- 资产与布局只在隔离目录：本机和共享资产库需运行 `make_water_cup.py --plastic` 和 `build_asset.py`（共享库改动需用户同意）。
 
 ## 实验室操作台 real2sim 场景 real_scene3（2026-10-14）
 
@@ -112,9 +140,10 @@
 
 - real_scene3：尺寸没有实测（量一下桌长或桌高，再用 `--scale-correction` 修正）；灯光已按手机照片标定，仍需和真机头部相机画面对比；要正式使用，需拷到共享 `Assets/Room/real_scene3/`，并把布局改写（Room、物体 +0.069 m）和升降柱高度做成 `build_asset.py` 的可配置项。
 
-- 双臂倒水：step_lim 已提到 600，出壶量够了，但入杯比例卡在 0.89（阈值 0.9）；壶嘴位置被“壶身不撞持杯手”卡死在离杯心 5 cm，杯子留在台面上扶住也更差（0.85）；剩下的选择是调整 IN_CUP 阈值（需用户决定）或换持杯方式；右臂抓壶（壶在右、y≈-0.28）插把手会推壶，需调接近路径；持杯手在可达边缘，杯子 y 更远的布局（-0.46）未测。
+- 杯对杯倒豆：3 个 seed 里 2 个通过。seed 1 的目标杯位置（x 0.159、y -0.320）右手够不到胸前位置，可以把目标杯的 y 收窄到更靠近机器人，或者把胸前位置跟着杯子走。右手倒（真机片段里是右手倒）会让杯子在两指间转动，没解决；值得试的方向：夹紧时用线性 PD 让两指都停在杯面上（参照叠块的做法），而不是全力闭合。
+- 双臂倒水：换成自建水杯后 seed 1 成功；seed 0（壶在右）右手倒壶时要么够不到杯口（差 9 cm），要么把杯子带近后壶身撞上持杯手，需单独调右手倒壶的姿态/壶嘴方向。`water_cup` 资产和新布局只在服务器隔离目录：本机与共享资产库需运行 `make_water_cup.py` 和 `build_asset.py`（共享库改动需用户同意）。杯子更远的布局（y≈-0.46）未测。
 - G1 手臂在桌面高度的可达范围约 0.45 m；RoboDojo 现有任务（为桌面上的 X5 设计）有物体距肩部 0.4–0.7 m，部分不可达。自有任务的物体应放在 y≈[-0.55, -0.25]，或利用腰部前倾（`Yaw_Joint`）。
-- 相机内参是借用的现有类型（头部 Gemini_345Lg、腕部 d435），位姿为目测/几何拟合；拿到真机相机型号和内参后应替换为实测值。头壳被隐藏，第三视角里机器人没有头部外壳。
+- 相机：头部（Gemini_345Lg 针孔 96°）与腕部（dex1_rgb 约 68°）已按真机帧投影拟合（见 2026-10-16 节），但不是棋盘格标定；腕部改动需重跑 `build_asset.py` 同步到共享资产。头壳被隐藏，第三视角里机器人没有头部外壳。
 - 末端位姿（ee）动作未支持：需写 G1-D cuRobo 配置；且 `RobotManager` 的 planner 以 `robot_name` 为键，coupled 左右臂会共用同一个 planner，需要改成按手臂区分。
 - `_task.yml` 中指定了 `robot_config`/`scene_config` 的任务（如 x5+franka 竞赛任务、传送带任务）会覆盖 g1d 机器人或场景。
 - 棱纹环按 `elbow_link` 网格的 x 区间切分（换 URDF/网格后需重新核对 `RING_X`）；材质参数为目测，仿真房间光照比真机亮，金属会显得偏亮。
@@ -127,6 +156,10 @@
 2. 下一步建议：加入自有物体（`Assets/Object/RoboDojo/<类别>/<编号>/object.usd`）并写第一个 G1-D 专用任务及其评测布局。
 
 ## 最近历史
+
+- 2026-10-16：新任务 `g1d_pour_beans_cup_to_cup`（两只塑料杯空中对倒红豆，左手倒），seed 0/2 成功、seed 1 失败；和 10-15 的壶倒杯 + 自建水杯改动一起提交。
+
+- 2026-10-16：对比真机上的官方 G1-D URDF（运动学一致，腰部关节名在 v4 中互换），并用真机第 5/11 帧关节角渲染三路相机：真机腕部两路标签反了（图像服务端口相对采集互换，已知问题，部署端 SWAP_WRISTS）；头部相机按关节角投影拟合确认已对齐（中位 6–8 px）；腕部相机按手指轮廓拟合，改为约 68°、下移 1.4 cm、俯 40.8°（`DEX1_RGB` + 两臂 yml，未提交，共享资产未同步）。
 
 - 2026-10-14：用四张照片重建实验室操作台 real_scene3（`Assets/sim_scene_lab/`，本机，gitignored），离线检查 19/19 通过，未在 Isaac 中验证。
 - 2026-10-14：修复 `g1d_general_pickup` 与 `g1d_stack_blocks` 脚本抓取与叠块（TCP 雅可比 + 关节限位内缩投影、方块线性 PD 自动定心、侧向抓取手腕朝向肩部），远端验证两任务均拿到 `success_rate = 1.0`；倒水脚本改为双臂协同，倒水布局杯子拉近 9 cm。

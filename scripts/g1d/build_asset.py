@@ -21,6 +21,7 @@ Usage:
 import argparse
 import json
 from pathlib import Path
+import random
 import shutil
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -114,6 +115,13 @@ PITCHER_AXIS_X = -0.0137  # body axis in the pitcher frame (metadata contact_cir
 # overlaps the jug are dropped.
 POUR_CUP_PULL = -0.09
 POUR_MIN_GAP = 0.03  # m between the jug's and the cup's footprints
+# Cup-to-cup pour (two plastic cups): each cup within the side grasp's reach of the arm on its side, |x| and y ranges
+# (from |x| = 0.178 the right arm cannot lift its cup up to the pour, 0.162 it can); the source cup a sixth full: the
+# 60 x 60 x 70 mm fluid ellipsoid scaled to 46 x 46 x 50 mm (~55 ml), its centre this far above the cup centre (inside
+# bottom + half its height + 2 mm)
+CUP_PAIR_X, CUP_PAIR_Y = (0.10, 0.16), (-0.39, -0.31)
+CUP_FILL = (0.77, 0.77, 0.71)
+CUP_FLUID_Z = -0.0175
 OBJECT_SECTIONS = ("Rigid", "Geometry", "Fluid", "Articulation", "Garment", "Clutter", "Dynamic")
 # Dex1-1 camera module placement (m, dex1 link frame), fitted by eye to the real gripper: the body block top, and how
 # far the module moves forward from the v4 post so it sits over the block.
@@ -229,8 +237,8 @@ def move_into_real_scene(layout, xy, table_top):
 
 
 def swap_bottle_for_pitcher(layout, assets, layout_index, table_top):
-    """Replace the wuliangye bottle (and the fluid inside it) by our fridge jug, spout turned toward the cup, and pull
-    the cup POUR_CUP_PULL toward the robot; None if the cup then sits too close to the jug."""
+    """Replace the wuliangye bottle (and the fluid inside it) by our fridge jug, spout turned toward the cup, and the
+    cup by our water cup, POUR_CUP_PULL closer to the robot; None if the cup then sits too close to the jug."""
     index = layout_index % 3  # jug colour variant
     meta = json.loads((assets / "Object/RoboDojo/Rigid/pitcher" / f"{index:05d}/metadata.json").read_text())
     bottle = layout["Rigid"].pop("wuliangye")[0]
@@ -249,10 +257,54 @@ def swap_bottle_for_pitcher(layout, assets, layout_index, table_top):
     fluid["visual"]["visual_mdl_path"] = RED_BEAN_MDL
     fluid["visual"]["scale"] = list(PITCHER_FILL)
     fluid["scale"] = [1 / s for s in PITCHER_FILL]
-    cup = next(e for es in layout["Rigid"].values() for e in es if e.get("label") == "cup")
-    cup["default_pos"][1] += POUR_CUP_PULL
+    key, mug = next((k, e) for k, es in layout["Rigid"].items() for e in es if e.get("label") == "cup")
+    layout["Rigid"][key].remove(mug)
+    if not layout["Rigid"][key]:
+        del layout["Rigid"][key]
+    meta = json.loads((assets / "Object/RoboDojo/Rigid/water_cup/00000/metadata.json").read_text())
+    x, y, _ = mug["default_pos"]
+    cup = dict(mug, category="water_cup", category_idx=0, physics=dict(meta["physics"], type="rigid"))
+    cup["default_pos"] = [x, y + POUR_CUP_PULL, table_top + meta["physics"]["size"][2] / 2 + 1e-4]
+    layout["Rigid"]["water_cup"] = [cup]
     if _gap_xy(_obb(assets, "Rigid", "pitcher", pitcher), _obb(assets, "Rigid", cup["category"], cup)) < POUR_MIN_GAP:
         return None
+    return layout
+
+
+def two_cups(layout, assets, layout_index, table_top):
+    """Replace the bottle and the mug by two plastic cups: the source (red beans) on the robot's left, the target on its
+    right; positions drawn from the bottle's original one, so every seed folder and layout differs (indices repeat).
+    The right hand does not pour: the cup turns between the pads (one Dex1 finger sits on its open stop, on the other
+    side of the cup than in the left hand) and the beans stay in at 85 deg."""
+    meta = json.loads((assets / "Object/RoboDojo/Rigid/plastic_cup/00000/metadata.json").read_text())
+    z = table_top + meta["physics"]["size"][2] / 2 + 1e-4
+    template = layout["Rigid"].pop("wuliangye")[0]
+    rng = random.Random(json.dumps(template["default_pos"]))
+    side = -1
+    layout["Rigid"] = {}
+    cups = []
+    for label, sign in (("source_cup", side), ("target_cup", -side)):
+        xy = [sign * rng.uniform(*CUP_PAIR_X), rng.uniform(*CUP_PAIR_Y)]
+        cups.append(
+            dict(
+                template,
+                category="plastic_cup",
+                category_idx=0,
+                label=label,
+                default_pos=[*xy, z],
+                default_ori=[1.0, 0.0, 0.0, 0.0],
+                physics=dict(meta["physics"], type="rigid"),
+            )
+        )
+    layout["Rigid"]["plastic_cup"] = cups
+    beans = layout["Fluid"]["wuliangye"][0]
+    beans["label"], beans["relative_plane"] = "beans", "source_cup"
+    beans["zlim"] = [CUP_FLUID_Z] * 2
+    beans["default_pos"] = [*cups[0]["default_pos"][:2], z + CUP_FLUID_Z]
+    beans["physics"] = dict(beans["physics"], **RED_BEAN_PHYSICS)
+    beans["visual"]["visual_mdl_path"] = RED_BEAN_MDL
+    beans["visual"]["scale"] = list(CUP_FILL)
+    beans["scale"] = [1 / s for s in CUP_FILL]
     return layout
 
 
@@ -324,6 +376,7 @@ def filter_pickup(layout, assets, layout_index, table_top):
 # task: (benchmark task, (x, y) offset, (x, y) squeeze, post-filter/swap or None)
 G1D_TASKS = {
     "g1d_pour_water_into_cup": ("pour_liquid_into_cup", (0.0, -0.20), (1.0, 1.0), swap_bottle_for_pitcher),
+    "g1d_pour_beans_cup_to_cup": ("pour_liquid_into_cup", (0.0, -0.20), (1.0, 1.0), two_cups),
     "g1d_general_pickup": ("general_pickup", (0.0, -0.36), (0.6, 0.6), filter_pickup),
     "g1d_stack_blocks": ("stack_blocks", (0.0, -0.35), (0.6, 0.6), None),
 }

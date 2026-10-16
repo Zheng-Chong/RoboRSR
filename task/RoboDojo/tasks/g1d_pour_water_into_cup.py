@@ -14,7 +14,8 @@ class G1dPourWaterIntoCupCommon(PourLiquidIntoCupCommon):
 
     def __init__(self, config, app, **kwargs):
         super().__init__(config, app, **kwargs)
-        self.step_lim = 480  # pour_liquid_into_cup's 400 actions at 25 Hz, at G1-D's 30 Hz
+        # bimanual: ~240 actions to grasp the jug and pick the cup, and the beans flow ~0.1%/action at full tilt
+        self.step_lim = 600
 
     def pour_check(self):
         return self.reward_manager.is_A_fluid_in_B(

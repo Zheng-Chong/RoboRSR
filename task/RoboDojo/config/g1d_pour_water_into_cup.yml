@@ -36,11 +36,8 @@ Rigid:
 
     category:
       -
-        name: "mug"
-        index: [15, 16]
-      -
-        name: "goblet"
-        index: [6]
+        name: "water_cup"  # our handleless enamel cup (scripts/objects/make_water_cup.py), grasped around its body
+        index: [0]
 
     select_mode:
       nums: [1]

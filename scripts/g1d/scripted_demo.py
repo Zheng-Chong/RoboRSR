@@ -4,8 +4,12 @@ Runs src/eval_client/main.py in-process with the policy swapped for a Cartesian 
 least-squares IK on the simulator's Jacobian. Videos and _result.json land in eval_result/ like a normal eval,
 under policy name "scripted_demo".
     g1d_pour_water_into_cup   bimanual: one arm grasps the pitcher handle from the robot side, the other picks the cup
-                              from the outside and holds it up between them; the jug rolls about its lip until a
-                              quarter of the beans have left it, the actual spout steered over the cup; back upright
+                              from the outside and holds it up, mouth leaning to the jug; the jug rolls about its lip
+                              until a quarter of the beans have left it, the actual spout steered over the cup; back
+                              upright
+    g1d_pour_beans_cup_to_cup bimanual: each arm picks the plastic cup on its side from the outside and lifts it; the
+                              target cup is held up in front of the chest, the source cup rolls about its rim lip over
+                              the target's mouth until most beans are over; back upright
     g1d_general_pickup        top-down grasp across the target's narrow side, lift 15 cm
     g1d_stack_blocks          stack the two outer blocks on the middle one, each with the arm on its side; arms back
 
@@ -33,7 +37,8 @@ OPEN = 0.15  # 19 mm between the pads: the inner finger fits in the 26 mm slot b
 BEHIND = np.array([0.0, -0.09, 0.0])  # fingertips clear the pitcher's back face; descend here, then slide in
 SPOUT_IN_PITCHER = np.array([-0.0663, 0.0, 0.1145])  # spout lip, the tilt pivot
 BBOX_HALF = np.array([0.0663, 0.0445, 0.1225])
-POUR_BACKOFF = 0.05  # lip short of the cup centre: the stream leaves with forward speed
+# lip short of the cup centre, inside the near rim of the 7.3 cm mouth (the cup hand holds the body below it)
+POUR_BACKOFF = 0.025
 SPOUT_CLEAR, BODY_CLEAR = 0.03, 0.02  # above the cup rim
 TILT = np.deg2rad(125)
 TILT_RATE, RETURN_RATE = np.deg2rad(2.0), np.deg2rad(4.0)  # per action
@@ -43,11 +48,28 @@ POUR_TARGET = 0.25  # of the half-full jug (~130 ml, 2/3 of a mug); the stream i
 FLOW = 0.0033  # of the beans per action (~50 ml/s): hold the tilt above this
 STEP_MARGIN = 12  # actions kept free after the jug is back upright, for the rising-edge success check
 # Second arm holding the cup
-CUP_LIFT = 0.04  # cup bottom above the table while held under the spout
+CUP_LIFT = 0.015  # cup bottom above the table while held under the spout; higher puts the jug out of reach
 CUP_MEET = 0.0  # the cup is carried this much toward the jug (the cup arm is near the edge of its reach)
+# the cup's mouth leans toward the jug to meet the stream, in step with the jug's tilt. With a top grasp on a mug the
+# hand sat over the mouth and the tilted jug hit it; held 13-20 cm up, the jug hand cannot reach its pour pose.
+CUP_TILT = np.deg2rad(0)
 SPOUT_GAIN, SPOUT_SLACK = 0.2, 0.05  # per action, share of the spout error (actual vs over the actual cup) fed back
-CUP_GRIP_DOWN = 0.03  # pads this far below the rim
-CUP_YAW = 60  # deg, wrist turned inward from fingers-forward
+# side grasp on the cup body (probed at the cup): fingers horizontal miss it by 6-14 cm at any height and wrist yaw;
+# 35 deg down with the wrist turned 30-60 deg inward reaches it within 1-3 cm, 8-10 cm above the bottom
+CUP_GRIP_UP = 0.09  # pads this far above the cup bottom
+CUP_PITCH, CUP_YAW = 35, 45  # deg, fingers below horizontal; wrist turned inward from fingers-forward
+CUP_SLIDE = 0.08  # m the open pads slide along the fingers onto the cup body
+# Cup-to-cup pour (two 9.5 cm plastic cups, as in the real G1D-PourBeansPlus clips)
+C2C_GRIP_UP = 0.075  # pads 2 cm below the rim
+C2C_RAISE, C2C_LIFT = 0.06, 0.12  # straight up off the table first; target cup bottom this high in mid-air
+C2C_MEET_X, C2C_MEET_Y = 0.03, -0.36  # target cup axis in mid-air: this far on its own side of the midline
+CUP_SPEED = 0.005  # m per action carrying a cup
+LIP_IN, LIP_CLEAR = 0.024, 0.025  # source lip this far inside the target's near rim, this high above it
+C2C_TILT, C2C_DRY = np.deg2rad(150), np.deg2rad(60)  # most tilt; nothing leaves a sixth-full cup below C2C_DRY
+C2C_DRY_RATE, C2C_TILT_RATE = np.deg2rad(2.0), np.deg2rad(1.0)  # per action; faster and the arm lags, the cup slips
+C2C_SETTLE, C2C_SETTLE_ERR = 40, 0.01  # most actions held in mid-air until both grasp points are this close
+C2C_POUR, C2C_FLOW = 0.85, 0.004  # of the beans out of the source cup; tilt further while less leaves per action
+LIP_GAIN, LIP_SLACK = 0.2, 0.04  # per action, share of the lip error fed back; bound on the correction
 DAMPING = 0.05
 GRASP_ROT = Rotation.from_euler("z", 90, degrees=True)  # fingers forward (+y), wrist camera up: the G1-D zero pose
 # Pick and place
@@ -116,23 +138,25 @@ class Arm:
         return np.clip(q + jac.T @ np.linalg.solve(jac @ jac.T + 0.02**2 * np.eye(6), err), lim[:, 0], lim[:, 1])
 
 
-def cup_grasp(lm, out):
-    """Grasp of the cup body below the rim by the arm on side `out` (+-1 in x): fingers TOP_ROT steep, wrist turned
-    CUP_YAW inward, pads closing across the body; the steep fingers pass above a mug handle.
+def cup_grasp(lm, out, label="cup", grip_up=CUP_GRIP_UP):
+    """Side grasp around the body of the (handleless, tapered) cup by the arm on side `out` (+-1 in x): fingers
+    CUP_PITCH down, turned CUP_YAW inward, pads closing across the body below the rim; the mouth stays free.
 
-    Returns the grasp point (on the body axis), hand rotation, rim height, body radius and gripper opening.
+    Returns the grasp point (on the body axis), hand rotation, rim height, rim radius and gripper opening.
     """
-    pos, quat = lm.get_instance_pose(0, label="cup")
+    pos, quat = lm.get_instance_pose(0, label=label)
     pos, rot = as_np(pos), from_wxyz(as_np(quat))
-    meta = lm.get_instance_metadata(0, label="cup") or {}
-    bbox = lm.get_instance_bbox_vertices(lm.get_instance_name(0, "cup"), 0)
+    meta = lm.get_instance_metadata(0, label=label) or {}
+    bbox = lm.get_instance_bbox_vertices(lm.get_instance_name(0, label), 0)
     lo, hi = bbox.min(0), bbox.max(0)
     circle = meta.get("active", {}).get("place", {}).get("up", {}).get("contact_circle", {})
     axis = pos + rot.apply(np.r_[circle.get("center", (lo + hi) / 2)[:2], 0])
     rim, radius = pos[2] + hi[2], (hi[1] - lo[1]) / 2
-    grip = np.r_[axis[:2], max(rim - CUP_GRIP_DOWN, pos[2] + lo[2] + FINGER_TIPS + TABLE_CLEAR)]
-    hand = Rotation.from_euler("z", out * CUP_YAW, degrees=True) * TOP_ROT
-    return grip, hand, rim, radius, pad_open(2 * radius)
+    foot = circle.get("radius", radius)
+    up = min(grip_up, hi[2] - lo[2])
+    grip = np.r_[axis[:2], pos[2] + lo[2] + up]
+    hand = Rotation.from_euler("xz", [-CUP_PITCH, out * CUP_YAW], degrees=True) * GRASP_ROT
+    return grip, hand, rim, radius, pad_open(2 * (foot + (radius - foot) * up / (hi[2] - lo[2])))
 
 
 def pour_actions(env):
@@ -148,7 +172,7 @@ def pour_actions(env):
     side = np.sign(cup0[0] - pitcher_pos[0])  # the spout faces the cup (build_asset.py)
     cup_grip, cup_hand, rim0, cup_r, cup_open = cup_grasp(lm, side)  # the cup arm is beyond the cup
     held_grip = cup_grip + [-side * CUP_MEET, 0, CUP_LIFT]
-    meet = cup_grip[:2] + [-side * CUP_MEET, 0]
+    meet = held_grip[:2]
     rim = rim0 + CUP_LIFT
 
     grasp = pitcher_pos + pitcher_rot.apply(GRASP_IN_PITCHER)
@@ -177,9 +201,11 @@ def pour_actions(env):
         (mid, GRASP_ROT, 0, carry(grasp, mid)),
         (start, GRASP_ROT, 0, carry(mid, start)),
     ]
+    cup_side = cup_grip - cup_hand.apply([CUP_SLIDE, 0, 0])
     cup_keys = [
-        (cup_grip + [0, 0, HOVER], cup_hand, cup_open, 54),
-        (cup_grip, cup_hand, cup_open, 30),
+        (cup_side + [0, 0, HOVER], cup_hand, cup_open, 54),
+        (cup_side, cup_hand, cup_open, 30),
+        (cup_grip, cup_hand, cup_open, 40),  # slide in
         (cup_grip, cup_hand, 0, 15),  # close
         (cup_grip + [0, 0, CUP_LIFT], cup_hand, 0, 18),
         (held_grip, cup_hand, 0, 20),  # carry toward the jug
@@ -199,6 +225,8 @@ def pour_actions(env):
         return np.mean(np.any(np.abs(jug_rot.inv().apply(beans() - jug_pos)) > BBOX_HALF, axis=1))
 
     axis_off = from_wxyz(as_np(lm.get_instance_pose(0, label="cup")[1])).inv().apply(cup_grip - cup0) * [1, 1, 0]
+    cup_box = lm.get_instance_bbox_vertices(lm.get_instance_name(0, "cup"), 0)
+    cup_box = cup_box[cup_box[:, 2] > cup_box[:, 2].max() - 1e-6]  # rim corners: the highest rim point of a leaning cup
 
     def in_cup():
         """Fraction of the beans inside the cup's rim cylinder, for the log."""
@@ -212,10 +240,11 @@ def pour_actions(env):
         if step % 10 == 0:
             jug_pos, jug_rot = jug()
             tilt = np.degrees(np.arccos(jug_rot.apply([0, 0, 1])[2]))
+            lean = np.degrees(np.arccos(from_wxyz(as_np(lm.get_instance_pose(0, label="cup")[1])).apply([0, 0, 1])[2]))
             print(
                 f"[scripted_demo] {step:3d} err jug {np.linalg.norm(arm.grasp_point() - jug_target[0]):.3f}"
                 f" cup {np.linalg.norm(cup_arm.grasp_point() - cup_target[0]):.3f} jug {jug_pos.round(3)}"
-                f" tilt {tilt:.0f} left jug {left_jug():.0%} in cup {in_cup():.0%}"
+                f" tilt {tilt:.0f} cup lean {lean:.0f} left jug {left_jug():.0%} in cup {in_cup():.0%}"
                 f" check {env.reward_manager.call_func_parser(check, 0):.0f}",
                 flush=True,
             )
@@ -239,14 +268,21 @@ def pour_actions(env):
     held = as_np(lm.get_instance_pose(0, label="cup")[0])
     print(f"[scripted_demo] cup held at {held.round(3)} (from {cup0.round(3)})")
 
-    hold_cup = (held_grip, cup_hand, 0)
     fix = np.zeros(3)  # the jug slips in the handle grip: steer the actual spout over where the cup actually is
 
     def steer(theta):
         nonlocal fix
+        phi = CUP_TILT * min(theta / TILT_DRY, 1.0)
+        lean = Rotation.from_rotvec([0, -side * phi, 0])  # mouth toward the jug
+        # the hand sits above the cup and would swing under the tilted jug: move the cup away so the hand stays put
+        palm = cup_hand.apply([-PAD_REACH, 0, 0])
+        shift = palm - lean.apply(palm)
+        hold_cup = (held_grip + [shift[0], shift[1], 0], lean * cup_hand, 0)
         pos, quat = lm.get_instance_pose(0, label="cup")
         pos, rot = as_np(pos), from_wxyz(as_np(quat))
-        hand, hand_rot, lip_target = pour(theta, (pos + rot.apply(axis_off))[:2], pos[2] + rim0 - cup0[2])
+        top = (pos + rot.apply(cup_box))[:, 2].max()
+        mouth = pos + rot.apply(axis_off + [0, 0, rim0 - cup0[2]])  # a leaning mouth moves toward the jug
+        hand, hand_rot, lip_target = pour(theta, mouth[:2], top)
         jug_pos, jug_rot = jug()
         fix = np.clip(
             fix + SPOUT_GAIN * (lip_target - jug_pos - jug_rot.apply(SPOUT_IN_PITCHER)), -SPOUT_SLACK, SPOUT_SLACK
@@ -261,6 +297,146 @@ def pour_actions(env):
     while (now := left_jug()) < POUR_TARGET and step < env.step_lim - returning:
         if now - prev < FLOW:  # tilt further only while the stream is weak: a surge overshoots the cup
             theta = min(theta + TILT_RATE, TILT)
+        prev = now
+        yield steer(theta)
+    while theta > 0:
+        theta = max(theta - RETURN_RATE, 0.0)
+        yield steer(theta)
+    for _ in range(STEP_MARGIN):
+        yield steer(0.0)
+
+
+def cup_to_cup_actions(env):
+    """Each arm side-grasps the cup on its side and lifts it; the target cup is held up in front of the chest and the
+    source cup rolls about its rim lip over the target's mouth until most beans have gone over; back upright."""
+    lm = env.scene_manager.layout_manager
+    fluid = lm.get_scene_object(0, lm.get_instance_name(0, "beans"))
+    src0 = as_np(lm.get_instance_pose(0, label="source_cup")[0])
+    side = np.sign(src0[0])  # the source cup's side; the target is on the other one
+    arms = [Arm(env, r) for r in env.robot_manager.robot_list if r.type == "target"]
+    src_arm = min(arms, key=lambda a: abs(a.grasp_point()[0] - src0[0]))
+    tgt_arm = next(a for a in arms if a is not src_arm)
+    s_grip, s_hand, s_rim, s_r, s_open = cup_grasp(lm, side, "source_cup", C2C_GRIP_UP)
+    t_grip, t_hand, t_rim, t_r, t_open = cup_grasp(lm, -side, "target_cup", C2C_GRIP_UP)
+    height = s_rim - (s_grip[2] - C2C_GRIP_UP)
+    up = s_grip[2] - (s_rim - height)  # pads above the cup bottom
+
+    # the cup rolls about the fingers (the wrist roll); about world y the 35-deg-down hand runs the arm into its joint
+    # limits within 15 deg, and fingers forward leave too little roll to empty the cup
+    roll_axis = s_hand.apply([1.0, 0.0, 0.0])
+    pour_dir = -side * np.cross(roll_axis, [0.0, 0.0, 1.0])  # the way the mouth tips: toward the target, slanted
+    pour_dir /= np.linalg.norm(pour_dir)
+    t_air = np.array([-side * C2C_MEET_X, C2C_MEET_Y, t_grip[2] + C2C_LIFT])
+    # source cup frame (origin at the bbox centre): its rim point that tips lowest, its bbox corners; the grasp point
+    # and hand rotation in it, as planned until measured in mid-air (the cup sits lower or turned in the soft grip)
+    lip_c = np.r_[s_r * pour_dir[:2], height / 2]
+    corners_c = np.array(list(itertools.product((-s_r, s_r), (-s_r, s_r), (-height / 2, height / 2))))
+    cup_rot, grasp_c, hand_rot = Rotation.identity(), np.array([0.0, 0.0, up - height / 2]), s_hand
+
+    def pour(theta, mouth, rim):
+        """Source grasp point and hand rotation rolling the cup about its lip over the target mouth; the lip target."""
+        tilt = Rotation.from_rotvec(-side * theta * roll_axis)
+        rot = tilt * cup_rot
+        low = rot.apply(corners_c - lip_c)[:, 2].min()
+        lip = np.r_[mouth - (t_r - LIP_IN) * pour_dir[:2], rim + max(LIP_CLEAR, BODY_CLEAR - low)]
+        return lip + rot.apply(grasp_c - lip_c), tilt * hand_rot, lip
+
+    def carry(a, b):
+        return max(int(np.ceil(np.linalg.norm(b - a) / CUP_SPEED)), 12)
+
+    s_start = pour(0.0, t_air[:2], t_rim + C2C_LIFT)[0]
+    keys = []
+    for grip, hand, opening, air in ((s_grip, s_hand, s_open, s_start), (t_grip, t_hand, t_open, t_air)):
+        approach = grip - hand.apply([CUP_SLIDE, 0, 0])
+        raised = grip + [0, 0, C2C_RAISE]
+        keys.append(
+            [
+                (approach + [0, 0, HOVER], hand, opening, 54),
+                (approach, hand, opening, 30),
+                (grip, hand, opening, 40),  # slide in
+                (grip, hand, 0, 15),  # close
+                (raised, hand, 0, carry(grip, raised)),  # straight up first
+                (air, hand, 0, carry(raised, air)),
+            ]
+        )
+
+    def cup(label):
+        pos, quat = lm.get_instance_pose(0, label=label)
+        return as_np(pos), from_wxyz(as_np(quat))
+
+    def beans():
+        return np.asarray(fluid.get_particle_positions()[0]).reshape(-1, 3) + fluid.init_pos
+
+    def inside(label):
+        """Per bean: inside the cup's rim cylinder (cup frame, origin at the bbox centre)."""
+        pos, rot = cup(label)
+        local = rot.inv().apply(beans() - pos)
+        return (np.hypot(local[:, 0], local[:, 1]) < s_r) & (np.abs(local[:, 2]) < height / 2)
+
+    check = env.pour_check()
+    step = 0
+
+    def act(src_target, tgt_target):
+        nonlocal step
+        if step % 10 == 0:
+            tilt = np.degrees(np.arccos(cup("source_cup")[1].apply([0, 0, 1])[2]))
+            print(
+                f"[scripted_demo] {step:3d} err src {np.linalg.norm(src_arm.grasp_point() - src_target[0]):.3f}"
+                f" tgt {np.linalg.norm(tgt_arm.grasp_point() - tgt_target[0]):.3f}"
+                f" src {cup('source_cup')[0].round(3)} tgt {cup('target_cup')[0].round(3)} tilt {tilt:.0f}"
+                f" left src {1 - inside('source_cup').mean():.0%} in tgt {inside('target_cup').mean():.0%}"
+                f" check {env.reward_manager.call_func_parser(check, 0):.0f}",
+                flush=True,
+            )
+        step += 1
+        return {
+            src_arm.arm_key: src_arm.ik(*src_target[:2]),
+            src_arm.grip_key: [float(src_target[2])],
+            tgt_arm.arm_key: tgt_arm.ik(*tgt_target[:2]),
+            tgt_arm.grip_key: [float(tgt_target[2])],
+        }
+
+    print(
+        f"[scripted_demo] source {src0.round(3)} with {src_arm.arm_key} grip {s_grip.round(3)} open {s_open:.2f};"
+        f" target {as_np(lm.get_instance_pose(0, label='target_cup')[0]).round(3)} with {tgt_arm.arm_key}"
+        f" grip {t_grip.round(3)} open {t_open:.2f}"
+    )
+    s_path = list(waypoints(src_arm.grasp_point(), src_arm.pose()[1], keys[0]))
+    t_path = list(waypoints(tgt_arm.grasp_point(), tgt_arm.pose()[1], keys[1]))
+    for s, t in itertools.zip_longest(s_path, t_path):
+        yield act(s or s_path[-1], t or t_path[-1])
+
+    hold = (t_air, t_hand, 0)
+    fix = np.zeros(3)  # the cup keeps slipping a little: steer the actual lip over the actual target mouth
+
+    def steer(theta):
+        nonlocal fix
+        t_pos, t_rot = cup("target_cup")
+        mouth = t_pos + t_rot.apply([0.0, 0.0, height / 2])
+        hand, hand_rot, lip_target = pour(theta, mouth[:2], mouth[2])
+        s_pos, s_rot = cup("source_cup")
+        fix = np.clip(fix + LIP_GAIN * (lip_target - s_pos - s_rot.apply(lip_c)), -LIP_SLACK, LIP_SLACK)
+        return act((hand + fix, hand_rot, 0), hold)
+
+    s_air = (s_path[-1][0], s_hand, 0)
+    for _ in range(C2C_SETTLE):
+        if max(np.linalg.norm(a.grasp_point() - p[0]) for a, p in ((src_arm, s_air), (tgt_arm, hold))) < C2C_SETTLE_ERR:
+            break
+        yield act(s_air, hold)
+    pos, cup_rot = cup("source_cup")
+    grasp_c = cup_rot.inv().apply(src_arm.grasp_point() - pos)
+    hand_rot = src_arm.pose()[1]
+    toward = cup_rot.inv().apply(np.r_[pour_dir[:2], 0.0])[:2]  # the cup may have turned about its axis
+    lip_c = np.r_[s_r * toward / np.linalg.norm(toward), height / 2]
+    print(f"[scripted_demo] source grasp point in the cup {grasp_c.round(3)}, planned z {up - height / 2:.3f}")
+    returning = int(np.ceil(C2C_TILT / RETURN_RATE)) + STEP_MARGIN
+    theta, prev = 0.0, 0.0
+    while theta < C2C_DRY:
+        theta = min(theta + C2C_DRY_RATE, C2C_DRY)
+        yield steer(theta)
+    while (now := 1 - inside("source_cup").mean()) < C2C_POUR and step < env.step_lim - returning:
+        if now - prev < C2C_FLOW:  # tilt further only while the stream is weak
+            theta = min(theta + C2C_TILT_RATE, C2C_TILT)
         prev = now
         yield steer(theta)
     while theta > 0:
@@ -383,6 +559,7 @@ def stack_actions(env):
 
 DEMOS = {
     "g1d_pour_water_into_cup": pour_actions,
+    "g1d_pour_beans_cup_to_cup": cup_to_cup_actions,
     "g1d_general_pickup": pickup_actions,
     "g1d_stack_blocks": stack_actions,
 }
