@@ -620,12 +620,15 @@ class RobotManager:
                 )
             )
 
+        joint_pos = dict(scene_cfg.init_state.joint_pos)
+        if cfg is not None and "init_joint_pos" in cfg:
+            joint_pos.update(cfg["init_joint_pos"])
         scene_cfg = scene_cfg.replace(
             prim_path=f"{ENV_REGEX_NAMESPACE}/robot{idx}",
             init_state=ArticulationCfg.InitialStateCfg(
                 pos=base_pose[:3],
                 rot=base_pose[-4:],
-                joint_pos=scene_cfg.init_state.joint_pos,
+                joint_pos=joint_pos,
             ),
         )
 

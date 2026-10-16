@@ -7,19 +7,20 @@ g1_29dof_mode_15_with_dex1_1.urdf and locks the wheels (tabletop only).
 Writes:
     Assets/Robots/g1d/                     g1d_dex1.urdf, meshes/, physics_contract.json (self-collision filters),
                                            {left,right}_robot_config.yml
-    Assets/Eval_Layout/RoboDojo/g1d/       arx_x5 layouts minus the camera stand (it would sit inside the robot),
-                                           plus layouts for the G1-D tasks in G1D_TASKS (bottle swapped for our
-                                           pitcher of red beans, set in the real office scene Room/real_scene1)
+    Assets/Room/real_scene{1,2,3}/          the real scenes in SCENES (office, counter, lab): <room>.usd + usd/
+    Assets/Eval_Layout/RoboDojo/<config>/  per scene config in SCENES, layouts for the G1-D tasks in G1D_TASKS (bottle
+                                           swapped for our pitcher of red beans or two cups, set in the real scene);
+                                           g1d/ also gets the arx_x5 layouts minus the camera stand (it would sit
+                                           inside the robot)
     Assets/Material/Fluid/RedBean.mdl
-    Assets/Room/real_scene1/               with --scene: real_scene1.usd (room + table + lights) over the copied usd/
 
 Usage:
     python scripts/g1d/build_asset.py              # fetch the unitree_ros G1 URDF from GitHub into --src
     python scripts/g1d/build_asset.py --src DIR    # DIR mirrors unitree_ros (robots/...); reused if present
-    python scripts/g1d/build_asset.py --scene real2sim/scenes/real_scene1_office/usd  # also install the office scene
 """
 
 import argparse
+import copy
 import json
 from pathlib import Path
 import random
@@ -32,47 +33,19 @@ ROOT = HERE.parents[1]
 UNITREE_RAW = "https://raw.githubusercontent.com/unitreerobotics/unitree_ros/master/"
 V4_URDF = "g1_d_full_dex1_v4.urdf"
 G1_DEX1_URDF = "robots/g1_description/g1_29dof_mode_15_with_dex1_1.urdf"
-# Office scene reconstructed from a phone video (real2sim/scenes/real_scene1_office/usd): room, white lift table and
-# lights in one Room USD, replacing the stock room, table cube, ground cube and HDR dome of the G1-D task layouts. Its
-# robot-side table edge (scene y=-0.31) lands on the stock one (y=-0.60) so the G1-D stance is unchanged; the tabletop
-# keeps its real height (0.68 m, build_params.json) and the objects move down onto it.
-REAL_SCENE = "real_scene1"
-REAL_SCENE_ROOM = {
-    "default": REAL_SCENE,
-    "default_pos": [0.0, -0.29, 0.0],
-    "default_ori": [1.0, 0.0, 0.0, 0.0],
-    "scale": [1.0, 1.0, 1.0],
-    "collision": False,  # the USD carries its own static colliders (floor box included)
+# Real scenes reconstructed from phone video / photos (real2sim/scenes/<dir>/: usd/ and the Room entry <room>.usd), one
+# env config each, replacing the stock room, table cube, ground cube and HDR dome of the G1-D task layouts. Each room
+# sits with its robot-side table edge on the stock one (y=-0.60); the tabletop keeps its real height
+# (usd/build_params.json) and the objects move onto it. A taller table raises the robot's lift column by as much
+# (env_cfg/robot/<config>.yml) and the objects move with the robot by `shift`, so its reach is the same everywhere.
+SCENES_DIR = ROOT / "real2sim" / "scenes"
+SCENES = {  # env config: (scene dir, Room category, Room position, object (x, y) shift)
+    "g1d": ("real_scene1_office", "real_scene1", [0.0, -0.29, 0.0], (0.0, 0.0)),
+    # floor cabinet: the chassis cannot go under it, so the robot stands 7 cm further back (root y=-0.80)
+    "g1d_counter": ("real_scene2_counter", "real_scene2", [-0.35, -0.32, 0.0], (0.0, -0.07)),
+    "g1d_lab": ("real_scene3_lab", "real_scene3", [0.0, -0.257, 0.0], (0.0, 0.0)),
 }
 # ponytail: lights live in the per-env Room, so N parallel envs get N suns; move them to /World if num_envs > 1 matters.
-REAL_SCENE_USD = """#usda 1.0
-(
-    defaultPrim = "Scene"
-    metersPerUnit = 1
-    upAxis = "Z"
-)
-
-def Xform "Scene"
-{
-    def "Background" (
-        prepend references = @./usd/background.usda@
-    )
-    {
-    }
-
-    def "Table" (
-        prepend references = @./usd/table.usda@
-    )
-    {
-    }
-
-    def "Lights" (
-        prepend references = @./usd/lights.usda@
-    )
-    {
-    }
-}
-"""
 # Red (adzuki) beans: Water_Opaque.mdl (glossy) with a dark maroon base colour (linear RGB).
 RED_BEAN_COLOR = "color(0.15, 0.008, 0.01)"
 RED_BEAN_MDL = "$Robodojo_ASSETS/Material/Fluid/RedBean.mdl"
@@ -224,13 +197,20 @@ def squeeze(layout, scale):
     return layout
 
 
-def move_into_real_scene(layout, xy, table_top):
+def move_into_real_scene(layout, xy, room, room_pos, table_top):
     """Swap the stock room/table/ground/dome for the real scene; move the objects by `xy` and down onto its tabletop."""
     table = layout.pop("Table")
     shift_objects(layout, (*xy, table_top - (table["default_pos"][2] + table["scale"][2] / 2)))
     layout.pop("Ground", None)
     layout.pop("Background", None)
-    layout["Room"] = dict(REAL_SCENE_ROOM, table_height=table_top)  # for the layout stability check
+    layout["Room"] = {
+        "default": room,
+        "default_pos": room_pos,
+        "default_ori": [1.0, 0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0],
+        "collision": False,  # the USD carries its own static colliders (floor box included)
+        "table_height": table_top,  # for the layout stability check
+    }
     return layout
 
 
@@ -314,12 +294,13 @@ def build_red_bean_material(assets):
     (fluid / "RedBean.mdl").write_text(bean)
 
 
-def build_room(scene, assets):
-    """Install the real-scene USD package (real2sim/scenes/real_scene1_office/usd) as Room category REAL_SCENE."""
-    room = assets / "Room" / REAL_SCENE
-    shutil.copytree(scene, room / "usd", dirs_exist_ok=True)
-    (room / f"{REAL_SCENE}.usd").write_text(REAL_SCENE_USD)
-    print(f"wrote {room}")
+def install_rooms(assets):
+    """Install every real scene as its Room category (select_room loads the one .usd at the top of the folder)."""
+    for scene, room, _, _ in SCENES.values():
+        src, dst = SCENES_DIR / scene, assets / "Room" / room
+        shutil.copytree(src / "usd", dst / "usd", dirs_exist_ok=True)
+        shutil.copy(src / f"{room}.usd", dst)
+        print(f"wrote {dst}")
 
 
 def _obb(assets, kind, cat, entry):
@@ -386,49 +367,51 @@ def _layout_sort_key(path):
 
 
 def build_layouts(assets):
-    table_top = json.loads((assets / "Room" / REAL_SCENE / "usd" / "build_params.json").read_text())["table"]["top_z"]
+    """Per scene config: the G1-D task layouts; the office one (g1d) also gets every arx_x5 layout."""
     src = assets / "Eval_Layout" / "RoboDojo" / "arx_x5"
-    dst = assets / "Eval_Layout" / "RoboDojo" / "g1d"
-    for old in dst.rglob("g1d_*_*.json"):
-        old.unlink()
     files = sorted(src.rglob("*.json"), key=_layout_sort_key)
-    counts = {}
-    for f in files:
-        layout = json.loads(f.read_text())
-        geometry = layout.get("Geometry", {})
-        geometry.pop("camera_stand", None)
-        if "Geometry" in layout and not geometry:
-            del layout["Geometry"]
-        out = dst / f.relative_to(src)
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps(layout, indent=4))
-        base, _, index = f.stem.rpartition("_")
-        for task, (base_task, xy, scale, swap) in G1D_TASKS.items():
-            if base == base_task and index.isdigit():
-                shifted = squeeze(json.loads(out.read_text()), scale)  # fresh copy per task
-                shifted = move_into_real_scene(shifted, xy, table_top)
-                key = (out.parent, task)
-                seq = counts.get(key, 0)
-                if swap:
-                    shifted = swap(shifted, assets, seq, table_top)
-                if shifted is not None:
-                    (out.parent / f"{task}_{seq}.json").write_text(json.dumps(shifted, indent=4))
-                    counts[key] = seq + 1
-    print(f"wrote {len(files)} layouts (+{sum(counts.values())} G1-D task layouts) to {dst}")
+    for config, (_, room, room_pos, shift) in SCENES.items():
+        table_top = json.loads((assets / "Room" / room / "usd" / "build_params.json").read_text())["table"]["top_z"]
+        dst = assets / "Eval_Layout" / "RoboDojo" / config
+        for old in dst.rglob("g1d_*_*.json"):
+            old.unlink()
+        counts = {}
+        for f in files:
+            layout = json.loads(f.read_text())
+            geometry = layout.get("Geometry", {})
+            geometry.pop("camera_stand", None)
+            if "Geometry" in layout and not geometry:
+                del layout["Geometry"]
+            out = dst / f.relative_to(src)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            if config == "g1d":
+                out.write_text(json.dumps(layout, indent=4))
+            base, _, index = f.stem.rpartition("_")
+            for task, (base_task, xy, scale, swap) in G1D_TASKS.items():
+                if base == base_task and index.isdigit():
+                    shifted = squeeze(copy.deepcopy(layout), scale)
+                    shifted = move_into_real_scene(shifted, xy, room, room_pos, table_top)
+                    key = (out.parent, task)
+                    seq = counts.get(key, 0)
+                    if swap:
+                        shifted = swap(shifted, assets, seq, table_top)
+                    if shifted is not None:
+                        shift_objects(shifted, (*shift, 0.0))
+                        (out.parent / f"{task}_{seq}.json").write_text(json.dumps(shifted, indent=4))
+                        counts[key] = seq + 1
+        print(f"wrote {sum(counts.values())} G1-D task layouts to {dst}")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--v4", type=Path, default=ROOT / "real2sim" / "robot" / "g1d_v4",
-                        help="assembled v4 URDF directory")
+    parser.add_argument(
+        "--v4", type=Path, default=ROOT / "real2sim" / "robot" / "g1d_v4", help="assembled v4 URDF directory"
+    )
     parser.add_argument("--src", type=Path, default=ROOT / ".cache" / "unitree_ros")
     parser.add_argument("--assets", type=Path, default=ROOT / "Assets")
-    parser.add_argument("--scene", type=Path,
-                        help=f"real2sim/scenes/real_scene1_office/usd/ to install as Room/{REAL_SCENE}")
     args = parser.parse_args()
 
-    if args.scene:
-        build_room(args.scene, args.assets)
+    install_rooms(args.assets)
     out = args.assets / "Robots" / "g1d"
     build_urdf(args.v4, args.src, out)
     for side in ("left", "right"):

@@ -58,17 +58,23 @@ python scripts/objects/make_water_cup.py          # 水杯 water_cup
 python scripts/objects/make_water_cup.py --plastic   # 塑料杯 plastic_cup
 python Assets/Object/RoboDojo/Rigid/format.py
 
-# 5. 构建 G1-D 机器人（读 real2sim/robot/g1d_v4，写 Assets/Robots/g1d/）、评测布局
-#    （Assets/Eval_Layout/RoboDojo/g1d/）、红豆材质，并安装办公室场景为 Room/real_scene1。
+# 5. 构建 G1-D 机器人（读 real2sim/robot/g1d_v4，写 Assets/Robots/g1d/）、红豆材质，
+#    安装 3 个场景到 Assets/Room/real_scene{1,2,3}/，并为每个场景生成 G1-D 任务的评测布局。
 #    会从 GitHub 拉 unitree_ros 的 G1 URDF；离线时用 --src 指向本地 unitree_ros 镜像。
-python scripts/g1d/build_asset.py --scene real2sim/scenes/real_scene1_office/usd
-
-# 6. 安装另外两个场景（目录里唯一的 .usd 即房间入口）
-cp -r real2sim/scenes/real_scene2_counter Assets/Room/real_scene2
-cp -r real2sim/scenes/real_scene3_lab     Assets/Room/real_scene3
+python scripts/g1d/build_asset.py
 ```
 
-第 4 步必须在第 5 步之前：`build_asset.py` 生成布局时要读壶和杯子的 `metadata.json`。`build_asset.py` 目前只为 `real_scene1` 生成布局，任务换到 `real_scene2` / `real_scene3` 需要另外改布局里的 Room。
+第 4 步必须在第 5 步之前：`build_asset.py` 生成布局时要读壶和杯子的 `metadata.json`。
+
+**场景切换**：每个场景对应一个 env 配置，评测和脚本演示时用 `--env-cfg`（`scripted_demo.py` 用 `--env_cfg_type`）选择。机器人站位和升降柱高度写在各自的 `env_cfg/robot/<配置>.yml` 里，物体跟着机器人平移，同一编号的布局在三个场景里物体相对机器人的位置一致（例外：杯对杯倒豆的两个杯子按布局随机抽取，各场景抽到的位置不同）。
+
+| env 配置 | 场景 | 桌面高度 | 机器人 |
+| :-- | :-- | :-- | :-- |
+| `g1d` | `real_scene1` 办公室升降桌 | 0.68 m | 根节点 y=-0.73，升降柱 0 |
+| `g1d_counter` | `real_scene2` 吧台（落地柜） | 0.833 m | 根节点 y=-0.80（底盘伸不进柜下），升降柱各 0.0765 |
+| `g1d_lab` | `real_scene3` 实验室培训桌 | 0.749 m | 根节点 y=-0.73，升降柱各 0.0345 |
+
+布局写在 `Assets/Eval_Layout/RoboDojo/<配置>/`，评测结果也按配置分目录。
 
 可选：`bash scripts/RoboDojo/download_data.sh`、`bash scripts/RoboDojo/download_ckpt.sh` 下载 RoboDojo 官方数据和模型权重。官方安装细节见 [RoboDojo 文档](https://robodojo-benchmark.com/doc/usage/install-and-download/)。
 
@@ -106,7 +112,8 @@ PYTHONPATH=. python scripts/objects/check_pitcher_fluid.py --device cpu --out ou
 ```text
 env/robot_manager/robot_config/g1d.py   G1-D 加载（直接读 URDF）、材质绑定
 env/robot_manager/robot_class/g1d.py    G1DLeft / G1DRight 手臂类
-env_cfg/g1d.yml                         G1-D 运行配置（30 Hz）
+env_cfg/g1d{,_counter,_lab}.yml         G1-D 运行配置（30 Hz），每个场景一个
+env_cfg/robot/g1d{,_counter,_lab}.yml   各场景的机器人站位、升降柱高度
 env_cfg/sim/g1d_sim_config.yml          仿真步长 1/300 s
 env_cfg/camera/g1d_camera.yml           头部双目 + 双腕相机
 scripts/g1d/                            资产构建、脚本专家演示

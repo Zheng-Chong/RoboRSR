@@ -1,0 +1,19 @@
+config_name: g1d_counter
+
+config:
+  sim: g1d_sim_config
+  scene: default
+  robot: g1d_counter
+  camera: g1d_camera  # camera_config + cam_third
+
+observation:
+  collect_freq: 30
+  robot:
+    joint_states: true
+    world_ee_state: true
+  vision:
+    approximate_depth: false
+    depth: false
+    intrinsic_matrix: false
+    extrinsic_matrix: false
+    shape: true

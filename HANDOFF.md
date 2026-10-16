@@ -9,7 +9,7 @@
 - 本仓库基于 RoboDojo（Isaac Sim 5.1 / IsaacLab 2.3）：`origin` = Zheng-Chong/RoboRSR（原 Zheng-Chong/RoboDojo，已改名；GitHub 上当前为公开仓库），`upstream` = RoboDojo-Benchmark/RoboDojo。2026-10-16 起只保留 `main`（`chongzheng/env-g1d-dex1` 已快进合并后删除，GitHub 默认分支改为 `main`）。
 - 已接入机器人 `g1d`：一个 articulation、两条 7 自由度手臂（coupled 模式）+ Dex1 两指夹爪；轮子锁死、升降柱和腰部关节保持初始值（只做桌面操作）。
 - 运行：`bash scripts/robodojo.sh eval ... --env-cfg g1d --action-type joint`。动作维度 `_robot_info.json`：arm [7, 7]，ee [1, 1]。
-- 资产分两处：`real2sim/`（入库，二进制走 Git LFS）放不能重新生成的自建内容（`robot/g1d_v4` URDF、`scenes/real_scene{1_office,2_counter,3_lab}`、`scene3_pour_pack`）；`Assets/`（不入库，`scripts/init_assets.sh` 下载，是指向 `.cache/robodojo_assets_repo/Assets` 的软链接）放官方资产和生成物。`python scripts/g1d/build_asset.py`（`--v4` 默认 `real2sim/robot/g1d_v4`）嫁接 G1 头部 D435 坐标系，写入 `Assets/Robots/g1d/`，并从 arx_x5 布局生成 `Assets/Eval_Layout/RoboDojo/g1d/`（去掉相机支架）。完整顺序见 README「快速开始」。
+- 资产分两处：`real2sim/`（入库，二进制走 Git LFS）放不能重新生成的自建内容（`robot/g1d_v4` URDF、`scenes/real_scene{1_office,2_counter,3_lab}`、`scene3_pour_pack`）；`Assets/`（不入库，`scripts/init_assets.sh` 下载，是指向 `.cache/robodojo_assets_repo/Assets` 的软链接）放官方资产和生成物。`python scripts/g1d/build_asset.py`（`--v4` 默认 `real2sim/robot/g1d_v4`）嫁接 G1 头部 D435 坐标系，写入 `Assets/Robots/g1d/`；安装 3 个场景到 `Assets/Room/real_scene{1,2,3}/`，并按 `SCENES` 为每个场景配置（`g1d` 办公室、`g1d_counter` 吧台、`g1d_lab` 实验室）生成 `Assets/Eval_Layout/RoboDojo/<配置>/` 的 G1-D 任务布局（`g1d/` 另含去掉相机支架的 arx_x5 布局）。完整顺序见 README「快速开始」。
 - 下载官方资产后必须运行一次 `python utils/update_embodiment_config_path.py` 生成 `Assets/Robots/*/curobo.yml`，否则 X5 任务启动即报错。
 - 服务器环境（Host 别名 `21196`）：仿真环境 `RoboDojo`、策略环境 `demo-policy`（XPolicyLab 需 websockets>=14，Isaac Sim 需 websockets==12，所以分开）。激活方式见本地 `.agent/remote-validation.local.toml`（不入库）。
 
@@ -127,7 +127,7 @@
   - 运行时刚体只读 `physics.static_friction`/`dynamic_friction`（默认 0.6/1.5），metadata 里的 `friction` 不生效。
 - 验证（服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/c2c-20261016-105635`，Room=real_scene1，各 1 轮，退出码 0，`_result.json` eval_time=1）：**seed 0、seed 2 成功**（源杯倒出 87–89%，目标杯 87–89%）；**seed 1 失败**：目标杯在 (0.159, -0.320)，右手提杯够不到胸前位置（误差恒为 0.107，杯子比计划低 6 cm），只有 59% 进杯。四宫格视频（第三视角 | 头部 / 左腕 | 右腕）在本机 `output/c2c/final/grid_s{0,1,2}.mp4`。
 - ruff check/format 通过。没跑 task_inventory --check、doctor。
-- 资产与布局只在隔离目录：本机和共享资产库需运行 `make_water_cup.py --plastic` 和 `build_asset.py`（共享库改动需用户同意）。
+- 资产与布局：2026-10-16 已装入共享资产库（`Rigid/plastic_cup`、三个场景配置的布局）；本机需按 README 运行 `make_water_cup.py --plastic` 和 `build_asset.py`。
 
 ## 实验室操作台 real2sim 场景 real_scene3（2026-10-14）
 
@@ -138,10 +138,10 @@
 
 ## 剩余事项与风险
 
-- real_scene3：尺寸没有实测（量一下桌长或桌高，再用 `--scale-correction` 修正）；灯光已按手机照片标定，仍需和真机头部相机画面对比；要正式使用，需拷到共享 `Assets/Room/real_scene3/`，并把布局改写（Room、物体 +0.069 m）和升降柱高度做成 `build_asset.py` 的可配置项。
+- real_scene3：尺寸没有实测（量一下桌长或桌高，再用 `--scale-correction` 修正）；灯光已按手机照片标定，仍需和真机头部相机画面对比。已作为 `g1d_lab` 配置接入（见「三个场景接入」一节）。
 
 - 杯对杯倒豆：3 个 seed 里 2 个通过。seed 1 的目标杯位置（x 0.159、y -0.320）右手够不到胸前位置，可以把目标杯的 y 收窄到更靠近机器人，或者把胸前位置跟着杯子走。右手倒（真机片段里是右手倒）会让杯子在两指间转动，没解决；值得试的方向：夹紧时用线性 PD 让两指都停在杯面上（参照叠块的做法），而不是全力闭合。
-- 双臂倒水：换成自建水杯后 seed 1 成功；seed 0（壶在右）右手倒壶时要么够不到杯口（差 9 cm），要么把杯子带近后壶身撞上持杯手，需单独调右手倒壶的姿态/壶嘴方向。`water_cup` 资产和新布局只在服务器隔离目录：本机与共享资产库需运行 `make_water_cup.py` 和 `build_asset.py`（共享库改动需用户同意）。杯子更远的布局（y≈-0.46）未测。
+- 双臂倒水：换成自建水杯后 seed 1 成功；seed 0（壶在右）右手倒壶时要么够不到杯口（差 9 cm），要么把杯子带近后壶身撞上持杯手，需单独调右手倒壶的姿态/壶嘴方向。`water_cup`/`plastic_cup` 和新布局已于 2026-10-16 装入共享资产库。杯子更远的布局（y≈-0.46）未测。
 - G1 手臂在桌面高度的可达范围约 0.45 m；RoboDojo 现有任务（为桌面上的 X5 设计）有物体距肩部 0.4–0.7 m，部分不可达。自有任务的物体应放在 y≈[-0.55, -0.25]，或利用腰部前倾（`Yaw_Joint`）。
 - 相机：头部（Gemini_345Lg 针孔 96°）与腕部（dex1_rgb 约 68°）已按真机帧投影拟合（见 2026-10-16 节），但不是棋盘格标定；腕部改动需重跑 `build_asset.py` 同步到共享资产。头壳被隐藏，第三视角里机器人没有头部外壳。
 - 末端位姿（ee）动作未支持：需写 G1-D cuRobo 配置；且 `RobotManager` 的 planner 以 `robot_name` 为键，coupled 左右臂会共用同一个 planner，需要改成按手臂区分。
@@ -149,7 +149,8 @@
 - 棱纹环按 `elbow_link` 网格的 x 区间切分（换 URDF/网格后需重新核对 `RING_X`）；材质参数为目测，仿真房间光照比真机亮，金属会显得偏亮。
 - 服务器上 `/usr/local/bin/ffmpeg` 不带 libx264，已在仿真环境 bin 中链接系统 ffmpeg；新建环境需同样处理，否则录视频时 BrokenPipe。
 - 自建资产在 `real2sim/`，`real2sim/**` 下的 usd/usdc/STL/图片走 Git LFS（`.gitattributes`），`preview/`、`demo/`、`*.bak` 不入库。`.gitignore` 用锚定的 `/Assets`：macOS 大小写不敏感，不锚定会把 `real2sim/scene3_pour_pack/assets/` 一起忽略。不要再往 `Assets/` 里放要入库的文件：`init_assets.sh` 发现 `Assets/` 不完整会把它整个挪成 `Assets.partial.<时间戳>`。本机 git-lfs 为官方二进制，装在 `~/.local/bin`（Homebrew 在此机会从源码编译整条依赖链，不要用）。
-- 服务器上 `real2sim/scenes/*` 目前还没安装成 `Assets/Room/real_scene{2,3}`（共享资产库改动需用户同意）；`build_asset.py` 只为 real_scene1 生成布局。
+- 杯对杯倒豆的杯子位置按布局随机抽取（种子取自瓶子三维坐标，含桌面高度），所以三个场景同一编号的杯子位置不同；其余任务同一编号在三个场景里相对机器人一致。
+- 共享资产库的 `Robots/g1d` 仍未按当前代码重建（无相机 Dex1 网格、相机改动都还没同步），本次只装了 Room、杯子和布局。
 
 ## 下一会话
 
@@ -170,7 +171,17 @@
 - README「快速开始」改为完整流程：clone（LFS）→ `install.sh -i` → `init_assets.sh` → `update_embodiment_config_path.py` → 生成壶/杯 → `format.py` → `build_asset.py --scene real2sim/scenes/real_scene1_office/usd` → 拷贝场景 2/3 到 `Assets/Room/`；仓库结构加入 `real2sim/`。
 - 验证：`G1Kinematics()` 默认路径加载新 URDF（33 个 link、32 个 joint）；ruff、`git diff --check`；`git lfs ls-files` 确认 real2sim 二进制都走 LFS；旧路径在 git 中识别为重命名。未在 Isaac 中重跑 `build_asset.py`（本机无 Isaac，服务器共享资产库改动需用户同意）。
 
+## 三个场景接入 `build_asset.py`，并装入共享资产库（2026-10-16）
+
+- 每个场景一个 env 配置：`g1d`（real_scene1 办公室，0.68 m，不变）、`g1d_counter`（real_scene2 吧台，0.833 m，根节点 y=-0.80，升降柱各 0.0765）、`g1d_lab`（real_scene3 实验室，0.749 m，升降柱各 0.0345）。新增 `env_cfg/g1d_{counter,lab}.yml`、`env_cfg/robot/g1d_{counter,lab}.yml`，`_robot_info.json` 加两项。布局目录和评测结果都按配置名分开。
+- `RobotManager._attach_scene_cfg`：机器人 yml 新增可选 `init_joint_pos`，覆盖 robot_config 里的初始关节角（升降柱高度靠它）；不写时行为不变。
+- `build_asset.py`：`SCENES` 表（场景目录、Room 名、Room 位置、物体 xy 平移）取代单场景常量；`install_rooms` 每次都把 3 个场景装进 `Assets/Room/`（拷 `usd/` 和入口 `<room>.usd`；real_scene1 的入口从代码字符串改成仓库文件 `real2sim/scenes/real_scene1_office/real_scene1.usd`），去掉 `--scene` 参数；`build_layouts` 为每个配置生成 4 个 G1-D 任务的布局，吧台的物体在换物体之后再整体 y-0.07（跟着机器人后退）。
+- 验证（服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/scenes-20261016-171414`，共享资产覆盖副本）：每个配置 192 个 G1-D 任务布局；`g1d` 布局与上一版代码生成结果逐字节一致；吧台/实验室布局除杯对杯倒豆外，1299 个物体都等于办公室位置加 (0,-0.07,+0.153)/(0,0,+0.069)。scripted_demo seed 0：`g1d_counter` 和 `g1d_lab` 的 `g1d_stack_blocks`、`g1d_general_pickup`，以及 `g1d` 的 `g1d_stack_blocks`，5 个全部退出码 0、eval_time=1、success_rate=1.0。三场景截图对比在本机 `output/scenes/scenes_grid.png`。倒豆任务未在新场景配置下重跑。
+- 共享资产库（用户同意）：新增 `Room/real_scene{2,3}`、`Rigid/{water_cup,plastic_cup}`、`Eval_Layout/RoboDojo/{g1d_counter,g1d_lab}`，`g1d` 的 G1-D 任务布局换成当前版本，`Room/real_scene1` 覆盖为同样内容；与隔离目录验证产物 `diff -r` 一致。改动前备份 `/data2/tmp/robodojo/backup-shared-20261016-174239.tgz`（原 `g1d` 布局和 `real_scene1`）。没有跑 `format.py`（运行时不读 `uuid_map.json`）。
+
 ## 最近历史
+
+- 2026-10-16：三个场景各自成为 env 配置（`g1d`/`g1d_counter`/`g1d_lab`），`build_asset.py` 一次装好场景并生成布局；已装入共享资产库，叠块/拾取在三个场景都成功。
 
 - 2026-10-16：自建资产从 `Assets/` 移到入库的 `real2sim/`（场景 1–3、倒水场景包、G1-D v4 URDF），README 写明 clone → 安装 → 下载资产 → 生成资产的顺序。
 
