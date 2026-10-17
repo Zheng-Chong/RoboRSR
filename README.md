@@ -131,6 +131,55 @@ HANDOFF.md                              跨会话交接记录（当前状态、�
 
 `real2sim/` 下各目录的 `preview/`、`demo/` 是本地生成的预览，不入库。
 
+## 协作开发
+
+### 资产放在哪里
+
+同一份资产可能出现在好几个地方，改之前先弄清楚改的是哪一份：
+
+| 位置 | 放什么 | 是否入库 | 谁能改 |
+| :-- | :-- | :-- | :-- |
+| `real2sim/` | 不能重新生成的自建资产：重建场景、场景包、G1-D v4 URDF | GitHub，二进制走 LFS | 所有人，随代码提交 |
+| `scripts/objects/`、`scripts/g1d/build_asset.py` | 能重新生成的资产（壶、杯、G1-D 机器人、评测布局）的生成脚本 | GitHub | 所有人；只提交脚本，不提交生成结果 |
+| 本机 `Assets/` | 官方资产 + 上面脚本的生成结果 | 不入库 | 自己；随时可以删掉重新生成 |
+| 服务器共享资产库 `/data2/zhongzheng/Project/RoboDojo_assets/Assets` | 大家共用的 `Assets/` | 不入库 | **先征得同意再改**，见下文 |
+| 服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/<名称>-<时间>/` | 个人实验用的代码副本和资产覆盖目录 | 不入库 | 自己 |
+| Hugging Face `RoboDojo-Benchmark/RoboDojo` | RoboDojo 官方资产 | — | 只读，不是我们的数据集 |
+| `output/`、`eval_result/` | 预览图、视频、评测结果 | 不入库 | 自己 |
+
+几条规则：
+
+- **不要往 `Assets/` 里放要入库的文件。** `init_assets.sh` 发现 `Assets/` 不完整时，会把整个目录挪成 `Assets.partial.<时间戳>`，里面的东西也会一起被挪走。
+- **以仓库为准。** 共享资产库或本机 `Assets/` 和仓库对不上时，以仓库里的 `real2sim/` 和脚本为准，重新运行 `build_asset.py` 生成。
+- **共享资产库可能落后于代码。** 当前没同步的内容记在 `HANDOFF.md` 里（例如共享库的 `Robots/g1d` 还没有按最新的夹爪网格和相机配置重建）。
+
+### 新增或修改资产
+
+1. **能用脚本生成的**（参数化物体、布局）：只提交脚本，并在「快速开始」第 4 步或第 5 步加上生成命令。
+2. **不能生成的**（照片重建的场景、实测的 URDF 和网格）：放进 `real2sim/`。`.usd`、`.usdc`、`.stl`/`.STL`、`.png`、`.jpg`/`.jpeg` 会自动走 LFS；其他二进制格式（如 `.usdz`、`.glb`、`.obj`、`.mp4`）要先加到 `.gitattributes`，否则会以普通文件进入 git 历史，之后只能改写历史才能清掉。
+3. **安装到 `Assets/`** 统一交给 `build_asset.py`，不要手动拷贝：新场景加到 `SCENES`（同时新增 `env_cfg/g1d_<场景>.yml` 和 `env_cfg/robot/g1d_<场景>.yml`），新任务的布局加到 `G1D_TASKS`。
+
+### 改服务器共享资产库
+
+共享资产库会影响所有人的评测结果，按这个顺序来：
+
+1. 在隔离目录里验证：建一个 `Assets/` 覆盖目录，要改的部分用自己的副本，其余软链接到共享资产库，在这里生成资产、跑评测。
+2. 征得负责人同意。
+3. 备份要被覆盖的部分：`tar czf /data2/tmp/robodojo/backup-shared-<时间>.tgz <目录>`。
+4. 把隔离目录里**验证过的产物**拷进共享资产库（不要在共享库上重新生成），用 `diff -r` 确认和验证产物一致。
+5. 在 `HANDOFF.md` 里记下改了什么、备份在哪。
+
+### 协作规则
+
+- **开始前**：`git pull --ff-only origin main`，然后读 `HANDOFF.md`，了解当前状态、决策和遗留问题。
+- **分支**：仓库只保留 `main`。小改动直接提交到 `main`；大改动开短期分支（`<名字>/<范围>-<简述>`，如 `zixuan/task-hang-mugs`），合并回 `main` 后删除。
+- **完成后**：更新 `HANDOFF.md`（日期、做了什么、关键决策、实际跑过的验证、遗留问题），和代码放在同一个提交里。
+- **提交信息**：`[Scope] type: 简述`，Scope 取 `Task`、`Env`、`Config`、`scripts`、`utils`、`fix`、`refactor`，type 取 `feat`、`fix`、`update`、`refactor`、`docs`、`chore`。
+- **多人同时改**：只提交自己改的文件，`git add` 时逐个列出文件，不要用 `git add -A`。`HANDOFF.md` 经常有人同时在改，用 `git add -p HANDOFF.md` 只暂存自己的段落。
+- **远程仓库**：只推送到 `origin`（Zheng-Chong/RoboRSR）；`upstream` 是 RoboDojo 官方仓库，不要往上推。子模块 `XPolicyLab/`、`third_party/` 不在本仓库里改。
+- **提交前验证**：至少跑一遍 `ruff check .`、`python scripts/internal/task_inventory.py --format json --check`、`git diff --check`。改了任务、环境或资产的，在服务器上跑一次脚本演示或评测，确认退出码为 0，并且 `_result.json` 里 `eval_time >= 1`；只看退出码不够。
+- **git-lfs**：macOS 上装官方二进制（[git-lfs releases](https://github.com/git-lfs/git-lfs/releases)），不要用 Homebrew 装，它会从源码编译一整条依赖链。
+
 ## TODO
 
 **本体标定**（已向宇树提工单；支持不了就人工棋盘格标定，本周完成）
