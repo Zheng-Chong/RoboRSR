@@ -2,7 +2,7 @@
 """Procedural plastic cups from the 2026-10-17 desk photos as RoboDojo `Rigid` assets.
 
 - plastic_mug/00000: white PP mug, slightly tapered round body, flat D-shaped strap handle on +X.
-- measuring_cup/00000, 00001: clear PP rounded-square measuring cups (400 ml / 500 ml graduations) with a
+- measuring_cup/00000, 00001: milky translucent PP rounded-square measuring cups (400 ml / 500 ml graduations) with a
   snap-lid collar around the mouth and a small hanging tab. Same cross-section, the 500 ml one is taller.
 
 No ruler in the photos: absolute size is a typical-product guess; the cups' height ratio and where the 400/500 ml
@@ -47,7 +47,7 @@ WHITE_PP = (0.90, 0.89, 0.85)
 # half-widths at face centre; body tapers A0 -> A1 up to the collar, inner wall keeps tapering to the rim
 CUP = dict(SQ=4.0, A0=0.032, A1=0.0375, A_COLLAR=0.0410, COLLAR_H=0.014, T_WALL=0.0015, T_BOTTOM=0.002, FILLET=0.004)
 MEASURING = [(0.135, 400, 0.045), (0.158, 500, 0.055)]  # height, top graduation (ml), mass
-CLEAR_PP = (0.95, 0.96, 0.96)
+CLEAR_PP = (0.92, 0.92, 0.90)
 FRICTION = 0.5
 
 
@@ -278,15 +278,25 @@ def white_pp(st):
     )
 
 
-def clear_pp(st):  # solid 1.5 mm refractive shell, slightly hazy like the photos
+def clear_pp(st):
+    """Milky translucent PP: part diffuse, part rough transmission. OmniGlass frosting only blurs and greys the
+    refraction, it never turns the wall white like the photos."""
     return mp.add_material(
         st,
         "/root/_materials/ClearPlastic",
-        "OmniGlass",
-        {"glass_color": CLEAR_PP, "glass_ior": 1.49, "frosting_roughness": 0.05, "thin_walled": False},
+        "OmniSurface",
+        {
+            "diffuse_reflection_weight": 0.4,
+            "diffuse_reflection_color": CLEAR_PP,
+            "enable_specular_transmission": True,
+            "specular_transmission_weight": 0.6,
+            "specular_reflection_roughness": 0.35,
+            "specular_reflection_ior": 1.49,
+            "thin_walled": False,
+        },
         CLEAR_PP,
-        0.3,
-        0.08,
+        0.5,
+        0.35,
     )
 
 
@@ -351,7 +361,7 @@ def mug_description(uid, ml):
 
 def measuring_description(uid, mark, ml, H):
     caption = {
-        "color": ["clear", "transparent", "colourless"],
+        "color": ["translucent", "milky white", "frosted clear"],
         "material": ["plastic", "polypropylene", "PP"],
         "size": [f"{mark} ml graduation", f"holds about {ml:.0f} ml to the brim", f"about {H * 100:.1f} cm tall"],
         "name": ["measuring cup", "plastic measuring cup", "storage cup"],
@@ -359,10 +369,10 @@ def measuring_description(uid, mark, ml, H):
         "function": ["measuring beans", "measuring water", "pouring into another cup"],
     }
     desc = [
-        f"clear rounded-square plastic measuring cup marked up to {mark} ml",
-        "transparent square cup with rounded corners and a snap-lid collar",
-        f"tall clear polypropylene cup that holds about {ml:.0f} ml",
-        "colourless measuring cup with a small hanging tab on the rim",
+        f"translucent rounded-square plastic measuring cup marked up to {mark} ml",
+        "translucent square cup with rounded corners and a snap-lid collar",
+        f"tall milky polypropylene cup that holds about {ml:.0f} ml",
+        "frosted measuring cup with a small hanging tab on the rim",
         "light plastic cup grasped around its square body",
     ]
     return {"uuid": uid, "caption": caption, "description": desc}

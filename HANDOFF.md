@@ -141,9 +141,9 @@
 
 ## 三个塑料杯资产（2026-10-17）
 
-- 用户三张桌面照片（白色塑料马克杯 + 两只透明圆角方形量杯，刻度 400/500 ml）。新增 `scripts/objects/make_plastic_cups.py`（写法同 `make_water_cup.py`，复用 `make_pitcher.py` 的 USD 工具）：`Rigid/plastic_mug/00000`（白色 PP，口径 80 mm、高 95 mm、D 形扁平把手在 +X、约 367 ml、90 g，metadata 带与 `mug` 相同的把手抓取帧）；`Rigid/measuring_cup/00000`（400 ml 刻度，高 135 mm，满口 559 ml，45 g）、`00001`（500 ml 刻度，高 158 mm，满口 653 ml，55 g），截面相同（超椭圆 n=4，底宽 64 → 75 mm，卡扣杯沿 82 mm 宽 14 mm 高，杯沿上有小挂耳），OmniGlass 透明 PP。每个杯子只有一个视觉网格 `/root/visual/model`，碰撞用杯底 + 杯壁分片凸包（马克杯外加把手 44 个，量杯 51 个），中空。
+- 用户三张桌面照片（白色塑料马克杯 + 两只透明圆角方形量杯，刻度 400/500 ml）。新增 `scripts/objects/make_plastic_cups.py`（写法同 `make_water_cup.py`，复用 `make_pitcher.py` 的 USD 工具）：`Rigid/plastic_mug/00000`（白色 PP，口径 80 mm、高 95 mm、D 形扁平把手在 +X、约 367 ml、90 g，metadata 带与 `mug` 相同的把手抓取帧）；`Rigid/measuring_cup/00000`（400 ml 刻度，高 135 mm，满口 559 ml，45 g）、`00001`（500 ml 刻度，高 158 mm，满口 653 ml，55 g），截面相同（超椭圆 n=4，底宽 64 → 75 mm，卡扣杯沿 82 mm 宽 14 mm 高，杯沿上有小挂耳），半透明乳白 PP（OmniSurface：漫反射 0.4 + 粗糙透射 0.6、粗糙度 0.35；OmniGlass 的 frosting 只让折射变糊变灰、不会发白，单纯体散射偏灰，均已试过，对比图 `output/plastic_cups/haze{,2,3,4}.png`）。每个杯子只有一个视觉网格 `/root/visual/model`，碰撞用杯底 + 杯壁分片凸包（马克杯外加把手 44 个，量杯 51 个），中空。
 - 尺寸：照片里没有尺子，绝对尺寸按常见规格估计；比例按照片对齐：两只量杯宽度相同，400/500 ml 刻度分别在杯高 75%/80%（照片约 74%/80%）。要精确就量一下杯高/口宽改脚本顶部常量。没做刻度浮雕。
-- 验证：服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/cups-20261017-114621`（资产生成在其 `out_rigid/`）：ruff check/format 通过；脚本自检（绕序、碰撞不侵入空腔）通过；`check_object.py` 三个都 OK（落地 z 与预期一致、倾角 0°、速度 ≤0.003 m/s），RTX 截图 `output/plastic_cups/cups_check.png`（本机）。未装入共享资产库，未接入任务、未做抓取验证。
+- 验证：服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/cups-20261017-114621`（资产生成在其 `out_rigid/`）：ruff check/format 通过；脚本自检（绕序、碰撞不侵入空腔）通过；`check_object.py` 三个都 OK（落地 z 与预期一致、倾角 0°、速度 ≤0.003 m/s），RTX 截图 `output/plastic_cups/cups_check_v2.png`（本机；`cups_check.png` 是改材质前的全透明版）。未装入共享资产库，未接入任务、未做抓取验证。
 - 安装：`python scripts/objects/make_plastic_cups.py`（默认写 `Assets/Object/RoboDojo/Rigid/`），改共享库按 README 流程先征得同意。
 
 ## 剩余事项与风险
@@ -193,6 +193,7 @@
 
 - 2026-10-17：头部相机合同位姿同步到共享库 `Robots/g1d/*_robot_config.yml`（只拷两个 yml，先备份）。用 HEAD 代码 + 共享库直接渲染（`agent-remote-runs/camsync-render-20261017-114947`），`g1d`/`g1d_counter`/`g1d_lab` 的 `g1d_stack_blocks` seed 0 均退出码 0、eval_time=1、success_rate=1.0；四路相机截图和头部同步前后对比在本机 `output/camsync/`。
 
+- 2026-10-17：量杯材质由 OmniGlass 全透明改为 OmniSurface 半透明乳白（用户反馈太透明）。
 - 2026-10-17：按照片新建三个塑料杯资产生成脚本 `make_plastic_cups.py`（白色马克杯、400/500 ml 透明方形量杯），Isaac 落地检查通过，未装入共享库。
 
 - 2026-10-17：README 新增「协作开发」：各类资产的位置和归属（`real2sim/`、生成脚本、本机 `Assets/`、服务器共享资产库、隔离目录、HF 官方数据集）、新增资产流程、改共享资产库的五步流程（隔离验证 → 同意 → 备份 → 拷验证产物并 diff → 记 HANDOFF）、分支/提交/多人协作规则。只改文档，未跑运行时验证。
