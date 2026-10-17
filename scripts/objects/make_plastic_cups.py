@@ -48,7 +48,8 @@ WHITE_PP = (0.90, 0.89, 0.85)
 CUP = dict(SQ=4.0, A0=0.032, A1=0.0375, A_COLLAR=0.0410, COLLAR_H=0.014, T_WALL=0.0015, T_BOTTOM=0.002, FILLET=0.004)
 MEASURING = [(0.135, 400, 0.045), (0.158, 500, 0.055)]  # height, top graduation (ml), mass
 CLEAR_PP = (0.92, 0.92, 0.90)
-CLEAR_MIX = dict(diffuse=0.15, roughness=0.2)  # diffuse share of the wall (rest transmits), surface roughness
+# diffuse share of the wall (rest transmits), specular reflection weight, surface roughness (also blurs transmission)
+CLEAR_MIX = dict(diffuse=0.15, reflection=0.1, roughness=0.3)
 FRICTION = 0.5
 
 
@@ -296,6 +297,7 @@ def clear_pp(st):
             "diffuse_reflection_color": CLEAR_PP,
             "enable_specular_transmission": True,
             "specular_transmission_weight": 1.0 - CLEAR_MIX["diffuse"],
+            "specular_reflection_weight": CLEAR_MIX["reflection"],
             "specular_reflection_roughness": CLEAR_MIX["roughness"],
             "specular_reflection_ior": 1.49,
             "thin_walled": False,
