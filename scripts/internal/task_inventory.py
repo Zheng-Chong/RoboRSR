@@ -76,7 +76,13 @@ DIMENSION_TASKS: dict[str, tuple[str, ...]] = {
         "pour_by_language",
     ),
     # Our own tasks (not part of the RoboDojo benchmark), e.g. for the Unitree G1-D.
-    "custom": ("g1d_pour_water_into_cup", "g1d_pour_beans_cup_to_cup", "g1d_general_pickup", "g1d_stack_blocks"),
+    "custom": (
+        "g1d_pour_water_into_cup",
+        "g1d_pour_beans_cup_to_cup",
+        "g1d_pour_beans_measuring_cups",
+        "g1d_general_pickup",
+        "g1d_stack_blocks",
+    ),
 }
 
 DIMENSION_ALIASES = {

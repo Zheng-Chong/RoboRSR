@@ -96,6 +96,13 @@ POUR_MIN_GAP = 0.03  # m between the jug's and the cup's footprints
 CUP_PAIR_X, CUP_PAIR_Y = (0.10, 0.16), (-0.39, -0.31)
 CUP_FILL = (0.77, 0.77, 0.71)
 CUP_FLUID_Z = -0.0175
+# Measuring cups (scripts/objects/make_plastic_cups.py): 500 ml source, 400 ml target, as in the desk photos. Turned
+# 45 deg about z so the pads, closing across the 45-deg-inward wrist, meet the square body's flats (72-75 mm) and not
+# its corners (88 mm, nearly the 95 mm jaw). Fluid 54 x 54 x 63 mm (~95 ml) on the 2 mm inside bottom of the 158 mm cup.
+MEASURING_CUPS = ((1, "source_cup"), (0, "target_cup"))  # measuring_cup index, label
+MEASURING_ORI = [0.92388, 0.0, 0.0, 0.38268]
+MEASURING_FILL = (0.9, 0.9, 0.9)
+MEASURING_FLUID_Z = -0.0435
 OBJECT_SECTIONS = ("Rigid", "Geometry", "Fluid", "Articulation", "Garment", "Clutter", "Dynamic")
 D435_INERTIAL = (
     '<inertial><origin xyz="0 0 0" rpy="0 0 0"/><mass value="0.01"/>'
@@ -303,6 +310,25 @@ def two_cups(layout, assets, layout_index, table_top):
     return layout
 
 
+def two_measuring_cups(layout, assets, layout_index, table_top):
+    """two_cups with the measuring cups (MEASURING_CUPS): same positions as two_cups draws for this layout."""
+    layout = two_cups(layout, assets, layout_index, table_top)
+    cups = layout["Rigid"].pop("plastic_cup")
+    for cup, (idx, label) in zip(cups, MEASURING_CUPS):
+        assert cup["label"] == label
+        meta = json.loads((assets / f"Object/RoboDojo/Rigid/measuring_cup/{idx:05d}/metadata.json").read_text())
+        cup.update(category="measuring_cup", category_idx=idx, default_ori=MEASURING_ORI)
+        cup["physics"] = dict(meta["physics"], type="rigid")
+        cup["default_pos"][2] = table_top + meta["physics"]["size"][2] / 2 + 1e-4
+    layout["Rigid"]["measuring_cup"] = cups
+    beans = layout["Fluid"]["wuliangye"][0]
+    beans["zlim"] = [MEASURING_FLUID_Z] * 2
+    beans["default_pos"][2] = cups[0]["default_pos"][2] + MEASURING_FLUID_Z
+    beans["visual"]["scale"] = list(MEASURING_FILL)
+    beans["scale"] = [1 / s for s in MEASURING_FILL]
+    return layout
+
+
 def build_red_bean_material(assets):
     fluid = assets / "Material" / "Fluid"
     mdl = (fluid / "Water_Opaque.mdl").read_text()
@@ -373,6 +399,7 @@ def filter_pickup(layout, assets, layout_index, table_top):
 G1D_TASKS = {
     "g1d_pour_water_into_cup": ("pour_liquid_into_cup", (0.0, -0.20), (1.0, 1.0), swap_bottle_for_pitcher),
     "g1d_pour_beans_cup_to_cup": ("pour_liquid_into_cup", (0.0, -0.20), (1.0, 1.0), two_cups),
+    "g1d_pour_beans_measuring_cups": ("pour_liquid_into_cup", (0.0, -0.20), (1.0, 1.0), two_measuring_cups),
     "g1d_general_pickup": ("general_pickup", (0.0, -0.36), (0.6, 0.6), filter_pickup),
     "g1d_stack_blocks": ("stack_blocks", (0.0, -0.35), (0.6, 0.6), None),
 }

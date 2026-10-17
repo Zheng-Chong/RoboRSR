@@ -26,8 +26,8 @@
 
 **任务和脚本专家**
 
-- 四个 G1-D 任务，默认放在重建的办公室场景 `real_scene1` 中：`g1d_pour_water_into_cup`（壶倒杯）、`g1d_pour_beans_cup_to_cup`（两杯空中对倒）、`g1d_general_pickup`、`g1d_stack_blocks`。
-- `scripts/g1d/scripted_demo.py`：用仿真中的物体真值位姿和雅可比逆运动学写出抓取、搬运、倾倒路点，不需要策略服务器。拾取和叠块 seed 0 成功；杯对杯倒豆 seed 0/2 成功、seed 1 失败；壶倒杯 seed 1 成功、seed 0 失败（详见 `HANDOFF.md`）。
+- 五个 G1-D 任务，默认放在重建的办公室场景 `real_scene1` 中：`g1d_pour_water_into_cup`（壶倒杯）、`g1d_pour_beans_cup_to_cup`（两杯空中对倒）、`g1d_pour_beans_measuring_cups`（两只量杯空中对倒，500 ml 倒进 400 ml）、`g1d_general_pickup`、`g1d_stack_blocks`。
+- `scripts/g1d/scripted_demo.py`：用仿真中的物体真值位姿和雅可比逆运动学写出抓取、搬运、倾倒路点，不需要策略服务器。拾取和叠块 seed 0 成功；杯对杯倒豆 seed 0/2 成功、seed 1 失败；量杯对倒吧台 seed 0/1/2、办公室和实验室 seed 0 成功；壶倒杯 seed 1 成功、seed 0 失败（详见 `HANDOFF.md`）。
 
 ## 快速开始
 

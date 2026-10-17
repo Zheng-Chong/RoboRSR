@@ -155,8 +155,19 @@
 - 单颗红豆 `scripts/objects/make_red_bean.py` → `Rigid/red_bean/00000`：钝头超椭球 5.8 × 4.3 × 4.0 mm（常见红小豆尺寸），暗酒红有光泽（OmniPBR (0.075, 0.006, 0.008)、粗糙度 0.22），+Y 侧白色种脐（长 45%、窄条，单独网格 `/root/visual/hilum`），单凸包碰撞，6e-5 kg。`define_visual()` 供渲染复用。任务里的红豆仍是 4 mm PBD 球形颗粒（`RED_BEAN_PHYSICS` + `RedBean.mdl`，颜色 0.15 比网格亮），这个网格不参与任务。
 - 装豆渲染 `scripts/objects/check_cup_beans.py`：三个杯子（运动学刚体）用任务同款颗粒参数装豆，CPU 状态管线 + GPU PBD（同 `check_pitcher_fluid.py`），落定 2 s；输出 `spheres.png`（仿真实际球形颗粒）、`beans.png`/`top.png`/`closeup.png`（同一落定位置换成红豆网格、随机朝向、缩放 0.85，仅显示用）、`bean.png`（单颗特写）、`metrics.json`。结果：马克杯 2405 粒、400 ml 杯 3465 粒、500 ml 杯 4290 粒，落定后 100% 在杯内，豆面高 50/52/62 mm。量杯从网格填充落定下沉 18–23 mm（杯子上宽下窄，填充区按杯底尺寸）。
 - 尺寸：照片里没有尺子，绝对尺寸按常见规格估计；比例按照片对齐：两只量杯宽度相同，400/500 ml 刻度分别在杯高 75%/80%（照片约 74%/80%）。要精确就量一下杯高/口宽改脚本顶部常量。没做刻度浮雕。
-- 验证：服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/cups-20261017-114621`（资产生成在其 `out_rigid/`）：ruff check/format 通过；脚本自检（绕序、碰撞不侵入空腔）通过；`check_object.py` 三个杯子和红豆都 OK（落地 z 与预期一致、倾角 0°、速度 ≤0.003 m/s），`check_cup_beans.py` 退出码 0；图在本机 `output/plastic_cups/`（`cups_check_v6.png` 为最终材质，`beans/` 为装豆渲染）。未装入共享资产库，未接入任务、未做抓取验证。
+- 验证：服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/cups-20261017-114621`（资产生成在其 `out_rigid/`）：ruff check/format 通过；脚本自检（绕序、碰撞不侵入空腔）通过；`check_object.py` 三个杯子和红豆都 OK（落地 z 与预期一致、倾角 0°、速度 ≤0.003 m/s），`check_cup_beans.py` 退出码 0；图在本机 `output/plastic_cups/`（`cups_check_v6.png` 为最终材质，`beans/` 为装豆渲染）。未装入共享资产库；量杯已用于 `g1d_pour_beans_measuring_cups`（见下节），马克杯未接入任务。
 - 安装：`python scripts/objects/make_plastic_cups.py`（默认写 `Assets/Object/RoboDojo/Rigid/`），改共享库按 README 流程先征得同意。
+- 碰撞修正（随量杯任务）：杯底板原为 48 边形（96 顶点、单面 48 顶点），超出 PhysX GPU 凸包限制（≤64 顶点、单面 ≤32），不能和颗粒碰撞，实验室场景提杯时豆子从杯底漏下；改为 `BOTTOM_SIDES = 24`。马克杯同样修正。
+
+## 新任务 `g1d_pour_beans_measuring_cups`：两只量杯空中对倒红豆（2026-10-17）
+
+- 用户要求：两只量杯倒豆子，在吧台场景。新任务，原 `g1d_pour_beans_cup_to_cup` 不变（同一 Common，判定相同：源杯回正时 ≥60% 豆子离开、其中 ≥90% 在目标杯）。500 ml 量杯（`measuring_cup/00001`，源，左手倒）→ 400 ml（`00000`，目标），与照片一致；源杯装约 95 ml（流体椭球缩放 0.9，54 × 54 × 63 mm）。
+- 布局 `build_asset.py` 的 `two_measuring_cups`：调用 `two_cups` 取同样的随机位置，再换杯子、抬高 z、换装豆量；两杯绕 z 转 45°（`MEASURING_ORI`），因为侧握时手腕内转 45°，两指合拢方向斜着，转 45° 后夹在方形杯身平面上（72–75 mm）而不是对角（88 mm，接近 95 mm 最大开口）。三个场景配置各 165 个布局，其余任务布局与共享库逐字节一致。
+- 脚本 `scripted_demo.py`（按杯子类别取参数，塑料杯参数不变）：夹在杯沿下 `C2C_RIM_DOWN`（塑料杯 2 cm、量杯 3.2 cm，避开 14 mm 卡扣杯沿）；源/目标杯高度分开算（之前目标杯口高度用了源杯高度）；空中抬起 `C2C_LIFT` 塑料杯 12 cm、量杯 6 cm；手指下倾 `C2C_PITCH` 塑料杯 35°、量杯 20°。
+- 关键结论：杯子绕手指轴滚转倾倒，cos(倾角) = sin²p + cos²p·cos(滚转)。35° 下倾时滚转 150° 也只倾 105°；量杯高、豆子铺在杯底，摩擦 0.2 需要约 100° 才流出，手臂实际只能滚转约 116°（各关节都没到限位，是可达性），所以卡在 86–89°、只倒出 7–29%。下倾 20° 后同样滚转倾到 101–103°。试过无效或较差：手腕预转 25°/40°（抓杯时斜夹，提杯途中杯子被带歪、撒豆）、相遇点拉近到 y=-0.30（跟踪丢失）、只降抬高（单独无效）。下倾 25° 倾到 95°，15° 也成功（余量更小）。
+- 验证（服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/mcups-20261017-*`，叠加资产：共享库只读软链，本地 `Rigid/measuring_cup` 和三个场景布局；共享库未改）：scripted_demo 各 1 回合，退出码 0、`eval_time=1`、`success_rate=1.0`：吧台 seed 0/1/2（倒出 88–90%、进杯 87–89%）、办公室 seed 0、实验室 seed 0；原杯对杯任务吧台 seed 0 回归通过（82%/82%）。ruff check/format、`task_inventory.py --check` 通过（`task_inventory.py` 中我未改的旧代码有 format 差异，未动）。四宫格视频 `output/mcups/counter_s0.mp4`（本机）。
+- 坑：几个评测同一秒启动会写进同一个时间戳目录，互删临时视频后评测端换下一个布局重跑，日志末行会误报成功；并行要错开 >1 s，并按回合看日志。修杯底前吧台 seed 1 曾在倾倒中杯子在两指间滑出（之后重跑通过，物理每次运行有随机性）。
+- 吧台场景每次运行有 6–7 条 PhysX "Non-GPU-compatible convex mesh is not able to collide with particle system"，原杯对杯任务也有，办公室/实验室没有，来自吧台场景自身的碰撞网格（未查具体网格）；豆子掉到这些表面上会穿过去。吧台的 `cam_third` 被场景里一块板挡住。
 
 ## 剩余事项与风险
 
@@ -177,7 +188,7 @@
 
 ## 下一会话
 
-1. 先看 `git log` 和本文件；服务器环境已可用，直接用 demo_policy 跑 `--env-cfg g1d` 复现。
+1. 先看 `git log` 和本文件；服务器环境已可用，直接用 demo_policy 跑 `--env-cfg g1d` 复现。量杯对倒：`CUDA_VISIBLE_DEVICES=N PYTHONPATH=.:XPolicyLab EVAL_NUM=1 python scripts/g1d/scripted_demo.py --env_cfg_type g1d_counter --task_name g1d_pour_beans_measuring_cups --seed 0`，需要先把 `measuring_cup` 和新布局装进资产库（`make_plastic_cups.py` + `build_asset.py`；共享库尚未安装，需用户同意）。
 2. 下一步建议：加入自有物体（`Assets/Object/RoboDojo/<类别>/<编号>/object.usd`）并写第一个 G1-D 专用任务及其评测布局。
 
 ## Dex1-1 改回标准版（不带腕部相机模型，2026-10-16；已被 10-17 的带相机夹爪取代）
@@ -203,6 +214,8 @@
 - 共享资产库（用户同意）：新增 `Room/real_scene{2,3}`、`Rigid/{water_cup,plastic_cup}`、`Eval_Layout/RoboDojo/{g1d_counter,g1d_lab}`，`g1d` 的 G1-D 任务布局换成当前版本，`Room/real_scene1` 覆盖为同样内容；与隔离目录验证产物 `diff -r` 一致。改动前备份 `/data2/tmp/robodojo/backup-shared-20261016-174239.tgz`（原 `g1d` 布局和 `real_scene1`）。没有跑 `format.py`（运行时不读 `uuid_map.json`）。
 
 ## 最近历史
+
+- 2026-10-17：新任务 `g1d_pour_beans_measuring_cups`（500 ml 量杯倒进 400 ml），吧台 seed 0/1/2 与办公室、实验室 seed 0 全部成功；关键是量杯手指下倾 20°（35° 时倾不过 89°）；修量杯/马克杯杯底凸包超出 GPU 限制。
 
 - 2026-10-17：接入项目成员交付的带相机 Dex1-1 夹爪（v1_smooth_wrap：相机模组 + 光滑尾部 + 安装脚折边），代码 `scripts/g1d/dex1_camera/`，`build_asset.py` 默认生成；倒豆子脚本加避让（`LIP_IN/LIP_CLEAR` 0.010/0.035、`CUP_GRIP_UP` 0.065）。拾取/叠块三场景 6/6 成功，杯对杯 seed 0/2 和吧台/实验室 seed 0 成功、seed 1 退化，倒水与标准夹爪持平。共享库 `Robots/g1d` 已换（备份 `backup-shared-robots-g1d-20261017-161808.tgz`），共享库上叠块/拾取 seed 0 成功。
 

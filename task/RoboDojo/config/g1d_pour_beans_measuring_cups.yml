@@ -1,0 +1,65 @@
+# G1-D cup-to-cup bean pour with the two measuring cups of the desk photos (scripts/objects/make_plastic_cups.py):
+# red beans in the 500 ml cup (index 1, source, on the robot's left: the left hand pours) go into the 400 ml cup
+# (index 0, target, on its right). Both cups stand turned 45 deg about z so the side grasp closes on the square body's
+# flats. Eval layouts come from scripts/g1d/build_asset.py (two_measuring_cups), for each real scene config (g1d,
+# g1d_counter, g1d_lab); these ranges document the office workspace (robot-side table edge at y=-0.60).
+Rigid:
+  -
+    common:
+      xlim: [-0.16, -0.10]
+      ylim: [-0.39, -0.31]
+      rotate_rand: False
+      rotate_deg: 0
+      relative_plane: "Table"
+      qpos: [0.92388, 0, 0, 0.38268]
+      margin: 0.04
+
+    category:
+      -
+        name: "measuring_cup"
+        index: [1]
+
+    select_mode:
+      nums: [1]
+      mode: "unique"
+      label: ["source_cup"]
+
+  -
+    common:
+      xlim: [0.10, 0.16]
+      ylim: [-0.39, -0.31]
+      rotate_rand: False
+      rotate_deg: 0
+      relative_plane: "Table"
+      qpos: [0.92388, 0, 0, 0.38268]
+      margin: 0.04
+
+    category:
+      -
+        name: "measuring_cup"
+        index: [0]
+
+    select_mode:
+      nums: [1]
+      mode: "unique"
+      label: ["target_cup"]
+
+Fluid:
+  -
+    common:
+      xlim: [0.0, 0.0]
+      ylim: [0.0, 0.0]
+      zlim: [-0.0435, -0.0435]
+      rotate_rand: False
+      relative_plane: "source_cup"
+      check_mode: "enforce"
+
+    category:
+      -
+        name: "wuliangye"
+        index: [0]
+
+    select_mode:
+      nums: [1]
+      mode: "unique"
+      label: ["beans"]

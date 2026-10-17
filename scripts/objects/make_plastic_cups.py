@@ -37,6 +37,7 @@ from make_pitcher import Sdf, Usd, UsdGeom, UsdPhysics, UsdShade  # noqa: E402
 RIGID_DIR = Path(__file__).resolve().parents[2] / "Assets/Object/RoboDojo/Rigid"
 N_THETA = 192
 STAVE_TOL = 0.0003  # max collision-wall intrusion into the cavity
+BOTTOM_SIDES = 24  # bottom slab polygon: PhysX GPU convexes (particle contacts) take <= 64 vertices, <= 32 per face
 
 MUG = dict(
     H=0.095, R0=0.0365, R1=0.040, T_WALL=0.0025, T_BOTTOM=0.004, FILLET=0.003, MASS=0.09,
@@ -157,7 +158,7 @@ def build_mug():
     faces = body[1] + [[i + len(body[0]) for i in f] for f in h_faces]
     normals = np.concatenate([mp.vertex_normals(*body), mp.vertex_normals(h_pts, h_faces)])
 
-    hulls = [np.array([(*(g["R0"] * p), z) for p in sec[::4] for z in (0.0, TB)])]
+    hulls = [np.array([(*(g["R0"] * p), z) for p in sec[:: N_THETA // BOTTOM_SIDES] for z in (0.0, TB)])]
     hulls += wall_staves(sec, [(0.0, g["R0"], inner(0.0)), (H, g["R1"], inner(H))])
     hulls += [np.concatenate([h_rings[i], h_rings[i + 1]]) for i in range(len(h_rings) - 1)]
 
@@ -196,7 +197,7 @@ def build_measuring_cup(H):
     faces = body[1] + [[i + len(body[0]) for i in f] for f in t_faces]
     normals = np.concatenate([mp.vertex_normals(*body), mp.vertex_normals(t_pts, t_faces)])
 
-    hulls = [np.array([(*(g["A0"] * p), z) for p in sec[::4] for z in (0.0, TB)])]
+    hulls = [np.array([(*(g["A0"] * p), z) for p in sec[:: N_THETA // BOTTOM_SIDES] for z in (0.0, TB)])]
     hulls += wall_staves(sec, [(0.0, g["A0"], inner(0.0)), (zc, g["A1"], inner(zc))])
     hulls += wall_staves(sec, [(zc, ac, inner(zc)), (H, ac, inner(H))])
     hulls.append(np.array([(x, y, z) for x, y in tab for z in (H - 0.002, H)]))
