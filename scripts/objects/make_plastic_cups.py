@@ -48,6 +48,7 @@ WHITE_PP = (0.90, 0.89, 0.85)
 CUP = dict(SQ=4.0, A0=0.032, A1=0.0375, A_COLLAR=0.0410, COLLAR_H=0.014, T_WALL=0.0015, T_BOTTOM=0.002, FILLET=0.004)
 MEASURING = [(0.135, 400, 0.045), (0.158, 500, 0.055)]  # height, top graduation (ml), mass
 CLEAR_PP = (0.92, 0.92, 0.90)
+CLEAR_MIX = dict(diffuse=0.15, roughness=0.2)  # diffuse share of the wall (rest transmits), surface roughness
 FRICTION = 0.5
 
 
@@ -242,9 +243,18 @@ def write_usdz(out, c, material):
     mp.add_xform(st, "/root/visual")
     mesh = mp.add_mesh(st, "/root/visual/model", c["pts"], c["faces"], c["normals"])
     UsdShade.MaterialBindingAPI.Apply(mesh.GetPrim()).Bind(mat)
+    add_collision(st, c["hulls"])
+    st.Save()
+    zip_writer = getattr(Sdf, "ZipFileWriter", None) or Usd.ZipFileWriter
+    zw = zip_writer.CreateNew(str(out))
+    zw.AddFile(str(tmp), "object.usdc")
+    zw.Save()
 
+
+def add_collision(st, hulls):
+    """Invisible convex-hull colliders /root/collision/hull_NN."""
     mp.add_xform(st, "/root/collision")
-    for i, h in enumerate(c["hulls"]):
+    for i, h in enumerate(hulls):
         hull = ConvexHull(h)
         tri = hull.simplices.copy()
         n = np.cross(h[tri[:, 1]] - h[tri[:, 0]], h[tri[:, 2]] - h[tri[:, 0]])
@@ -259,11 +269,6 @@ def write_usdz(out, c, material):
         vis.CreateGuideVisibilityAttr(UsdGeom.Tokens.invisible)
         UsdPhysics.CollisionAPI.Apply(prim)
         UsdPhysics.MeshCollisionAPI.Apply(prim).CreateApproximationAttr(UsdPhysics.Tokens.convexHull)
-    st.Save()
-    zip_writer = getattr(Sdf, "ZipFileWriter", None) or Usd.ZipFileWriter
-    zw = zip_writer.CreateNew(str(out))
-    zw.AddFile(str(tmp), "object.usdc")
-    zw.Save()
 
 
 def white_pp(st):
@@ -279,24 +284,25 @@ def white_pp(st):
 
 
 def clear_pp(st):
-    """Milky translucent PP: part diffuse, part rough transmission. OmniGlass frosting only blurs and greys the
-    refraction, it never turns the wall white like the photos."""
+    """Hazy translucent PP: part diffuse, part rough transmission. OmniGlass frosting only blurs and greys the
+    refraction, it never turns the wall white like the photos; a diffuse share above ~0.2 greys out beans inside
+    (check_cup_beans.py)."""
     return mp.add_material(
         st,
         "/root/_materials/ClearPlastic",
         "OmniSurface",
         {
-            "diffuse_reflection_weight": 0.4,
+            "diffuse_reflection_weight": CLEAR_MIX["diffuse"],
             "diffuse_reflection_color": CLEAR_PP,
             "enable_specular_transmission": True,
-            "specular_transmission_weight": 0.6,
-            "specular_reflection_roughness": 0.35,
+            "specular_transmission_weight": 1.0 - CLEAR_MIX["diffuse"],
+            "specular_reflection_roughness": CLEAR_MIX["roughness"],
             "specular_reflection_ior": 1.49,
             "thin_walled": False,
         },
         CLEAR_PP,
         0.5,
-        0.35,
+        CLEAR_MIX["roughness"],
     )
 
 
