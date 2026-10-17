@@ -141,11 +141,11 @@
 
 ## 三个塑料杯资产（2026-10-17）
 
-- 用户三张桌面照片（白色塑料马克杯 + 两只透明圆角方形量杯，刻度 400/500 ml）。新增 `scripts/objects/make_plastic_cups.py`（写法同 `make_water_cup.py`，复用 `make_pitcher.py` 的 USD 工具）：`Rigid/plastic_mug/00000`（白色 PP，口径 80 mm、高 95 mm、D 形扁平把手在 +X、约 367 ml、90 g，metadata 带与 `mug` 相同的把手抓取帧）；`Rigid/measuring_cup/00000`（400 ml 刻度，高 135 mm，满口 559 ml，45 g）、`00001`（500 ml 刻度，高 158 mm，满口 653 ml，55 g），截面相同（超椭圆 n=4，底宽 64 → 75 mm，卡扣杯沿 82 mm 宽 14 mm 高，杯沿上有小挂耳），半透明雾面哑光 PP（OmniSurface：漫反射 0.2 + 粗糙透射 0.8、镜面反射权重 0.1、粗糙度 0.45，`CLEAR_MIX`；用户两次要求加雾：粗糙度 0.3→0.45 主要增加透射模糊，漫反射 0.15→0.2 增白，对比图 `output/plastic_cups/haze_compare_{empty,beans,closeup}.png`；反射权重默认 1.0 时杯面有明显光泽，用户指出真杯没有；粗糙度同时控制透射模糊，所以单独降反射权重，对比图 `output/plastic_cups/refl_compare_{beans,closeup}.png`；杯沿卡扣的亮边是厚边缘折射，降反射后仍在；OmniGlass 的 frosting 只让折射变糊变灰、不会发白，单纯体散射偏灰；漫反射 0.4 时空杯像照片但装豆后豆子全成灰色，0.25 仍偏灰，0.15 隔壁能看到深色豆子和白色种脐，与照片一致。对比图 `output/plastic_cups/haze{,2,3,4}.png`、`beans_{15,25}/`）。每个杯子只有一个视觉网格 `/root/visual/model`，碰撞用杯底 + 杯壁分片凸包（马克杯外加把手 44 个，量杯 51 个），中空。
+- 用户三张桌面照片（白色塑料马克杯 + 两只透明圆角方形量杯，刻度 400/500 ml）。新增 `scripts/objects/make_plastic_cups.py`（写法同 `make_water_cup.py`，复用 `make_pitcher.py` 的 USD 工具）：`Rigid/plastic_mug/00000`（白色 PP，口径 80 mm、高 95 mm、D 形扁平把手在 +X、约 367 ml、90 g，metadata 带与 `mug` 相同的把手抓取帧）；`Rigid/measuring_cup/00000`（400 ml 刻度，高 135 mm，满口 559 ml，45 g）、`00001`（500 ml 刻度，高 158 mm，满口 653 ml，55 g），截面相同（超椭圆 n=4，底宽 64 → 75 mm，卡扣杯沿 82 mm 宽 14 mm 高，杯沿上有小挂耳），半透明偏白哑光 PP（OmniSurface，`CLEAR_MIX`：漫反射权重固定 1、粗糙透射 0.92（乳白份额 0.08）、镜面反射权重 0.1、粗糙度 0.3、颜色 (0.94, 0.95, 0.96)）。要点：OmniSurface 分层，漫反射实得 (1 − 透射) × 漫反射权重，之前把漫反射权重设成 0.15–0.4 并令两者和为 1，丢掉了约 16% 能量，杯子越“加雾”越黑（用户对照照片指出真杯偏白）；粗糙度 >0.35 进入强粗糙透射分支也会变暗。乳白份额 0.15–0.25 时空杯很像照片但杯里豆子成浅灰，0.08 是折中（空杯亮白，豆子仍可辨）。另试过：OmniGlass frosting 只会变糊变灰；镜面反射 1.0 时杯面有光泽（真杯没有）。对比图 `output/plastic_cups/milky{,2}_compare_{empty,beans}.png`、`refl_compare_*.png`、`haze_compare_*.png`。每个杯子只有一个视觉网格 `/root/visual/model`，碰撞用杯底 + 杯壁分片凸包（马克杯外加把手 44 个，量杯 51 个），中空。
 - 单颗红豆 `scripts/objects/make_red_bean.py` → `Rigid/red_bean/00000`：钝头超椭球 5.8 × 4.3 × 4.0 mm（常见红小豆尺寸），暗酒红有光泽（OmniPBR (0.075, 0.006, 0.008)、粗糙度 0.22），+Y 侧白色种脐（长 45%、窄条，单独网格 `/root/visual/hilum`），单凸包碰撞，6e-5 kg。`define_visual()` 供渲染复用。任务里的红豆仍是 4 mm PBD 球形颗粒（`RED_BEAN_PHYSICS` + `RedBean.mdl`，颜色 0.15 比网格亮），这个网格不参与任务。
 - 装豆渲染 `scripts/objects/check_cup_beans.py`：三个杯子（运动学刚体）用任务同款颗粒参数装豆，CPU 状态管线 + GPU PBD（同 `check_pitcher_fluid.py`），落定 2 s；输出 `spheres.png`（仿真实际球形颗粒）、`beans.png`/`top.png`/`closeup.png`（同一落定位置换成红豆网格、随机朝向、缩放 0.85，仅显示用）、`bean.png`（单颗特写）、`metrics.json`。结果：马克杯 2405 粒、400 ml 杯 3465 粒、500 ml 杯 4290 粒，落定后 100% 在杯内，豆面高 50/52/62 mm。量杯从网格填充落定下沉 18–23 mm（杯子上宽下窄，填充区按杯底尺寸）。
 - 尺寸：照片里没有尺子，绝对尺寸按常见规格估计；比例按照片对齐：两只量杯宽度相同，400/500 ml 刻度分别在杯高 75%/80%（照片约 74%/80%）。要精确就量一下杯高/口宽改脚本顶部常量。没做刻度浮雕。
-- 验证：服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/cups-20261017-114621`（资产生成在其 `out_rigid/`）：ruff check/format 通过；脚本自检（绕序、碰撞不侵入空腔）通过；`check_object.py` 三个杯子和红豆都 OK（落地 z 与预期一致、倾角 0°、速度 ≤0.003 m/s），`check_cup_beans.py` 退出码 0；图在本机 `output/plastic_cups/`（`cups_check_v5.png` 为最终材质，`beans/` 为装豆渲染）。未装入共享资产库，未接入任务、未做抓取验证。
+- 验证：服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/cups-20261017-114621`（资产生成在其 `out_rigid/`）：ruff check/format 通过；脚本自检（绕序、碰撞不侵入空腔）通过；`check_object.py` 三个杯子和红豆都 OK（落地 z 与预期一致、倾角 0°、速度 ≤0.003 m/s），`check_cup_beans.py` 退出码 0；图在本机 `output/plastic_cups/`（`cups_check_v6.png` 为最终材质，`beans/` 为装豆渲染）。未装入共享资产库，未接入任务、未做抓取验证。
 - 安装：`python scripts/objects/make_plastic_cups.py`（默认写 `Assets/Object/RoboDojo/Rigid/`），改共享库按 README 流程先征得同意。
 
 ## 剩余事项与风险
@@ -195,6 +195,7 @@
 
 - 2026-10-17：头部相机合同位姿同步到共享库 `Robots/g1d/*_robot_config.yml`（只拷两个 yml，先备份）。用 HEAD 代码 + 共享库直接渲染（`agent-remote-runs/camsync-render-20261017-114947`），`g1d`/`g1d_counter`/`g1d_lab` 的 `g1d_stack_blocks` seed 0 均退出码 0、eval_time=1、success_rate=1.0；四路相机截图和头部同步前后对比在本机 `output/camsync/`。
 
+- 2026-10-17：修正量杯材质能量损失（漫反射权重固定 1，只用透射权重控制乳白份额 0.08，粗糙度回到 0.3），杯子由发灰变为偏白。
 - 2026-10-17：量杯再加雾：漫反射 0.15 → 0.2、粗糙度 0.3 → 0.45。注意：只改数字时文件大小可能不变，`rsync -a`（大小 + 时间）会漏传，向服务器同步脚本要加 `--checksum`；上一轮的 `cups_check_v4.png` 因此是旧材质。
 - 2026-10-17：量杯镜面反射权重 1.0 → 0.1、粗糙度 0.2 → 0.3，去掉表面光泽（用户反馈真杯无反光）。
 - 2026-10-17：新增单颗红豆网格 `make_red_bean.py` 和装豆渲染 `check_cup_beans.py`；量杯材质先由 OmniGlass 改为乳白 OmniSurface（用户反馈太透明），装豆后发现乳白会把豆子洗成灰色，定为漫反射 0.15。

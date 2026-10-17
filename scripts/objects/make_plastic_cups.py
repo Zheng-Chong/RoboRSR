@@ -47,9 +47,10 @@ WHITE_PP = (0.90, 0.89, 0.85)
 # half-widths at face centre; body tapers A0 -> A1 up to the collar, inner wall keeps tapering to the rim
 CUP = dict(SQ=4.0, A0=0.032, A1=0.0375, A_COLLAR=0.0410, COLLAR_H=0.014, T_WALL=0.0015, T_BOTTOM=0.002, FILLET=0.004)
 MEASURING = [(0.135, 400, 0.045), (0.158, 500, 0.055)]  # height, top graduation (ml), mass
-CLEAR_PP = (0.92, 0.92, 0.90)
-# diffuse share of the wall (rest transmits), specular reflection weight, surface roughness (also blurs transmission)
-CLEAR_MIX = dict(diffuse=0.2, reflection=0.1, roughness=0.45)
+CLEAR_PP = (0.94, 0.95, 0.96)
+# milky share of the wall (rest transmits), specular reflection weight, surface roughness (also blurs transmission;
+# above 0.35 OmniSurface switches to its strong-roughness transmission and the wall darkens)
+CLEAR_MIX = dict(milky=0.08, reflection=0.1, roughness=0.3)  # milky > 0.1 washes beans inside to grey
 FRICTION = 0.5
 
 
@@ -285,18 +286,19 @@ def white_pp(st):
 
 
 def clear_pp(st):
-    """Hazy translucent PP: part diffuse, part rough transmission. OmniGlass frosting only blurs and greys the
-    refraction, it never turns the wall white like the photos; a diffuse share above 0.2 greys out beans inside
-    (check_cup_beans.py)."""
+    """Hazy translucent PP: rough transmission layered over a white diffuse base. OmniSurface weights are layered
+    (diffuse gets 1 - transmission of the energy, times its own weight), so the diffuse weight stays 1 and the milky
+    share is set by the transmission weight; a diffuse weight below 1 loses energy and greys the wall. OmniGlass
+    frosting only blurs and greys the refraction, it never turns the wall white like the photos."""
     return mp.add_material(
         st,
         "/root/_materials/ClearPlastic",
         "OmniSurface",
         {
-            "diffuse_reflection_weight": CLEAR_MIX["diffuse"],
+            "diffuse_reflection_weight": 1.0,
             "diffuse_reflection_color": CLEAR_PP,
             "enable_specular_transmission": True,
-            "specular_transmission_weight": 1.0 - CLEAR_MIX["diffuse"],
+            "specular_transmission_weight": 1.0 - CLEAR_MIX["milky"],
             "specular_reflection_weight": CLEAR_MIX["reflection"],
             "specular_reflection_roughness": CLEAR_MIX["roughness"],
             "specular_reflection_ior": 1.49,
