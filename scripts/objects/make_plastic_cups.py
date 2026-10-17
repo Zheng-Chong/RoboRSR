@@ -49,7 +49,7 @@ CUP = dict(SQ=4.0, A0=0.032, A1=0.0375, A_COLLAR=0.0410, COLLAR_H=0.014, T_WALL=
 MEASURING = [(0.135, 400, 0.045), (0.158, 500, 0.055)]  # height, top graduation (ml), mass
 CLEAR_PP = (0.92, 0.92, 0.90)
 # diffuse share of the wall (rest transmits), specular reflection weight, surface roughness (also blurs transmission)
-CLEAR_MIX = dict(diffuse=0.15, reflection=0.1, roughness=0.3)
+CLEAR_MIX = dict(diffuse=0.2, reflection=0.1, roughness=0.45)
 FRICTION = 0.5
 
 
@@ -286,7 +286,7 @@ def white_pp(st):
 
 def clear_pp(st):
     """Hazy translucent PP: part diffuse, part rough transmission. OmniGlass frosting only blurs and greys the
-    refraction, it never turns the wall white like the photos; a diffuse share above ~0.2 greys out beans inside
+    refraction, it never turns the wall white like the photos; a diffuse share above 0.2 greys out beans inside
     (check_cup_beans.py)."""
     return mp.add_material(
         st,
