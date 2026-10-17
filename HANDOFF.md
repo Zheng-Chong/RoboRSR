@@ -139,6 +139,13 @@
 - 约定：机器人站在没有挡板的 −Y 一侧（这是假设，真机若站在另一侧就把 Room 转 180°）。Room `default_pos` 取 (0, −0.257, 0)，使桌沿落在 y=−0.60；G1-D 默认站位不会碰到桌腿（桌下净深 0.63 m）；桌面比 real_scene1 高 0.069 m，需要用升降柱补偿、物体同步抬高。
 - 验证：本机离线检查 `check_scene.py` 19/19 通过；四个拟合视角下桌子模型边缘与照片贴合，拟合残差大多在 0.3–4 px（脚轮最大约 20 px）。服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/lab-render-20261014-*`（共享资产库未改）以 Room=real_scene3 跑 `g1d_pour_water_into_cup` seed 0：物体 +0.069 m，升降柱各 0.0345，`cam_third` 换成 p3 位姿，GPU 0。退出码 0，RTX 渲染正常，第三视角与照片一致，桌面不过曝；倒水失败（脚本问题，同其他场景）。v1 画面偏黄：原因是 Isaac 相机没有白平衡，5000 K 色温再加上没有天花板、RoboDojo 默认的棕色摄影棚 HDR 从上方灌进房间。v2 加了天花板，改为 6500 K、强度 24000（扫了 6000/12000/24000 三档），地毯贴图亮度 ×0.67；第三视角桌面 R/B 1.01、地毯 1.10（照片为 1.05/1.06），桌面与地毯的亮度比 1.98（照片 2.03）。亮度参照的是手机照片，真机头部相机的曝光未核对。视频和帧在本机 `output/lab_render/`（`lab_render_grid_v2.mp4`、`compare_light.jpg`）。未改仓库代码，也未安装到共享 `Assets/Room/`。
 
+## 三个塑料杯资产（2026-10-17）
+
+- 用户三张桌面照片（白色塑料马克杯 + 两只透明圆角方形量杯，刻度 400/500 ml）。新增 `scripts/objects/make_plastic_cups.py`（写法同 `make_water_cup.py`，复用 `make_pitcher.py` 的 USD 工具）：`Rigid/plastic_mug/00000`（白色 PP，口径 80 mm、高 95 mm、D 形扁平把手在 +X、约 367 ml、90 g，metadata 带与 `mug` 相同的把手抓取帧）；`Rigid/measuring_cup/00000`（400 ml 刻度，高 135 mm，满口 559 ml，45 g）、`00001`（500 ml 刻度，高 158 mm，满口 653 ml，55 g），截面相同（超椭圆 n=4，底宽 64 → 75 mm，卡扣杯沿 82 mm 宽 14 mm 高，杯沿上有小挂耳），OmniGlass 透明 PP。每个杯子只有一个视觉网格 `/root/visual/model`，碰撞用杯底 + 杯壁分片凸包（马克杯外加把手 44 个，量杯 51 个），中空。
+- 尺寸：照片里没有尺子，绝对尺寸按常见规格估计；比例按照片对齐：两只量杯宽度相同，400/500 ml 刻度分别在杯高 75%/80%（照片约 74%/80%）。要精确就量一下杯高/口宽改脚本顶部常量。没做刻度浮雕。
+- 验证：服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/cups-20261017-114621`（资产生成在其 `out_rigid/`）：ruff check/format 通过；脚本自检（绕序、碰撞不侵入空腔）通过；`check_object.py` 三个都 OK（落地 z 与预期一致、倾角 0°、速度 ≤0.003 m/s），RTX 截图 `output/plastic_cups/cups_check.png`（本机）。未装入共享资产库，未接入任务、未做抓取验证。
+- 安装：`python scripts/objects/make_plastic_cups.py`（默认写 `Assets/Object/RoboDojo/Rigid/`），改共享库按 README 流程先征得同意。
+
 ## 剩余事项与风险
 
 - real_scene3：尺寸没有实测（量一下桌长或桌高，再用 `--scale-correction` 修正）；灯光已按手机照片标定，仍需和真机头部相机画面对比。已作为 `g1d_lab` 配置接入（见「三个场景接入」一节）。
@@ -183,6 +190,8 @@
 - 共享资产库（用户同意）：新增 `Room/real_scene{2,3}`、`Rigid/{water_cup,plastic_cup}`、`Eval_Layout/RoboDojo/{g1d_counter,g1d_lab}`，`g1d` 的 G1-D 任务布局换成当前版本，`Room/real_scene1` 覆盖为同样内容；与隔离目录验证产物 `diff -r` 一致。改动前备份 `/data2/tmp/robodojo/backup-shared-20261016-174239.tgz`（原 `g1d` 布局和 `real_scene1`）。没有跑 `format.py`（运行时不读 `uuid_map.json`）。
 
 ## 最近历史
+
+- 2026-10-17：按照片新建三个塑料杯资产生成脚本 `make_plastic_cups.py`（白色马克杯、400/500 ml 透明方形量杯），Isaac 落地检查通过，未装入共享库。
 
 - 2026-10-17：README 新增「协作开发」：各类资产的位置和归属（`real2sim/`、生成脚本、本机 `Assets/`、服务器共享资产库、隔离目录、HF 官方数据集）、新增资产流程、改共享资产库的五步流程（隔离验证 → 同意 → 备份 → 拷验证产物并 diff → 记 HANDOFF）、分支/提交/多人协作规则。只改文档，未跑运行时验证。
 
