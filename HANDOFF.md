@@ -153,14 +153,14 @@
 - 杯对杯倒豆：3 个 seed 里 2 个通过。seed 1 的目标杯位置（x 0.159、y -0.320）右手够不到胸前位置，可以把目标杯的 y 收窄到更靠近机器人，或者把胸前位置跟着杯子走。右手倒（真机片段里是右手倒）会让杯子在两指间转动，没解决；值得试的方向：夹紧时用线性 PD 让两指都停在杯面上（参照叠块的做法），而不是全力闭合。
 - 双臂倒水：换成自建水杯后 seed 1 成功；seed 0（壶在右）右手倒壶时要么够不到杯口（差 9 cm），要么把杯子带近后壶身撞上持杯手，需单独调右手倒壶的姿态/壶嘴方向。`water_cup`/`plastic_cup` 和新布局已于 2026-10-16 装入共享资产库。杯子更远的布局（y≈-0.46）未测。
 - G1 手臂在桌面高度的可达范围约 0.45 m；RoboDojo 现有任务（为桌面上的 X5 设计）有物体距肩部 0.4–0.7 m，部分不可达。自有任务的物体应放在 y≈[-0.55, -0.25]，或利用腰部前倾（`Yaw_Joint`）。
-- 相机：内参用棋盘格标定值（头 `g1d_head` 约 98°、腕 `dex1_rgb` 约 91°），头部与腕部外参都用宇树合同值，并经真机帧投影核对（头部含胸口上沿，见 2026-10-16 节）；未建模畸变（<2%）和腕部主点偏移（最多 17 px）；头/腕都靠近裁剪面（10 cm / 3 cm）隐去自身外壳，离相机更近的物体也会被裁掉。共享库 `Robots/g1d/*_robot_config.yml` 还是头部旧位姿，需同步（建议用叠加目录或先确认 `build_asset.py` 依赖的物体都在共享库）。
+- 相机：内参用棋盘格标定值（头 `g1d_head` 约 98°、腕 `dex1_rgb` 约 91°），头部与腕部外参都用宇树合同值，并经真机帧投影核对（头部含胸口上沿，见 2026-10-16 节）；未建模畸变（<2%）和腕部主点偏移（最多 17 px）；头/腕都靠近裁剪面（10 cm / 3 cm）隐去自身外壳，离相机更近的物体也会被裁掉。共享库 `Robots/g1d/*_robot_config.yml` 已于 2026-10-17 11:49 同步为仓库版本（头部合同位姿）。
 - 末端位姿（ee）动作未支持：需写 G1-D cuRobo 配置；且 `RobotManager` 的 planner 以 `robot_name` 为键，coupled 左右臂会共用同一个 planner，需要改成按手臂区分。
 - `_task.yml` 中指定了 `robot_config`/`scene_config` 的任务（如 x5+franka 竞赛任务、传送带任务）会覆盖 g1d 机器人或场景。
 - 棱纹环按 `elbow_link` 网格的 x 区间切分（换 URDF/网格后需重新核对 `RING_X`）；材质参数为目测，仿真房间光照比真机亮，金属会显得偏亮。
 - 服务器上 `/usr/local/bin/ffmpeg` 不带 libx264，已在仿真环境 bin 中链接系统 ffmpeg；新建环境需同样处理，否则录视频时 BrokenPipe。
 - 自建资产在 `real2sim/`，`real2sim/**` 下的 usd/usdc/STL/图片走 Git LFS（`.gitattributes`），`preview/`、`demo/`、`*.bak` 不入库。`.gitignore` 用锚定的 `/Assets`：macOS 大小写不敏感，不锚定会把 `real2sim/scene3_pour_pack/assets/` 一起忽略。不要再往 `Assets/` 里放要入库的文件：`init_assets.sh` 发现 `Assets/` 不完整会把它整个挪成 `Assets.partial.<时间戳>`。本机 git-lfs 为官方二进制，装在 `~/.local/bin`（Homebrew 在此机会从源码编译整条依赖链，不要用）。
 - 杯对杯倒豆的杯子位置按布局随机抽取（种子取自瓶子三维坐标，含桌面高度），所以三个场景同一编号的杯子位置不同；其余任务同一编号在三个场景里相对机器人一致。
-- 共享资产库的 `Robots/g1d` 已于 2026-10-16 16:14 重建（无相机 Dex1 网格 + 当时的相机配置）；之后头部相机改为合同位姿，`*_robot_config.yml` 需再同步一次（URDF/网格不变）。
+- 共享资产库的 `Robots/g1d` 已于 2026-10-16 16:14 重建（无相机 Dex1 网格 + 当时的相机配置）；之后头部相机改为合同位姿，2026-10-17 11:49 只拷了 `*_robot_config.yml`（URDF/网格不变，备份 `/data2/tmp/robodojo/backup-shared-20261017-114936-g1d-camera.tgz`）。
 
 ## 下一会话
 
@@ -190,6 +190,8 @@
 - 共享资产库（用户同意）：新增 `Room/real_scene{2,3}`、`Rigid/{water_cup,plastic_cup}`、`Eval_Layout/RoboDojo/{g1d_counter,g1d_lab}`，`g1d` 的 G1-D 任务布局换成当前版本，`Room/real_scene1` 覆盖为同样内容；与隔离目录验证产物 `diff -r` 一致。改动前备份 `/data2/tmp/robodojo/backup-shared-20261016-174239.tgz`（原 `g1d` 布局和 `real_scene1`）。没有跑 `format.py`（运行时不读 `uuid_map.json`）。
 
 ## 最近历史
+
+- 2026-10-17：头部相机合同位姿同步到共享库 `Robots/g1d/*_robot_config.yml`（只拷两个 yml，先备份）。用 HEAD 代码 + 共享库直接渲染（`agent-remote-runs/camsync-render-20261017-114947`），`g1d`/`g1d_counter`/`g1d_lab` 的 `g1d_stack_blocks` seed 0 均退出码 0、eval_time=1、success_rate=1.0；四路相机截图和头部同步前后对比在本机 `output/camsync/`。
 
 - 2026-10-17：按照片新建三个塑料杯资产生成脚本 `make_plastic_cups.py`（白色马克杯、400/500 ml 透明方形量杯），Isaac 落地检查通过，未装入共享库。
 
