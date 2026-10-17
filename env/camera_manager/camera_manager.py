@@ -29,6 +29,7 @@ REAL_MAP = {
     "d435": D435,
     "large_d435": LARGE_D435,
     "dex1_rgb": DEX1_RGB,
+    "g1d_head": G1D_HEAD,
 }
 
 VISUAL_MAP = {

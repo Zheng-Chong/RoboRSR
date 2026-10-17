@@ -1,6 +1,6 @@
 # Project Handoff
 
-更新时间：2026-10-16
+更新时间：2026-10-17
 当前分支：main（唯一分支）
 当前目标：在 RoboDojo 上接入 Unitree G1-D（Dex1-1 夹爪）做桌面操作仿真，后续加入自有物体和任务
 
@@ -22,7 +22,7 @@
 - 环境：Isaac Sim 5.1、IsaacLab、cuRobo、41 GB 资产安装完成；`robodojo.sh doctor` 14 项通过。
 - G1-D 接入：`env/robot_manager/robot_config/g1d.py`（直接加载 URDF，`merge_fixed_joints=False` 保留相机/末端坐标系）、`robot_class/g1d.py`（G1DLeft/G1DRight）、注册表、`env_cfg/g1d.yml`、`env_cfg/robot/g1d.yml`、`scripts/g1d/`。
 - `robot_class/x5.py` 增加可选类属性 `config_key`，子类可读 `<key>_robot_config.yml`；X5 行为不变。
-- 相机（按真机录像目测对齐）：头部相机在 `d435_link` 原位（头壳内，头壳 `head_link/visuals` 设为不渲染），在 D435 姿态上再俯 2.4°（共约 50°），用广角类型 `Gemini_345Lg`（约 96°×71°），画面上方见墙、底部露一点胸口，与真机一致；腕部相机在 `*_dex1_base_link` 的 (0.055, 0, 0.095)、沿手指 43° 俯视，几何拟合真机画面：指尖约在画面一半高度，手指根部与凹槽可见，夹爪外壳在画外，零位时画面上方不露墙。
+- 相机：头部双目挂在 `head_link` 上，宇树合同位姿 (0.0442, ±0.0298, 0.4900)、俯 47.6°（镜头在头壳内，头壳照常渲染，靠 10 cm 近裁剪面隐去），类型 `g1d_head`（棋盘格 fx 279.5，约 98°）；腕部在 `*_dex1_base_link` 的 (0.0627, 0, 0.0555)、沿手指俯 30°（宇树合同值），类型 `dex1_rgb`（棋盘格 fx 314，约 91°，近裁剪 3 cm）。依据见 2026-10-16 相机一节。
 - 外观（按产品图 + 真机头部/腕部画面逐段核对）：URDF 颜色只有漫反射，加载后按连杆名绑定材质（`robot_config/g1d.py` 的 `LINK_MATERIALS`）。黑色：Dex1 整体、腰部 `Yaw_Link`/`Pitching_Link`、头、颈部 `logo_link`、轮子，以及 `*_elbow_link` 网格末端 x>0.075 m 的小臂圆环（紧挨弯曲腕部件，用 GeomSubset 按面绑定，见 `_paint_ring`；已用分段着色图与用户逐段确认）；其余（躯干、肩/大臂、肘关节支架与棱纹段、`wrist_*`、升降柱、底盘）为中灰哑光金属（diffuse 0.62、metallic 1.0、roughness 0.5）。绑定前须关闭 `visuals` 的 instanceable，否则 IsaacLab 会跳过绑定。
 - URDF 转换结果缓存在 `Assets/Robots/g1d/usd`（按 URDF/配置哈希复用），不再每次往 `/tmp/IsaacLab` 写新目录。
 
@@ -106,12 +106,15 @@
 - 真机（ssh `unitree`，Jetson）上的官方模型：`/unitree/module/unitree_eai/xr_teleoperate/assets/g1_d/g1_d.urdf`（Dex3 手、无相机 link）和 `.../dex1_1_service/urdf/dex1_1.urdf`（无相机）。`~/g1d_infra_ewam/assets/g1_D/g1_d.urdf` 实为 G1 人形（robot name="g1"），不要用。已拷到本机 `.cache/unitree_official/`（gitignored）。
 - 与仿真 `g1d_dex1.urdf` 对比：24 个公共关节原点/轴全部一致；唯一差别是 v4 把腰部两个关节名互换了——官方 `torso_Joint` = 腰俯仰（Pitching_Link→Yaw_Link，绕 y），`Yaw_Joint` = 腰偏航（Yaw_Link→torso_link，绕 z）。回放真机关节状态时要按官方名映射。
 - 官方没有相机外参/内参。唯一来源是 `~/g1d_infra/teleop/utils/ego_camera_config.py` 抄的服务文档值：头部双目（Cherry Dual Camera，1280×480 SBS），左右眼 ±29.8 mm，FOV 115°×80°，光轴俯 47.6°（= unitree_ros G1 `d435_joint` 俯仰 0.8308 rad）。仿真 `cam_head` 位姿已按此设置。
-- 对照方法：真机运行记录 `~/Desktop/Results/G1/g1d_real_run_20260921/`（`observations.jsonl` 每帧 16 维关节状态，夹爪 5.4=全开、0=全闭）。一次性脚本 `/tmp/g1d_cam_check/render_real_frame.py`（不入库）在 21196 隔离目录 `camcheck-20261016-104337` 把仿真双臂开到第 5、11 帧关节角（误差 <0.001°），用 `g1d_general_pickup` seed 0（real_scene1）渲染全部相机，并在进程内追加 115° 头部和 dex1_rgb 腕部对照相机。并排图：本机 `output/cam_check/f{5,11}/compare_f*.jpg`。
+- 对照方法：真机运行记录 `~/Desktop/Results/G1/g1d_real_run_20260921/`（`observations.jsonl` 每帧 16 维关节状态，夹爪 5.4=全开、0=全闭）。一次性脚本 `21196:/data2/tmp/robodojo/agent-remote-runs/camcheck-20261016-104337/render_real_frame.py`（不入库）在 21196 隔离目录 `camcheck-20261016-104337` 把仿真双臂开到第 5、11 帧关节角（误差 <0.001°），用 `g1d_general_pickup` seed 0（real_scene1）渲染全部相机，并在进程内追加 115° 头部和 dex1_rgb 腕部对照相机。并排图：本机 `output/cam_check/f{5,11}/compare_f*.jpg`。
 - 结论：
   1. **真机录制里腕部两路是反的**：`wrist_left` 流 = 右手相机，`wrist_right` 流 = 左手相机（两帧都由物体相对位置确认）。已知问题：这台 Jetson 就是图像服务主机 192.168.123.164，`teleimager.service` 读 `~/unitree_eai_environment/service/teleimager/cam_config_server.yaml`，按序列号绑定 `left_wrist_camera`=JR0001（USB 1-3.2）、`right_wrist_camera`=JR0002（1-3.3）；`~/client/jepa_g1d_client/g1d_jepa_client.py` 记录 2026-09-25 真机遮挡测试：遮物理左腕相机时 `cam_right_wrist` 变黑，即 JR0001 装在右手；采集数据集（capybara_to_box、pick_3objects_to_basket）左右是对的，所以部署客户端默认 `SWAP_WRISTS=True`。09-21 这次运行早于该修正。sim2real 时：图像服务的 `left_wrist_camera` 对应仿真右腕。
   - 硬件：头部 Sunplus `1bcf:2d4f`（"USB2.0 Camera RGB"，序列号 01.00.00），原生每眼 1920×1200（16:10），服务用 1280×480 SBS（每眼 640×480，4:3，是裁剪还是缩放未确认）；腕部 JR0001/JR0002（VID/PID 0001:0001 / 0002:0002，最高 1920×1080，服务用 640×480）。UVC 描述符里没有焦距（wObjectiveFocalLength=0），设备内无可读标定；相机被 root 服务独占，读控制量/切换模式需要停服务（需 sudo 密码）。
-  2. **头部已对齐，保持现状**：一次性脚本 `/tmp/g1d_cam_check/fit_head.py`（不入库）用第 0–11 帧关节角做正运动学，把 Dex1/腕/小臂网格投影到真机 head_left 上；第 3–11 帧夹爪黑色轮廓双向倒角拟合。当前配置（针孔 f=288 px，96°×80°，俯 47.6°）夹爪中位误差 6.6/8.4 px；针孔精修（f=294、多俯 0.8°、滚转约 2°、上移 1 cm）5.8/8.8 px，提升在分割噪声内，未采用；等距鱼眼（f=308，约 119°）7.2/12.7 px，且小臂明显压短，排除。画面底部带灯的是底盘前端（随升降/腰部变化），不是胸口，不能作约束。文档 115° 应是传感器全幅值，服务的 640×480 每眼模式实测与 96° 针孔吻合。叠加图在本机 `/tmp/g1d_cam_check/fit/`。
-  3. **腕部已按真机拟合并改配置（未提交）**：一次性脚本 `/tmp/g1d_cam_check/fit_wrist.py` 在 `*_dex1_base_link` 系下按真机夹爪开度投影手指网格，第 4–11 帧手指黑色轮廓双向倒角拟合（真机流先交换：仿真左腕 ← `wrist_right`）。结果：f 397→477 px（78°→约 68°×53°），相机下移 1.4 cm，俯角 43°→40.8°；中位误差左 16.8→7.3 px、右 12.6→6.9 px；左右分开拟合相差 <7 mm，用同一套；第 0 帧未参与拟合也对得上。改动：`env_cfg/camera/template.py` 的 `DEX1_RGB`（原为 mujoco 估计的约 111°，仅 G1-D 用）改为拟合值；`scripts/g1d/{left,right}_robot_config.yml` 的 `cam_wrist` 改 `type: dex1_rgb`、`pos [0.055, 0, 0.081]`、`ori [0.6429, 0.2944, -0.2944, -0.6429]`。Isaac 渲染验证（隔离目录，进程内读仓库 yml）：手指大小/位置与真机一致，旧配置底部露出的相机座基本出画；对比图本机 `output/cam_check/v2_f{5,11}/compare_wrist_f*.jpg`。**共享资产库 `Assets/Robots/g1d/*_robot_config.yml` 仍是旧值**，需运行 `build_asset.py` 才生效。局限：本次录制夹爪开度几乎不变，焦距与距离有耦合；补一段夹爪开合录像可复核。
+  2. **棋盘格内参（真值来源）**：`rtx5090-180:/root/unitree_sim_isaaclab/real2sim_calib_20261015/real_data/20261016/intrinsics/camera_intrinsics_{head_left,head_right,left_wrist,right_wrist}.json`（OpenCV 模型，重投影 0.44–0.51 px）。头 fx≈279.5（约 98°×81°），腕 fx≈313/316（约 91°×75°）；畸变小（边缘 <2%），仿真用针孔。腕部 cx 一个 337、一个 317：按"标定文件名 = 图像服务流名"（仿真左手 ← `right_wrist`）对应时轮廓误差 2.5/0.4 px，反过来 10.2/4.3 px，即标定的腕部命名也跟着图像服务互换。同目录的 `camera_contract_v5.json`（宇树服务台 031354）给了官方外参：腕部在 `dex1_base_link` (0.0627, 0, 0.0555)、俯 30°；头部 FOV 仍是文档值 115°，不可信。
+  3. **相机配置（未提交）**：一次性脚本 `21196:/data2/tmp/robodojo/agent-remote-runs/camcheck-20261016-104337/fit_calib.py`（不入库）固定标定内参、只拟合位姿。头部：现位姿 5.9/7.3 px，合同位姿 6.1/9.3 px，拟合到约 5–6 px，但位姿在 ±3 cm/±4° 内定不住（只有夹爪轮廓），保持现位姿，只换 fx。腕部：合同位姿 + 标定内参不拟合就 2.5/6.9 px（左）、0.4/6.6 px（右），拟合只移 2–5 mm/1–2°，直接用合同值。**之前按轮廓自由拟合出的 68°/z=0.081/40.8° 是错的**（夹爪开度不变，焦距与距离耦合），已作废。改动：`env_cfg/camera/template.py` 新增 `G1D_HEAD`（fx 279.5，`camera_manager.py` 注册为 `g1d_head`，不动共享的 `Gemini_345Lg`），`DEX1_RGB` 改为 fx 314、近裁剪 3 cm（夹爪本体在镜头前 22 mm 内，手指从 38 mm 起）；两臂 yml：`cam_head`/`cam_head_right` 用 `g1d_head`，`cam_wrist` 用合同位姿 `pos [0.0627, 0, 0.0555]`、`ori [0.6124, 0.3536, -0.3536, -0.6124]`。Isaac 渲染（隔离目录，进程内读仓库 yml，旧资产网格）：手指压在画面两下角、指尖约一半高度，与真机一致；对比图本机 `output/cam_check/v4_f{5,11}/compare_f*.jpg`。
+  4. **共享资产同步与事故（16:14）**：用户同意后在共享库跑了当时的 `build_asset.py`：`Robots/g1d` 已按当前代码重建（新相机配置 + `strip_wrist_camera` 网格；与 17:38 隔离构建逐字节一致）。但 `build_layouts` 先删掉全部 `g1d_*_*.json`，又因共享库缺 `water_cup` 中途退出，G1-D 任务布局被清空；随即用 `52b3d8c` 版 `build_layouts` 恢复（3 任务 396 个，仅依赖已有的 `pitcher`），恢复后 scripted_demo seed 0 的 `g1d_general_pickup`、`g1d_stack_blocks` 均 success_rate=1.0（隔离目录 `camsync-20261016-161434`）。之后 17:42 另一会话按新代码重装布局（见「三个场景」一节）。教训：在共享库跑 `build_asset.py` 前先确认它读的物体都在，或用叠加目录。
+  5. **资产重组后重渲（2026-10-16 晚）**：隔离目录 `camrefactor-20261016-172408`，叠加 Assets（只读部分软链共享库，`Robots/g1d`、`Room/real_scene*`、`Eval_Layout/RoboDojo/g1d*`、`Material/Fluid`、`water_cup`/`plastic_cup` 为本地生成；不跑 `format.py`，只生成 `uuid_map.json`）。按 README 生成杯子并跑 `build_asset.py`（`--v4` 默认 `real2sim/robot/g1d_v4`），三个场景配置各 574 个布局。办公室场景第 5/11 帧与真机对比和重组前一致；`g1d`/`g1d_counter`/`g1d_lab` 第 11 帧四路相机都正常。图在本机 `output/cam_check/refactor/`（`compare_real_f*.jpg`、`compare_scenes_f11.jpg`，脚本 `output/cam_check/compare.py`）。
+  6. **头部改用合同位姿（胸口约束）**：用户指出真机头部画面底部能看到自己的胸口（深灰色弧形；其上带橙灯的白色件是底盘），仿真看不到。之前我把底部误认为底盘，第 2、3 条里"头部位姿保持现状"的结论因此作废。真机胸口上沿在第 5/8/11 帧完全一致，读 7 个点作约束，和夹爪轮廓一起拟合（脚本 `output/cam_check/fit_chest.py`、`chest.py`，在 camcheck 目录跑）：现位姿（躯干系 x=82.7 mm）躯干投影全在画外，胸口误差 63–106 px；**合同位姿（x=48.1 mm，后移 3.5 cm）不拟合，胸口中间 5 点误差 −3 到 +2 px，夹爪 2.3/3.6 px（比现位姿 5.4/6.2 更好）**，再拟合几乎不动（偏航 1.6°、滚转 0.9°），直接用合同值。镜头在头壳网格内：视锥内面罩 0–40 mm、下巴 40–100 mm（仅最底 30 行），胸口从 128 mm 起、手臂 218 mm 起，所以 `G1D_HEAD` 近裁剪 10 cm（最底 1–2 行可能残留一点头壳边）。改动：两眼 `link: head_link`、`pos [0.0442, ±0.0296/−0.0300, 0.4900]`、`ori [0.6593, 0.2557, -0.2557, -0.6593]`。重渲（同一隔离目录，`output/cam_check/refactor2/`）：三个场景头部底部都出现胸口，办公室场景胸口上沿约第 424 行（真机约 435 行）。仿真胸口为金属浅灰，真机偏深灰。
   4. real_scene1 的桌子/沙发相对机器人的位置与这次运行的真实摆放不同，背景不能用来对比。
 
 ## 新任务 `g1d_pour_beans_cup_to_cup`：双手各拿一个塑料杯，空中杯对杯倒红豆（2026-10-16）
@@ -143,14 +146,14 @@
 - 杯对杯倒豆：3 个 seed 里 2 个通过。seed 1 的目标杯位置（x 0.159、y -0.320）右手够不到胸前位置，可以把目标杯的 y 收窄到更靠近机器人，或者把胸前位置跟着杯子走。右手倒（真机片段里是右手倒）会让杯子在两指间转动，没解决；值得试的方向：夹紧时用线性 PD 让两指都停在杯面上（参照叠块的做法），而不是全力闭合。
 - 双臂倒水：换成自建水杯后 seed 1 成功；seed 0（壶在右）右手倒壶时要么够不到杯口（差 9 cm），要么把杯子带近后壶身撞上持杯手，需单独调右手倒壶的姿态/壶嘴方向。`water_cup`/`plastic_cup` 和新布局已于 2026-10-16 装入共享资产库。杯子更远的布局（y≈-0.46）未测。
 - G1 手臂在桌面高度的可达范围约 0.45 m；RoboDojo 现有任务（为桌面上的 X5 设计）有物体距肩部 0.4–0.7 m，部分不可达。自有任务的物体应放在 y≈[-0.55, -0.25]，或利用腰部前倾（`Yaw_Joint`）。
-- 相机：头部（Gemini_345Lg 针孔 96°）与腕部（dex1_rgb 约 68°）已按真机帧投影拟合（见 2026-10-16 节），但不是棋盘格标定；腕部改动需重跑 `build_asset.py` 同步到共享资产。头壳被隐藏，第三视角里机器人没有头部外壳。
+- 相机：内参用棋盘格标定值（头 `g1d_head` 约 98°、腕 `dex1_rgb` 约 91°），头部与腕部外参都用宇树合同值，并经真机帧投影核对（头部含胸口上沿，见 2026-10-16 节）；未建模畸变（<2%）和腕部主点偏移（最多 17 px）；头/腕都靠近裁剪面（10 cm / 3 cm）隐去自身外壳，离相机更近的物体也会被裁掉。共享库 `Robots/g1d/*_robot_config.yml` 还是头部旧位姿，需同步（建议用叠加目录或先确认 `build_asset.py` 依赖的物体都在共享库）。
 - 末端位姿（ee）动作未支持：需写 G1-D cuRobo 配置；且 `RobotManager` 的 planner 以 `robot_name` 为键，coupled 左右臂会共用同一个 planner，需要改成按手臂区分。
 - `_task.yml` 中指定了 `robot_config`/`scene_config` 的任务（如 x5+franka 竞赛任务、传送带任务）会覆盖 g1d 机器人或场景。
 - 棱纹环按 `elbow_link` 网格的 x 区间切分（换 URDF/网格后需重新核对 `RING_X`）；材质参数为目测，仿真房间光照比真机亮，金属会显得偏亮。
 - 服务器上 `/usr/local/bin/ffmpeg` 不带 libx264，已在仿真环境 bin 中链接系统 ffmpeg；新建环境需同样处理，否则录视频时 BrokenPipe。
 - 自建资产在 `real2sim/`，`real2sim/**` 下的 usd/usdc/STL/图片走 Git LFS（`.gitattributes`），`preview/`、`demo/`、`*.bak` 不入库。`.gitignore` 用锚定的 `/Assets`：macOS 大小写不敏感，不锚定会把 `real2sim/scene3_pour_pack/assets/` 一起忽略。不要再往 `Assets/` 里放要入库的文件：`init_assets.sh` 发现 `Assets/` 不完整会把它整个挪成 `Assets.partial.<时间戳>`。本机 git-lfs 为官方二进制，装在 `~/.local/bin`（Homebrew 在此机会从源码编译整条依赖链，不要用）。
 - 杯对杯倒豆的杯子位置按布局随机抽取（种子取自瓶子三维坐标，含桌面高度），所以三个场景同一编号的杯子位置不同；其余任务同一编号在三个场景里相对机器人一致。
-- 共享资产库的 `Robots/g1d` 仍未按当前代码重建（无相机 Dex1 网格、相机改动都还没同步），本次只装了 Room、杯子和布局。
+- 共享资产库的 `Robots/g1d` 已于 2026-10-16 16:14 重建（无相机 Dex1 网格 + 当时的相机配置）；之后头部相机改为合同位姿，`*_robot_config.yml` 需再同步一次（URDF/网格不变）。
 
 ## 下一会话
 
@@ -161,7 +164,7 @@
 
 - 用户要求：在找到真实相机模型之前，夹爪用不带相机的标准版。真机 `dex1_1_service/urdf/meshes/base_link.STL`（已拷到本机 `.cache/unitree_official/urdf/meshes/`）与 v4 的 `base_link.STL` 逐字节相同，本身就带相机支柱和相机，所以没有现成的无相机网格。
 - `build_asset.py`：`seat_wrist_camera`（把相机模块下移到机身上）改为 `strip_wrist_camera`，删掉相机模块和线缆插头，把支柱从机身顶面（z=0.0335）截掉，截面以下保留（这部分是机身的盖板，整块删掉会露出齿轮）。腕部相机**传感器**（robot config 的 `cam_wrist`）不变，仍然出腕部画面。对比图在本机 `output/dex1_std_compare2.png`。
-- 验证：只在服务器隔离目录 `c2c-20261016-105635-lab` 的 `Assets/Robots/g1d` 叠加副本里换了网格并重新转 USD，实验室场景 seed 0 跑了两次：一次成功（77% 进杯），一次失败（倒到一半源杯从手里滑落）。同一配置结果不同，说明仿真每次运行有随机性，不是网格造成的。四宫格视频 `output/c2c/lab_std/lab_std_grid_s0.mp4`。**共享资产库的 `Assets/Robots/g1d` 还是旧网格**，需要用户同意后运行 `build_asset.py`。
+- 验证：只在服务器隔离目录 `c2c-20261016-105635-lab` 的 `Assets/Robots/g1d` 叠加副本里换了网格并重新转 USD，实验室场景 seed 0 跑了两次：一次成功（77% 进杯），一次失败（倒到一半源杯从手里滑落）。同一配置结果不同，说明仿真每次运行有随机性，不是网格造成的。四宫格视频 `output/c2c/lab_std/lab_std_grid_s0.mp4`。共享资产库的 `Assets/Robots/g1d` 已于 16:14 换成该网格。
 
 ## 资产目录重组：自建内容移到 `real2sim/`（2026-10-16）
 
@@ -185,11 +188,11 @@
 
 - 2026-10-16：自建资产从 `Assets/` 移到入库的 `real2sim/`（场景 1–3、倒水场景包、G1-D v4 URDF），README 写明 clone → 安装 → 下载资产 → 生成资产的顺序。
 
-- 2026-10-16：Dex1-1 改为不带相机模型的标准版（`strip_wrist_camera`），共享资产未同步。
+- 2026-10-16：Dex1-1 改为不带相机模型的标准版（`strip_wrist_camera`），16:14 已同步到共享库 `Robots/g1d`。
 
 - 2026-10-16：新任务 `g1d_pour_beans_cup_to_cup`（两只塑料杯空中对倒红豆，左手倒），seed 0/2 成功、seed 1 失败；和 10-15 的壶倒杯 + 自建水杯改动一起提交。
 
-- 2026-10-16：对比真机上的官方 G1-D URDF（运动学一致，腰部关节名在 v4 中互换），并用真机第 5/11 帧关节角渲染三路相机：真机腕部两路标签反了（图像服务端口相对采集互换，已知问题，部署端 SWAP_WRISTS）；头部相机按关节角投影拟合确认已对齐（中位 6–8 px）；腕部相机按手指轮廓拟合，改为约 68°、下移 1.4 cm、俯 40.8°（`DEX1_RGB` + 两臂 yml，未提交，共享资产未同步）。
+- 2026-10-16：对比真机上的官方 G1-D URDF（运动学一致，腰部关节名在 v4 中互换），并用真机第 5/11 帧关节角渲染三路相机：真机腕部两路标签反了（图像服务端口相对采集互换，已知问题，部署端 SWAP_WRISTS）；之后用 rtx5090-180 的棋盘格内参重做：头部 fx 288→279.5（新类型 `g1d_head`，位姿不变），腕部改为宇树合同外参 + fx 314 + 3 cm 近裁剪，轮廓误差 0.4–2.5 px；先前自由拟合的 68° 作废（代码未提交；共享库 `Robots/g1d` 已同步，同步时误清空过 G1-D 布局并已恢复）。资产重组后在隔离叠加目录重跑 `build_asset.py` 并重渲。随后按用户指出的"真机能看到胸口"，头部改用合同位姿（后移 3.5 cm，挂 `head_link`）+ 10 cm 近裁剪，胸口与夹爪同时对上；共享库头部配置未同步。
 
 - 2026-10-14：用四张照片重建实验室操作台 real_scene3（`Assets/sim_scene_lab/`，本机，gitignored），离线检查 19/19 通过，未在 Isaac 中验证。
 - 2026-10-14：修复 `g1d_general_pickup` 与 `g1d_stack_blocks` 脚本抓取与叠块（TCP 雅可比 + 关节限位内缩投影、方块线性 PD 自动定心、侧向抓取手腕朝向肩部），远端验证两任务均拿到 `success_rate = 1.0`；倒水脚本改为双臂协同，倒水布局杯子拉近 9 cm。

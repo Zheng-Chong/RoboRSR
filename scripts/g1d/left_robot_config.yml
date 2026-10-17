@@ -15,30 +15,30 @@ gripper_bias: 0.12              # dex1_base_link origin -> fingertip centre (m)
 gripper_scale: [-0.02, 0.0245]  # finger travel: open .. closed
 delta_matrix: [[1,0,0],[0,1,0],[0,0,1]]
 grasp_camera_reference_axis: [1, 0, 0]
-# Camera mounts are calibration knobs, fitted by eye to real G1-D head/wrist recordings.
+# Intrinsics are checkerboard-calibrated (env_cfg/camera/template.py); mounts were checked by projecting the robot meshes
+# at recorded joint angles onto real frames (median error 2-7 px at 640x480).
 # ori is a wxyz quaternion from the link frame (x forward, z up) to the USD camera (-z forward, +y up).
 camera:
   -
-    link: "d435_link"
+    link: "head_link"
     name: "cam_head"  # left eye of the head stereo pair, as in the real training recordings
-    type: Gemini_345Lg  # wide-angle (~96 x 71 deg); the real G1-D head view shows the table, wall and chest
+    type: g1d_head
     mesh: pinhole
-    # Stereo calibration: eyes at y = +-29.8 mm from the head centre, optical axes 47.6 deg down (= d435_link pitch).
-    # d435_link sits 17.5 mm left of the centre, 20 mm behind the face; the eyes are moved 25 mm forward (horizontally;
-    # (0.0169, 0, 0.0185) in the pitched d435_link frame) to just outside the head shell, so the shell stays visible.
-    pos: [0.0169, 0.0123, 0.0185]
-    ori: [0.5, 0.5, -0.5, -0.5]  # along d435_link x
+    # Unitree camera contract (service console 031354): eyes 29.8 mm either side, 47.6 deg down. The chest edge and
+    # the grippers land within ~3 px of the real frames; the lens sits inside the head shell (near plane, g1d_head).
+    pos: [0.0442, 0.0296, 0.4900]
+    ori: [0.6593, 0.2557, -0.2557, -0.6593]
   -
-    link: "d435_link"
+    link: "head_link"
     name: "cam_head_right"  # right eye
-    type: Gemini_345Lg
+    type: g1d_head
     mesh: pinhole
-    pos: [0.0169, -0.0473, 0.0185]
-    ori: [0.5, 0.5, -0.5, -0.5]
+    pos: [0.0442, -0.0300, 0.4900]
+    ori: [0.6593, 0.2557, -0.2557, -0.6593]
   -
     link: "left_dex1_base_link"
     name: "cam_wrist"
-    type: d435
+    type: dex1_rgb
     mesh: pinhole
-    pos: [0.055, 0, 0.095]  # fitted to the real wrist view: finger roots and slot visible, housing out of frame
-    ori: [0.6485, 0.282, -0.282, -0.6485]  # looks along the fingers, 43 deg down
+    pos: [0.0627, 0, 0.0555]  # Unitree camera contract (service console 031354); matches real finger silhouettes
+    ori: [0.6124, 0.3536, -0.3536, -0.6124]  # looks along the fingers, 30 deg down
