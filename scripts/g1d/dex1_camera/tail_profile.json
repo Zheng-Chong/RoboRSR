@@ -1,0 +1,10 @@
+{
+  "status": "approximate_smooth_tail_visual_adaptation_not_measured",
+  "basis": "User requested removal of the two protruding rings only. Cylinder radius comes from the existing CAD midsection, not a new physical measurement. Camera, upright, mounting pad, fingers and all joint/control/calibration parameters stay unchanged.",
+  "native_cylinder_section_y_m": 0.021,
+  "cylinder_sections": 192,
+  "component_bounds_tolerance_m": 0.000002,
+  "rear_cover_bounds_m": [[-0.0325, 0.0, -0.0325], [0.0325, 0.0448, 0.0325]],
+  "lower_ring_bounds_m": [[-0.03496592, 0.0228, -0.035], [0.03496592, 0.0348, -0.0005]],
+  "upper_ring_bounds_m": [[-0.03496592, 0.0228, 0.0005], [0.03496592, 0.0378, 0.0335]]
+}

@@ -2,8 +2,8 @@
 
 Takes the team's assembled G1-D + Dex1-1 (camera version) URDF, v4: official g1_d.urdf with the standalone
 dex1_1.urdf mounted on each wrist (real2sim/robot/g1d_v4/: g1_d_full_dex1_v4.urdf, meshes/, physics_contract.json),
-strips the wrist camera module off the Dex1-1 mesh (standard gripper), adds the G1 head D435 frame from unitree_ros
-g1_29dof_mode_15_with_dex1_1.urdf and locks the wheels (tabletop only).
+rebuilds the Dex1-1 wrist camera module at its real mount (scripts/g1d/dex1_camera), adds the G1 head D435 frame from
+unitree_ros g1_29dof_mode_15_with_dex1_1.urdf and locks the wheels (tabletop only).
 Writes:
     Assets/Robots/g1d/                     g1d_dex1.urdf, meshes/, physics_contract.json (self-collision filters),
                                            {left,right}_robot_config.yml
@@ -97,8 +97,6 @@ CUP_PAIR_X, CUP_PAIR_Y = (0.10, 0.16), (-0.39, -0.31)
 CUP_FILL = (0.77, 0.77, 0.71)
 CUP_FLUID_Z = -0.0175
 OBJECT_SECTIONS = ("Rigid", "Geometry", "Fluid", "Articulation", "Garment", "Clutter", "Dynamic")
-# Top of the Dex1-1 body block (m, mesh z): the camera post, module and cable plug of the v4 mesh sit above it.
-WRIST_CAM_BODY_TOP = 0.0335
 D435_INERTIAL = (
     '<inertial><origin xyz="0 0 0" rpy="0 0 0"/><mass value="0.01"/>'
     '<inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/></inertial>'
@@ -138,7 +136,7 @@ def build_urdf(v4, src, out):
     for mesh in mesh_files(g1d):
         (out / mesh).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(v4 / mesh, out / mesh)
-    strip_wrist_camera(out / "meshes/dex1_1/base_link.STL")
+    seat_wrist_camera(g1d, v4, out)
     recess_carrier_hulls(g1d, out)
     shutil.copy(v4 / "physics_contract.json", out)
     shutil.rmtree(out / "usd", ignore_errors=True)  # UrdfFileCfg hashes only the URDF path, not mesh files
@@ -146,19 +144,38 @@ def build_urdf(v4, src, out):
     print(f"wrote {out / 'g1d_dex1.urdf'} ({len(movable)} movable joints)")
 
 
-def strip_wrist_camera(stl):
-    """Standard Dex1-1 without the wrist camera (no model of the real camera module yet): the v4 mesh, identical to
-    the official dex1_1_service base_link.STL, holds a camera module up on a ~6 cm post behind the body. Drop the
-    module and the cable plug, and cut the post off at the body top; its lower part is the body's cover plate. The
-    wrist camera sensor (robot config cam_wrist) stays. Mesh frame: dex1 link x = mesh y, link z = mesh z."""
-    import trimesh  # Isaac Sim env
+def seat_wrist_camera(g1d, v4, out):
+    """Dex1-1 camera version: the v4 base mesh (= official dex1_1_service base_link.STL) holds the camera module up on
+    a ~6 cm post; scripts/g1d/dex1_camera rebuilds the module on its upright at the real height, smooths the tail by
+    the wrist and adds the mount lip (approximate geometry, *profile.json), as body / support / housing / lip visual
+    meshes and convex colliders. Its lens lies on the cam_wrist optical axis, 11 mm ahead of the robot-config sensor,
+    inside the camera's 3 cm near plane. The three steps run as delivered (each checks its inputs and the finger
+    clearance) in a scratch dir; only the two dex1 base links and their meshes come back."""
+    import tempfile
 
-    parts = trimesh.load(stl, process=True).split(only_watertight=False)
-    bracket = max(parts, key=lambda p: p.bounds[1, 2])
-    above = [p for p in parts if p.bounds[0, 2] > WRIST_CAM_BODY_TOP]  # camera module + cable plug on the post
-    body = [p for p in parts if p is not bracket and all(p is not a for a in above)]
-    bracket = bracket.slice_plane([0, 0, WRIST_CAM_BODY_TOP], [0, 0, -1], cap=True)
-    trimesh.util.concatenate([*body, bracket]).export(stl)
+    import dex1_camera
+    from dex1_camera.add_mount_lip import add_mount_lip
+    from dex1_camera.build import build
+    from dex1_camera.geometry import BASE_MESH
+    from dex1_camera.smooth_tail import smooth_tail
+
+    profiles = Path(dex1_camera.__file__).parent
+    links = ("left_dex1_model_base_link", "right_dex1_model_base_link")
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        (tmp / "base").mkdir()
+        (tmp / "base/meshes").symlink_to(out / "meshes")
+        ET.ElementTree(g1d).write(tmp / "base/g1d_dex1.urdf", encoding="utf-8", xml_declaration=True)
+        build(tmp / "base/g1d_dex1.urdf", v4 / BASE_MESH, profiles / "profile.json", tmp / "camera")
+        smooth_tail(tmp / "camera", tmp / "tail", profiles / "tail_profile.json")
+        add_mount_lip(tmp / "tail", tmp / "lip", profiles / "mount_lip_profile.json")
+        built = ET.parse(tmp / "lip/g1d_dex1.urdf").getroot()
+        for name in links:
+            link, new = (r.find(f"link[@name='{name}']") for r in (g1d, built))
+            link[:] = list(new)
+        shutil.rmtree(out / "meshes/camera_geometry", ignore_errors=True)
+        shutil.copytree(tmp / "lip/meshes/camera_geometry", out / "meshes/camera_geometry")
+    (out / BASE_MESH).unlink()
 
 
 def recess_carrier_hulls(g1d, out):

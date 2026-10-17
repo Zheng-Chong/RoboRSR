@@ -1,0 +1,10 @@
+{
+  "status": "approximate_visible_mount_lip_not_measured_or_calibrated",
+  "basis": "Visible side-photo mounting edge only. Retain the complete v1_smooth pad outline and add one short downward return against the platform rear face. Width, rear edge and platform contact plane come from the existing CAD. No hidden slots, screws or mechanical locking claims.",
+  "downward_depth_m": 0.004,
+  "outer_lower_chamfer_m": 0.0008,
+  "pad_overlap_m": 0.0002,
+  "section_offset_m": 0.000001,
+  "platform_bounds_m": [[-0.02889394, 0.0448, -0.0335], [0.02889394, 0.0738, 0.0335]],
+  "bounds_tolerance_m": 0.000002
+}

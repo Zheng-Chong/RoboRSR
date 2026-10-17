@@ -1,0 +1,9 @@
+# Geometry generation only. Isaac validation uses the existing RoboRSR Isaac Lab environment.
+numpy
+scipy
+trimesh>=4.5
+manifold3d
+matplotlib
+Pillow
+pytest
+ruff

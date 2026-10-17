@@ -139,6 +139,15 @@
 - 约定：机器人站在没有挡板的 −Y 一侧（这是假设，真机若站在另一侧就把 Room 转 180°）。Room `default_pos` 取 (0, −0.257, 0)，使桌沿落在 y=−0.60；G1-D 默认站位不会碰到桌腿（桌下净深 0.63 m）；桌面比 real_scene1 高 0.069 m，需要用升降柱补偿、物体同步抬高。
 - 验证：本机离线检查 `check_scene.py` 19/19 通过；四个拟合视角下桌子模型边缘与照片贴合，拟合残差大多在 0.3–4 px（脚轮最大约 20 px）。服务器隔离目录 `/data2/tmp/robodojo/agent-remote-runs/lab-render-20261014-*`（共享资产库未改）以 Room=real_scene3 跑 `g1d_pour_water_into_cup` seed 0：物体 +0.069 m，升降柱各 0.0345，`cam_third` 换成 p3 位姿，GPU 0。退出码 0，RTX 渲染正常，第三视角与照片一致，桌面不过曝；倒水失败（脚本问题，同其他场景）。v1 画面偏黄：原因是 Isaac 相机没有白平衡，5000 K 色温再加上没有天花板、RoboDojo 默认的棕色摄影棚 HDR 从上方灌进房间。v2 加了天花板，改为 6500 K、强度 24000（扫了 6000/12000/24000 三档），地毯贴图亮度 ×0.67；第三视角桌面 R/B 1.01、地毯 1.10（照片为 1.05/1.06），桌面与地毯的亮度比 1.98（照片 2.03）。亮度参照的是手机照片，真机头部相机的曝光未核对。视频和帧在本机 `output/lab_render/`（`lab_render_grid_v2.mp4`、`compare_light.jpg`）。未改仓库代码，也未安装到共享 `Assets/Room/`。
 
+## 带相机的 Dex1-1 夹爪接入（2026-10-17，项目成员交付 v1_smooth_wrap）
+
+- 来源：项目成员 zhoushy 的交付包，先 V1（`deliverable.tar.gz`），后改进版 `dex1_camera_delivery_v1_smooth_wrap`（微信 `deliverable.gz`，10-17）；本机解压在 `.cache/dex1_delivery{,_v1sw}/`（gitignored）。保留官方 CAD（`dex1_1_service@ced3216` 的 `base_link.STL`，= `real2sim/robot/g1d_v4/meshes/dex1_1/base_link.STL`）的镜头、前板、倾斜背壳，补后部电子仓、竖直支撑、安装脚（44 mm 高、前移 19 mm，工程估计）；改进版再把手腕侧尾部的双环换成光滑圆柱（`smooth_tail`），并在安装脚后沿加 4 mm 下折边（`add_mount_lip`）。近似几何，惯量沿用原值。
+- 接入：交付代码放在 `scripts/g1d/dex1_camera/`（按其清单，不含清单里的根 `README.md`；测试默认 CAD 路径改指 real2sim；README 后半改为仓库用法）。`build_asset.py` 的 `seat_wrist_camera` 在临时目录依次跑作者的 `build` → `smooth_tail` → `add_mount_lip`（保留其输入检查、逐字节保护和三开度外壳-手指碰撞检查），只把两个 `*_dex1_model_base_link` 的视觉/碰撞节点和 `meshes/camera_geometry/` 搬回 `Assets/Robots/g1d/`，删掉不再引用的 `dex1_1/base_link.STL`（取代原 `strip_wrist_camera`）。产物与两版交付模型都逐字节一致（80 个网格，URDF 42 link/41 joint 语义相同）。
+- 与相机位姿自洽：镜头前端中心在 `dex1_base_link` (72.4, 0, 49.5) mm，宇树合同镜头位置 (62.7, 0, 55.5) 在其光轴上、玻璃后 11 mm；外壳在腕部视锥里深 5.5–12 mm、本体 19–23 mm，被 3 cm 近裁剪面裁掉。头部画面里两个夹爪上方出现相机模组，和真机一致；腕部画面与标准夹爪相同。图 `output/cam_check/dex1v1/`、`dex1build/`。
+- 倒豆子脚本避让（`scripted_demo.py`）：接入后两个倒豆子任务失败。离线诊断（`output/cam_check/debug_pour.py` 记录每步刚体位姿，`analyze_pour.py` 算相机模组碰撞体到容器/另一只手的距离）：最先接触的是接杯那只手夹爪顶上的相机模组——杯对杯里源杯躺平后远端杯沿越过目标杯口扫到它，倒水里倾到约 110° 的壶顶撞到它；之后两只手的模组互碰。模组真机也有，所以改脚本不关碰撞：`LIP_IN, LIP_CLEAR` 0.024/0.025 → 0.010/0.035（源杯杯口少伸进目标杯、略抬高），`CUP_GRIP_UP` 0.09 → 0.065（接杯手握低，模组在杯口以下）。扫过的不行方案：只抬高 `LIP_CLEAR`（4.5 cm 推迟碰撞、6.5 cm 洒出）、目标杯握到 0.05/0.04（指尖顶桌、杯子被甩飞）、倒水间隙 7/9 cm（洒出）。
+- 验证（服务器隔离目录 `camdex1-20261017-113230`，叠加 Assets，最新布局）：ruff、`pytest scripts/g1d/dex1_camera/tests`（4 通过）、task_inventory；拾取/叠块 seed 0 在 `g1d`/`g1d_counter`/`g1d_lab` 6/6 成功；三场景四路相机渲染正常。倒豆子（新夹爪 + 新参数 vs 同一布局的标准夹爪 + 原参数，目录 `-stdbase`）：杯对杯 `g1d` seed 0/1/2 = 成功 90%/失败/成功 87%（标准：未跑/成功 86%/失败 54%），`g1d_counter`、`g1d_lab` seed 0 成功 89%/87%；倒水 seed 1 两边都成功 26%，seed 2 两边都失败（19% vs 0%），seed 0 是已知够不到的老问题。杯对杯 seed 1 新夹爪在抬杯阶段（倾倒前）目标杯跟踪误差 5 cm，复跑结果见「最近历史」。每个配置只有 seed 0–2 的布局。注意：多个任务同目录并发跑时按时间找 `_result.json` 会串，按 `<seed>_scripted/` 和各自日志的 `check` 判定。
+- 共享资产库：`Robots/g1d` 已换成本次构建（URDF、meshes 含 `camera_geometry/`、physics_contract、两臂 yml；不含 USD 缓存，首次加载重转），先备份到 `/data2/tmp/robodojo/backup-shared-robots-g1d-20261017-161808.tgz`，替换后与构建产物 `diff -rq` 一致。布局未动。
+
 ## 三个塑料杯资产（2026-10-17）
 
 - 用户三张桌面照片（白色塑料马克杯 + 两只透明圆角方形量杯，刻度 400/500 ml）。新增 `scripts/objects/make_plastic_cups.py`（写法同 `make_water_cup.py`，复用 `make_pitcher.py` 的 USD 工具）：`Rigid/plastic_mug/00000`（白色 PP，口径 80 mm、高 95 mm、D 形扁平把手在 +X、约 367 ml、90 g，metadata 带与 `mug` 相同的把手抓取帧）；`Rigid/measuring_cup/00000`（400 ml 刻度，高 135 mm，满口 559 ml，45 g）、`00001`（500 ml 刻度，高 158 mm，满口 653 ml，55 g），截面相同（超椭圆 n=4，底宽 64 → 75 mm，卡扣杯沿 82 mm 宽 14 mm 高，杯沿上有小挂耳），半透明偏白哑光 PP（OmniSurface，`CLEAR_MIX`：漫反射权重固定 1、粗糙透射 0.92（乳白份额 0.08）、镜面反射权重 0.1、粗糙度 0.3、颜色 (0.94, 0.95, 0.96)）。要点：OmniSurface 分层，漫反射实得 (1 − 透射) × 漫反射权重，之前把漫反射权重设成 0.15–0.4 并令两者和为 1，丢掉了约 16% 能量，杯子越“加雾”越黑（用户对照照片指出真杯偏白）；粗糙度 >0.35 进入强粗糙透射分支也会变暗。乳白份额 0.15–0.25 时空杯很像照片但杯里豆子成浅灰，0.08 是折中（空杯亮白，豆子仍可辨）。另试过：OmniGlass frosting 只会变糊变灰；镜面反射 1.0 时杯面有光泽（真杯没有）。对比图 `output/plastic_cups/milky{,2}_compare_{empty,beans}.png`、`refl_compare_*.png`、`haze_compare_*.png`。每个杯子只有一个视觉网格 `/root/visual/model`，碰撞用杯底 + 杯壁分片凸包（马克杯外加把手 44 个，量杯 51 个），中空。
@@ -152,7 +161,8 @@
 
 - real_scene3：尺寸没有实测（量一下桌长或桌高，再用 `--scale-correction` 修正）；灯光已按手机照片标定，仍需和真机头部相机画面对比。已作为 `g1d_lab` 配置接入（见「三个场景接入」一节）。
 
-- 杯对杯倒豆：3 个 seed 里 2 个通过。seed 1 的目标杯位置（x 0.159、y -0.320）右手够不到胸前位置，可以把目标杯的 y 收窄到更靠近机器人，或者把胸前位置跟着杯子走。右手倒（真机片段里是右手倒）会让杯子在两指间转动，没解决；值得试的方向：夹紧时用线性 PD 让两指都停在杯面上（参照叠块的做法），而不是全力闭合。
+- 带相机夹爪 + 新避让参数下（2026-10-17，最新布局）：杯对杯 `g1d` seed 0、2 通过，seed 1 两次都失败（一次抬杯阶段目标杯跟踪误差 5 cm、一次倒出 86% 只进杯 65%），而同一布局下标准夹爪 + 原参数 seed 1 通过、seed 2 失败——seed 1 是这次接入后唯一的退化，下一步可用 `output/cam_check/debug_pour.py` + `analyze_pour.py` 看它是不是仍有模组接触。倒水 seed 2 两种夹爪都失败。
+- 杯对杯倒豆（旧记录，标准夹爪、旧布局）：3 个 seed 里 2 个通过。seed 1 的目标杯位置（x 0.159、y -0.320）右手够不到胸前位置，可以把目标杯的 y 收窄到更靠近机器人，或者把胸前位置跟着杯子走。右手倒（真机片段里是右手倒）会让杯子在两指间转动，没解决；值得试的方向：夹紧时用线性 PD 让两指都停在杯面上（参照叠块的做法），而不是全力闭合。
 - 双臂倒水：换成自建水杯后 seed 1 成功；seed 0（壶在右）右手倒壶时要么够不到杯口（差 9 cm），要么把杯子带近后壶身撞上持杯手，需单独调右手倒壶的姿态/壶嘴方向。`water_cup`/`plastic_cup` 和新布局已于 2026-10-16 装入共享资产库。杯子更远的布局（y≈-0.46）未测。
 - G1 手臂在桌面高度的可达范围约 0.45 m；RoboDojo 现有任务（为桌面上的 X5 设计）有物体距肩部 0.4–0.7 m，部分不可达。自有任务的物体应放在 y≈[-0.55, -0.25]，或利用腰部前倾（`Yaw_Joint`）。
 - 相机：内参用棋盘格标定值（头 `g1d_head` 约 98°、腕 `dex1_rgb` 约 91°），头部与腕部外参都用宇树合同值，并经真机帧投影核对（头部含胸口上沿，见 2026-10-16 节）；未建模畸变（<2%）和腕部主点偏移（最多 17 px）；头/腕都靠近裁剪面（10 cm / 3 cm）隐去自身外壳，离相机更近的物体也会被裁掉。共享库 `Robots/g1d/*_robot_config.yml` 已于 2026-10-17 11:49 同步为仓库版本（头部合同位姿）。
@@ -169,7 +179,7 @@
 1. 先看 `git log` 和本文件；服务器环境已可用，直接用 demo_policy 跑 `--env-cfg g1d` 复现。
 2. 下一步建议：加入自有物体（`Assets/Object/RoboDojo/<类别>/<编号>/object.usd`）并写第一个 G1-D 专用任务及其评测布局。
 
-## Dex1-1 改回标准版（不带腕部相机模型，2026-10-16）
+## Dex1-1 改回标准版（不带腕部相机模型，2026-10-16；已被 10-17 的带相机夹爪取代）
 
 - 用户要求：在找到真实相机模型之前，夹爪用不带相机的标准版。真机 `dex1_1_service/urdf/meshes/base_link.STL`（已拷到本机 `.cache/unitree_official/urdf/meshes/`）与 v4 的 `base_link.STL` 逐字节相同，本身就带相机支柱和相机，所以没有现成的无相机网格。
 - `build_asset.py`：`seat_wrist_camera`（把相机模块下移到机身上）改为 `strip_wrist_camera`，删掉相机模块和线缆插头，把支柱从机身顶面（z=0.0335）截掉，截面以下保留（这部分是机身的盖板，整块删掉会露出齿轮）。腕部相机**传感器**（robot config 的 `cam_wrist`）不变，仍然出腕部画面。对比图在本机 `output/dex1_std_compare2.png`。
@@ -192,6 +202,8 @@
 - 共享资产库（用户同意）：新增 `Room/real_scene{2,3}`、`Rigid/{water_cup,plastic_cup}`、`Eval_Layout/RoboDojo/{g1d_counter,g1d_lab}`，`g1d` 的 G1-D 任务布局换成当前版本，`Room/real_scene1` 覆盖为同样内容；与隔离目录验证产物 `diff -r` 一致。改动前备份 `/data2/tmp/robodojo/backup-shared-20261016-174239.tgz`（原 `g1d` 布局和 `real_scene1`）。没有跑 `format.py`（运行时不读 `uuid_map.json`）。
 
 ## 最近历史
+
+- 2026-10-17：接入项目成员交付的带相机 Dex1-1 夹爪（v1_smooth_wrap：相机模组 + 光滑尾部 + 安装脚折边），代码 `scripts/g1d/dex1_camera/`，`build_asset.py` 默认生成；倒豆子脚本加避让（`LIP_IN/LIP_CLEAR` 0.010/0.035、`CUP_GRIP_UP` 0.065）。拾取/叠块三场景 6/6 成功，杯对杯 seed 0/2 和吧台/实验室 seed 0 成功、seed 1 退化，倒水与标准夹爪持平。共享库 `Robots/g1d` 已换（备份 `backup-shared-robots-g1d-20261017-161808.tgz`），共享库上叠块/拾取 seed 0 成功。
 
 - 2026-10-17：头部相机合同位姿同步到共享库 `Robots/g1d/*_robot_config.yml`（只拷两个 yml，先备份）。用 HEAD 代码 + 共享库直接渲染（`agent-remote-runs/camsync-render-20261017-114947`），`g1d`/`g1d_counter`/`g1d_lab` 的 `g1d_stack_blocks` seed 0 均退出码 0、eval_time=1、success_rate=1.0；四路相机截图和头部同步前后对比在本机 `output/camsync/`。
 

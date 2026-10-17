@@ -55,8 +55,9 @@ CUP_MEET = 0.0  # the cup is carried this much toward the jug (the cup arm is ne
 CUP_TILT = np.deg2rad(0)
 SPOUT_GAIN, SPOUT_SLACK = 0.2, 0.05  # per action, share of the spout error (actual vs over the actual cup) fed back
 # side grasp on the cup body (probed at the cup): fingers horizontal miss it by 6-14 cm at any height and wrist yaw;
-# 35 deg down with the wrist turned 30-60 deg inward reaches it within 1-3 cm, 8-10 cm above the bottom
-CUP_GRIP_UP = 0.09  # pads this far above the cup bottom
+# 35 deg down with the wrist turned 30-60 deg inward reaches it within 1-3 cm, 8-10 cm above the bottom. At 9 cm the
+# wrist camera module on top of the gripper stands above the rim and the tilted jug hits it; at 6.5 cm it stays below
+CUP_GRIP_UP = 0.065  # pads this far above the cup bottom
 CUP_PITCH, CUP_YAW = 35, 45  # deg, fingers below horizontal; wrist turned inward from fingers-forward
 CUP_SLIDE = 0.08  # m the open pads slide along the fingers onto the cup body
 # Cup-to-cup pour (two 9.5 cm plastic cups, as in the real G1D-PourBeansPlus clips)
@@ -64,7 +65,9 @@ C2C_GRIP_UP = 0.075  # pads 2 cm below the rim
 C2C_RAISE, C2C_LIFT = 0.06, 0.12  # straight up off the table first; target cup bottom this high in mid-air
 C2C_MEET_X, C2C_MEET_Y = 0.03, -0.36  # target cup axis in mid-air: this far on its own side of the midline
 CUP_SPEED = 0.005  # m per action carrying a cup
-LIP_IN, LIP_CLEAR = 0.024, 0.025  # source lip this far inside the target's near rim, this high above it
+# source lip this far inside the target's near rim, this high above it. Lying flat, the source cup reaches a cup width
+# past its lip: further in, its far rim sweeps into the wrist camera module of the hand holding the target
+LIP_IN, LIP_CLEAR = 0.010, 0.035
 C2C_TILT, C2C_DRY = np.deg2rad(150), np.deg2rad(60)  # most tilt; nothing leaves a sixth-full cup below C2C_DRY
 C2C_DRY_RATE, C2C_TILT_RATE = np.deg2rad(2.0), np.deg2rad(1.0)  # per action; faster and the arm lags, the cup slips
 C2C_SETTLE, C2C_SETTLE_ERR = 40, 0.01  # most actions held in mid-air until both grasp points are this close

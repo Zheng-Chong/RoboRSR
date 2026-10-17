@@ -1,0 +1,21 @@
+{
+  "source_split_height_m": 0.0335,
+  "seat_height_m": 0.044,
+  "forward_shift_m": 0.019,
+  "lateral_shift_m": 0.0,
+  "extra_rpy_deg": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "support_collision_band_height_m": 0.008,
+  "status": "advanced_camera_v1_approximate_geometry_not_calibrated",
+  "basis": "Approximate Advanced V1 geometry referenced to official product images and real side photos. Retain native lens/front panel/tilted backing, add rear electronics case, solid upright and mounting pad. Local added dimensions are engineering approximations, not measurements; no optical calibration.",
+  "solid_camera": {
+    "housing_back_depth_m": 0.01,
+    "housing_edge_inset_m": 0.001,
+    "corner_radius_m": 0.0015,
+    "mount_pad_thickness_m": 0.0015,
+    "mount_pad_margin_m": 0.001
+  }
+}

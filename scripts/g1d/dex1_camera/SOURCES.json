@@ -1,0 +1,13 @@
+{
+  "camera_cad": {
+    "repository": "https://github.com/unitreerobotics/dex1_1_service",
+    "commit": "ced3216290bb22dae356213993786beeaa7143ab",
+    "path": "urdf/meshes/base_link.STL",
+    "url": "https://raw.githubusercontent.com/unitreerobotics/dex1_1_service/ced3216290bb22dae356213993786beeaa7143ab/urdf/meshes/base_link.STL",
+    "sha256": "0469151d67b4e8230337d649e783d756582545d27944dc49c945fb6fe397cc54",
+    "license": "BSD-3-Clause; retain model/LICENSE.unitree"
+  },
+  "robot_base": {
+    "description": "Existing project G1-D assembly, with head frame, locked wheels and production finger collision corrections retained. Rebuild accepts the delivered full URDF and meshes as input."
+  }
+}
