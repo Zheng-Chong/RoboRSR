@@ -109,9 +109,9 @@ main { min-width: 0; padding: 26px 30px 56px; }
 .k-value { margin: 8px 0 2px; font: 600 28px/1.1 var(--mono); letter-spacing: -.02em; }
 .k-meta { color: var(--muted); font-size: 12px; }
 .pipeline { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.trio { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.duo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 1280px) { .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 1100px) { .trio { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .duo { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .pipeline { grid-template-columns: 1fr; } }
 .step { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: var(--primary-soft); color: var(--primary); font: 700 11px var(--mono); }
 .meter { display: grid; grid-template-columns: minmax(96px, 1fr) minmax(60px, 1.2fr) auto; align-items: center; gap: 10px; padding: 5px 0; font-size: 13px; }
@@ -171,11 +171,6 @@ select { cursor: pointer; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .togglechip { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-2); font-size: 12px; cursor: pointer; }
 .togglechip[aria-pressed="true"] { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); }
-.togglechip.pri[aria-pressed="true"] { border-color: var(--primary-line); background: var(--primary-soft); color: var(--primary); }
-.togglechip:disabled { cursor: default; opacity: .75; }
-.rows { display: flex; flex-direction: column; gap: 6px; width: 100%; }
-.rowline { display: flex; align-items: center; gap: 6px; }
-.rowline input { min-width: 0; }
 .seg { display: flex; flex: 1; gap: 2px; min-width: 60px; }
 .seg i { flex: 1; height: 6px; border-radius: 2px; background: var(--todo-bar); }
 .seg i.ok { background: var(--ok-bar); }
@@ -263,7 +258,6 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
 .form > label { color: var(--text-2); font-size: 13px; }
 .form .ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
 .form .ctl > input:not([type=checkbox]), .form .ctl > select { flex: 1 1 200px; max-width: 360px; }
-.form .ctl.dims input { flex: 0 0 96px; width: 96px; min-width: 0; }
 .hint { color: var(--muted); font-size: 12px; }
 @media (max-width: 560px) { .form { grid-template-columns: 1fr; } .stage-list li { grid-template-columns: 84px 1fr; } .stage-list .sl-detail { grid-column: 1 / -1; } }
 .code { position: relative; }
@@ -407,7 +401,7 @@ const KIND_LABEL = {scene: '场景', object: '物体', task: '任务', episode: 
 const S = {scene: [], object: [], task: [], episode: []};
 const UI = {
   tab: 'overview', drawer: null, ep: null, taskDim: 'custom', taskQ: '', sel: new Set(), loaded: false, syncing: false, syncedAt: '',
-  obj: {q: '', role: '', src: '', photo: false, view: localStorage.objView || 'cards'},
+  obj: {q: '', src: '', photo: false, view: localStorage.objView || 'cards'},
   qa: {task: '', config: '', policy: '', result: '', status: 'pending'},
 };
 let INFO = {};
@@ -454,7 +448,7 @@ const SCENE_STAGES = [
 ];
 
 const MATERIALS = ['PP 塑料', 'PET 塑料', 'PS 塑料', '玻璃', '陶瓷', '不锈钢', '铝', '木', '纸', '硅胶', '布'];
-const DIM_PRESETS = {圆杯: ['开口直径', '底部直径', '高'], 方形: ['长', '宽', '高'], 把手: ['把手高', '把手外伸', '把手厚']};
+const OBJECT_TYPES = {Rigid: '刚体', Articulation: '关节物体', Clutter: '杂物', Dynamic: '动态装置', Fluid: '流体', Garment: '衣物', Geometry: '固定物体'};
 const SPLITS = {'': '未定', train: '训练', holdout: '保留（泛化评测）'};
 const METHODS = {'': '未定', script: '参数化脚本', photogrammetry: '摄影测量', generative: '3D 生成模型', library: '开源 / 官方物体库'};
 const CHECK_STATES = {'': '未测', pass: '通过', fail: '不通过', na: '不适用'};
@@ -466,33 +460,27 @@ const PHYS = [
     () => 'PYTHONPATH=. python scripts/objects/check_pitcher_fluid.py --device cpu --out output/pitcher/fluid   # 壶\nPYTHONPATH=. python scripts/objects/check_cup_beans.py --out output/plastic_cups/beans   # 杯子装豆'],
   ['render', '光照渲染', '3 种灯光预设下截图，无穿透、黑面、折射错误；人工复核', () => ''],
 ];
-const objTasks = (d) => [...new Set([...(d.auto.tasks || []), ...(d.tasks || [])])];
-const dimRows = (d) => (d.dims || []).filter((r) => r.name && num(r.real));
-const dimText = (d) => dimRows(d).map((r) => `${r.name} ${r.real}`).join(' · ');
-const measured = (d) => num(d.real_mass) && dimRows(d).length > 0;
-function dimCheck(d) {  // the model side of each measured dimension: metadata.json measurements_mm, else typed in
-  return dimRows(d).map((r) => {
-    const meta = d.auto.measurements?.[r.name], sim = num(meta) ? Number(meta) : num(r.sim) ? Number(r.sim) : null;
-    const real = Number(r.real), err = sim == null ? null : Math.abs(sim - real);
-    return {name: r.name, real, sim, err, src: num(meta) ? 'metadata' : sim == null ? '' : '手填', ok: err != null && err <= Math.max(2, 0.02 * real)};
+// "开口直径 82，底部直径 64，高 135" -> [{name, real}] in mm; a unit right after a number is not part of the next name
+const parseDims = (text) => [...String(text || '').matchAll(/([^\d\s，,；;、:：=+]+)\s*[:：=]?\s*(\d+(?:\.\d+)?)/g)]
+  .map((m) => ({name: m[1].replace(/^(mm|毫米)/i, ''), real: Number(m[2])})).filter((r) => r.name);
+const dimText = (d) => parseDims(d.dimensions).map((r) => `${r.name} ${r.real}`).join(' · ');
+const measured = (d) => num(d.real_mass) && parseDims(d.dimensions).length > 0;
+function dimCheck(d) {  // each measured dimension against the built model's metadata.json measurements_mm, by name
+  return parseDims(d.dimensions).map(({name, real}) => {
+    const meta = d.auto.measurements?.[name], sim = num(meta) ? Number(meta) : null, err = sim == null ? null : Math.abs(sim - real);
+    return {name, real, sim, err, ok: err != null && err <= Math.max(2, 0.02 * real)};
   });
 }
-const roleGoals = () => live(S.task).flatMap((t) => (t.roles || []).filter((r) => r.name).map((r) => ({task: t.id, name: r.name, target: Number(r.target) || 0})));
-const roleNames = () => [...new Set([...roleGoals().map((r) => r.name), ...S.object.map((o) => o.role).filter(Boolean)])].sort();
-const roleCount = (goal) => {  // objects given the role by hand, or labelled with it in the task config
-  const config = S.task.find((t) => t.id === goal.task)?.auto.objects || {};
-  return live(S.object).filter((o) => (o.role === goal.name && objTasks(o).includes(goal.task)) || (config[o.id] || []).includes(goal.name));
-};
 const OBJ_STAGES = [
   ['measure', '实物测量', (d) => (!d.twin ? na('非实物孪生') : measured(d) ? ok(`${dimText(d)} mm，${d.real_mass} g`)
-    : todo('按形状量关键尺寸 ±1 mm（如开口直径、底部直径、高）、称重、拍多角度照片'))],
+    : todo('量关键尺寸 ±1 mm（如开口直径、底部直径、高）、称重、拍多角度照片'))],
   ['model', '建模入库', (d) => (d.auto.in_library ? ok(d.method ? METHODS[d.method] : '资产库中已有')
     : todo(d.auto.generator ? `有生成脚本 ${d.auto.generator}，资产库中未找到` : '资产库中未找到 metadata.json'))],
   ['dims', '尺寸 / 质量核对', (d) => {
     if (!d.twin) return na('非实物孪生');
     if (!measured(d)) return todo('先填实测尺寸和质量');
     const c = dimCheck(d), done = c.filter((x) => x.sim != null), over = done.filter((x) => !x.ok);
-    if (!done.length || !num(d.auto.mass)) return todo('建模后在 metadata.json 按登记的尺寸名写 measurements_mm，或手填仿真值');
+    if (!done.length || !num(d.auto.mass)) return todo('建好后在 metadata.json 按实测尺寸的名称写 measurements_mm');
     const dm = Math.abs(d.auto.mass * 1000 - d.real_mass);
     const text = `${done.length}/${c.length} 项已核对${over.length ? `，${over.map((x) => x.name).join('、')} 超差` : ''}，质量差 ${dm.toFixed(0)} g`;
     return over.length || dm > 5 ? bad(text) : done.length < c.length ? todo(text) : ok(text);
@@ -503,7 +491,7 @@ const OBJ_STAGES = [
     const done = v.filter((x) => x === 'pass' || x === 'na').length;
     return done === PHYS.length ? ok('5 项通过') : todo(`${done}/${PHYS.length} 项完成`);
   }],
-  ['split', '角色 / 划分', (d) => (d.role && d.split ? ok(`${d.role} · ${SPLITS[d.split]}`) : todo('定角色，并按 7:3 划入训练 / 保留'))],
+  ['split', '训练 / 保留划分', (d) => (d.split ? ok(SPLITS[d.split]) : todo('按 7:3 划入训练 / 保留'))],
 ];
 
 const DIMS = {custom: 'G1-D 自建', generalization: '泛化', memory: '记忆', precision: '精细', 'long-horizon': '长程', open: '开放'};
@@ -646,14 +634,6 @@ function viewOverview() {
   const tagCount = TAGS.map((t) => [t, rejected.filter((e) => (e.tags || []).includes(t)).length]).filter(([, n]) => n).sort((a, b) => b[1] - a[1]);
   const recent = KINDS.flatMap((k) => S[k].filter((d) => d._at).map((d) => ({k, d}))).sort((x, y) => y.d._at - x.d._at).slice(0, 8);
   const withPhoto = objs.filter((o) => o.auto.photos?.length).length, withRender = objs.filter((o) => o.auto.renders?.length).length;
-  const goals = Object.entries(group(roleGoals(), (r) => r.task));
-  const roles = !goals.length ? empty('box', '还没有设定物体角色', '在「任务采集」打开任务，设定这个任务的物体角色和每个角色的目标数量')
-    : goals.map(([task, rs]) => `<div class="small mono t-main" style="margin:4px 0 2px">${link('task', task)}</div>${rs.map((r) => {
-      const xs = roleCount(r), hold = xs.filter((o) => o.split === 'holdout').length, target = r.target || 1;
-      return `<div class="meter"><span class="lbl">${esc(r.name)} <span class="muted small">目标 ${r.target}</span></span>
-        <div class="bar"><i class="pri" style="width:${Math.min(100, (xs.length / target) * 100)}%"></i></div><span class="val">${xs.length}/${r.target}</span></div>
-        <div class="small muted" style="margin:-2px 0 6px">训练 ${xs.filter((o) => o.split === 'train').length} · 保留 ${hold}${xs.length ? `（${pct(hold / xs.length)}，目标 30%）` : ''}</div>`;
-    }).join('')}`).join('');
   const srBody = !sr ? empty('compare', '还没有真机对照', '在「数据质检」给回合选择真机结果后，这里计算 AA、κ 和 P(真机成功 | 仿真成功)')
     : `<dl class="kv"><dt>结果一致率 AA</dt><dd><b class="mono">${pct(sr.A)}</b> <span class="muted small">仿真与真机结论相同的比例</span></dd>
       <dt>Cohen's κ</dt><dd><b class="mono">${sr.kappa == null ? '—' : sr.kappa.toFixed(2)}</b> <span class="muted small">扣除“两边都大量失败”的虚高</span></dd>
@@ -675,8 +655,7 @@ function viewOverview() {
     ${moduleCard(3, '任务采集', '#tasks', TASK_STAGES, tasks)}
     ${moduleCard(4, '数据质检', '#qa', [...EP_CHECKS, QA_STAGE], eps)}
   </div>
-  <div class="grid trio" style="margin-top:14px">
-    <section class="card"><div class="card-h"><h2>资产泛化目标</h2><span class="muted small">按任务的物体角色</span></div><div class="card-b">${roles}</div></section>
+  <div class="grid duo" style="margin-top:14px">
     <section class="card"><div class="card-h"><h2>Sim ↔ Real 一致性</h2></div><div class="card-b">${srBody}</div></section>
     <section class="card"><div class="card-h"><h2>拒绝原因</h2><span class="muted small">${rejected.length} 个拒绝回合</span></div><div class="card-b">${tagCount.length
       ? tagCount.map(([t, n]) => `<div class="meter"><span class="lbl">${esc(t)}</span><div class="bar"><i class="bad" style="width:${(n / rejected.length) * 100}%"></i></div><span class="val">${n}</span></div>`).join('')
@@ -745,34 +724,27 @@ function objMedia(d, thumb = false) {
 }
 function objList() {
   const f = UI.obj, q = f.q.toLowerCase();
-  return S.object.filter((d) => (!f.role || (d.role || '') === f.role)
-    && (!f.src || (f.src === 'own' ? ownObj(d) : f.src === 'official' ? !ownObj(d) : Boolean(d.twin)))
+  return S.object.filter((d) => (!f.src || (f.src === 'own' ? ownObj(d) : f.src === 'official' ? !ownObj(d) : Boolean(d.twin)))
     && (!f.photo || d.auto.photos?.length)
-    && (!q || `${d.id} ${d.name || ''} ${d.auto.name || ''} ${d.role || ''} ${objTasks(d).join(' ')}`.toLowerCase().includes(q)))
+    && (!q || `${d.id} ${d.name || ''} ${d.auto.name || ''} ${(d.auto.tasks || []).join(' ')}`.toLowerCase().includes(q)))
     .sort((x, y) => Number(ownObj(y)) - Number(ownObj(x)) || x.id.localeCompare(y.id));
 }
 function viewObjects() {
   const f = UI.obj, docs = objList(), objs = live(S.object);
-  const roleOpts = {'': '全部角色', ...Object.fromEntries(roleNames().map((r) => [r, r]))};
-  const targets = roleGoals().map((r) => {
-    const n = roleCount(r).length;
-    return `<div class="card" style="padding:12px 14px"><div class="k-label">${esc(r.name)}<span class="sp"></span><span class="mono" title="${esc(r.task)}">${esc(r.task.replace(/^g1d_/, ''))}</span></div>
-      <div class="progress-row" style="margin-top:6px"><div class="bar" style="flex:1"><i class="pri" style="width:${Math.min(100, (n / (r.target || 1)) * 100)}%"></i></div><span class="small mono">${n}/${r.target}</span></div></div>`;
-  }).join('');
   const body = !docs.length ? `<div class="card">${empty('box', '没有符合条件的物体', '调整筛选条件，或点「登记物体」新建')}</div>`
     : f.view === 'cards' ? `<div class="grid cards">${docs.map((d) => {
       const rs = evalStages(OBJ_STAGES, d);
       return `<article class="card mcard" data-open="object" data-id="${esc(d.id)}" tabindex="0" role="button" aria-label="打开物体 ${esc(d.id)}">${objMedia(d)}
         <div class="mcard-b"><div class="mcard-t"><b>${esc(objName(d))}</b>${d.twin ? '<span class="tag">孪生</span>' : ''}</div>
           <div class="small muted mono" style="margin-top:-4px">${esc(d.id)}</div>
-          <div class="small muted">${esc(d.role || '未定角色')} · ${esc(SPLITS[d.split || ''])} · ${mm(d.auto.size)} mm</div>${progress(rs)}</div></article>`;
+          <div class="small muted">${d.split ? `${esc(SPLITS[d.split])} · ` : ''}${measured(d) ? `实测 ${esc(dimText(d))}` : `仿真 ${mm(d.auto.size)} mm`}</div>${progress(rs)}</div></article>`;
     }).join('')}</div>`
-    : `<div class="table-wrap"><table><thead><tr><th></th><th>物体</th><th>角色 / 划分</th><th>用于任务（标签）</th><th class="num">仿真尺寸 mm</th><th class="num">质量 g</th><th>实测</th><th style="min-width:170px">流程</th></tr></thead><tbody>
+    : `<div class="table-wrap"><table><thead><tr><th></th><th>物体</th><th>划分</th><th>任务配置（标签）</th><th class="num">仿真尺寸 mm</th><th class="num">质量 g</th><th>实测</th><th style="min-width:170px">流程</th></tr></thead><tbody>
       ${docs.map((d) => `<tr data-open="object" data-id="${esc(d.id)}" tabindex="0" class="${UI.drawer?.id === d.id ? 'sel' : ''}">
         <td>${objMedia(d, true)}</td>
         <td><div class="t-main">${esc(objName(d))} ${missingBadge(d)}</div><div class="t-sub mono">${esc(d.id)}</div></td>
-        <td>${esc(d.role || '未定')}<div class="t-sub">${esc(SPLITS[d.split || ''])}</div></td>
-        <td class="small">${objTasks(d).map(esc).join('<br>') || '<span class="muted">—</span>'}<div class="t-sub mono">${esc((d.auto.labels || []).join(', '))}</div></td>
+        <td class="small">${esc(SPLITS[d.split || ''])}</td>
+        <td class="small">${(d.auto.tasks || []).map(esc).join('<br>') || '<span class="muted">—</span>'}<div class="t-sub mono">${esc((d.auto.labels || []).join(', '))}</div></td>
         <td class="num small">${mm(d.auto.size)}</td><td class="num small">${num(d.auto.mass) ? (d.auto.mass * 1000).toFixed(0) : '—'}</td>
         <td class="small">${measured(d) ? `${esc(dimText(d))}<div class="t-sub">${d.real_mass} g</div>` : '<span class="muted">—</span>'}</td>
         <td>${progress(evalStages(OBJ_STAGES, d))}</td></tr>`).join('')}</tbody></table></div>`;
@@ -780,13 +752,10 @@ function viewObjects() {
     <a target="_blank" rel="noopener" href="${file(`${INFO.root}/real2sim/ASSETS.md`)}">real2sim/ASSETS.md</a>`,
     `<button class="btn btn-primary" type="button" onclick="openNewObject(this)">${ic('plus')}登记物体</button>`)}
     ${assetsWarning()}
-    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));margin-bottom:16px">${targets}
-      <div class="card" style="padding:12px 14px"><div class="k-label">图片</div><div class="small" style="margin-top:6px">实拍 <b class="mono">${objs.filter((o) => o.auto.photos?.length).length}</b> 件 · 渲染 <b class="mono">${objs.filter((o) => o.auto.renders?.length).length}</b> 件</div></div></div>
     <div class="toolbar filters">${searchBox('obj-q', f.q, 'UI.obj.q', '搜索 id / 名称 / 任务')}
-      <select aria-label="角色" onchange="UI.obj.role = this.value; render()">${opts(roleOpts, f.role)}</select>
       <select aria-label="来源" onchange="UI.obj.src = this.value; render()">${opts({'': '全部来源', own: '自建', official: '官方库', twin: '实物孪生'}, f.src)}</select>
       <label class="check"><input type="checkbox" ${f.photo ? 'checked' : ''} onchange="UI.obj.photo = this.checked; render()">只看有实拍</label>
-      <span class="muted small">${docs.length} 件</span><span class="sp"></span>
+      <span class="muted small">${docs.length} 件 · 实拍 ${objs.filter((o) => o.auto.photos?.length).length} · 渲染 ${objs.filter((o) => o.auto.renders?.length).length}</span><span class="sp"></span>
       <div class="segctl" role="group" aria-label="显示方式">
         <button type="button" aria-pressed="${f.view === 'cards'}" onclick="setObjView('cards')">${ic('grid', 'ic-sm')} 卡片</button>
         <button type="button" aria-pressed="${f.view === 'table'}" onclick="setObjView('table')">${ic('table', 'ic-sm')} 列表</button></div></div>
@@ -798,25 +767,10 @@ function photoStrip(d) {
   return photos.map((p, i) => `<div class="item"><button class="gthumb" type="button" data-lb="obj-photos-${esc(d.id)}" data-i="${i}" aria-label="查看 ${esc(base(p))}"><img loading="lazy" src="${file(p)}" alt=""></button>
     <button class="del" type="button" data-path="${esc(p)}" onclick="deletePhoto(this.dataset.path)" aria-label="删除 ${esc(base(p))}">${ic('trash', 'ic-sm')}</button></div>`).join('');
 }
-// editable rows of {col: value}; inside a record's drawer every change is saved under the editor's field (onFieldChange)
-const rowLine = (id, cols, r, i) => `<div class="rowline">${cols.map(([k, label, type, w]) => `<input id="${id}-${i}-${k}" data-k="${k}" type="${type}"${type === 'number' ? ' step="any" min="0"' : ''}
-  placeholder="${esc(label)}" aria-label="${esc(label)}" value="${esc(r[k] ?? '')}" style="${w ? `flex:0 0 ${w}px;width:${w}px` : 'flex:1 1 120px'}">`).join('')}
-  <button class="btn btn-icon btn-ghost" type="button" aria-label="删除这一行" onclick="removeRow(this)">${ic('trash', 'ic-sm')}</button></div>`;
-const rowEditor = (id, field, rows, cols) => `<div class="rows" id="${id}" data-f="${field}" data-cols="${esc(JSON.stringify(cols))}">${rows.map((r, i) => rowLine(id, cols, r, i)).join('')}</div>`;
-const addChip = (id, label, names) => `<button class="togglechip" type="button" data-names="${esc(names.join('|'))}" onclick="addRows('${id}', this.dataset.names.split('|'))">${ic('plus', 'ic-sm')}${esc(label)}</button>`;
-function dimEditor(id, dims, withSim) {
-  const cols = [['name', '尺寸名称，如 开口直径', 'text'], ['real', '实测 mm', 'number', 100], ...(withSim ? [['sim', '仿真 mm（手填）', 'number', 130]] : [])];
-  return `${rowEditor(id, 'dims', dims, cols)}<div class="chips" style="margin-top:6px">${Object.entries(DIM_PRESETS).map(([k, names]) => addChip(id, `${k}：${names.join(' / ')}`, names)).join('')}${addChip(id, '一项', [''])}</div>`;
-}
-const customTasks = () => live(S.task).filter((t) => t.auto.dimension === 'custom').map((t) => t.id).sort();
-const taskChips = (id, d) => `<div class="chips" id="${id}">${customTasks().map((t) => ((d?.auto.tasks || []).includes(t)
-  ? `<button class="togglechip pri" type="button" aria-pressed="true" disabled title="任务配置里已经用到">${esc(t)}</button>`
-  : `<button class="togglechip pri" type="button" data-task="${esc(t)}" aria-pressed="${(d?.tasks || []).includes(t)}" onclick="toggleTask(this)">${esc(t)}</button>`)).join('')}</div>`;
-const pickedTasks = (box) => [...box.querySelectorAll('button[aria-pressed="true"]:not(:disabled)')].map((b) => b.dataset.task);
-const datalists = () => `<datalist id="dl-roles">${roleNames().map((r) => `<option value="${esc(r)}">`).join('')}</datalist>
-  <datalist id="dl-materials">${MATERIALS.map((m) => `<option value="${esc(m)}">`).join('')}</datalist>`;
+const DIM_HINT = '每项写「名称 数值」，单位 mm，按物体形状自己定名称，如：开口直径 82，底部直径 64，高 135';
+const materialList = () => `<datalist id="dl-materials">${MATERIALS.map((m) => `<option value="${esc(m)}">`).join('')}</datalist>`;
 function modelingBrief(d) {  // the task for a coding agent that builds this twin; skipped fields are null
-  const a = d.auto, dir = `real2sim/objects/${d.id}`, photos = (a.photos || []).map(base), dims = dimRows(d);
+  const a = d.auto, dir = `real2sim/objects/${d.id}`, photos = (a.photos || []).map(base);
   const fact = (k, v) => (v === undefined || v === null || v === '' ? null : `- ${k}：${v}`);
   return [
     `为 RoboDojo 建一个实物孪生仿真资产 ${d.id}（${objName(d)}）。`,
@@ -824,9 +778,9 @@ function modelingBrief(d) {  // the task for a coding agent that builds this twi
     `输入：${dir}/spec.json（平台登记信息）和 ${dir}/reference/ 下的 ${photos.length} 张实拍照片${photos.length ? `（${photos.join('、')}）` : ''}。这些文件在平台所在机器的 ${INFO.root}/${dir}/，本机没有就先把这个目录同步过来。`,
     '',
     '登记信息：',
-    fact('名称', objName(d)), fact('用于任务', objTasks(d).join('、')), fact('角色', d.role), fact('材质', d.material), fact('颜色', d.color),
+    fact('名称', objName(d)), fact('任务配置里用到', (a.tasks || []).join('、')), fact('材质', d.material), fact('颜色', d.color),
     fact('质量', num(d.real_mass) ? `${d.real_mass} g` : ''), fact('静摩擦系数', d.real_friction),
-    dims.length ? `- 实测尺寸（mm）：${dims.map((r) => `${r.name} ${r.real}`).join('，')}` : '- 实测尺寸：未填，按照片估计，并在交付说明里标出是估计值',
+    d.dimensions ? `- 实测尺寸（mm）：${d.dimensions}` : '- 实测尺寸：未填，按照片估计，并在交付说明里标出是估计值',
     fact('外观与结构', d.features), fact('建模要求', d.requirements), fact('备注', d.notes),
     '',
     '交付：',
@@ -849,7 +803,7 @@ function drawerObject(d) {
   return {
     title: objName(d), sub: `${d.id} · ${a.in_library ? '资产库已有' : '资产库未找到'}${a.generator ? ` · ${a.generator}` : ''}`,
     actions: !(a.tasks || []).length ? `<button class="btn" type="button" data-id="${esc(d.id)}" onclick="removeDoc('object', this.dataset.id)">${ic('trash')}删除登记</button>` : '',
-    body: `${datalists()}${a.in_library ? '' : brief}${sec('实物 vs 仿真', `<div class="compare">
+    body: `${materialList()}${a.in_library ? '' : brief}${sec('实物 vs 仿真', `<div class="compare">
       <figure><figcaption>${ic('camera')}实物照片 <span class="muted small">${photos.length} 张</span><span class="sp"></span>
         <label class="btn upload" title="jpg / png / webp，单张 ≤ 25 MB">${ic('upload')}上传<input type="file" accept="image/jpeg,image/png,image/webp" multiple data-id="${esc(d.id)}" onchange="uploadPhotos(this)" aria-label="上传实物照片"></label></figcaption>
         ${hero(`obj-photos-${d.id}`, photos, '还没有实拍照片：上传多角度照片，保存到 real2sim/objects/&lt;id&gt;/reference/（随仓库，走 LFS）')}
@@ -861,8 +815,6 @@ function drawerObject(d) {
     ${sec('基本信息', `<div class="form">
       ${row('名称', 'name', inp(d, 'name', 'text', `placeholder="${esc(a.name || '')}"`))}
       ${row('实物孪生', 'twin', inp(d, 'twin', 'checkbox'), '有对应的实物，需要测量并核对尺寸；勾上后登记信息写入 spec.json')}
-      <span>用于任务</span><div class="ctl">${taskChips('obj-tasks', d)}</div>
-      ${row('角色', 'role', inp(d, 'role', 'text', 'list="dl-roles" placeholder="如 源容器、接收容器、干扰物"'), '角色和目标数量在任务页按任务设定')}
       ${row('划分', 'split', sel(d, 'split', SPLITS))}
       ${row('建模方式', 'method', sel(d, 'method', METHODS))}</div>`)}
     ${sec('实物测量', `<div class="form">
@@ -870,13 +822,13 @@ function drawerObject(d) {
       ${row('颜色', 'color', inp(d, 'color'))}
       ${row('质量 (g)', 'real_mass', inp(d, 'real_mass', 'number', 'step="any" min="0"'))}
       ${row('静摩擦系数', 'real_friction', inp(d, 'real_friction', 'number', 'step="0.01" placeholder="斜面滑动法"'))}
-      <span>尺寸</span><div class="ctl">${dimEditor('obj-dims', d.dims || [], true)}</div>
+      ${row('尺寸 (mm)', 'dimensions', area(d, 'dimensions', `placeholder="${DIM_HINT}"`))}
       ${row('外观与结构', 'features', area(d, 'features', 'placeholder="颜色、透明度、把手、刻度、纹理、壁厚等"'))}
       ${row('建模要求', 'requirements', area(d, 'requirements', 'placeholder="如 中空能装豆子、把手可抓、刻度不用建模"'))}</div>
-      ${c.length ? `<table class="plain" style="margin-top:12px"><thead><tr><th>尺寸</th><th class="num">实测 mm</th><th class="num">仿真 mm</th><th>来源</th><th class="num">误差 mm</th><th>判定</th></tr></thead><tbody>
-        ${c.map((x) => `<tr><td>${esc(x.name)}</td><td class="num">${x.real}</td><td class="num">${x.sim == null ? '—' : x.sim.toFixed(1)}</td><td class="small muted">${x.src || '—'}</td>
+      ${c.length ? `<table class="plain" style="margin-top:12px"><thead><tr><th>尺寸</th><th class="num">实测 mm</th><th class="num">仿真 mm</th><th class="num">误差 mm</th><th>判定</th></tr></thead><tbody>
+        ${c.map((x) => `<tr><td>${esc(x.name)}</td><td class="num">${x.real}</td><td class="num">${x.sim == null ? '—' : x.sim.toFixed(1)}</td>
           <td class="num">${x.err == null ? '—' : x.err.toFixed(1)}</td><td>${x.sim == null ? st('todo', '待核对') : st(x.ok ? 'ok' : 'bad', x.ok ? '合格' : '超差')}</td></tr>`).join('')}</tbody></table>` : ''}
-      <p class="hint">尺寸按物体形状自己定名称（杯子量开口直径、底部直径、高；方的量长宽高）。仿真值优先取 metadata.json 的 measurements_mm（按名称对应），没有时手填；仿真包围盒 ${mm(a.size, 1)} mm 可作参考。判据：每个尺寸误差 &lt; 2 mm 或 2%；质量差 ≤ 5 g。</p>`)}
+      <p class="hint">尺寸文本里的每个「名称 数值」会和建好的模型 metadata.json 里同名的 measurements_mm 自动比对；仿真包围盒 ${mm(a.size, 1)} mm 可作参考。判据：每个尺寸误差 &lt; 2 mm 或 2%；质量差 ≤ 5 g。</p>`)}
     ${a.in_library ? brief : ''}
     ${sec('物理检验', `<div class="table-wrap"><table class="plain"><tbody>${PHYS.map(([k, label, crit, cmd]) => `<tr><td style="width:110px"><label for="${fid(`checks.${k}`)}">${label}</label></td>
       <td class="small">${crit}${cmd(d) ? `<div style="margin-top:6px">${code(cmd(d))}</div>` : ''}</td><td style="width:110px">${sel(d, `checks.${k}`, CHECK_STATES)}</td></tr>`).join('')}</tbody></table></div>`)}
@@ -885,7 +837,7 @@ function drawerObject(d) {
       <dt>仿真尺寸</dt><dd class="mono">${mm(a.size, 1)} mm</dd>
       <dt>仿真质量</dt><dd class="mono">${num(a.mass) ? `${(a.mass * 1000).toFixed(1)} g` : '—'}</dd>
       <dt>摩擦（静 / 动）</dt><dd class="mono">${a.static_friction ?? '默认 0.6'} / ${a.dynamic_friction ?? '默认 1.5'}</dd>
-      <dt>用于任务</dt><dd>${objTasks(d).map((t) => link('task', t)).join('、') || '—'}</dd>
+      <dt>用于任务</dt><dd>${(a.tasks || []).map((t) => link('task', t)).join('、') || '—'}</dd>
       <dt>任务标签</dt><dd class="mono small">${esc((a.labels || []).join(', ') || '—')}</dd></dl>`)}
     ${sec('备注', area(d, 'notes'))}
     ${sec(`${ic('terminal')}命令`, code(`${a.generator ? `python ${a.generator}   # 生成\n` : ''}PYTHONPATH=. python scripts/objects/check_object.py Assets/Object/RoboDojo/${d.id} --image-dir real2sim/objects   # 落地检查 + 渲染`))}`,
@@ -896,24 +848,21 @@ function drawerNewObject() {
   const field = (id, label, control) => `<label for="${id}">${label}</label><div class="ctl">${control}</div>`;
   return {
     title: '登记物体', sub: '填实物的测量信息、传照片，登记后生成给 coding agent 的建模任务；建好的资产同步时自动关联',
-    body: `${datalists()}<datalist id="dl-cats"></datalist>
-    ${sec('编号', `<div class="form">
-      ${field('no-type', '类型', `<select id="no-type" onchange="suggestIndex()">${types.map((t) => `<option>${esc(t)}</option>`).join('')}</select>`)}
-      ${field('no-cat', '类别', '<input id="no-cat" list="dl-cats" placeholder="小写加下划线，如 measuring_cup" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="suggestIndex()">')}
-      ${field('no-idx', '编号', '<input id="no-idx" type="number" min="0" value="0" style="flex:0 0 110px" oninput="suggestIndex(false)"><span id="no-id" class="hint mono"></span>')}</div>
-      <p class="hint">编号自动取这个类别里下一个没被资产库和已登记物体占用的号。资产目录 Assets/Object/RoboDojo/&lt;id&gt;/，照片和登记信息在 real2sim/objects/&lt;id&gt;/。</p>`)}
+    body: `${materialList()}<datalist id="dl-cats"></datalist>
     ${sec('物体', `<div class="form">
-      ${field('no-name', '名称', '<input id="no-name" placeholder="如 500 ml 量杯" autocomplete="off">')}
-      <span>用于任务</span><div class="ctl">${taskChips('no-tasks')}</div>
-      ${field('no-role', '角色', '<input id="no-role" list="dl-roles" placeholder="如 源容器、接收容器、干扰物" autocomplete="off">')}</div>`)}
+      ${field('no-type', '类型', `<select id="no-type" onchange="suggestIndex()">${types.map((t) => `<option value="${esc(t)}">${esc(OBJECT_TYPES[t] || t)}</option>`).join('')}</select>`)}
+      ${field('no-cat', '类别', '<input id="no-cat" list="dl-cats" placeholder="小写加下划线，如 measuring_cup" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="suggestIndex()">')}
+      ${field('no-idx', '编号', '<input id="no-idx" type="number" min="0" value="0" style="flex:0 0 110px" oninput="suggestIndex(false)"><span id="no-id" class="hint mono"></span>')}
+      ${field('no-name', '名称', '<input id="no-name" placeholder="如 500 ml 量杯" autocomplete="off">')}</div>
+      <p class="hint">编号自动取这个类别里下一个没被资产库和已登记物体占用的号。资产目录 Assets/Object/RoboDojo/&lt;id&gt;/，照片和登记信息在 real2sim/objects/&lt;id&gt;/。</p>`)}
     ${sec('实物测量', `<div class="form">
       ${field('no-material', '材质', '<input id="no-material" list="dl-materials" placeholder="如 PP 塑料、玻璃" autocomplete="off">')}
       ${field('no-color', '颜色', '<input id="no-color" placeholder="如 半透明乳白" autocomplete="off">')}
       ${field('no-mass', '质量 (g)', '<input id="no-mass" type="number" step="any" min="0" style="flex:0 0 110px">')}
-      <span>尺寸</span><div class="ctl">${dimEditor('no-dims', [], false)}</div>
+      ${field('no-dims', '尺寸 (mm)', `<textarea id="no-dims" placeholder="${DIM_HINT}"></textarea>`)}
       ${field('no-features', '外观与结构', '<textarea id="no-features" placeholder="颜色、透明度、把手、刻度、纹理、壁厚等"></textarea>')}
       ${field('no-req', '建模要求', '<textarea id="no-req" placeholder="如 中空能装豆子、把手可抓、刻度不用建模"></textarea>')}</div>
-      <p class="hint">尺寸按形状自己定名称，卡尺精确到 1 mm；后面核对时按同样的名称比对仿真模型。</p>`)}
+      <p class="hint">尺寸用卡尺量到 1 mm；建好的模型按同样的名称在 metadata.json 里写 measurements_mm，平台自动比对。</p>`)}
     ${sec('实拍照片', `<label class="btn upload">${ic('upload')}选择照片<input id="no-photos" type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="previewPhotos(this)" aria-label="选择实拍照片"></label>
       <div id="no-previews" class="strip"></div><p class="hint">多角度各一张（正面、侧面、俯视、开口、底部），jpg / png / webp，单张 ≤ 25 MB；手机上可以直接拍。</p>`)}
     <p id="no-err" class="field-error" role="alert" style="margin-top:18px"></p>
@@ -949,16 +898,11 @@ function drawerTask(d) {
     ? cfgs.map((c) => `CUDA_VISIBLE_DEVICES=0 PYTHONPATH=.:XPolicyLab EVAL_NUM=1 python scripts/g1d/scripted_demo.py --env_cfg_type ${c} --task_name ${d.id} --seed 0`)
     : [`bash scripts/robodojo.sh eval --policy-dir XPolicyLab/policy/<POLICY> --task ${d.id} --ckpt <CKPT> --policy-env <ENV> --eval-num 1`];
   const objects = Object.entries(a.objects || {});
-  const labels = [...new Set(objects.flatMap(([, ls]) => ls))], goals = roleGoals().filter((r) => r.task === d.id);
   return {
     title: d.id, sub: `${DIMS[a.dimension] || a.dimension} · ${a.module} · ${a.config}`,
     body: `${sec('流程', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
     ${sec('采集计划', `<div class="form">${row('负责人', 'owner', inp(d, 'owner'))}
       ${row('合格回合目标', 'target', inp(d, 'target', 'number', 'min="0" placeholder="500"'))}${row('备注', 'notes', area(d, 'notes'))}</div>`)}
-    ${sec('物体角色', `<p class="hint" style="margin:0 0 8px">这个任务需要哪些角色的物体、每个角色要多少件（资产泛化统计）。物体在物体页选「用于任务」和角色。</p>
-      ${rowEditor('task-roles', 'roles', d.roles || [], [['name', '角色，如 源容器', 'text'], ['target', '目标件数', 'number', 110]])}
-      <div class="chips" style="margin-top:6px">${labels.filter((l) => !(d.roles || []).some((r) => r.name === l)).map((l) => addChip('task-roles', `配置标签 ${l}`, [l])).join('')}${addChip('task-roles', '一项', [''])}</div>
-      ${goals.length ? `<p class="small muted" style="margin:8px 0 0">已有：${goals.map((r) => `${esc(r.name)} ${roleCount(r).length}/${r.target}`).join(' · ')}</p>` : ''}`)}
     ${sec('分级泛化评测集', `<p class="hint" style="margin:0 0 10px">每一级只改变一个因素，其余与 L0 相同；布局预先生成为固定 JSON，并先用 scripted_demo 过滤，L0–L3 专家成功率目标 ≥ 80%。</p>
       <div class="table-wrap"><table class="plain"><thead><tr><th>级别</th><th>变化因素与范围</th><th class="num">目标</th><th>已生成</th></tr></thead><tbody>
       ${LEVELS.map(([k, name, range, target]) => `<tr><td class="nowrap"><b class="mono">${k}</b> ${name}</td><td class="small">${range}</td><td class="num">${target}</td>
@@ -1257,8 +1201,8 @@ async function createObject(btn) {
   if (err.textContent) return;
   const id = `${type}/${cat}/${idx.padStart(5, '0')}`, value = (sel) => $(sel).value.trim(), files = [...$('#no-photos').files];
   const doc = {
-    twin: true, name: value('#no-name'), tasks: pickedTasks($('#no-tasks')), role: value('#no-role'), material: value('#no-material'), color: value('#no-color'),
-    real_mass: $('#no-mass').value === '' ? null : Number($('#no-mass').value), dims: readRows($('#no-dims')), features: value('#no-features'), requirements: value('#no-req'),
+    twin: true, name: value('#no-name'), material: value('#no-material'), color: value('#no-color'),
+    real_mass: $('#no-mass').value === '' ? null : Number($('#no-mass').value), dimensions: value('#no-dims'), features: value('#no-features'), requirements: value('#no-req'),
   };
   btn.disabled = true;
   try {
@@ -1292,32 +1236,6 @@ async function uploadPhotos(input) {
     toast(`已上传 ${n} 张照片`);
   } catch (err) { toast(`上传失败：${err.message}`, true); }
 }
-function readRows(box) {
-  return [...box.querySelectorAll('.rowline')].map((line) => Object.fromEntries([...line.querySelectorAll('input')].map((el) =>
-    [el.dataset.k, el.type === 'number' ? (el.value === '' ? null : Number(el.value)) : el.value.trim()])))
-    .filter((r) => Object.values(r).some((v) => v !== null && v !== ''));
-}
-function saveRows(el) {
-  const box = el.closest('.rows'), rec = box.closest('[data-kind]');
-  if (rec) save(rec.dataset.kind, rec.dataset.id, {[box.dataset.f]: readRows(box)});
-}
-function addRows(id, names) {
-  const box = $(`#${id}`), cols = JSON.parse(box.dataset.cols), have = new Set(readRows(box).map((r) => r[cols[0][0]]));
-  const add = names.filter((x) => !x || !have.has(x)), n0 = box.children.length;
-  box.insertAdjacentHTML('beforeend', add.map((x, j) => rowLine(id, cols, {[cols[0][0]]: x}, n0 + j)).join(''));
-  [...box.querySelectorAll('input')].find((el) => el.value === '')?.focus();
-  if (add.some(Boolean)) saveRows(box);
-}
-function removeRow(btn) {
-  const box = btn.closest('.rows');
-  btn.closest('.rowline').remove();
-  saveRows(box);
-}
-function toggleTask(btn) {
-  btn.setAttribute('aria-pressed', String(btn.getAttribute('aria-pressed') !== 'true'));
-  const rec = btn.closest('[data-kind]');
-  if (rec) save(rec.dataset.kind, rec.dataset.id, {tasks: pickedTasks(btn.parentElement)});
-}
 async function deletePhoto(path) {
   if (!confirm(`删除照片 ${base(path)}？`)) return;
   try {
@@ -1328,7 +1246,6 @@ async function deletePhoto(path) {
 }
 function onFieldChange(ev) {
   const el = ev.target;
-  if (el.closest('.rows')) { saveRows(el); return; }
   if (el.dataset.sel !== undefined) { if (el.checked) UI.sel.add(el.dataset.sel); else UI.sel.delete(el.dataset.sel); render(); return; }
   const f = el.dataset.f, box = el.closest('[data-kind]');
   if (!f || !box) return;

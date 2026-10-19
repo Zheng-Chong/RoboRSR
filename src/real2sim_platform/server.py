@@ -8,10 +8,10 @@ Stdlib only (any python3 >= 3.10, no Isaac). On start, and on "从项目同步" 
     <eval-root>/**/_result.json           collected episodes and their camera videos (src/eval_client/eval_env.py)
 Scan results go to each record's "auto"; what is entered in the page (measurements, check verdicts, QA) sits next to it
 and survives rescans. A registered real object (twin) is also written to real2sim/objects/<id>/spec.json, next to its
-photos, as the input for modeling it; the built asset reports its size per registered dimension in metadata.json
-"measurements_mm", which the page checks against the measured values. Records live in one SQLite file (--db),
-together with the accounts: everyone signs in, and every change is stamped with the signed-in account's name. Admins
-manage accounts in the page (成员管理); the first admin is created on the server with --add-user NAME --admin.
+photos, as the input for modeling it; the built asset reports its size per measured dimension (by name) in
+metadata.json "measurements_mm", which the page checks against the measured values. Records live in one SQLite file
+(--db), together with the accounts: everyone signs in, and every change is stamped with the signed-in account's name.
+Admins manage accounts in the page (成员管理); the first admin is created on the server with --add-user NAME --admin.
 
 Usage:
     python3 src/real2sim_platform/server.py --add-user alice --name 张三 --admin   # asks for the password
@@ -347,18 +347,15 @@ def write_spec(doc):
     path = OBJECTS_DIR / doc["id"] / "spec.json"
     if not doc.get("twin"):
         return path.unlink(missing_ok=True)
-    rows = [(str(d.get("name", "")).strip(), d.get("real")) for d in doc.get("dims") or []]
-    dims = {name: real for name, real in rows if name and real is not None}
     spec = {
         "id": doc["id"],
         "name": doc.get("name") or doc["auto"].get("name"),
-        "tasks": sorted({*doc["auto"].get("tasks", []), *(doc.get("tasks") or [])}),
-        "role": doc.get("role"),
+        "tasks": doc["auto"].get("tasks"),  # from the task configs
         "material": doc.get("material"),
         "color": doc.get("color"),
         "mass_g": doc.get("real_mass"),
         "static_friction": doc.get("real_friction"),
-        "dimensions_mm": dims,
+        "dimensions_mm": doc.get("dimensions"),  # free text, e.g. "开口直径 82，底部直径 64，高 135"
         "features": doc.get("features"),
         "requirements": doc.get("requirements"),
         "notes": doc.get("notes"),
