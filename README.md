@@ -109,11 +109,13 @@ PYTHONPATH=. python scripts/objects/check_pitcher_fluid.py --device cpu --out ou
 
 ```bash
 python3 src/real2sim_platform/server.py          # 打开 http://127.0.0.1:8765
-# 服务器上给团队用：指向共享资产库和各隔离目录的评测结果（无登录，只在可信网络里开 0.0.0.0）
-python3 src/real2sim_platform/server.py --host 0.0.0.0 \
+# 服务器上给团队用：指向共享资产库和各隔离目录的评测结果；端口能从外部访问时必须设登录
+REAL2SIM_PLATFORM_AUTH=用户名:密码 python3 src/real2sim_platform/server.py --host 0.0.0.0 \
     --assets /data2/zhongzheng/Project/RoboDojo_assets/Assets \
     --eval-root eval_result --eval-root /data2/tmp/robodojo/agent-remote-runs
 ```
+
+设了 `REAL2SIM_PLATFORM_AUTH` 后所有请求都要 HTTP Basic 登录（浏览器会弹窗）；不设则无登录，只适合本机或可信网络。
 
 启动时和点「从项目同步」时扫描仓库：`real2sim/scenes/`（照片、相机拟合残差、USD、`check_report.json`）、任务清单和 G1-D 任务用到的物体、资产库里的 `metadata.json` 和评测布局数、`--eval-root` 下的 `_result.json` 与各相机视频。页面分五块：
 

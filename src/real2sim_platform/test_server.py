@@ -97,7 +97,12 @@ def test_http():
         assert json.loads(request("POST", "/api/scan")[1])["episode"] == 1
         assert json.loads(request("GET", "/api/items?kind=task")[1])
         assert b"Real2Sim" in request("GET", "/")[1]
+        server.Handler.auth = "Basic dTpw"  # u:p
+        assert request("GET", "/api/info")[0] == 401
+        assert request("PUT", "/api/items?kind=task&id=x", b"{}", {"Authorization": "Basic dTp4"})[0] == 401
+        assert request("GET", "/api/info", headers={"Authorization": "Basic dTpw"})[0] == 200
     finally:
+        server.Handler.auth = None
         httpd.shutdown()
 
 

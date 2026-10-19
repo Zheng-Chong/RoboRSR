@@ -7,16 +7,19 @@ Stdlib only (any python3 >= 3.10, no Isaac). On start, and on "从项目同步" 
     <assets>/Eval_Layout/RoboDojo/<cfg>/  eval layouts per task and env config
     <eval-root>/**/_result.json           collected episodes and their camera videos (src/eval_client/eval_env.py)
 Scan results go to each record's "auto"; what is entered in the page (measurements, check verdicts, QA) sits next to it
-and survives rescans. Records live in one SQLite file (--db).
+and survives rescans. Records live in one SQLite file (--db). With REAL2SIM_PLATFORM_AUTH=user:password set, every
+request needs that HTTP Basic login (set it whenever the port is reachable from outside).
 
 Usage:
     python3 src/real2sim_platform/server.py         # http://127.0.0.1:8765
-    python3 src/real2sim_platform/server.py --host 0.0.0.0 --assets /path/to/shared/Assets \
+    REAL2SIM_PLATFORM_AUTH=user:password python3 src/real2sim_platform/server.py --assets /path/to/shared/Assets \
         --eval-root eval_result --eval-root /data2/tmp/robodojo/agent-remote-runs
 """
 
 import argparse
+import base64
 from collections import Counter
+import hmac
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import mimetypes
@@ -276,7 +279,18 @@ def servable(path, roots):
 
 
 class Handler(BaseHTTPRequestHandler):
-    store, scan_args, roots, info = None, (), [], {}
+    store, scan_args, roots, info, auth = None, (), [], {}, None
+
+    def parse_request(self):
+        if not super().parse_request():
+            return False
+        if self.auth and not hmac.compare_digest(self.headers.get("Authorization", "").encode(), self.auth.encode()):
+            self.send_response(401)
+            self.send_header("WWW-Authenticate", 'Basic realm="Real2Sim platform"')
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return False
+        return True
 
     def do_GET(self):
         url = urlparse(self.path)
@@ -364,7 +378,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--host", default="127.0.0.1", help="0.0.0.0 shares it on the LAN (no login: trusted networks)")
+    parser.add_argument("--host", default="127.0.0.1", help="0.0.0.0 shares it on the LAN (set REAL2SIM_PLATFORM_AUTH)")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--db", type=Path, default=ROOT / ".cache" / "real2sim_platform.sqlite3")
     parser.add_argument("--assets", type=Path, default=ROOT / "Assets", help="asset library with Object/, Eval_Layout/")
@@ -374,7 +388,11 @@ def main():
     args = parser.parse_args()
     assets = args.assets.resolve()
     eval_roots = [p.resolve() for p in args.eval_root or [ROOT / "eval_result"]]
+    login = os.environ.get("REAL2SIM_PLATFORM_AUTH")
+    if login is not None and ":" not in login:
+        parser.error("REAL2SIM_PLATFORM_AUTH must be user:password")
     store = Store(args.db)
+    Handler.auth = f"Basic {base64.b64encode(login.encode()).decode()}" if login else None
     Handler.store, Handler.scan_args = store, (assets, eval_roots)
     Handler.roots = [ROOT / "real2sim", ROOT / "output", assets, *eval_roots]
     Handler.info = {
