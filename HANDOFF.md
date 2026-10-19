@@ -15,12 +15,14 @@
 
 ## 最近任务
 
-### 进行中：新量杯重采 100 条办公室全量倒豆 LeRobot 数据（2026-10-19）
+### 已完成：新量杯重采 100 条办公室全量倒豆 LeRobot 数据（2026-10-19）
 
-- 用户要求用实测新量杯 + 5.6 mm 红豆重采 100 条、位置泛化、办公室。旧批次（`5090-2:/data/robodojo-runs/office-beans-100-20261019`，106/141 合格，旧量杯 + 4 mm 豆）保留不动；它的 LeRobot 导出停在 8/100（16:48 被中断，疑似别的会话在调导出线程），它的 `final-audit-office-beans.py` 还在等 `complete`，不会自己结束。
-- 新运行目录 `5090-2:/data/robodojo-runs/office-beans-measured-20261019`：代码 `git archive 269898c`；量杯 USDZ 与模板布局在 21196 用同一代码生成（`mcups-layout-33b1683`，共享资产库只读叠加），SHA-256 三处一致；模板与旧版差异仅杯尺寸/质量/摆放高度、豆堆 z -0.0435→-0.0487、豆粒 5.6 mm / 0.1 g。400 个 Latin hypercube 布局在 `g1d/9`。每回合约 672 颗豆。
-- 首个试跑：672/672 入杯，但高杯在夹爪里转了约 44°，回正失败（旧批次合格回合末倾角中位 2.2°）。夹持高度对照（杯口下）：25/45/60 mm 各 1 回合合格，75 mm 撒 85 颗；32 mm（原值）复测 1/3。45 mm 在 18 个不同布局上 16/18 合格，2 个失败各撒 1 颗、杯正。`scripted_demo.C2C_RIM_DOWN['measuring_cup']` 0.032→0.045 已提交。试验输出在运行目录 `output/office_beans/{probe,rim_*,rimtest}`，不计入数据。
-- 下一步：用含该修改的提交跑 `.agent/remote-runs/office-beans-measured/collect_batch.py`（seed 100–107 各 50 布局，GPU 0–7 各一进程，足 100 条 stop-file，`collection_v2`），再导出 LeRobot 并回读。
+- 用户要求用实测新量杯 + 5.6 mm 红豆在办公室重采 100 条位置泛化数据，交付 LeRobot。数据集：`5090-2:/data/robodojo-runs/office-beans-measured-20261019/output/office_beans/collection_v2/lerobot`（535 MB，LeRobot v3.0，100 条 / 40279 帧 / 30 fps / 约 22.4 min，16 维 state/action，三路 640×480 H.264）。随附 `final_validation.json`、`sha256.json`、`validation_{raw,lerobot}.json`、`position_coverage.png`、`initial_positions.csv`、`collection_config.json`。
+- 运行目录代码 `git archive 269898c` + 提交 `a83d4f4` 的 `scripted_demo.py`（运行目录内文件哈希与提交一致）；量杯 USDZ 与模板布局在 21196 用同一代码生成（共享资产库只读叠加），三处 SHA-256 一致；模板与旧版只差杯尺寸/质量/摆放高度、豆堆 z -0.0435→-0.0487、豆粒 5.6 mm / 0.1 g；每回合 672 颗。
+- 夹持高度：首个试跑高杯在夹爪里滑转约 44°（夹持点离新翻边下沿仅约 20 mm）。对照（杯口下）25/45/60 mm 各 1 回合合格、75 mm 撒 85 颗、32 mm 复测 1/3；45 mm 在 18 个不同布局 16/18 合格（2 个各撒 1 颗）。`C2C_RIM_DOWN['measuring_cup']` 0.032→0.045（`a83d4f4`）。试验输出 `output/office_beans/{probe,rim_*,rimtest}` 不计入数据。
+- 批次：8 个 seed（各 50 个 Latin hypercube 布局）各占 GPU 0–7，118 回合 108 合格（91.5%，旧批次 75%），退出码全 0，导出 100 条。验证：导出器回读 100 / 40279；独立原始审计从逐颗位置重算每条末 30 帧，共转移 67200 颗、残留 0、散落 0，100 组位置互不重复、四个坐标 20 分箱全覆盖，末 1 s 最大杯倾角 29.96°（阈值 30°，最贴边的一条）、矮杯最小杯口余量 49 mm；LeRobot 0.4.4 官方读取器逐条首末帧（600 张图）解码、帧号/时间戳/维度通过。协调与审计脚本在本机忽略目录 `.agent/remote-runs/office-beans-measured/`。
+- ModelScope：用户要求上传为私有数据集仓库。服务器已建隔离环境 `/data/robodojo-runs/ms-venv`（modelscope 1.40.2），上传脚本 `/data/robodojo-runs/ms_upload.py`（读取 `modelscope login` 保存的登录，令牌不经脚本），目标 `<用户名>/g1d_office_pour_all_red_beans_measuring_cups_100`。待用户在服务器登录后上传，尚未完成。
+- 旧批次（`office-beans-100-20261019`，旧量杯 + 4 mm 豆，106/141 合格）保留：导出停在 8/100，`final-audit-office-beans.py` 仍在等待 `complete`，不会自己结束，未处理。
 
 ### 量杯按实测尺寸重建（2026-10-19）
 
@@ -48,7 +50,7 @@
 - 只跑了 ruff check/format、py_compile、task_inventory --check、`git diff --check`；本机没有 scipy，`test_office_beans` 未运行。同一工作区里另一会话的量杯/马克杯实测改动（`make_plastic_cups.py`、`measuring_cup_shape.py` 等，以及 `build_asset.py` 中量杯注释和 `MEASURING_FLUID_Z` 的 -0.0487）未纳入本次提交；本提交中 `MEASURING_FLUID_Z` 为旧 158 mm 量杯的 -0.0427。
 - 装库（用户要求）：21196 隔离目录 `agent-remote-runs/redbean-20261019-171859`（9bfdd78 的代码，不含 `real2sim/`）在 GPU 4 上运行 `make_red_bean.py ovl/Rigid`，metadata 为 size [0.007, 0.005, 0.005]、mass 1e-4；原样复制到共享库 `Object/RoboDojo/Rigid/red_bean/00000`（原先不存在，没有覆盖任何文件；未跑 `format.py`，运行时不读 `uuid_map.json`），`diff -r` 一致。`check_object.py --image-dir` 渲染出新的 `preview/sim.png`，已同步到本机和 `5090-2` 的 `real2sim/objects/`。落地检查报 FAIL（z 2.1 mm，期望 2.5 mm；倾角 47.8°）：5 × 5 mm 截面是圆的，豆子会绕长轴滚动，种脐转到上方，所以倾角判据对它不适用；另外中心比期望低 0.4 mm，没有再查。之后重新镜像元数据到 `5090-2`，并在平台同步。
 
-### 进行中：办公室量杯全量倒红豆 100 条 LeRobot 数据（2026-10-19）
+### 已被取代：办公室量杯全量倒红豆 100 条 LeRobot 数据（旧量杯 + 4 mm 豆，2026-10-19）
 
 - 用户要求在 `5090-2` 的办公室场景用两个量杯，每次把所有豆子从高杯倒入矮杯，生成 100 条位置泛化数据；交付格式已明确为 LeRobot。
 - 起点 `ff92a92a0a4e8422fc91475c452cbdd33945ba13`，本机工作区原干净，`git pull --ff-only` 无更新。服务器只有数采平台和元数据资产镜像，没有仿真环境；已在独立运行目录开始安装环境，并复制此前验证过的必要资产，不改平台或共享资产库。
