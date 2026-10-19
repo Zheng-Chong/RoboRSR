@@ -25,7 +25,7 @@
 | `plastic_cup/00000` 透明杯 | 真机片段 G1D-PourBeansPlus 里的一次性杯 | `make_water_cup.py --plastic` | 估计：对着视频里的夹爪目测，高 95 mm、口径 72 mm | 估计 30 g | 默认 | 估计 | 已装 |
 | `measuring_cup/00000、00001` 量杯 | 2026-10-17 桌面照片中的 400 / 500 ml 量杯 | `make_plastic_cups.py` | 实测：高 140 / 170 mm，壁厚 2 mm，杯口（翻边）75 mm、杯底 63 mm（对边）；杯底倒角方形、杯口圆角方形按俯视照片 | 实测 40 / 60 g | 默认 | 估计：对照照片调材质 | **未装** |
 | `plastic_mug/00000` 白色马克杯 | 同一组照片中的塑料马克杯 | `make_plastic_cups.py` | 实测：直筒高 100 mm、内径 80 mm、壁厚 2 mm；把手高 70 mm、外伸 35 mm、厚 5 mm（底厚、把手条宽 13 mm 为估计） | 实测 89 g | 默认 | 估计 | **未装**，无任务使用 |
-| `red_bean/00000` 单颗红豆 | 红小豆 | `make_red_bean.py` | 实测：7 × 5 × 5 mm | 实测约 0.1 g | — | 估计 | **未装**，只用于渲染 |
+| `red_bean/00000` 单颗红豆 | 红小豆 | `make_red_bean.py` | 实测：7 × 5 × 5 mm | 实测约 0.1 g | — | 估计 | 已装（无任务使用，只用于渲染） |
 
 - **摩擦“默认”**：运行时 `env/scene_manager/objects/rigid.py` 只读 `physics.static_friction` / `dynamic_friction`，不写就是 0.6 / 1.5。生成脚本写进 `metadata.json` 的 `friction`（0.25 / 0.5）不生效，USD 里也没有绑定物理材质。要让实测摩擦生效，生成脚本要改写这两个键。
 - **任务里的红豆**是 5.6 mm PBD 球形颗粒（与实测单粒等体积）（`scripts/g1d/build_asset.py` 的 `RED_BEAN_PHYSICS`，单粒 0.1 g（同实测）、摩擦 0.2），不是上面的网格；摩擦 0.2 是 4 mm 时为了能从 13 mm 壶嘴倒出来调的，没有实测依据；5.6 mm 颗粒会堵住壶嘴，壶倒杯任务需另行处理。

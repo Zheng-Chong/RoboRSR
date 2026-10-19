@@ -39,6 +39,7 @@
 - 用户随后确认 PBD 颗粒也改为等体积 5.6 mm 球：`RED_BEAN_PHYSICS` 的 rest/solid_rest_offset 0.002→0.0028，contact 偏移 0.0024→0.0034（保持 1.2 倍），fluid_rest_offset 0.0012→0.0017；`CUP_FLUID_Z`、`MEASURING_FLUID_Z` 各上移 0.8 mm，最低一层颗粒与杯底的间隙和 4 mm 时一致；两个任务的 `scatter_connect_radius` 0.009→0.012（约 2 个颗粒间距）；`check_cup_beans.py` 绘制缩放 0.8；600 Hz 步长的注释核对过（每步 4.17 mm，小于 5.6 + 2 mm）。
 - 预期影响（均未经仿真验证）：量杯约 95 ml 豆量从 1840 颗降到约 670 颗；13 mm 壶嘴之前实测会被 5 mm 颗粒卡住，`g1d_pour_water_into_cup` 预计倒不出来。`collect_office_beans.py` 的杯内判据只看颗粒中心，不受影响。正在运行的 100 条采集使用旧的 4 mm 资产，与新参数不一致；需重新运行 `build_asset.py` 后再复跑。
 - 只跑了 ruff check/format、py_compile、task_inventory --check、`git diff --check`；本机没有 scipy，`test_office_beans` 未运行。同一工作区里另一会话的量杯/马克杯实测改动（`make_plastic_cups.py`、`measuring_cup_shape.py` 等，以及 `build_asset.py` 中量杯注释和 `MEASURING_FLUID_Z` 的 -0.0487）未纳入本次提交；本提交中 `MEASURING_FLUID_Z` 为旧 158 mm 量杯的 -0.0427。
+- 装库（用户要求）：21196 隔离目录 `agent-remote-runs/redbean-20261019-171859`（9bfdd78 的代码，不含 `real2sim/`）在 GPU 4 上运行 `make_red_bean.py ovl/Rigid`，metadata 为 size [0.007, 0.005, 0.005]、mass 1e-4；原样复制到共享库 `Object/RoboDojo/Rigid/red_bean/00000`（原先不存在，没有覆盖任何文件；未跑 `format.py`，运行时不读 `uuid_map.json`），`diff -r` 一致。`check_object.py --image-dir` 渲染出新的 `preview/sim.png`，已同步到本机和 `5090-2` 的 `real2sim/objects/`。落地检查报 FAIL（z 2.1 mm，期望 2.5 mm；倾角 47.8°）：5 × 5 mm 截面是圆的，豆子会绕长轴滚动，种脐转到上方，所以倾角判据对它不适用；另外中心比期望低 0.4 mm，没有再查。之后重新镜像元数据到 `5090-2`，并在平台同步。
 
 ### 进行中：办公室量杯全量倒红豆 100 条 LeRobot 数据（2026-10-19）
 
