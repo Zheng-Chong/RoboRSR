@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """Procedural plastic cups from the 2026-10-17 desk photos as RoboDojo `Rigid` assets.
 
-- plastic_mug/00000: white PP mug, slightly tapered round body, flat D-shaped strap handle on +X.
+- plastic_mug/00000: white PP mug, straight round body (measured), flat D-shaped strap handle on +X.
 - measuring_cup/00000, 00001: milky translucent PP measuring cups (400 ml / 500 ml graduations), 14 / 17 cm tall:
   chamfered-square bottom widening to a rounded-square mouth, snap-lid band with a flange and a small hanging tab.
 
-Measuring-cup dimensions and masses are measured (measuring_cup_shape.py). The mug has no ruler measurement: its
-absolute size is a typical-product guess matched to the photos.
+Mug and measuring-cup dimensions and masses are measured (measuring cups: measuring_cup_shape.py).
 
 Usage:
     python scripts/objects/make_plastic_cups.py [RIGID_DIR]    # default Assets/Object/RoboDojo/Rigid
@@ -41,9 +40,11 @@ N_THETA = shape.N_THETA
 STAVE_TOL = 0.0003  # max collision-wall intrusion into the cavity
 BOTTOM_SIDES = 24  # bottom slab polygon: PhysX GPU convexes (particle contacts) take <= 64 vertices, <= 32 per face
 
+# measured: 100 mm tall straight cylinder, 80 mm inside diameter, 2 mm wall, 89 g; handle 70 mm tall, 35 mm out from
+# the wall, 5 mm thick (outer extents; handle centreline sits T/2 inside them). Bottom thickness, strap width: guesses
 MUG = dict(
-    H=0.095, R0=0.0365, R1=0.040, T_WALL=0.0025, T_BOTTOM=0.004, FILLET=0.003, MASS=0.09,
-    HANDLE_TOP=0.081, HANDLE_BOT=0.018, HANDLE_OUT=0.026, BEND=0.010, HANDLE_W=0.013, HANDLE_T=0.0055,
+    H=0.100, R0=0.042, R1=0.042, T_WALL=0.002, T_BOTTOM=0.004, FILLET=0.003, MASS=0.089,
+    HANDLE_TOP=0.0825, HANDLE_BOT=0.0175, HANDLE_OUT=0.0325, BEND=0.010, HANDLE_W=0.013, HANDLE_T=0.005,
 )  # fmt: skip
 WHITE_PP = (0.90, 0.89, 0.85)
 
@@ -364,16 +365,16 @@ def mug_description(uid, ml):
     caption = {
         "color": ["white", "off-white", "cream white"],
         "material": ["plastic", "polypropylene", "PP"],
-        "size": [f"holds about {ml:.0f} ml", "about 9.5 cm tall", "fits in one hand"],
+        "size": [f"holds about {ml:.0f} ml", "about 10 cm tall", "fits in one hand"],
         "name": ["plastic mug", "rinse cup", "white mug"],
-        "shape": ["round slightly tapered body", "flat D-shaped handle", "open top"],
+        "shape": ["straight cylindrical body", "flat D-shaped handle", "open top"],
         "function": ["drinking water", "rinsing after brushing teeth", "holding beans"],
     }
     desc = [
         "white plastic mug with a flat D-shaped handle",
         f"plain off-white polypropylene cup with a handle, holds about {ml:.0f} ml",
         "light plastic rinse mug grasped by its handle",
-        "round white plastic cup, slightly wider at the rim",
+        "round white plastic cup with straight sides",
         "matte white mug made of plastic",
     ]
     return {"uuid": uid, "caption": caption, "description": desc}

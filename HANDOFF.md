@@ -25,6 +25,13 @@
 - 未做：未跑任务或 `scripted_demo`。风险：杯更高、翻边更宽可能影响 `scripted_demo` 侧抓与倒豆可达性。正在运行的 100 条采集用的是旧量杯，需重建资产（`make_plastic_cups.py` → `format.py` → `build_asset.py`）后重跑。
 - 本次只提交量杯部分：`make_plastic_cups.py` 中的马克杯实测（`MUG`、描述文字）、`ASSETS.md` 马克杯行、`export_office_beans.py` 线程参数是其他会话的未提交改动，留在工作区未纳入；服务器 check_cup_beans 中马克杯沉降 0.33 mm 未过阈值，也留给那边处理。
 
+### 塑料马克杯按实测尺寸重建（2026-10-19）
+
+- 用户给出 `plastic_mug/00000` 实测：重 89 g、杯壁 2 mm、高 100 mm、无斜度直筒、内径 80 mm；把手高 70 mm、厚 5 mm、宽 35 mm。改 `scripts/objects/make_plastic_cups.py` 的 `MUG`：R0=R1=42 mm、T_WALL 2 mm、H 100 mm、MASS 0.089；把手高/宽按外沿算（中心线 z 17.5–82.5 mm，外伸 32.5 mm + 半厚），"宽 3.5 cm" 理解为把手离杯壁外伸距离，把手条宽（沿 Y）仍为估计的 13 mm，杯底厚仍估计 4 mm。描述文字同步改为直筒、约 10 cm 高；`real2sim/ASSETS.md` 对应行改为实测。
+- 验证：本机 numpy/scipy（stub 掉 pxr）构建几何：外形 119 × 84 × 100 mm，把手外伸 35.0、高 70.0、条宽 13.0 mm，容积约 482 ml，44 个碰撞凸包，`self_check` 不侵入内腔。5090-2 隔离目录 `/data/robodojo-runs/mug-render-20261019-171418`（Assets 软链到采集运行目录、只读）生成 USDZ 到 `ovl/Rigid/`（metadata：0.089 kg、0.119 × 0.084 × 0.1 m），GPU 7 跑 `check_object.py`：z=0.0500（符合预期）、倾斜 0°、速度 0.0002 m/s；渲染图在本机 `output/plastic_mug/`（不入库）。未跑 `check_cup_beans.py`，共享资产库（21196）未安装该杯。
+- 教训：首次提交 `b077d1d` 与另一会话共用 git 暂存区发生竞态，实际提交进去的是红豆改动（后被 amend 为 `9bfdd78`），马克杯改动当时没有入库，第一次服务器渲染因此用了旧模型。并行会话同一工作区提交时用临时索引（`GIT_INDEX_FILE` + `commit-tree` + `update-ref` 带旧值校验）。
+- 数采平台（5090-2）：`real2sim/objects/Rigid/plastic_mug/00000/preview/sim.png` 换成新渲染；资产元数据镜像 `/root/RoboDojo_assets/Assets/Object/RoboDojo/Rigid/plastic_mug/00000/{metadata,description}.json` 手动放入新生成的文件（21196 共享库没有这只杯，下次整体重跑镜像命令会把它删掉，需重新放或先装进共享库）。
+
 ### 红小豆实测尺寸与质量（2026-10-19）
 
 - 用户给出实测值：长宽高 7 × 5 × 5 mm，单粒约 0.1 g。`make_red_bean.py` 网格改为 7 × 5 × 5 mm（numpy 采样包围盒核对为 7.0/5.0/5.0）、质量 1e-4 kg；`build_asset.py` 的 `RED_BEAN_PHYSICS.particle_mass` 由 6e-5 改为 1e-4；`check_cup_beans.py` 绘制缩放 0.85→0.7，画出的豆子大小不变；`real2sim/ASSETS.md` 同步。
