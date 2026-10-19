@@ -169,6 +169,15 @@
 - 坑：几个评测同一秒启动会写进同一个时间戳目录，互删临时视频后评测端换下一个布局重跑，日志末行会误报成功；并行要错开 >1 s，并按回合看日志。修杯底前吧台 seed 1 曾在倾倒中杯子在两指间滑出（之后重跑通过，物理每次运行有随机性）。
 - 吧台场景每次运行有 6–7 条 PhysX "Non-GPU-compatible convex mesh is not able to collide with particle system"，原杯对杯任务也有，办公室/实验室没有，来自吧台场景自身的碰撞网格（未查具体网格）；豆子掉到这些表面上会穿过去。吧台的 `cam_third` 被场景里一块板挡住。
 
+## Real2Sim 数采管理平台（2026-10-19）
+
+- 需求：参照 Notion「Real2Sim2Real」页，做覆盖场景重建、物体资产、任务采集、数据质检全流程的数采管理 Web。
+- 实现 `src/real2sim_platform/`：`server.py`（标准库 `http.server` + SQLite，无新依赖，系统 `python3` 可跑）、`index.html`（单页，原生 JS）、`test_server.py`（自检）。启动和点「从项目同步」时扫描：`real2sim/scenes/*`（参考照片、`fit_photo.json` 残差或 `cameras_scene.json` 相机数、USD、`check_report.json`、预览）；`task_inventory.build_inventory()` + 任务模块里的 `step_lim` + `<assets>/Eval_Layout/RoboDojo/<cfg>/**/<task>_<n>.json` 计数；G1-D（custom）任务配置里 Rigid/Fluid 的 category/index/label（逐行解析，系统 Python 没有 PyYAML）得到物体，再关联 `<assets>/Object/RoboDojo/<id>/{metadata,description}.json` 和 `scripts/objects/make_*.py`；`--eval-root` 下所有 `_result.json` 的 details 与 `episode_<n>_cam_<cam>_<tag>.mp4`。场景与 env 配置的对应取自 `build_asset.SCENES`。
+- 数据契约：每条记录的 `auto` 是扫描结果，其余键是人工录入；重扫只替换 `auto`。扫描不到的记录：没有人工内容就删除，有就标 `auto.missing`。回合 id = 运行目录绝对路径 + `#` + 回合序号（移动 eval 目录后录入会和新路径脱钩）。物体 id 必须是 `<类型>/<类别>/<编号>`（服务端校验，防路径穿越）。`/file` 只提供 `real2sim/`、`output/`、资产库和 eval 根目录下的图片、视频、md、json。
+- 判定（前端 `*_STAGES`，阈值取自 Notion 月度目标）：场景实测 < 1 cm、叠图 < 5 px 且 ≥ 3 视角；物体尺寸误差 < max(2 mm, 2%)（bbox 与实测各自从大到小排序后逐项比）、质量差 ≤ 5 g、5 项物理检验；角色目标源 ≥ 12、接收 ≥ 15、干扰 ≥ 30，保留 30%；专家（`scripted_demo`）成功率 ≥ 80%；合格回合 = 质检通过且仿真成功，默认目标 500；回合自动检查 = `eval_time` ≥ 1、head/left_wrist/right_wrist 视频齐全（同 `summarize_result.py`）、视频文件名标签与 `_result.json` 一致（能发现并发写进同一时间戳目录造成的串结果）；Sim↔Real 用回合上的「真机对照」算 AA、Cohen's κ、P(真机成功 | 仿真成功)。
+- 和 `real2sim/ASSETS.md` 的关系：登记表是定稿来源；平台里的实测值是工作记录，定稿后写回生成脚本和登记表（README 与物体页都写明）。
+- 验证（本机）：`python3 src/real2sim_platform/test_server.py` 4 项通过（任务配置解析、仓库扫描、回合扫描 + 重扫保留录入 / 标记缺失、HTTP Range、路径限制、非法物体 id 返回 400）；`uvx ruff check`、`ruff format --check` 通过。浏览器里用临时库 `/tmp/r2s_test.sqlite3` 和 `/tmp/r2s_fixture`（假资产库 + 3 回合运行，视频取自本机 `eval_result/real_scene1`）实际操作五个页面：场景录入后阶段判定随之变化、重启服务后录入仍在、量杯关联 metadata 后尺寸核对通过、质检快捷键 P 通过并跳到下一条 / R 拒绝后停留、改标签不打断视频播放、登记新物体、Sim↔Real 指标（AA 0.67、κ 0.40，与手算一致）。未在服务器 21196 的共享资产库和隔离目录上运行（本机 `Assets/` 为空，物体元数据和布局数只用假数据验证过）。
+
 ## 剩余事项与风险
 
 - real_scene3：尺寸没有实测（量一下桌长或桌高，再用 `--scale-correction` 修正）；灯光已按手机照片标定，仍需和真机头部相机画面对比。已作为 `g1d_lab` 配置接入（见「三个场景接入」一节）。
@@ -187,11 +196,13 @@
 - 自建资产装没装进共享库、和真实的匹配程度，统一看 `real2sim/ASSETS.md`（2026-10-19 核对：共享库缺 `measuring_cup`、`plastic_mug`、`red_bean` 和量杯任务布局；`Robots/g1d` 是 10-17 带相机夹爪版）。
 - 自建物体的摩擦没有生效：`rigid.py` 只读 `physics.static_friction`/`dynamic_friction`（默认 0.6/1.5），生成脚本写的 `friction` 被忽略。现有成功率都是在默认摩擦下得到的；改成实测摩擦前要让生成脚本写这两个键，并重跑倒豆/抓取任务。
 - 所有自建物体和三个场景都没有卷尺/秤实测，尺寸来自照片拟合或常见规格估计；待测清单在 `real2sim/ASSETS.md`。
+- 数采平台：没有登录和权限（`--host 0.0.0.0` 只在可信网络用）；不从网页启动仿真，命令只展示供复制；回合质检只看视频和 `_result.json`，Notion 里的关节速度/加速度/加加速度、接触力、最小间距等运动合理性指标要等轨迹录制器输出关节数据后再接；L0–L4 进度是人工填写，布局还没按级别生成；实测值在平台和 `ASSETS.md` 两处，需要人工同步。
 
 ## 下一会话
 
 1. 先看 `git log` 和本文件；服务器环境已可用，直接用 demo_policy 跑 `--env-cfg g1d` 复现。量杯对倒：`CUDA_VISIBLE_DEVICES=N PYTHONPATH=.:XPolicyLab EVAL_NUM=1 python scripts/g1d/scripted_demo.py --env_cfg_type g1d_counter --task_name g1d_pour_beans_measuring_cups --seed 0`，需要先把 `measuring_cup` 和新布局装进资产库（`make_plastic_cups.py` + `build_asset.py`；共享库尚未安装，需用户同意）。
 2. 下一步建议：按 `real2sim/ASSETS.md` 的待实测清单量桌子和杯子，写回生成脚本 / 场景尺度并更新登记表；改摩擦前先让生成脚本写 `static_friction`/`dynamic_friction`。
+3. 数采平台：在服务器上用 `python3 src/real2sim_platform/server.py --assets /data2/zhongzheng/Project/RoboDojo_assets/Assets --eval-root <隔离目录或 eval_result>` 跑一次，核对真实布局数和回合扫描；团队共用前定好数据库位置（`--db`）。
 
 ## Dex1-1 改回标准版（不带腕部相机模型，2026-10-16；已被 10-17 的带相机夹爪取代）
 
@@ -216,6 +227,8 @@
 - 共享资产库（用户同意）：新增 `Room/real_scene{2,3}`、`Rigid/{water_cup,plastic_cup}`、`Eval_Layout/RoboDojo/{g1d_counter,g1d_lab}`，`g1d` 的 G1-D 任务布局换成当前版本，`Room/real_scene1` 覆盖为同样内容；与隔离目录验证产物 `diff -r` 一致。改动前备份 `/data2/tmp/robodojo/backup-shared-20261016-174239.tgz`（原 `g1d` 布局和 `real_scene1`）。没有跑 `format.py`（运行时不读 `uuid_map.json`）。
 
 ## 最近历史
+
+- 2026-10-19：新增 Real2Sim 数采管理平台 `src/real2sim_platform/`（标准库 Web：场景重建、物体资产、任务采集、数据质检、Sim↔Real 一致率），本机自检、ruff 和浏览器全流程通过；未在服务器数据上运行。
 
 - 2026-10-19：量杯乳白份额 0.08 → 0.25（用户反馈吧台任务里杯子看起来全透明）；吧台 seed 0 用 0.15/0.25 各跑一次均成功（89%/89%、87%/87%），材质只影响渲染，其余场景结果沿用。
 

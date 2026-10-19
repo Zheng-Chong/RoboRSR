@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Real2Sim 数采管理平台</title>
+<style>
+:root {
+  --bg: #f4f5f7; --card: #fff; --line: #e3e6eb; --text: #1f2329; --muted: #6b7280; --accent: #2563eb;
+  --ok: #15803d; --ok-bg: #dcfce7; --bad: #dc2626; --bad-bg: #fee2e2; --todo: #6b7280; --todo-bg: #eef0f3;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); }
+a { color: var(--accent); text-decoration: none; }
+header { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; min-height: 52px; padding: 0 20px; background: #111827; color: #fff; }
+header h1 { margin: 0; font-size: 16px; white-space: nowrap; }
+nav { white-space: nowrap; }
+nav a { display: inline-block; padding: 15px 10px; color: #cbd5e1; }
+nav a.on { color: #fff; box-shadow: inset 0 -3px 0 #60a5fa; }
+header input { width: 110px; color: var(--text); }
+.sp { flex: 1; }
+main { max-width: 1560px; margin: 0 auto; padding: 18px 20px 40px; }
+h2 { margin: 22px 0 10px; font-size: 15px; }
+h3 { margin: 20px 0 8px; font-size: 14px; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.grid.wide { grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); }
+.cols { display: grid; grid-template-columns: 1.25fr 1fr; gap: 0 18px; }
+@media (max-width: 1100px) { .cols, .qa { grid-template-columns: 1fr !important; } }
+.card { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; color: inherit; }
+a.card:hover, .scene-card:hover { border-color: #93c5fd; }
+.kpi .v { font-size: 26px; font-weight: 600; }
+.kpi .l { color: var(--muted); font-size: 12px; }
+.scene-card { cursor: pointer; }
+.cover { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6px; background: #e5e7eb; }
+table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); }
+th, td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: #f9fafb; color: var(--muted); font-size: 12px; font-weight: 500; }
+table.plain { border: 0; background: none; }
+table.plain td, table.plain th { padding: 5px 6px; background: none; }
+tr.row { cursor: pointer; }
+tr.row:hover { background: #f8fafc; }
+tr.sel, tr.sel:hover { background: #eff6ff; }
+.chip { display: inline-block; margin: 1px 3px 1px 0; padding: 0 8px; border: 1px solid transparent; border-radius: 10px; background: var(--todo-bg); color: var(--todo); font-size: 12px; white-space: nowrap; }
+.chip.ok { background: var(--ok-bg); color: var(--ok); }
+.chip.bad { background: var(--bad-bg); color: var(--bad); }
+.chip.na { background: none; border: 1px dashed #cbd5e1; color: #9ca3af; }
+.chip.btn { cursor: pointer; }
+.chip.btn.on { border-color: var(--accent); background: #dbeafe; color: var(--accent); }
+.stages { display: flex; flex-wrap: wrap; margin-top: 6px; }
+.bar { display: flex; height: 8px; overflow: hidden; border-radius: 4px; background: var(--todo-bg); }
+.bar i { display: block; height: 100%; }
+.bar .ok { background: #22c55e; }
+.bar .bad { background: #ef4444; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.warn { margin-bottom: 12px; padding: 8px 12px; border: 1px solid #fde68a; border-radius: 8px; background: #fffbeb; color: #92400e; font-size: 13px; }
+button { padding: 5px 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font: inherit; cursor: pointer; }
+button.primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+button.ok { border-color: var(--ok); background: var(--ok); color: #fff; }
+button.bad { border-color: var(--bad); background: var(--bad); color: #fff; }
+input, select, textarea { padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font: inherit; color: inherit; }
+textarea { width: 100%; min-height: 64px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.form { display: grid; grid-template-columns: 120px 1fr; gap: 8px 12px; align-items: center; }
+.form input[type=text], .form input:not([type]) { width: 100%; }
+.dims input { width: 84px; }
+#drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 6; width: min(680px, 100vw); overflow: auto; padding: 16px 20px 40px; border-left: 1px solid var(--line); background: #fff; box-shadow: -8px 0 24px rgba(0, 0, 0, .08); transform: translateX(100%); transition: transform .2s; }
+#drawer.open { transform: none; }
+#drawer .title { word-break: break-all; }
+.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
+.thumbs img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border: 1px solid var(--line); border-radius: 6px; cursor: zoom-in; }
+pre { overflow: auto; margin: 6px 0; padding: 10px 12px; border-radius: 8px; background: #0f172a; color: #e2e8f0; font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; }
+.qa { display: grid; grid-template-columns: minmax(440px, 1fr) minmax(480px, 1.15fr); gap: 14px; align-items: start; }
+.qa .list { max-height: calc(100vh - 150px); overflow: auto; }
+.qa .panel { position: sticky; top: 64px; }
+.videos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.videos figure { margin: 0; }
+.videos video { width: 100%; border-radius: 6px; background: #000; }
+#lightbox { position: fixed; inset: 0; z-index: 10; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, .85); }
+#lightbox img { max-width: 95vw; max-height: 95vh; }
+#toast { position: fixed; bottom: 22px; left: 50%; z-index: 11; display: none; padding: 8px 16px; border-radius: 8px; background: #111827; color: #fff; transform: translateX(-50%); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Real2Sim 数采管理平台</h1>
+  <nav>
+    <a href="#overview" data-tab="overview">总览</a>
+    <a href="#scenes" data-tab="scenes">场景重建</a>
+    <a href="#objects" data-tab="objects">物体资产</a>
+    <a href="#tasks" data-tab="tasks">任务采集</a>
+    <a href="#qa" data-tab="qa">数据质检</a>
+  </nav>
+  <span class="sp"></span>
+  <label class="small">操作人 <input id="user" placeholder="填写姓名"></label>
+  <button class="primary" onclick="sync()">从项目同步</button>
+</header>
+<main></main>
+<aside id="drawer"></aside>
+<div id="lightbox" onclick="this.style.display = 'none'"><img alt=""></div>
+<div id="toast"></div>
+<script>
+'use strict';
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]);
+const file = (p) => `/file?path=${encodeURIComponent(p)}`;
+const num = (v) => v !== null && v !== undefined && v !== '' && !Number.isNaN(Number(v));
+const pct = (x) => (num(x) ? `${Math.round(x * 100)}%` : '-');
+const sum = (xs) => xs.reduce((a, b) => a + b, 0);
+const fmtTime = (t) => (t ? new Date(t * 1000).toLocaleString('zh-CN', {hour12: false}) : '');
+const live = (xs) => xs.filter((d) => !d.auto?.missing);
+const group = (xs, key) => xs.reduce((m, x) => ((m[key(x)] ||= []).push(x), m), {});
+const rel = (p) => (p && INFO.root && p.startsWith(`${INFO.root}/`) ? p.slice(INFO.root.length + 1) : p);
+const user = () => localStorage.user || '';
+const opts = (options, value) => Object.entries(options).map(([k, l]) => `<option value="${esc(k)}" ${k === String(value ?? '') ? 'selected' : ''}>${esc(l)}</option>`).join('');
+
+const KINDS = ['scene', 'object', 'task', 'episode'];
+const TAB_OF = {scene: 'scenes', object: 'objects', task: 'tasks', episode: 'qa'};
+const KIND_LABEL = {scene: '场景', object: '物体', task: '任务', episode: '回合'};
+const S = {scene: [], object: [], task: [], episode: []};
+const UI = {
+  tab: 'overview', drawer: null, ep: null, taskDim: 'custom', taskQ: '', obj: {q: '', role: ''},
+  qa: {task: '', config: '', policy: '', result: '', status: 'pending'},
+};
+let INFO = {};
+let EP_BY_TASK = {};
+
+// ---------- stages: [key, label, doc -> {s: ok | bad | todo | na, t: detail}] ----------
+const ok = (t = '') => ({s: 'ok', t});
+const bad = (t = '') => ({s: 'bad', t});
+const todo = (t = '') => ({s: 'todo', t});
+const na = (t = '') => ({s: 'na', t});
+const flag = (v, hint) => (v ? ok('已完成') : todo(hint));
+const STATE = {ok: '通过', bad: '不通过', todo: '待办', na: '不适用'};
+const allOk = (stages, d) => stages.every(([, , fn]) => ['ok', 'na'].includes(fn(d).s));
+
+const SCENE_STAGES = [
+  ['photos', '照片采集', (d) => (d.auto.photos?.length ? ok(`${d.auto.photos.length} 张参考照片`) : todo('reference/ 下没有照片'))],
+  ['fit', '相机拟合', (d) => (!d.auto.fit_views ? todo('没有 fit_photo.json 或 cameras_scene.json')
+    : ok(d.auto.fit_max_px == null ? `${d.auto.fit_views} 个 SfM 相机` : `${d.auto.fit_views} 个视角，最大残差 ${d.auto.fit_max_px} px`))],
+  ['build', 'USD 构建', (d) => (d.auto.built ? ok(d.auto.rooms.join('、')) : todo('缺 usd/scene.usda 或 Room 入口'))],
+  ['check', '离线检查', (d) => (!d.auto.checks_total ? todo('没有 check_report.json')
+    : d.auto.checks_failed.length ? bad(`${d.auto.checks_failed.length}/${d.auto.checks_total} 项未通过`) : ok(`${d.auto.checks_total} 项全部通过`))],
+  ['measure', '尺寸实测 < 1 cm', (d) => {
+    if (!num(d.measured_top_z)) return todo('卷尺实测桌高、桌沿相对机器人的位置');
+    const dz = Math.abs(d.measured_top_z - d.auto.top_z) * 100;
+    const edge = num(d.edge_err_cm) ? Math.abs(d.edge_err_cm) : null;
+    const text = `桌高差 ${dz.toFixed(1)} cm，${edge == null ? '桌沿未实测' : `桌沿差 ${edge} cm`}`;
+    if (dz >= 1 || edge >= 1) return bad(text);
+    return edge == null ? todo(text) : ok(text);
+  }],
+  ['overlay', '叠图 < 5 px（≥ 3 视角）', (d) => {
+    if (!num(d.overlay_px)) return todo('用标定好的头部相机把仿真渲染和真机照片叠图');
+    const text = `最大偏差 ${d.overlay_px} px，${d.overlay_views || 0} 个视角`;
+    return d.overlay_px < 5 && d.overlay_views >= 3 ? ok(text) : bad(text);
+  }],
+  ['lighting', '灯光建模', (d) => flag(d.lighting, '按现场记录建模灯的类型、位置和大致亮度')],
+  ['isaac', 'Isaac 渲染验证', (d) => flag(d.isaac, 'RTX 渲染，与真机头部相机画面对比')],
+  ['shared', '入共享资产库', (d) => flag(d.shared, 'build_asset.py 装入 Assets/Room/ 并生成布局')],
+];
+
+const ROLES = {'': '未定', source: '源容器', receiver: '接收容器', distractor: '干扰物', target: '操作目标', other: '其他'};
+const ROLE_TARGETS = {source: 12, receiver: 15, distractor: 30};
+const SPLITS = {'': '未定', train: '训练', holdout: '保留（泛化评测）'};
+const METHODS = {'': '未定', script: '参数化脚本', photogrammetry: '摄影测量', generative: '3D 生成模型', library: '开源 / 官方物体库'};
+const CHECK_STATES = {'': '未测', pass: '通过', fail: '不通过', na: '不适用'};
+const PHYS = [
+  ['settle', '落地静置', '1 s 内稳定，倾斜 < 1°，速度 < 5 mm/s', (d) => `PYTHONPATH=. python scripts/objects/check_object.py Assets/Object/RoboDojo/${d.id} --image check.png`],
+  ['collision', '碰撞体', '与桌面、其他物体初始无穿插；容器口没被碰撞体封住', () => ''],
+  ['grasp', '抓取', 'Dex1 用脚本抓起，保持 3 s 不滑落', () => ''],
+  ['liquid', '盛液（仅容器）', '静置时液体保留率 ≥ 99%',
+    () => 'PYTHONPATH=. python scripts/objects/check_pitcher_fluid.py --device cpu --out output/pitcher/fluid   # 壶\nPYTHONPATH=. python scripts/objects/check_cup_beans.py --out output/plastic_cups/beans   # 杯子装豆'],
+  ['render', '光照渲染', '3 种灯光预设下截图，无穿透、黑面、折射错误；人工复核', () => ''],
+];
+const measured = (d) => Array.isArray(d.real_dims) && d.real_dims.length === 3 && d.real_dims.every(num) && num(d.real_mass);
+function dimCheck(d) {
+  const sim = d.auto.size;
+  if (!Array.isArray(sim) || !measured(d)) return null;
+  const a = sim.map((v) => v * 1000).sort((x, y) => y - x);
+  const b = d.real_dims.map(Number).sort((x, y) => y - x);
+  return a.map((v, i) => ({sim: v, real: b[i], err: Math.abs(v - b[i]), ok: Math.abs(v - b[i]) <= Math.max(2, 0.02 * b[i])}));
+}
+const OBJ_STAGES = [
+  ['measure', '实物测量', (d) => (!d.twin ? na('非实物孪生') : measured(d) ? ok(`${d.real_dims.join(' × ')} mm，${d.real_mass} g`)
+    : todo('卡尺测关键尺寸 ±1 mm、称重 ±5 g、多角度照片、斜面法测摩擦'))],
+  ['model', '建模入库', (d) => (d.auto.in_library ? ok(d.method ? METHODS[d.method] : '资产库中已有')
+    : todo(d.auto.generator ? `有生成脚本 ${d.auto.generator}，资产库中未找到` : '资产库中未找到 metadata.json'))],
+  ['dims', '尺寸 / 质量核对', (d) => {
+    if (!d.twin) return na('非实物孪生');
+    const c = dimCheck(d);
+    if (!c || !num(d.auto.mass)) return todo('需要实测值，以及资产库里的仿真尺寸和质量');
+    const dm = Math.abs(d.auto.mass * 1000 - d.real_mass);
+    const text = `尺寸误差 ${c.map((x) => x.err.toFixed(1)).join(' / ')} mm，质量差 ${dm.toFixed(0)} g`;
+    return c.every((x) => x.ok) && dm <= 5 ? ok(text) : bad(text);
+  }],
+  ['physics', '物理检验', (d) => {
+    const v = PHYS.map(([k]) => d.checks?.[k] || '');
+    if (v.includes('fail')) return bad(`${v.filter((x) => x === 'fail').length} 项不通过`);
+    const done = v.filter((x) => x === 'pass' || x === 'na').length;
+    return done === PHYS.length ? ok('5 项通过') : todo(`${done}/${PHYS.length} 项完成`);
+  }],
+  ['split', '角色 / 划分', (d) => (d.role && d.split ? ok(`${ROLES[d.role]} · ${SPLITS[d.split]}`) : todo('定角色，并按 7:3 划入训练 / 保留'))],
+];
+
+const DIMS = {custom: 'G1-D 自建', generalization: '泛化', memory: '记忆', precision: '精细', 'long-horizon': '长程', open: '开放'};
+const LEVELS = [
+  ['L0', '孪生', '无变化，与真机评测一一对应：真实工位、真实物体、打印摆放垫上的位置', 25],
+  ['L1', '位置', '物体位置和朝向：可达范围内 y ≈ [-0.55, -0.25]，旋转 ±30°', 50],
+  ['L2', '外观', '亮度 ×0.5–2、色温 3000–6500 K、灯的位置；桌面 / 地面 / 背景纹理；头部相机 ±1 cm / ±2°，腕部 ±0.5 cm / ±2°', 50],
+  ['L3', '物体', '保留实例（没见过的尺寸、颜色、材质）+ 3–8 个干扰物', 50],
+  ['L4', '场景', '2 个不进训练的场景（如厨房台面、窄桌），桌高 ±5 cm', 50],
+];
+const experts = (eps) => eps.filter((e) => e.auto.policy === 'scripted_demo');
+const rate = (eps) => (eps.length ? eps.filter((e) => e.auto.success).length / eps.length : null);
+const qualified = (eps) => eps.filter((e) => e.qa === 'pass' && e.auto.success);
+const TASK_STAGES = [
+  ['config', '任务配置', (d) => (d.auto.runnable ? ok(`step_lim ${d.auto.step_lim ?? '继承'}`) : bad('缺配置或导出类'))],
+  ['layout', '评测布局', (d) => (sum(Object.values(d.auto.layouts || {}))
+    ? ok(Object.entries(d.auto.layouts).map(([c, n]) => `${c} ${n}`).join('，')) : todo('资产库里没有布局（scripts/g1d/build_asset.py）'))],
+  ['expert', '专家可行性 ≥ 80%', (d) => {
+    const e = experts(EP_BY_TASK[d.id] || []);
+    return !e.length ? todo('还没有 scripted_demo 回合') : (rate(e) >= 0.8 ? ok : bad)(`${pct(rate(e))}（${e.length} 回合）`);
+  }],
+  ['collect', '合格回合', (d) => {
+    const eps = EP_BY_TASK[d.id] || [], q = qualified(eps).length, target = d.target || 500;
+    return (q >= target ? ok : todo)(`质检通过且成功 ${q}/${target}（已采 ${eps.length}）`);
+  }],
+  ['qa', '质检', (d) => {
+    const eps = EP_BY_TASK[d.id] || [], pending = eps.filter((e) => !e.qa || e.qa === 'pending').length;
+    return !eps.length ? todo('没有回合') : pending ? todo(`待审 ${pending}`) : ok('全部已审');
+  }],
+];
+
+const CAM_ORDER = ['head', 'head_right', 'left_wrist', 'right_wrist'];
+const camRank = (c) => (CAM_ORDER.includes(c) ? CAM_ORDER.indexOf(c) : 99);
+const cams = (e) => Object.keys(e.auto.videos || {}).sort((a, b) => camRank(a) - camRank(b) || a.localeCompare(b));
+const EP_CHECKS = [
+  ['result', '结果写入（eval_time ≥ 1）', (e) => (e.auto.eval_time >= 1 ? ok(`eval_time ${e.auto.eval_time}`) : bad('eval_time < 1'))],
+  ['cams', '三路相机视频齐全', (e) => (e.auto.missing_cameras?.length ? bad(`缺 ${e.auto.missing_cameras.join('、')}`) : ok(cams(e).join('、')))],
+  ['tag', '视频标签与结果一致', (e) => {
+    const want = e.auto.success ? 'success' : 'fail', tags = e.auto.video_tags || [];
+    return !tags.length ? todo('没有视频') : tags.length === 1 && tags[0] === want ? ok(want) : bad(`视频 ${tags.join('/')}，结果 ${want}`);
+  }],
+];
+const QA_STAGE = ['qa', '人工质检', (e) => (e.qa === 'pass' ? ok('通过') : e.qa === 'reject' ? bad('拒绝') : todo('待审'))];
+const QA_STATES = {pending: '待审', pass: '通过', reject: '拒绝'};
+const TAGS = ['够不到', '抓取滑脱', '穿模 / 碰撞', '洒出 / 漏出', '超速 / 抖动', '物体不稳', '画面异常', '判定误报', '其他'];
+
+function simReal(eps) {
+  const pairs = eps.filter((e) => e.real === 'success' || e.real === 'fail');
+  if (!pairs.length) return null;
+  let a = 0, b = 0, c = 0, d = 0;
+  for (const e of pairs) {
+    const sim = e.auto.success, real = e.real === 'success';
+    if (sim && real) a++; else if (sim) b++; else if (real) c++; else d++;
+  }
+  const n = pairs.length, A = (a + d) / n, pe = ((a + b) * (a + c) + (c + d) * (b + d)) / (n * n);
+  return {n, a, b, c, d, A, kappa: pe < 1 ? (A - pe) / (1 - pe) : null, trust: a + b ? a / (a + b) : null};
+}
+
+// ---------- shared widgets ----------
+const missingBadge = (d) => (d.auto?.missing ? ' <span class="chip bad">文件已不存在</span>' : '');
+const chips = (stages, d) => `<div class="stages">${stages.map(([, label, fn]) => {
+  const r = fn(d);
+  return `<span class="chip ${r.s}" title="${esc(`${STATE[r.s]}：${r.t}`)}">${esc(label)}</span>`;
+}).join('')}</div>`;
+const stageList = (stages, d) => `<table class="plain">${stages.map(([, label, fn]) => {
+  const r = fn(d);
+  return `<tr><td style="width:210px"><span class="chip ${r.s}">${STATE[r.s]}</span> ${esc(label)}</td><td class="small muted">${esc(r.t)}</td></tr>`;
+}).join('')}</table>`;
+function stageBars(title, stages, docs, href) {
+  const rows = stages.map(([, label, fn]) => {
+    const c = {ok: 0, bad: 0, todo: 0, na: 0};
+    docs.forEach((d) => c[fn(d).s]++);
+    const n = c.ok + c.bad + c.todo;
+    const bars = n ? `<i class="ok" style="width:${(c.ok / n) * 100}%"></i><i class="bad" style="width:${(c.bad / n) * 100}%"></i>` : '';
+    return `<tr><td class="small" style="width:200px">${esc(label)}</td><td><div class="bar">${bars}</div></td>
+      <td class="small muted" style="width:120px;text-align:right">${c.ok}/${n}${c.bad ? ` · <span style="color:var(--bad)">${c.bad} 不通过</span>` : ''}</td></tr>`;
+  }).join('');
+  return `<div class="card"><div class="toolbar" style="margin:0"><b>${esc(title)}</b><span class="muted small">${docs.length} 项</span><span class="sp"></span><a class="small" href="${href}">查看 →</a></div><table class="plain">${rows}</table></div>`;
+}
+const val = (d, f) => f.split('.').reduce((o, k) => o?.[k], d);
+const inp = (d, f, type = 'text', attrs = '') => (type === 'checkbox'
+  ? `<input id="f-${f}" type="checkbox" data-f="${f}" ${val(d, f) ? 'checked' : ''}>`
+  : `<input id="f-${f}" type="${type}" data-f="${f}" value="${esc(val(d, f) ?? '')}" ${attrs}>`);
+const sel = (d, f, options) => `<select id="f-${f}" data-f="${f}">${opts(options, val(d, f))}</select>`;
+const area = (d, f, attrs = '') => `<textarea id="f-${f}" data-f="${f}" ${attrs}>${esc(val(d, f) ?? '')}</textarea>`;
+const searchBox = (id, value, setter, hint) => `<input id="${id}" type="text" placeholder="${hint}" value="${esc(value)}"
+  oninput="if (!event.isComposing) { ${setter} = this.value; render(); }" oncompositionend="${setter} = this.value; render()">`;
+const thumbs = (paths = [], limit = 24) => (!paths.length ? '<div class="small muted">无</div>'
+  : `<div class="thumbs">${paths.slice(0, limit).map((p) => `<img loading="lazy" src="${file(p)}" title="${esc(p.split('/').pop())}" onclick="lightbox(this.src)">`).join('')}</div>`
+    + (paths.length > limit ? `<div class="small muted">共 ${paths.length} 张，显示前 ${limit} 张</div>` : ''));
+const link = (kind, id, text = id) => `<a href="javascript:void 0" data-id="${esc(id)}" onclick="go('${kind}', this.dataset.id)">${esc(text)}</a>`;
+const assetsWarning = () => (INFO.assets_ok ? '' : `<div class="warn">资产库 ${esc(INFO.assets)} 下没有 Object/：物体元数据和评测布局数不可用。
+  本机先运行 scripts/init_assets.sh，或在服务器上用 <code>--assets</code> 指向共享资产库。</div>`);
+
+// ---------- overview ----------
+function viewOverview() {
+  const scenes = live(S.scene), objs = live(S.object), eps = live(S.episode);
+  const tasks = live(S.task).filter((t) => t.auto.dimension === 'custom');
+  const qa = group(eps, (e) => e.qa || 'pending'), sr = simReal(eps);
+  const kpi = (v, label, sub, href) => `<a class="card kpi" href="${href}"><div class="l">${label}</div><div class="v">${v}</div><div class="small muted">${sub}</div></a>`;
+  const rejected = eps.filter((e) => e.qa === 'reject');
+  const tagCount = TAGS.map((t) => [t, rejected.filter((e) => (e.tags || []).includes(t)).length]).filter(([, n]) => n);
+  const recent = KINDS.flatMap((k) => S[k].filter((d) => d._at).map((d) => ({k, d}))).sort((x, y) => y.d._at - x.d._at).slice(0, 10);
+  const roles = Object.entries(ROLE_TARGETS).map(([role, target]) => {
+    const xs = objs.filter((o) => o.role === role), hold = xs.filter((o) => o.split === 'holdout').length;
+    return `<tr><td style="width:80px">${ROLES[role]}</td><td><div class="bar"><i class="ok" style="width:${Math.min(100, (xs.length / target) * 100)}%"></i></div></td>
+      <td class="small" style="width:60px">${xs.length}/${target}</td>
+      <td class="small muted">训练 ${xs.filter((o) => o.split === 'train').length} · 保留 ${hold}${xs.length ? `（${pct(hold / xs.length)}，目标 30%）` : ''}</td></tr>`;
+  }).join('');
+  const srTable = !sr ? '<div class="small muted">还没有真机对照。在「数据质检」里给回合选择真机结果，这里会计算 AA、κ 和 P(真机成功 | 仿真成功)。</div>'
+    : `<table class="plain">
+      <tr><td>结果一致率 AA</td><td><b>${pct(sr.A)}</b></td><td class="small muted">单次试验里仿真结论与真机相同的比例</td></tr>
+      <tr><td>Cohen's κ</td><td><b>${sr.kappa == null ? '-' : sr.kappa.toFixed(2)}</b></td><td class="small muted">扣除“两边都大量失败”造成的虚高</td></tr>
+      <tr><td>仿真成功可信度</td><td><b>${pct(sr.trust)}</b></td><td class="small muted">P(真机成功 | 仿真成功)</td></tr>
+      <tr><td>配对</td><td><b>${sr.n}</b></td><td class="small muted">都成功 ${sr.a} · 仅仿真成功 ${sr.b} · 仅真机成功 ${sr.c} · 都失败 ${sr.d}</td></tr></table>`;
+  return `<div class="grid">
+    ${kpi(`${scenes.filter((d) => allOk(SCENE_STAGES, d)).length}/${scenes.length}`, '场景验收完成', '目标 7 个场景：3 孪生 + 4 泛化', '#scenes')}
+    ${kpi(objs.length, '物体资产', `已实测 ${objs.filter(measured).length} · 物理检验全过 ${objs.filter((d) => OBJ_STAGES[3][2](d).s === 'ok').length}`, '#objects')}
+    ${kpi(tasks.length, 'G1-D 任务', `评测布局 ${sum(tasks.map((t) => sum(Object.values(t.auto.layouts || {}))))} 个`, '#tasks')}
+    ${kpi(eps.length, '采集回合', `仿真成功率 ${pct(rate(eps))}`, '#qa')}
+    ${kpi((qa.pass || []).length, '质检通过', `拒绝 ${(qa.reject || []).length} · 待审 ${(qa.pending || []).length}`, '#qa')}
+    ${kpi(sr ? pct(sr.A) : '-', 'Sim ↔ Real 一致率', sr ? `κ ${sr.kappa == null ? '-' : sr.kappa.toFixed(2)} · ${sr.n} 对` : '尚无真机对照', '#qa')}
+  </div>
+  <div class="cols">
+    <div>
+      <h2>流程看板</h2>
+      ${stageBars('场景重建', SCENE_STAGES, scenes, '#scenes')}
+      ${stageBars('物体资产', OBJ_STAGES, objs, '#objects')}
+      ${stageBars('任务采集（G1-D）', TASK_STAGES, tasks, '#tasks')}
+      ${stageBars('数据质检', [...EP_CHECKS, QA_STAGE], eps, '#qa')}
+    </div>
+    <div>
+      <h2>资产泛化目标（倒水类任务）</h2>
+      <div class="card"><table class="plain">${roles}</table></div>
+      <h2>Sim ↔ Real 一致性</h2>
+      <div class="card">${srTable}</div>
+      <h2>拒绝原因</h2>
+      <div class="card">${tagCount.length ? `<table class="plain">${tagCount.map(([t, n]) => `<tr><td style="width:110px">${esc(t)}</td>
+        <td><div class="bar"><i class="bad" style="width:${(n / rejected.length) * 100}%"></i></div></td><td class="small" style="width:40px">${n}</td></tr>`).join('')}</table>`
+        : '<div class="small muted">没有带标签的拒绝回合</div>'}</div>
+      <h2>最近操作</h2>
+      <div class="card">${recent.length ? `<table class="plain small">${recent.map(({k, d}) => `<tr><td class="muted" style="width:150px">${fmtTime(d._at)}</td>
+        <td style="width:70px">${esc(d._by || '匿名')}</td><td>${KIND_LABEL[k]} ${link(k, d.id, k === 'episode' ? `${d.auto.task || d.auto.run_id} #${d.auto.index}` : d.id)}</td></tr>`).join('')}</table>`
+        : '<div class="small muted">还没有人工录入</div>'}</div>
+    </div>
+  </div>
+  <p class="small muted">数据来源：仓库 ${esc(INFO.root)} · 资产库 ${esc(INFO.assets)}${INFO.assets_ok ? '' : '（不存在）'} · 回合目录 ${esc((INFO.eval_roots || []).join('，'))} · 数据库 ${esc(INFO.db)}</p>`;
+}
+
+// ---------- scenes ----------
+const sceneDims = (a) => (num(a.top_z) ? `桌面 ${a.size.map((v) => v ?? '?').join(' × ')} m，高 ${a.top_z} m` : '没有 build_params.json');
+function viewScenes() {
+  return `<div class="toolbar"><h2 style="margin:0">场景重建</h2><span class="muted small">real2sim/scenes/ 下 ${S.scene.length} 个场景 · 目标 7 个（3 个孪生 + 2 个训练用泛化 + 2 个 L4 保留）</span></div>
+  <div class="grid wide">${S.scene.map((d) => {
+    const a = d.auto, cover = (a.previews || []).find((p) => /compar/.test(p)) || a.previews?.[0] || a.photos?.[0];
+    return `<div class="card scene-card" data-id="${esc(d.id)}" onclick="openDrawer('scene', this.dataset.id)">
+      ${cover ? `<img class="cover" loading="lazy" src="${file(cover)}">` : '<div class="cover"></div>'}
+      <div class="toolbar" style="margin:8px 0 2px"><b>${esc(d.id)}</b>${missingBadge(d)}<span class="sp"></span>${(a.configs || []).map((c) => `<span class="chip">${esc(c)}</span>`).join('')}</div>
+      <div class="small muted">${esc(sceneDims(a))}</div>${chips(SCENE_STAGES, d)}</div>`;
+  }).join('')}</div>`;
+}
+function drawerScene(d) {
+  const a = d.auto, dir = rel(a.path);
+  const steps = ['fit_photo.py', 'build_scene.py', 'check_scene.py', 'preview.py'].filter((s) => (a.scripts || []).includes(s));
+  const cmd = `cd ${dir}\nuv run --no-project --python 3.11 --with usd-core --with trimesh --with numpy --with shapely \\\n`
+    + `    --with opencv-python-headless --with scipy --with mapbox-earcut --with manifold3d \\\n`
+    + `    sh -c "${steps.map((s) => `python ${s}`).join(' && ')}"\n\n`
+    + '# 装入 Assets/Room/ 并为各场景配置生成 G1-D 布局（改共享库前先在隔离目录验证、征得同意并备份）\npython scripts/g1d/build_asset.py';
+  return `<div class="small muted">${esc(dir)} · ${esc(sceneDims(a))} · env 配置 ${esc((a.configs || []).join('、') || '-')}</div>
+  ${stageList(SCENE_STAGES, d)}
+  ${a.checks_failed?.length ? `<div class="warn">未通过的离线检查：<br>${a.checks_failed.map(esc).join('<br>')}</div>` : ''}
+  <h3>验收录入</h3>
+  <div class="form">
+    <label>实测桌高 (m)</label><div>${inp(d, 'measured_top_z', 'number', 'step="0.001"')} <span class="small muted">仿真 ${a.top_z ?? '-'} m</span></div>
+    <label>桌沿偏差 (cm)</label><div>${inp(d, 'edge_err_cm', 'number', 'step="0.1"')} <span class="small muted">卷尺量桌沿相对机器人的位置，与仿真之差</span></div>
+    <label>叠图偏差 (px)</label><div>${inp(d, 'overlay_px', 'number', 'step="0.1"')} <span class="small muted">桌沿和物体轮廓的最大偏差</span></div>
+    <label>叠图视角数</label><div>${inp(d, 'overlay_views', 'number', 'min="0"')}</div>
+    <label>灯光建模</label><div>${inp(d, 'lighting', 'checkbox')} <span class="small muted">灯的类型、位置和大致亮度按现场记录</span></div>
+    <label>Isaac 渲染</label><div>${inp(d, 'isaac', 'checkbox')} <span class="small muted">与真机头部相机画面对比过</span></div>
+    <label>共享资产库</label><div>${inp(d, 'shared', 'checkbox')} <span class="small muted">已装入服务器共享 Assets/Room/</span></div>
+    <label>备注</label>${area(d, 'notes')}
+  </div>
+  <h3>参考照片</h3>${thumbs(a.photos)}
+  <h3>预览与对比</h3>${thumbs(a.previews)}
+  <h3>文档</h3><div class="small">${(a.docs || []).map((p) => `<a target="_blank" href="${file(p)}">${esc(p.split('/').pop())}</a>`).join(' · ') || '无'}</div>
+  <h3>命令</h3><pre>${esc(cmd)}</pre>`;
+}
+
+// ---------- objects ----------
+const mm = (size, digits = 0) => (Array.isArray(size) ? size.map((v) => (v * 1000).toFixed(digits)).join(' × ') : '-');
+function viewObjects() {
+  const f = UI.obj, q = f.q.toLowerCase();
+  const docs = S.object.filter((d) => (!f.role || (d.role || '') === f.role)
+    && (!q || `${d.id} ${d.name || ''} ${d.auto.name || ''} ${(d.auto.tasks || []).join(' ')}`.toLowerCase().includes(q)));
+  const roleOpts = {'': '全部角色', ...Object.fromEntries(Object.entries(ROLES).filter(([k]) => k))};
+  return `${assetsWarning()}
+  <div class="toolbar"><h2 style="margin:0">物体资产</h2><span class="muted small">G1-D 任务配置里用到的物体自动列出；新的实物孪生先在这里登记。
+    实测值定稿后写回生成脚本和 <a target="_blank" href="${file(`${INFO.root}/real2sim/ASSETS.md`)}">real2sim/ASSETS.md</a></span><span class="sp"></span>
+    ${searchBox('obj-q', f.q, 'UI.obj.q', '搜索 id / 名称 / 任务')}
+    <select onchange="UI.obj.role = this.value; render()">${opts(roleOpts, f.role)}</select>
+    <button class="primary" onclick="openDrawer('new-object')">登记物体</button></div>
+  <table><tr><th>物体</th><th>角色 / 划分</th><th>用于任务（标签）</th><th>仿真尺寸 mm</th><th>仿真质量 g</th><th>实测</th><th>流程</th></tr>
+  ${docs.map((d) => `<tr class="row ${UI.drawer?.id === d.id ? 'sel' : ''}" data-id="${esc(d.id)}" onclick="openDrawer('object', this.dataset.id)">
+    <td><b>${esc(d.id)}</b>${missingBadge(d)}<div class="small muted">${esc(d.name || d.auto.name || '')}${d.twin ? ' · 实物孪生' : ''}</div></td>
+    <td>${esc(ROLES[d.role || ''])}<div class="small muted">${esc(SPLITS[d.split || ''])}</div></td>
+    <td class="small">${(d.auto.tasks || []).map(esc).join('<br>') || '<span class="muted">-</span>'}<div class="muted">${esc((d.auto.labels || []).join(', '))}</div></td>
+    <td class="small">${mm(d.auto.size)}</td>
+    <td class="small">${num(d.auto.mass) ? (d.auto.mass * 1000).toFixed(0) : '-'}</td>
+    <td class="small">${measured(d) ? `${d.real_dims.join(' × ')}<br>${d.real_mass} g` : '-'}</td>
+    <td>${chips(OBJ_STAGES, d)}</td></tr>`).join('')}
+  </table>`;
+}
+function drawerObject(d) {
+  const a = d.auto, c = dimCheck(d);
+  return `${!(a.tasks || []).length ? `<div class="toolbar"><span class="sp"></span><button class="bad" data-id="${esc(d.id)}" onclick="removeDoc('object', this.dataset.id)">删除登记</button></div>` : ''}
+  ${stageList(OBJ_STAGES, d)}
+  <h3>基本信息</h3>
+  <div class="form">
+    <label>名称</label>${inp(d, 'name', 'text', `placeholder="${esc(a.name || '')}"`)}
+    <label>实物孪生</label><div>${inp(d, 'twin', 'checkbox')} <span class="small muted">有对应的实物，需要测量并核对尺寸</span></div>
+    <label>角色</label>${sel(d, 'role', ROLES)}
+    <label>划分</label>${sel(d, 'split', SPLITS)}
+    <label>建模方式</label>${sel(d, 'method', METHODS)}
+    <label>颜色</label>${inp(d, 'color')}
+    <label>材质</label>${inp(d, 'material', 'text', 'placeholder="玻璃 / 塑料 / 陶瓷 / 金属"')}
+  </div>
+  <h3>实物测量</h3>
+  <div class="form">
+    <label>尺寸 (mm)</label><div class="dims">${[0, 1, 2].map((i) => inp(d, `real_dims.${i}`, 'number', `step="0.1" placeholder="${['长', '宽', '高'][i]}"`)).join(' × ')}</div>
+    <label>质量 (g)</label>${inp(d, 'real_mass', 'number', 'step="1"')}
+    <label>静摩擦系数</label>${inp(d, 'real_friction', 'number', 'step="0.01" placeholder="斜面滑动法"')}
+    <label>照片目录</label>${inp(d, 'photos', 'text', 'placeholder="多角度照片所在路径"')}
+  </div>
+  ${c ? `<table class="plain small"><tr><th>尺寸（大→小）</th><th>仿真 mm</th><th>实测 mm</th><th>误差 mm</th></tr>
+    ${c.map((x, i) => `<tr><td>${i + 1}</td><td>${x.sim.toFixed(1)}</td><td>${x.real}</td><td style="color:var(--${x.ok ? 'ok' : 'bad'})">${x.err.toFixed(1)}</td></tr>`).join('')}</table>` : ''}
+  <div class="small muted">判据：每个尺寸误差 < 2 mm 或 2%；质量差 ≤ 5 g（仿真直接用实测质量）。</div>
+  <h3>物理检验</h3>
+  <table class="plain">${PHYS.map(([k, label, crit, cmd]) => `<tr><td style="width:110px">${label}</td>
+    <td class="small">${crit}${cmd(d) ? `<pre>${esc(cmd(d))}</pre>` : ''}</td><td style="width:100px">${sel(d, `checks.${k}`, CHECK_STATES)}</td></tr>`).join('')}</table>
+  <h3>仿真资产</h3>
+  <table class="plain small">
+    <tr><td style="width:110px">资产目录</td><td>${esc(rel(a.dir) || '-')} ${a.in_library ? '<span class="chip ok">已入库</span>' : '<span class="chip">未找到</span>'}</td></tr>
+    <tr><td>生成脚本</td><td>${esc(a.generator || '-')}</td></tr>
+    <tr><td>仿真尺寸</td><td>${mm(a.size, 1)} mm</td></tr>
+    <tr><td>仿真质量</td><td>${num(a.mass) ? `${(a.mass * 1000).toFixed(1)} g` : '-'}</td></tr>
+    <tr><td>摩擦（静 / 动）</td><td>${a.static_friction ?? '默认 0.6'} / ${a.dynamic_friction ?? '默认 1.5'}</td></tr>
+    <tr><td>用于任务</td><td>${(a.tasks || []).map((t) => link('task', t)).join('、') || '-'}</td></tr>
+    <tr><td>任务标签</td><td>${esc((a.labels || []).join(', ') || '-')}</td></tr>
+  </table>
+  <h3>备注</h3>${area(d, 'notes')}
+  ${a.generator ? `<h3>命令</h3><pre>${esc(`python ${a.generator}`)}</pre>` : ''}`;
+}
+function drawerNewObject() {
+  return `<div class="form">
+    <label>类型</label><select id="no-type"><option>Rigid</option><option>Fluid</option></select>
+    <label>类别</label><input id="no-cat" placeholder="如 measuring_cup">
+    <label>编号</label><input id="no-idx" type="number" min="0" value="0">
+    <label>名称</label><input id="no-name" placeholder="如 500 ml 量杯">
+    <label>角色</label><select id="no-role">${opts(ROLES, '')}</select>
+  </div>
+  <p class="small muted">资产目录约定：Assets/Object/RoboDojo/&lt;类型&gt;/&lt;类别&gt;/&lt;5 位编号&gt;/（object.usd(z) + metadata.json）。还没建模也可以先登记，同步时会自动关联资产库。</p>
+  <button class="primary" onclick="createObject()">登记</button>`;
+}
+
+// ---------- tasks ----------
+function viewTasks() {
+  const q = UI.taskQ.toLowerCase();
+  const docs = live(S.task).filter((t) => (UI.taskDim === 'all' || t.auto.dimension === UI.taskDim) && (!q || t.id.toLowerCase().includes(q)))
+    .sort((x, y) => x.id.localeCompare(y.id));
+  return `${assetsWarning()}
+  <div class="toolbar"><h2 style="margin:0">任务采集</h2><span class="muted small">任务来自 task/RoboDojo（与 robodojo.sh tasks 一致）</span><span class="sp"></span>
+    ${searchBox('task-q', UI.taskQ, 'UI.taskQ', '搜索任务')}
+    <select onchange="UI.taskDim = this.value; render()">${opts({...DIMS, all: '全部维度'}, UI.taskDim)}</select></div>
+  <table><tr><th>任务</th><th>评测布局</th><th>回合 / 仿真成功率</th><th>专家成功率</th><th>合格回合</th><th>流程</th></tr>
+  ${docs.map((d) => {
+    const eps = EP_BY_TASK[d.id] || [], e = experts(eps), q2 = qualified(eps).length, target = d.target || 500;
+    return `<tr class="row ${UI.drawer?.id === d.id ? 'sel' : ''}" data-id="${esc(d.id)}" onclick="openDrawer('task', this.dataset.id)">
+      <td><b>${esc(d.id)}</b><div class="small muted">${esc(DIMS[d.auto.dimension] || d.auto.dimension || '-')} · step_lim ${d.auto.step_lim ?? '继承'}${d.owner ? ` · ${esc(d.owner)}` : ''}</div></td>
+      <td class="small">${Object.entries(d.auto.layouts || {}).map(([c, n]) => `${esc(c)} ${n}`).join('<br>') || '<span class="muted">-</span>'}</td>
+      <td class="small">${eps.length}<div class="muted">${pct(rate(eps))}</div></td>
+      <td class="small">${e.length ? `${pct(rate(e))}<div class="muted">${e.length} 回合</div>` : '-'}</td>
+      <td style="width:150px"><div class="bar"><i class="ok" style="width:${Math.min(100, (q2 / target) * 100)}%"></i></div><div class="small muted">${q2}/${target}</div></td>
+      <td>${chips(TASK_STAGES, d)}</td></tr>`;
+  }).join('')}</table>`;
+}
+function drawerTask(d) {
+  const a = d.auto, eps = EP_BY_TASK[d.id] || [];
+  const runs = group(eps, (e) => `${e.auto.config}\u0000${e.auto.policy}`);
+  const sceneCfgs = [...new Set(S.scene.flatMap((s) => s.auto.configs || []))];
+  const cfgs = Object.keys(a.layouts || {}).length ? Object.keys(a.layouts) : sceneCfgs;
+  const cmds = a.dimension === 'custom'
+    ? cfgs.map((c) => `CUDA_VISIBLE_DEVICES=0 PYTHONPATH=.:XPolicyLab EVAL_NUM=1 python scripts/g1d/scripted_demo.py --env_cfg_type ${c} --task_name ${d.id} --seed 0`)
+    : [`bash scripts/robodojo.sh eval --policy-dir XPolicyLab/policy/<POLICY> --task ${d.id} --ckpt <CKPT> --policy-env <ENV> --eval-num 1`];
+  const objects = Object.entries(a.objects || {});
+  return `<div class="small muted">${esc(DIMS[a.dimension] || a.dimension)} · ${esc(a.module)} · ${esc(a.config)}</div>
+  ${stageList(TASK_STAGES, d)}
+  <h3>采集计划</h3>
+  <div class="form">
+    <label>负责人</label>${inp(d, 'owner')}
+    <label>合格回合目标</label>${inp(d, 'target', 'number', 'min="0" placeholder="500"')}
+    <label>备注</label>${area(d, 'notes')}
+  </div>
+  <h3>分级泛化评测集</h3>
+  <p class="small muted">每一级只改变一个因素，其余与 L0 相同；布局预先生成为固定 JSON，并先用 scripted_demo 过滤，L0–L3 专家成功率目标 ≥ 80%。</p>
+  <table class="plain"><tr><th>级别</th><th>变化因素与范围</th><th>目标</th><th>已生成</th></tr>
+  ${LEVELS.map(([k, name, range, target]) => `<tr><td style="width:70px"><b>${k}</b> ${name}</td><td class="small">${range}</td><td>${target}</td>
+    <td style="width:90px">${inp(d, `levels.${k}`, 'number', 'min="0" style="width:80px"')}</td></tr>`).join('')}
+  </table>
+  <h3>物体与标签</h3>
+  ${objects.length ? `<div>${objects.map(([oid, labels]) => `<span class="chip btn" data-id="${esc(oid)}" onclick="go('object', this.dataset.id)">${esc(oid)}${labels.length ? ` · ${esc(labels.join(', '))}` : ''}</span>`).join('')}</div>`
+    : '<div class="small muted">只解析 G1-D 自建任务用到的物体</div>'}
+  <h3>评测布局</h3>
+  ${Object.keys(a.layouts || {}).length ? `<table class="plain small">${Object.entries(a.layouts).map(([c, n]) => `<tr><td style="width:160px">${esc(c)}</td><td>${n}</td></tr>`).join('')}</table>`
+    : '<div class="small muted">资产库里没有该任务的布局</div>'}
+  <h3>采集回合</h3>
+  ${Object.keys(runs).length ? `<table class="plain small"><tr><th>配置</th><th>策略</th><th>回合</th><th>仿真成功率</th><th>通过 / 拒绝 / 待审</th><th></th></tr>
+    ${Object.entries(runs).map(([key, xs]) => {
+      const [cfg, pol] = key.split('\u0000'), g = group(xs, (e) => e.qa || 'pending');
+      return `<tr><td>${esc(cfg)}</td><td>${esc(pol)}</td><td>${xs.length}</td><td>${pct(rate(xs))}</td>
+        <td>${(g.pass || []).length} / ${(g.reject || []).length} / ${(g.pending || []).length}</td>
+        <td><a href="javascript:void 0" data-t="${esc(d.id)}" data-c="${esc(cfg)}" data-p="${esc(pol)}" onclick="qaFilter(this.dataset)">去质检 →</a></td></tr>`;
+    }).join('')}</table>` : '<div class="small muted">还没有回合</div>'}
+  <h3>采集命令</h3><pre>${esc(cmds.join('\n'))}</pre>`;
+}
+
+// ---------- QA ----------
+function qaList() {
+  const f = UI.qa;
+  return live(S.episode).filter((e) => (!f.task || e.auto.task === f.task) && (!f.config || e.auto.config === f.config)
+    && (!f.policy || e.auto.policy === f.policy) && (!f.result || String(e.auto.success) === f.result)
+    && (!f.status || (e.qa || 'pending') === f.status))
+    .sort((x, y) => y.auto.mtime - x.auto.mtime || x.auto.run.localeCompare(y.auto.run) || x.auto.index - y.auto.index);
+}
+function viewQA() {
+  const eps = live(S.episode), f = UI.qa, list = qaList();
+  const values = (key) => Object.fromEntries([...new Set(eps.map((e) => e.auto[key]).filter(Boolean))].sort().map((v) => [v, v]));
+  const pickSel = (key, all, options) => `<select onchange="UI.qa.${key} = this.value; render()">${opts({'': all, ...options}, f[key])}</select>`;
+  const autoChip = (e) => {
+    const failed = EP_CHECKS.filter(([, , fn]) => fn(e).s !== 'ok');
+    return failed.length ? `<span class="chip bad" title="${esc(failed.map(([, l]) => l).join('、'))}">${failed.length} 项异常</span>` : '<span class="chip ok">正常</span>';
+  };
+  const qaChip = (e) => `<span class="chip ${{pass: 'ok', reject: 'bad'}[e.qa] || ''}">${QA_STATES[e.qa || 'pending']}</span>`;
+  return `<div class="toolbar"><h2 style="margin:0">数据质检</h2>
+    ${pickSel('task', '全部任务', values('task'))}${pickSel('config', '全部配置', values('config'))}${pickSel('policy', '全部策略', values('policy'))}
+    ${pickSel('result', '全部结果', {true: '仿真成功', false: '仿真失败'})}${pickSel('status', '全部状态', QA_STATES)}
+    <span class="muted small">${list.length} 个回合</span><span class="sp"></span>
+    <button onclick="exportPassed()">导出质检通过清单</button></div>
+  <div class="qa">
+    <div class="list"><table><tr><th>任务 / 配置</th><th>策略 · seed · 布局</th><th>仿真</th><th>自动检查</th><th>质检</th></tr>
+    ${list.map((e) => `<tr class="row ${e.id === UI.ep ? 'sel' : ''}" data-id="${esc(e.id)}" onclick="pick(this.dataset.id)">
+      <td>${esc(e.auto.task || '（非标准目录）')}<div class="small muted">${esc(e.auto.config || e.auto.run_id)}</div></td>
+      <td class="small">${esc(e.auto.policy || '-')}<div class="muted">seed ${e.auto.seed ?? '-'} · 布局 ${e.auto.layout_id ?? '-'} · #${e.auto.index}</div></td>
+      <td>${e.auto.success ? '<span class="chip ok">成功</span>' : '<span class="chip bad">失败</span>'}</td>
+      <td>${autoChip(e)}</td>
+      <td>${qaChip(e)}${(e.tags || []).length ? `<div class="small muted">${esc(e.tags.join('、'))}</div>` : ''}</td></tr>`).join('')
+      || '<tr><td colspan="5" class="muted">当前筛选下没有回合</td></tr>'}</table></div>
+    <div class="panel">${qaPanel(S.episode.find((e) => e.id === UI.ep))}</div>
+  </div>`;
+}
+function qaPanel(e) {
+  if (!e) return '<div class="card muted">在左侧选择回合开始审核。快捷键：J / K 上下切换，P 通过（自动跳到下一条），R 拒绝（先选问题标签），U 待审。</div>';
+  const a = e.auto;
+  return `<div class="card"><div id="qa-videos" data-ep="${esc(e.id)}">
+    <div class="toolbar"><b>${esc(a.task || '（非标准目录）')}</b><span class="small muted">${esc(a.config)} · ${esc(a.policy)} · seed ${a.seed ?? '-'} · 布局 ${a.layout_id ?? '-'} · #${a.index}</span>
+      <span class="sp"></span><button onclick="playAll()">同步播放</button></div>
+    <div class="videos">${cams(e).map((c) => `<figure><video src="${file(a.videos[c])}" controls muted preload="metadata"></video>
+      <figcaption class="small muted">${esc(c)}</figcaption></figure>`).join('') || '<div class="muted">没有视频</div>'}</div></div>
+  <div data-kind="episode" data-id="${esc(e.id)}">
+    <h3>自动检查</h3>${stageList(EP_CHECKS, e)}
+    <h3>质检结论</h3>
+    <div class="toolbar"><button class="${e.qa === 'pass' ? 'ok' : ''}" onclick="setQA('pass')">通过 (P)</button>
+      <button class="${e.qa === 'reject' ? 'bad' : ''}" onclick="setQA('reject')">拒绝 (R)</button>
+      <button onclick="setQA('pending')">待审 (U)</button>
+      <span class="small muted">${e._by || e._at ? `${esc(e._by || '匿名')} · ${fmtTime(e._at)}` : ''}</span></div>
+    <div>${TAGS.map((t, i) => `<span class="chip btn ${(e.tags || []).includes(t) ? 'on' : ''}" onclick="toggleTag(${i})">${esc(t)}</span>`).join('')}</div>
+    <div class="form" style="margin-top:10px">
+      <label>备注</label>${area(e, 'note', 'placeholder="失败发生在哪一步、怎么复现"')}
+      <label>真机对照</label><div>${sel(e, 'real', {'': '未测', success: '真机成功', fail: '真机失败'})} <span class="small muted">同一布局在真机上的结果，用于 Sim ↔ Real 一致率</span></div>
+    </div>
+    <p class="small muted">仿真 ${a.success ? '成功' : '失败'}，得分 ${a.score ?? '-'} · ${esc(a.run)}</p>
+  </div></div>`;
+}
+
+// ---------- actions ----------
+async function api(url, options = {}) {
+  const r = await fetch(url, {headers: {'Content-Type': 'application/json'}, ...options});
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json();
+}
+async function load() {
+  await Promise.all(KINDS.map(async (k) => { S[k] = await api(`/api/items?kind=${k}`); }));
+  render();
+}
+async function sync(quiet = false) {
+  try {
+    const n = await api('/api/scan', {method: 'POST'});
+    await load();
+    if (!quiet) toast(`同步完成：场景 ${n.scene} · 物体 ${n.object} · 任务 ${n.task} · 回合 ${n.episode}`);
+  } catch (err) { toast(`同步失败：${err.message}`); }
+}
+async function save(kind, id, patch) {
+  try {
+    const doc = await api(`/api/items?kind=${kind}&id=${encodeURIComponent(id)}`, {method: 'PUT', body: JSON.stringify({...patch, _by: user()})});
+    const i = S[kind].findIndex((x) => x.id === id);
+    if (i >= 0) S[kind][i] = doc; else S[kind].push(doc);
+    render();
+  } catch (err) { toast(`保存失败：${err.message}`); }
+}
+async function removeDoc(kind, id) {
+  if (!confirm(`删除 ${id} 的登记和录入内容？`)) return;
+  await api(`/api/items?kind=${kind}&id=${encodeURIComponent(id)}`, {method: 'DELETE'});
+  S[kind] = S[kind].filter((x) => x.id !== id);
+  closeDrawer();
+}
+async function createObject() {
+  const cat = $('#no-cat').value.trim(), idx = $('#no-idx').value.trim();
+  if (!/^\w[\w-]*$/.test(cat) || !/^\d+$/.test(idx)) return toast('类别只能含字母、数字、下划线和连字符，编号为非负整数');
+  const id = `${$('#no-type').value}/${cat}/${idx.padStart(5, '0')}`;
+  if (!S.object.some((d) => d.id === id)) {
+    await api(`/api/items?kind=object&id=${encodeURIComponent(id)}`, {method: 'PUT',
+      body: JSON.stringify({name: $('#no-name').value.trim(), role: $('#no-role').value, twin: true, _by: user()})});
+    await sync(true);
+  }
+  openDrawer('object', id);
+}
+function onFieldChange(ev) {
+  const el = ev.target, f = el.dataset.f, box = el.closest('[data-kind]');
+  if (!f || !box) return;
+  const {kind, id} = box.dataset, doc = S[kind].find((x) => x.id === id) || {};
+  let v = el.type === 'checkbox' ? el.checked : el.value;
+  if (el.type === 'number') v = el.value === '' ? null : Number(el.value);
+  const [k, sub] = f.split('.');
+  let patch = {[k]: v};
+  if (/^\d+$/.test(sub || '')) { const arr = [...(doc[k] || [])]; arr[Number(sub)] = v; patch = {[k]: arr}; }
+  else if (sub) patch = {[k]: {...(doc[k] || {}), [sub]: v}};
+  save(kind, id, patch);
+}
+async function setQA(status) {
+  const list = qaList(), i = list.findIndex((e) => e.id === UI.ep);
+  await save('episode', UI.ep, {qa: status});
+  if (status === 'pass' && list[i + 1]) pick(list[i + 1].id);
+}
+function toggleTag(i) {
+  const e = S.episode.find((x) => x.id === UI.ep), tags = new Set(e.tags || []);
+  if (tags.has(TAGS[i])) tags.delete(TAGS[i]); else tags.add(TAGS[i]);
+  save('episode', e.id, {tags: [...tags]});
+}
+function pick(id) {
+  if (!id) return;
+  UI.ep = id;
+  render();
+  $('.list tr.sel')?.scrollIntoView({block: 'nearest'});
+}
+function playAll() {
+  document.querySelectorAll('#qa-videos video').forEach((v) => { v.currentTime = 0; v.play(); });
+}
+function qaFilter(ds) {
+  UI.qa = {task: ds.t, config: ds.c, policy: ds.p, result: '', status: ''};
+  UI.tab = 'qa';
+  UI.drawer = null;
+  history.replaceState(null, '', '#qa');
+  UI.ep = qaList()[0]?.id || null;
+  render();
+}
+function go(kind, id) {
+  UI.tab = TAB_OF[kind];
+  history.replaceState(null, '', `#${UI.tab}`);
+  if (kind === 'episode') {
+    UI.drawer = null;
+    UI.qa = {task: '', config: '', policy: '', result: '', status: ''};
+    UI.ep = id;
+  } else UI.drawer = {kind, id};
+  render();
+}
+function exportPassed() {
+  const f = UI.qa;
+  const rows = live(S.episode).filter((e) => e.qa === 'pass' && (!f.task || e.auto.task === f.task)
+    && (!f.config || e.auto.config === f.config) && (!f.policy || e.auto.policy === f.policy))
+    .map((e) => ({id: e.id, task: e.auto.task, config: e.auto.config, policy: e.auto.policy, seed: e.auto.seed, layout_id: e.auto.layout_id,
+      success: e.auto.success, score: e.auto.score, run: e.auto.run, videos: e.auto.videos, tags: e.tags || [], note: e.note || '',
+      real: e.real || '', reviewer: e._by || '', reviewed_at: e._at}));
+  if (!rows.length) return toast('当前任务 / 配置 / 策略筛选下没有质检通过的回合');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(rows, null, 2)], {type: 'application/json'}));
+  a.download = `qa_pass_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+}
+function lightbox(src) {
+  $('#lightbox img').src = src;
+  $('#lightbox').style.display = 'flex';
+}
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { t.style.display = 'none'; }, 3500);
+}
+function openDrawer(kind, id) { UI.drawer = {kind, id}; render(); }
+function closeDrawer() { UI.drawer = null; render(); }
+function onKey(ev) {
+  if (ev.key === 'Escape') {
+    $('#lightbox').style.display = 'none';
+    if (UI.drawer) closeDrawer();
+    return;
+  }
+  if (UI.tab !== 'qa' || ev.target.matches('input, textarea, select') || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  const list = qaList(), i = list.findIndex((e) => e.id === UI.ep), k = ev.key.toLowerCase();
+  if (k === 'j' || k === 'arrowdown') pick(list[Math.min(i + 1, list.length - 1)]?.id);
+  else if (k === 'k' || k === 'arrowup') pick(list[Math.max(i - 1, 0)]?.id);
+  else if (UI.ep && k === 'p') setQA('pass');
+  else if (UI.ep && k === 'r') setQA('reject');
+  else if (UI.ep && k === 'u') setQA('pending');
+  else return;
+  ev.preventDefault();
+}
+
+// ---------- render ----------
+const VIEWS = {overview: viewOverview, scenes: viewScenes, objects: viewObjects, tasks: viewTasks, qa: viewQA};
+function renderDrawer() {
+  const dr = $('#drawer'), x = UI.drawer;
+  if (!x) { dr.classList.remove('open'); dr.dataset.k = ''; return; }
+  const key = `${x.kind}|${x.id}`;
+  if (x.kind === 'new-object' && dr.dataset.k === key) return;
+  const d = S[x.kind]?.find((y) => y.id === x.id);
+  const title = x.kind === 'new-object' ? '登记物体' : `${KIND_LABEL[x.kind]} · ${x.id}`;
+  const body = x.kind === 'new-object' ? drawerNewObject() : !d ? '<div class="muted">记录不存在</div>'
+    : `<div data-kind="${x.kind}" data-id="${esc(d.id)}">${{scene: drawerScene, object: drawerObject, task: drawerTask}[x.kind](d)}
+      ${d._by || d._at ? `<p class="small muted">最近修改：${esc(d._by || '匿名')} · ${fmtTime(d._at)}</p>` : ''}</div>`;
+  dr.innerHTML = `<div class="toolbar"><b class="title">${esc(title)}</b><span class="sp"></span><button onclick="closeDrawer()">关闭 (Esc)</button></div>${body}`;
+  dr.dataset.k = key;
+  dr.classList.add('open');
+}
+function render() {
+  EP_BY_TASK = group(live(S.episode), (e) => e.auto.task);
+  document.querySelectorAll('nav a').forEach((a) => a.classList.toggle('on', a.dataset.tab === UI.tab));
+  const focus = document.activeElement?.id, scroll = $('.list')?.scrollTop, videos = $('#qa-videos');
+  $('main').innerHTML = VIEWS[UI.tab]();
+  const slot = $('#qa-videos');
+  if (videos && slot && videos.dataset.ep === slot.dataset.ep) slot.replaceWith(videos);  // keep playback position
+  if (scroll && $('.list')) $('.list').scrollTop = scroll;
+  renderDrawer();
+  const el = focus && document.getElementById(focus);
+  if (el && el !== document.activeElement) {
+    el.focus();
+    if (el.type === 'text') el.setSelectionRange(el.value.length, el.value.length);
+  }
+}
+const tabFromHash = () => (VIEWS[location.hash.slice(1)] ? location.hash.slice(1) : 'overview');
+window.addEventListener('hashchange', () => { UI.tab = tabFromHash(); UI.drawer = null; render(); });
+document.addEventListener('change', onFieldChange);
+document.addEventListener('keydown', onKey);
+$('#user').value = user();
+$('#user').addEventListener('change', (ev) => { localStorage.user = ev.target.value.trim(); });
+UI.tab = tabFromHash();
+api('/api/info').then((info) => { INFO = info; return load(); }).catch((err) => toast(`加载失败：${err.message}`));
+</script>
+</body>
+</html>

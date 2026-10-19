@@ -105,6 +105,28 @@ PYTHONPATH=. python scripts/objects/check_pitcher_fluid.py --device cpu --out ou
 
 流体检查必须用 `--device cpu`（CPU 状态管线，PBD 求解仍在 GPU）；GPU 状态管线下粒子坐标不会回读，结果无效。
 
+**Real2Sim 数采管理平台**（Web，只用 Python 标准库，本机无 Isaac 也能跑）：
+
+```bash
+python3 src/real2sim_platform/server.py          # 打开 http://127.0.0.1:8765
+# 服务器上给团队用：指向共享资产库和各隔离目录的评测结果（无登录，只在可信网络里开 0.0.0.0）
+python3 src/real2sim_platform/server.py --host 0.0.0.0 \
+    --assets /data2/zhongzheng/Project/RoboDojo_assets/Assets \
+    --eval-root eval_result --eval-root /data2/tmp/robodojo/agent-remote-runs
+```
+
+启动时和点「从项目同步」时扫描仓库：`real2sim/scenes/`（照片、相机拟合残差、USD、`check_report.json`）、任务清单和 G1-D 任务用到的物体、资产库里的 `metadata.json` 和评测布局数、`--eval-root` 下的 `_result.json` 与各相机视频。页面分五块：
+
+| 页面 | 自动得到 | 人工录入（按 Notion 月度目标的验收标准判定） |
+| :-- | :-- | :-- |
+| 场景重建 | 照片、拟合、构建、离线检查 | 卷尺实测（< 1 cm）、头部相机叠图（< 5 px，≥ 3 视角）、灯光、Isaac 渲染、入共享库 |
+| 物体资产 | 用于哪些任务和标签、生成脚本、仿真尺寸/质量/摩擦 | 实测尺寸和质量（误差 < 2 mm 或 2%、≤ 5 g）、5 项物理检验、角色（源/接收/干扰）与 7:3 划分 |
+| 任务采集 | 布局数、回合数、`scripted_demo` 专家成功率（≥ 80%） | 合格回合目标（默认 500）、L0–L4 分级评测集进度、负责人 |
+| 数据质检 | 结果写入、三路相机齐全、视频标签与结果一致 | 通过/拒绝（快捷键 J/K/P/R/U）、问题标签、真机对照结果；导出质检通过清单 |
+| 总览 | 各环节完成度、资产泛化目标、拒绝原因 | Sim↔Real 结果一致率 AA、Cohen's κ、P(真机成功 \| 仿真成功) |
+
+扫描结果和人工录入分开存（SQLite，默认 `.cache/real2sim_platform.sqlite3`，`--db` 可改），重新扫描不会覆盖录入内容。平台里的实测值是工作记录，定稿后按 `real2sim/ASSETS.md` 的维护规则写回生成脚本和登记表。自检：`python3 src/real2sim_platform/test_server.py`。
+
 ## 仓库结构
 
 在 RoboDojo 原有结构上，与本项目相关的部分：
@@ -118,6 +140,7 @@ env_cfg/sim/g1d_sim_config.yml          仿真步长 1/300 s
 env_cfg/camera/g1d_camera.yml           头部双目 + 双腕相机
 scripts/g1d/                            资产构建、脚本专家演示
 scripts/objects/                        壶/杯生成、刚体/流体物理检验
+src/real2sim_platform/                  Real2Sim 数采管理平台（场景重建、物体资产、任务采集、数据质检）
 task/RoboDojo/{config,tasks}/g1d_*      G1-D 任务
 real2sim/                               自建资产（随仓库，二进制走 Git LFS）
   ASSETS.md                             自建资产登记表：真实对应物、匹配程度、共享库状态、待实测清单

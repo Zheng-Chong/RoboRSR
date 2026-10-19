@@ -27,6 +27,7 @@ task/RoboDojo/
 env/                         TaskEnv backbone and managers
 env_cfg/                     robot / scene / sim / camera YAML
 src/eval_client/             eval client (main.py, eval_env.py)
+src/real2sim_platform/       Real2Sim data-collection web platform (stdlib server + one page)
 utils/                       paths, save/load, pipeline helpers
 scripts/                     robodojo.sh, install.sh, init_assets.sh, internal/
 docker/                      container eval (see docker/README.md)
