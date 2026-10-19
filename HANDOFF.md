@@ -15,6 +15,13 @@
 
 ## 最近任务
 
+### 进行中：新量杯重采 100 条办公室全量倒豆 LeRobot 数据（2026-10-19）
+
+- 用户要求用实测新量杯 + 5.6 mm 红豆重采 100 条、位置泛化、办公室。旧批次（`5090-2:/data/robodojo-runs/office-beans-100-20261019`，106/141 合格，旧量杯 + 4 mm 豆）保留不动；它的 LeRobot 导出停在 8/100（16:48 被中断，疑似别的会话在调导出线程），它的 `final-audit-office-beans.py` 还在等 `complete`，不会自己结束。
+- 新运行目录 `5090-2:/data/robodojo-runs/office-beans-measured-20261019`：代码 `git archive 269898c`；量杯 USDZ 与模板布局在 21196 用同一代码生成（`mcups-layout-33b1683`，共享资产库只读叠加），SHA-256 三处一致；模板与旧版差异仅杯尺寸/质量/摆放高度、豆堆 z -0.0435→-0.0487、豆粒 5.6 mm / 0.1 g。400 个 Latin hypercube 布局在 `g1d/9`。每回合约 672 颗豆。
+- 首个试跑：672/672 入杯，但高杯在夹爪里转了约 44°，回正失败（旧批次合格回合末倾角中位 2.2°）。夹持高度对照（杯口下）：25/45/60 mm 各 1 回合合格，75 mm 撒 85 颗；32 mm（原值）复测 1/3。45 mm 在 18 个不同布局上 16/18 合格，2 个失败各撒 1 颗、杯正。`scripted_demo.C2C_RIM_DOWN['measuring_cup']` 0.032→0.045 已提交。试验输出在运行目录 `output/office_beans/{probe,rim_*,rimtest}`，不计入数据。
+- 下一步：用含该修改的提交跑 `.agent/remote-runs/office-beans-measured/collect_batch.py`（seed 100–107 各 50 布局，GPU 0–7 各一进程，足 100 条 stop-file，`collection_v2`），再导出 LeRobot 并回读。
+
 ### 量杯按实测尺寸重建（2026-10-19）
 
 - 用户实测（两只量杯同截面）：壁厚 2 mm，杯口 75 mm、杯底 63 mm（对边宽），高杯 170 mm / 60 g，矮杯 140 mm / 40 g；俯视照片：杯底为倒角方形（圆角八边形），杯口为大圆角方形，杯口有卡盖带和外凸翻边。

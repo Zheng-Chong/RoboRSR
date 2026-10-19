@@ -62,8 +62,9 @@ CUP_GRIP_UP = 0.065  # pads this far above the cup bottom
 CUP_PITCH, CUP_YAW = 35, 45  # deg, fingers below horizontal; wrist turned inward from fingers-forward
 CUP_SLIDE = 0.08  # m the open pads slide along the fingers onto the cup body
 # Cup-to-cup pour (two 9.5 cm plastic cups, as in the real G1D-PourBeansPlus clips, or the 14 / 17 cm measuring
-# cups): pads this far below the rim; on the measuring cups below their 12.5 mm snap-lid band and flange
-C2C_RIM_DOWN = {"plastic_cup": 0.02, "measuring_cup": 0.032}
+# cups): pads this far below the rim. Measuring cups: 45 mm keeps the pads clear of the 75 mm flange 12.5 mm down;
+# at 32 mm the 17 cm cup pivoted ~45 deg in the grip (16/18 strict pours at 45 mm, 2 failures one spilled bean each)
+C2C_RIM_DOWN = {"plastic_cup": 0.02, "measuring_cup": 0.045}
 C2C_RAISE, C2C_LIFT = 0.06, {"plastic_cup": 0.12, "measuring_cup": 0.06}  # straight up first; target bottom lifted
 # fingers this far below horizontal. The cup tilts by rolling about the fingers, cos(tilt) = sin^2 p + cos^2 p cos(r):
 # at 35 deg the ~100 deg the beans need in the tall measuring cup takes ~140 deg of roll; the arm reaches ~116
