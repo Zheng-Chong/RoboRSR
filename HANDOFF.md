@@ -21,7 +21,7 @@
 - 运行目录代码 `git archive 269898c` + 提交 `a83d4f4` 的 `scripted_demo.py`（运行目录内文件哈希与提交一致）；量杯 USDZ 与模板布局在 21196 用同一代码生成（共享资产库只读叠加），三处 SHA-256 一致；模板与旧版只差杯尺寸/质量/摆放高度、豆堆 z -0.0435→-0.0487、豆粒 5.6 mm / 0.1 g；每回合 672 颗。
 - 夹持高度：首个试跑高杯在夹爪里滑转约 44°（夹持点离新翻边下沿仅约 20 mm）。对照（杯口下）25/45/60 mm 各 1 回合合格、75 mm 撒 85 颗、32 mm 复测 1/3；45 mm 在 18 个不同布局 16/18 合格（2 个各撒 1 颗）。`C2C_RIM_DOWN['measuring_cup']` 0.032→0.045（`a83d4f4`）。试验输出 `output/office_beans/{probe,rim_*,rimtest}` 不计入数据。
 - 批次：8 个 seed（各 50 个 Latin hypercube 布局）各占 GPU 0–7，118 回合 108 合格（91.5%，旧批次 75%），退出码全 0，导出 100 条。验证：导出器回读 100 / 40279；独立原始审计从逐颗位置重算每条末 30 帧，共转移 67200 颗、残留 0、散落 0，100 组位置互不重复、四个坐标 20 分箱全覆盖，末 1 s 最大杯倾角 29.96°（阈值 30°，最贴边的一条）、矮杯最小杯口余量 49 mm；LeRobot 0.4.4 官方读取器逐条首末帧（600 张图）解码、帧号/时间戳/维度通过。协调与审计脚本在本机忽略目录 `.agent/remote-runs/office-beans-measured/`。
-- ModelScope：用户要求上传为私有数据集仓库。服务器已建隔离环境 `/data/robodojo-runs/ms-venv`（modelscope 1.40.2），上传脚本 `/data/robodojo-runs/ms_upload.py`（读取 `modelscope login` 保存的登录，令牌不经脚本），目标 `<用户名>/g1d_office_pour_all_red_beans_measuring_cups_100`。待用户在服务器登录后上传，尚未完成。
+- ModelScope：已上传为私有数据集 `ChongZheng/g1d_office_pour_all_red_beans_measuring_cups_100`（https://www.modelscope.cn/datasets/ChongZheng/g1d_office_pour_all_red_beans_measuring_cups_100）。服务器隔离环境 `/data/robodojo-runs/ms-venv`（modelscope 1.40.2），用户在服务器上自行 `modelscope login`；上传脚本 `ms_upload.py` / 核对脚本 `ms_verify.py` 在 `/data/robodojo-runs/`（读取已保存登录，不经手令牌；在命令里直接带令牌被权限检查拦截）。核对：远端 16 个数据文件（不含 `images/` 空目录），路径、大小、SHA-256 全部与本地一致；`visibility=PRIVATE`，未登录访问 404；SDK 默认许可证 Apache-2.0。上传 SDK 在数据集目录写的 `.ms_upload_cache` 未上传，已删除。令牌曾在聊天里明文出现，已建议用户作废重建。
 - 旧批次（`office-beans-100-20261019`，旧量杯 + 4 mm 豆，106/141 合格）保留：导出停在 8/100，`final-audit-office-beans.py` 仍在等待 `complete`，不会自己结束，未处理。
 
 ### 量杯按实测尺寸重建（2026-10-19）
