@@ -177,10 +177,11 @@
 - 判定（前端 `*_STAGES`，阈值取自 Notion 月度目标）：场景实测 < 1 cm、叠图 < 5 px 且 ≥ 3 视角；物体尺寸误差 < max(2 mm, 2%)（bbox 与实测各自从大到小排序后逐项比）、质量差 ≤ 5 g、5 项物理检验；角色目标源 ≥ 12、接收 ≥ 15、干扰 ≥ 30，保留 30%；专家（`scripted_demo`）成功率 ≥ 80%；合格回合 = 质检通过且仿真成功，默认目标 500；回合自动检查 = `eval_time` ≥ 1、head/left_wrist/right_wrist 视频齐全（同 `summarize_result.py`）、视频文件名标签与 `_result.json` 一致（能发现并发写进同一时间戳目录造成的串结果）；Sim↔Real 用回合上的「真机对照」算 AA、Cohen's κ、P(真机成功 | 仿真成功)。
 - 和 `real2sim/ASSETS.md` 的关系：登记表是定稿来源；平台里的实测值是工作记录，定稿后写回生成脚本和登记表（README 与物体页都写明）。
 - 登录：环境变量 `REAL2SIM_PLATFORM_AUTH=用户名:密码` 开启 HTTP Basic 认证（`Handler.parse_request` 统一拦截所有方法，`hmac.compare_digest` 比较）；不设则无登录。端口能从外部访问时必须设。
-- 部署（2026-10-19，用户要求放到 5090-2 并经阿里云穿透）：SSH 别名 `rtx5090-180`（主机名 ecs-5090-40-0004；它自己的 ssh 配置把 `rtx5090-138` 叫 `huawei-5090-3`，按编号即 5090-2）上的 `/root/RoboDojo`（git clone 含 LFS，跟踪 `main`；另从本机同步了未入库的 `real2sim/scenes/*/preview/` 和 `eval_result/`）。tmux 会话 `r2s-platform` 跑 `server.py --port 8765`（只监听 127.0.0.1，登录凭据在 `.cache/platform.env`，权限 600，不入库；日志 `.cache/platform.log`），`r2s-tunnel` 维持 `ssh -N -R 0.0.0.0:10081:127.0.0.1:8765` 到别名 `Aliyun` 的主机（断线 5 s 后重连，日志 `.cache/tunnel.log`）。公网入口是 `Aliyun` 的 10081 端口，用户名 `real2sim`。
-- 阿里云侧：10080–10100 里 10080/10088/10099/10100 已被占用，选 10081。`/root/.ssh/authorized_keys` 末尾加了一行 5090 上专用密钥 `~/.ssh/real2sim_tunnel` 的公钥（注释 `real2sim-platform-tunnel@rtx5090-180`），限制为 `restrict,port-forwarding,permitlisten="0.0.0.0:10081",permitopen="127.0.0.1:9",command="/bin/false"`；已验证不能执行命令、不能监听其他端口。改前备份 `authorized_keys.bak-real2sim-20261019101843`。阿里云原有隧道（DSW 反向 SSH 加本地 `autossh -L`）未动。
-- 运维：更新代码 `ssh rtx5090-180 'cd /root/RoboDojo && git pull --ff-only && tmux send-keys -t r2s-platform C-c'`（循环 3 s 后用新代码重启）。停用：`tmux kill-session -t r2s-platform; tmux kill-session -t r2s-tunnel`，再删掉阿里云 `authorized_keys` 里 `real2sim-platform-tunnel` 那一行。
-- 部署验证（从本机经公网访问）：无凭据和错误密码都返回 401；带凭据后 `/api/info`、首页、场景图片 200，视频 Range 请求 206，白名单外路径 404；5090 上 `test_server.py` 在 Python 3.10.12 下 4 项通过。
+- 部署（2026-10-19，用户要求放到 5090-2 并经阿里云穿透）：SSH 别名 `5090-2`（主机名 ecs-5090-cb2-0028，内网与 `rtx5090-180` 同网段）上的 `/root/RoboDojo`。这台机器访问不了 GitHub，仓库是从同网段机器内网拷来的（含 `.git` 和 LFS 文件，以及本机同步的未入库 `real2sim/scenes/*/preview/`、`eval_result/`），apt 装了 git-lfs。tmux 会话 `r2s-platform` 跑 `server.py --port 8765`（只监听 127.0.0.1，登录凭据在 `.cache/platform.env`，权限 600，不入库；日志 `.cache/platform.log`），`r2s-tunnel` 维持 `ssh -N -R 0.0.0.0:10081:127.0.0.1:8765` 到别名 `Aliyun` 的主机（断线 5 s 后重连，日志 `.cache/tunnel.log`）。公网入口是 `Aliyun` 的 10081 端口，用户名 `real2sim`。tmux 不随重启恢复。
+- 曾误部署到 `rtx5090-180`（当时本机没有 `5090-2` 别名，按编号推断错了）：已停掉会话，删掉那里的 `/root/RoboDojo`、隧道密钥和阿里云上对应的授权行。
+- 阿里云侧：10080–10100 里 10080/10088/10099/10100 已被占用，选 10081。`/root/.ssh/authorized_keys` 里有一行 `5090-2` 专用密钥 `~/.ssh/real2sim_tunnel` 的公钥（注释 `real2sim-platform-tunnel@5090-2`），限制为 `restrict,port-forwarding,permitlisten="0.0.0.0:10081",permitopen="127.0.0.1:9",command="/bin/false"`（同样的限制在旧密钥上验证过：不能执行命令、不能监听其他端口）。每次改动前都备份为 `authorized_keys.bak-real2sim-<时间戳>`。阿里云原有隧道（DSW 反向 SSH 加本地 `autossh -L`）未动。
+- 运维：`5090-2` 的仓库设了 `receive.denyCurrentBranch updateInstead` 并让 LFS 检出时不下载（`filter.lfs.smudge/process --skip`），所以在本机 `GIT_LFS_SKIP_PUSH=1 git push 5090-2:/root/RoboDojo main` 就能更新代码，新增的 LFS 文件（照片等）再用 rsync 拷到同一路径；然后 `ssh 5090-2 'tmux send-keys -t r2s-platform C-c'`（循环 3 s 后用新代码重启）。停用：`tmux kill-session -t r2s-platform; tmux kill-session -t r2s-tunnel`，再删掉阿里云 `authorized_keys` 里 `real2sim-platform-tunnel@5090-2` 那一行。
+- 部署验证（从本机经公网访问）：无凭据返回 401；带凭据后 `/api/info`、首页、场景图片 200，`5090-2` 的访问日志记录到这些请求；`test_server.py` 在 Python 3.10.12 下 4 项通过（在同版本的 `rtx5090-180` 上跑的）。
 - 验证（本机）：`python3 src/real2sim_platform/test_server.py` 4 项通过（任务配置解析、仓库扫描、回合扫描 + 重扫保留录入 / 标记缺失、HTTP Range、路径限制、非法物体 id 返回 400）；`uvx ruff check`、`ruff format --check` 通过。浏览器里用临时库 `/tmp/r2s_test.sqlite3` 和 `/tmp/r2s_fixture`（假资产库 + 3 回合运行，视频取自本机 `eval_result/real_scene1`）实际操作五个页面：场景录入后阶段判定随之变化、重启服务后录入仍在、量杯关联 metadata 后尺寸核对通过、质检快捷键 P 通过并跳到下一条 / R 拒绝后停留、改标签不打断视频播放、登记新物体、Sim↔Real 指标（AA 0.67、κ 0.40，与手算一致）。未在服务器 21196 的共享资产库和隔离目录上运行（本机 `Assets/` 为空，物体元数据和布局数只用假数据验证过）。
 
 ## 剩余事项与风险
@@ -207,7 +208,7 @@
 
 1. 先看 `git log` 和本文件；服务器环境已可用，直接用 demo_policy 跑 `--env-cfg g1d` 复现。量杯对倒：`CUDA_VISIBLE_DEVICES=N PYTHONPATH=.:XPolicyLab EVAL_NUM=1 python scripts/g1d/scripted_demo.py --env_cfg_type g1d_counter --task_name g1d_pour_beans_measuring_cups --seed 0`，需要先把 `measuring_cup` 和新布局装进资产库（`make_plastic_cups.py` + `build_asset.py`；共享库尚未安装，需用户同意）。
 2. 下一步建议：按 `real2sim/ASSETS.md` 的待实测清单量桌子和杯子，写回生成脚本 / 场景尺度并更新登记表；改摩擦前先让生成脚本写 `static_friction`/`dynamic_friction`。
-3. 数采平台已部署在 `rtx5090-180`，经 `Aliyun` 的 10081 端口访问（见「Real2Sim 数采管理平台」一节）。那台机器没有 RoboDojo 资产库和评测结果，物体元数据、布局数为空，回合只有同步过去的 1 个；要看真实数据，需要把资产库和评测结果放到那台机器上（或改在 21196 上部署，用 `--assets /data2/zhongzheng/Project/RoboDojo_assets/Assets --eval-root <隔离目录>`）。tmux 会话不随机器重启恢复。
+3. 数采平台已部署在 `5090-2`，经 `Aliyun` 的 10081 端口访问（见「Real2Sim 数采管理平台」一节）。那台机器没有 RoboDojo 资产库和评测结果，物体元数据、布局数为空，回合只有同步过去的 1 个；要看真实数据，需要把资产库和评测结果放到那台机器上（或改在 21196 上部署，用 `--assets /data2/zhongzheng/Project/RoboDojo_assets/Assets --eval-root <隔离目录>`）。tmux 会话不随机器重启恢复。
 
 ## Dex1-1 改回标准版（不带腕部相机模型，2026-10-16；已被 10-17 的带相机夹爪取代）
 
@@ -233,7 +234,8 @@
 
 ## 最近历史
 
-- 2026-10-19：数采平台加 HTTP Basic 登录（`REAL2SIM_PLATFORM_AUTH`），部署到 `rtx5090-180`（5090-2）的 tmux，经 `Aliyun` 10081 端口反向隧道对外；隧道密钥在阿里云上限定只能监听该端口。
+- 2026-10-19：数采平台部署从误选的 `rtx5090-180` 迁到新加别名的 `5090-2`（GitHub 不通，内网拷仓库，本机 `git push` 更新），公网入口和账号不变，旧机器已清理。
+- 2026-10-19：数采平台加 HTTP Basic 登录（`REAL2SIM_PLATFORM_AUTH`），经 `Aliyun` 10081 端口反向隧道对外；隧道密钥在阿里云上限定只能监听该端口。
 
 - 2026-10-19：新增 Real2Sim 数采管理平台 `src/real2sim_platform/`（标准库 Web：场景重建、物体资产、任务采集、数据质检、Sim↔Real 一致率），本机自检、ruff 和浏览器全流程通过；未在服务器数据上运行。
 
