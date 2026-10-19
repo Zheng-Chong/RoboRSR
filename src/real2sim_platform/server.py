@@ -8,10 +8,11 @@ Stdlib only (any python3 >= 3.10, no Isaac). On start, and on "从项目同步" 
     <eval-root>/**/_result.json           collected episodes and their camera videos (src/eval_client/eval_env.py)
 Scan results go to each record's "auto"; what is entered in the page (measurements, check verdicts, QA) sits next to it
 and survives rescans. Records live in one SQLite file (--db), together with the accounts: everyone signs in, and every
-change is stamped with the signed-in account's name. Accounts are managed on the server with --add-user / --remove-user.
+change is stamped with the signed-in account's name. Admins manage accounts in the page (成员管理); the first admin is
+created on the server with --add-user NAME --admin.
 
 Usage:
-    python3 src/real2sim_platform/server.py --add-user alice --name 张三   # asks for the password
+    python3 src/real2sim_platform/server.py --add-user alice --name 张三 --admin   # asks for the password
     python3 src/real2sim_platform/server.py         # http://127.0.0.1:8765
     python3 src/real2sim_platform/server.py --assets /path/to/shared/Assets \
         --eval-root eval_result --eval-root /data2/tmp/robodojo/agent-remote-runs
@@ -95,19 +96,29 @@ class Store:
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.db.execute("CREATE TABLE IF NOT EXISTS items (kind TEXT, id TEXT, doc TEXT, PRIMARY KEY (kind, id))")
         self.db.execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, name TEXT, pw TEXT)")
+        if "admin" not in [col[1] for col in self.db.execute("PRAGMA table_info(users)")]:
+            self.db.execute("ALTER TABLE users ADD COLUMN admin INTEGER NOT NULL DEFAULT 0")
         self.db.execute("CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, username TEXT, expires REAL)")
         self.db.commit()
         self.lock = threading.Lock()
 
-    def set_user(self, username, password, name=None):
-        """Create the account, or reset its password (and name if given); either way its sessions end."""
+    def add_user(self, username, password, name=None, admin=False):
+        """Create the account; False if the username is taken."""
         with self.lock, self.db:
-            self.db.execute(
-                "INSERT INTO users VALUES (?, ?, ?) ON CONFLICT(username) DO UPDATE SET pw = excluded.pw, "
-                "name = COALESCE(?, name)",
-                (username, name or username, hash_password(password), name),
-            )
-            self.db.execute("DELETE FROM sessions WHERE username = ?", (username,))
+            row = (username, name or username, hash_password(password), int(admin))
+            return self.db.execute("INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?)", row).rowcount == 1
+
+    def edit_user(self, username, name=None, password=None, admin=None):
+        """Change the given fields; a new password ends the account's sessions. False if there is no such account."""
+        with self.lock, self.db:
+            found = self.db.execute(
+                "UPDATE users SET name = COALESCE(?, name), pw = COALESCE(?, pw), admin = COALESCE(?, admin) "
+                "WHERE username = ?",
+                (name, hash_password(password) if password else None, None if admin is None else int(admin), username),
+            ).rowcount
+            if password:
+                self.db.execute("DELETE FROM sessions WHERE username = ?", (username,))
+        return found == 1
 
     def remove_user(self, username):
         with self.lock, self.db:
@@ -116,14 +127,15 @@ class Store:
 
     def users(self):
         with self.lock:
-            return self.db.execute("SELECT username, name FROM users ORDER BY username").fetchall()
+            rows = self.db.execute("SELECT username, name, admin FROM users ORDER BY username").fetchall()
+        return [{"username": u, "name": n or u, "admin": bool(a)} for u, n, a in rows]
 
     def check(self, username, password):
-        """{username, name} if the password is right, else None."""
+        """{username, name, admin} if the password is right, else None."""
         with self.lock:
-            row = self.db.execute("SELECT name, pw FROM users WHERE username = ?", (username,)).fetchone()
+            row = self.db.execute("SELECT name, pw, admin FROM users WHERE username = ?", (username,)).fetchone()
         right = verify_password(password, row[1] if row else DUMMY_HASH)
-        return {"username": username, "name": row[0] or username} if row and right else None
+        return {"username": username, "name": row[0] or username, "admin": bool(row[2])} if row and right else None
 
     def open_session(self, username):
         token, now = secrets.token_urlsafe(32), time.time()
@@ -138,11 +150,11 @@ class Store:
             return None
         with self.lock:
             row = self.db.execute(
-                "SELECT u.username, u.name FROM sessions s JOIN users u USING (username) "
+                "SELECT u.username, u.name, u.admin FROM sessions s JOIN users u USING (username) "
                 "WHERE s.token = ? AND s.expires > ?",
                 (token_key(token), time.time()),
             ).fetchone()
-        return {"username": row[0], "name": row[1] or row[0]} if row else None
+        return {"username": row[0], "name": row[1] or row[0], "admin": bool(row[2])} if row else None
 
     def end_session(self, token):
         with self.lock, self.db:
@@ -422,6 +434,40 @@ class Handler(BaseHTTPRequestHandler):
         token = self.store.open_session(username)
         self.send_json(user, cookie=f"{COOKIE}={token}; Max-Age={SESSION_DAYS * 86400}")
 
+    def accounts(self, method):
+        """Admins only: GET lists, POST creates, PUT ?username= edits, DELETE ?username= removes; replies the list."""
+
+        def fail(message, status=400):
+            self.send_json({"error": message}, status)
+
+        if not self.user["admin"]:
+            return fail("需要管理员权限", 403)
+        if method == "GET":
+            return self.send_json(self.store.users())
+        data = self.body() if method != "DELETE" else {}
+        if data is None:
+            return fail("请求格式不对")
+        target = parse_qs(urlparse(self.path).query).get("username", [""])[0]
+        username = str(data.get("username", "")).strip() if method == "POST" else target
+        name = str(data.get("name") or "").strip()[:32] or None
+        password = str(data.get("password") or "") or None
+        admin = None if data.get("admin") is None else bool(data["admin"])
+        if (password and len(password) < 8) or (method == "POST" and not password):
+            return fail("密码至少 8 位")
+        if method == "POST":
+            if not USERNAME.fullmatch(username):
+                return fail("用户名为 1–32 位字母、数字或 _ . -")
+            if not self.store.add_user(username, password, name, bool(admin)):
+                return fail(f"用户名 {username} 已存在", 409)
+        elif username == self.user["username"] and (method == "DELETE" or admin is False):
+            return fail("不能删除自己，也不能取消自己的管理员权限")
+        elif method == "PUT":
+            if not self.store.edit_user(username, name, password, admin):
+                return fail(f"没有账号 {username}", 404)
+        elif not self.store.remove_user(username):
+            return fail(f"没有账号 {username}", 404)
+        self.send_json(self.store.users())
+
     def do_GET(self):
         url = urlparse(self.path)
         query = {k: v[0] for k, v in parse_qs(url.query).items()}
@@ -429,6 +475,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_file(HERE / "index.html")
         elif url.path == "/api/me":
             self.send_json(self.user)
+        elif url.path == "/api/users":
+            self.accounts("GET")
         elif url.path == "/api/info":
             self.send_json(self.info)
         elif url.path == "/api/items" and query.get("kind") in KINDS:
@@ -442,6 +490,8 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/api/login":
             return self.login()
+        if url.path == "/api/users":
+            return self.accounts("POST")
         if url.path == "/api/logout":
             self.store.end_session(self.cookie())
             return self.send_json({"ok": True}, cookie=f"{COOKIE}=; Max-Age=0")
@@ -473,6 +523,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json({"path": str(path)})
 
     def do_PUT(self):
+        if urlparse(self.path).path == "/api/users":
+            return self.accounts("PUT")
         kind, id_ = self.target()
         fields = self.body()
         if not kind or fields is None or (kind == "object" and not OBJECT_ID.fullmatch(id_)):
@@ -481,6 +533,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_DELETE(self):
         url = urlparse(self.path)
+        if url.path == "/api/users":
+            return self.accounts("DELETE")
         if url.path == "/api/photo":
             path = Path(parse_qs(url.query).get("path", [""])[0]).resolve()
             photo = path.parent.name == "reference" and path.suffix.lower() in IMAGE_SUFFIXES
@@ -547,8 +601,8 @@ class Handler(BaseHTTPRequestHandler):
 
 def manage_users(parser, store, args):
     if args.list_users:
-        for username, name in store.users():
-            print(f"{username}\t{name}")
+        for user in store.users():
+            print(f"{user['username']}\t{user['name']}" + ("\tadmin" if user["admin"] else ""))
     if args.remove_user:
         print("removed" if store.remove_user(args.remove_user) else f"no account {args.remove_user}")
     if args.add_user:
@@ -562,8 +616,9 @@ def manage_users(parser, store, args):
             password = sys.stdin.readline().rstrip("\n")  # scripted: the password on the first line of stdin
         if len(password) < 8:
             parser.error("密码至少 8 位")
-        store.set_user(args.add_user, password, args.name)
-        print(f"account {args.add_user} ready")
+        if not store.add_user(args.add_user, password, args.name, args.admin):
+            store.edit_user(args.add_user, args.name, password, args.admin or None)
+        print(f"account {args.add_user} ready" + (" (admin)" if args.admin else ""))
 
 
 def main():
@@ -577,14 +632,15 @@ def main():
     )
     parser.add_argument("--add-user", metavar="USERNAME", help="create the account or reset its password, then exit")
     parser.add_argument("--name", help="with --add-user: display name stamped on that account's changes")
+    parser.add_argument("--admin", action="store_true", help="with --add-user: admins manage accounts in the page")
     parser.add_argument("--remove-user", metavar="USERNAME", help="delete the account, then exit")
     parser.add_argument("--list-users", action="store_true", help="list the accounts, then exit")
     args = parser.parse_args()
     store = Store(args.db)
     if args.add_user or args.remove_user or args.list_users:
         return manage_users(parser, store, args)
-    if not store.users():
-        print(f"no accounts yet: python3 {Path(__file__).relative_to(ROOT)} --add-user NAME", flush=True)
+    if not any(user["admin"] for user in store.users()):
+        print(f"no admin account yet: python3 {Path(__file__).relative_to(ROOT)} --add-user NAME --admin", flush=True)
     assets = args.assets.resolve()
     eval_roots = [p.resolve() for p in args.eval_root or [ROOT / "eval_result"]]
     Handler.store, Handler.scan_args = store, (assets, eval_roots)

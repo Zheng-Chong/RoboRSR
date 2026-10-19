@@ -119,6 +119,14 @@ main { min-width: 0; padding: 26px 30px 56px; }
 .meter .val { min-width: 64px; color: var(--muted); font: 12px var(--mono); text-align: right; }
 .callout { display: flex; gap: 10px; margin-bottom: 14px; padding: 10px 12px; border: 1px solid #FDE68A; border-radius: 8px; background: #FFFBEB; color: #92400E; font-size: 13px; }
 .callout.bad { border-color: #FECACA; background: #FEF2F2; color: #991B1B; }
+.callout.ok { border-color: #BBF7D0; background: #F0FDF4; color: #166534; }
+.users { grid-template-columns: minmax(0, 1fr) 320px; align-items: start; }
+@media (max-width: 1000px) { .users { grid-template-columns: 1fr; } }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.stack .field { color: var(--text-2); font-size: 13px; font-weight: 500; }
+.stack input:not([type=checkbox]) { width: 100%; }
+.pw-row { display: flex; gap: 6px; }
+.pw-row input { flex: 1; min-width: 0; }
 .callout .ic { margin-top: 2px; }
 .empty { display: grid; place-items: center; gap: 6px; padding: 40px 16px; color: var(--muted); text-align: center; }
 .empty .ic { width: 28px; height: 28px; color: var(--faint); }
@@ -331,6 +339,7 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
     <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></symbol>
     <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
     <symbol id="i-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.2A10.4 10.4 0 0 1 12 4c6.4 0 10 8 10 8a17.6 17.6 0 0 1-2.2 3.2"/><path d="M6.6 6.6C3.9 8.4 2 12 2 12s3.6 8 10 8a9.7 9.7 0 0 0 5.4-1.6"/><path d="M14.1 14.1a3 3 0 0 1-4.2-4.2"/><path d="m2 2 20 20"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
     <symbol id="i-table" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></symbol>
   </defs>
 </svg>
@@ -343,7 +352,7 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
       <button class="btn btn-icon" type="button" aria-label="显示密码" aria-pressed="false" onclick="togglePw(this)"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button></span></label>
     <p id="lg-err" class="field-error" role="alert"></p>
     <button id="lg-btn" class="btn btn-primary btn-lg btn-block" type="submit">登录</button>
-    <p class="hint">没有账号？请管理员在服务器上运行 <span class="mono">server.py --add-user</span> 创建。</p>
+    <p class="hint">没有账号？请平台管理员在「成员管理」里为你创建。</p>
   </form>
 </div>
 <div class="app" hidden>
@@ -398,6 +407,7 @@ const UI = {
 };
 let INFO = {};
 let ME = null;
+let USERS = [];
 let EP_BY_TASK = {};
 const GAL = {};
 
@@ -583,6 +593,7 @@ function renderNav() {
     ['objects', '物体资产', 'box', live(S.object).length],
     ['tasks', '任务采集', 'list', live(S.task).filter((t) => t.auto.dimension === 'custom').length],
     ['qa', '数据质检', 'clipboard', pending],
+    ...(ME?.admin ? [['users', '成员管理', 'users', USERS.length]] : []),
   ];
   $('#nav').innerHTML = items.map(([tab, label, icon, n]) => `<a class="nav-item" href="#${tab}" ${UI.tab === tab ? 'aria-current="page"' : ''}>${ic(icon, 'ic-lg')}<span>${label}</span>${
     tab === 'qa' ? (n ? `<span class="badge" title="待审回合">${n}</span>` : '') : (n !== '' ? `<span class="count">${n}</span>` : '')}</a>`).join('');
@@ -947,6 +958,47 @@ function qaPanel(e) {
     <p class="hint mono" style="margin-top:16px;word-break:break-all">得分 ${a.score ?? '—'} · ${esc(a.run)}</p></div></div>`;
 }
 
+// ---------- accounts (admins only) ----------
+function randomPassword() {
+  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  return Array.from(crypto.getRandomValues(new Uint32Array(12)), (x) => abc[x % abc.length]).join('');
+}
+const newUserForm = () => ({username: '', name: '', password: randomPassword(), admin: false});
+function viewUsers() {
+  if (!ME?.admin) return `<div class="page">${pageHead('成员管理', '')}<div class="card">${empty('users', '需要管理员权限', '账号由平台管理员创建和管理')}</div></div>`;
+  const nu = UI.nu ||= newUserForm();
+  const cred = UI.cred ? `<div class="callout ok">${ic('check')}<div style="flex:1;min-width:0"><b>${esc(UI.cred.text)}</b>，把下面的登录信息发给对方。密码只显示这一次，忘了只能重置。
+    <div style="margin-top:8px">${code(`地址：${location.origin}\n账号：${UI.cred.username}\n密码：${UI.cred.password}`)}</div></div>
+    <button class="btn btn-icon btn-ghost" type="button" aria-label="关闭" onclick="UI.cred = null; render()">${ic('close')}</button></div>` : '';
+  const rows = USERS.map((u) => {
+    const self = u.username === ME.username, who = esc(u.username);
+    return `<tr data-user="${who}"><td><span class="mono t-main">${who}</span>${self ? ' <span class="tag">你</span>' : ''}</td>
+      <td><input type="text" value="${esc(u.name)}" maxlength="32" aria-label="${who} 的显示名" style="width:100%;max-width:220px"
+        onchange="editUser(this.closest('tr').dataset.user, {name: this.value})"></td>
+      <td><select aria-label="${who} 的角色" ${self ? 'disabled title="不能取消自己的管理员权限"' : ''}
+        onchange="editUser(this.closest('tr').dataset.user, {admin: this.value === '1'})">${opts({0: '成员', 1: '管理员'}, u.admin ? 1 : 0)}</select></td>
+      <td class="nowrap"><button class="btn" type="button" ${self ? 'disabled title="修改自己的密码用侧栏的钥匙按钮"' : ''}
+        onclick="resetPassword(this.closest('tr').dataset.user)">${ic('key')}重置密码</button>
+        <button class="btn btn-icon" type="button" aria-label="删除 ${who}" title="删除账号" ${self ? 'disabled' : ''}
+        onclick="deleteUser(this.closest('tr').dataset.user)">${ic('trash')}</button></td></tr>`;
+  }).join('');
+  return `<div class="page">${pageHead('成员管理', `${USERS.length} 个账号 · 每人用自己的账号登录，录入和质检结论按显示名署名；改名或删号不会改动已有记录上的署名`)}
+  ${cred}<div class="grid users">
+    <div class="table-wrap"><table><thead><tr><th>账号</th><th>显示名</th><th>角色</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <section class="card"><div class="card-h"><h2>新建账号</h2></div><div class="card-b">
+      <form class="stack" onsubmit="event.preventDefault(); createUser()">
+        <label class="field">用户名<input id="nu-user" value="${esc(nu.username)}" maxlength="32" autocomplete="off" autocapitalize="off" spellcheck="false"
+          placeholder="字母、数字或 _ . -，如 zhangsan" oninput="UI.nu.username = this.value"></label>
+        <label class="field">显示名<input id="nu-name" value="${esc(nu.name)}" maxlength="32" placeholder="署名用，如 张三" oninput="UI.nu.name = this.value"></label>
+        <label class="field">初始密码<span class="pw-row"><input id="nu-pw" class="mono" value="${esc(nu.password)}" autocomplete="off" spellcheck="false" oninput="UI.nu.password = this.value">
+          <button class="btn btn-icon" type="button" aria-label="换一个随机密码" title="换一个随机密码" onclick="UI.nu.password = $('#nu-pw').value = randomPassword()">${ic('refresh')}</button></span></label>
+        <label class="check"><input id="nu-admin" type="checkbox" ${nu.admin ? 'checked' : ''} onchange="UI.nu.admin = this.checked">管理员（可以管理账号）</label>
+        <p id="nu-err" class="field-error" role="alert"></p>
+        <button class="btn btn-primary" type="submit">${ic('plus')}创建账号</button>
+      </form></div></section>
+  </div></div>`;
+}
+
 // ---------- actions ----------
 async function api(url, options = {}) {
   const r = await fetch(url, {headers: {'Content-Type': 'application/json'}, ...options});
@@ -959,6 +1011,7 @@ function showLogin(message = '') {
   UI.drawer = null;
   renderDrawer();
   closeLB();
+  $('#main').innerHTML = '';
   document.querySelector('.app').hidden = true;
   $('#login').hidden = false;
   $('#lg-err').textContent = message;
@@ -985,13 +1038,16 @@ async function doLogin() {
 async function logout() {
   await fetch('/api/logout', {method: 'POST'}).catch(() => null);
   KINDS.forEach((k) => { S[k] = []; });
+  USERS = [];
   UI.loaded = false;
+  UI.cred = UI.nu = null;
   showLogin();
 }
 async function enter() {
   $('#login').hidden = true;
   document.querySelector('.app').hidden = false;
   INFO = await api('/api/info');
+  USERS = ME.admin ? await api('/api/users') : [];
   renderNav();
   await load();
 }
@@ -1017,12 +1073,47 @@ function drawerAccount() {
     <input id="${id}" type="password" autocomplete="${auto}" aria-describedby="pw-err" style="width:100%">
     <button class="btn btn-icon" type="button" aria-label="显示密码" aria-pressed="false" onclick="togglePw(this)">${ic('eye')}</button></span></div>`;
   return {
-    title: ME.name, sub: `账号 ${ME.username} · 录入和质检结论以「${ME.name}」署名`,
+    title: ME.name, sub: `账号 ${ME.username}${ME.admin ? '（管理员）' : ''} · 录入和质检结论以「${ME.name}」署名`,
     body: sec('修改密码', `<form class="form" onsubmit="event.preventDefault(); changePassword()">
       ${pw('pw-old', '当前密码', 'current-password')}${pw('pw-new', '新密码', 'new-password')}${pw('pw-again', '再输一次', 'new-password')}
       <span></span><div class="ctl"><p id="pw-err" class="field-error" role="alert"></p></div>
       <span></span><div class="ctl"><button class="btn btn-primary" type="submit">${ic('key')}修改密码</button><span class="hint">至少 8 位；修改后其他设备需要重新登录</span></div></form>`),
   };
+}
+const userApi = (username, options) => api(`/api/users?username=${encodeURIComponent(username)}`, options);
+async function createUser() {
+  const n = UI.nu = {username: $('#nu-user').value.trim(), name: $('#nu-name').value.trim(), password: $('#nu-pw').value, admin: $('#nu-admin').checked};
+  try {
+    USERS = await api('/api/users', {method: 'POST', body: JSON.stringify(n)});
+    UI.cred = {text: `账号 ${n.username} 已创建`, username: n.username, password: n.password};
+    UI.nu = newUserForm();
+    render();
+  } catch (err) { $('#nu-err').textContent = err.message; }
+}
+async function editUser(username, patch) {
+  try {
+    USERS = await userApi(username, {method: 'PUT', body: JSON.stringify(patch)});
+    if (username === ME.username) ME = {...ME, ...USERS.find((u) => u.username === username)};
+    toast('已保存');
+  } catch (err) { toast(`保存失败：${err.message}`, true); }
+  render();
+}
+async function resetPassword(username) {
+  if (!confirm(`为 ${username} 生成新密码？这个账号已登录的设备都会退出。`)) return;
+  const password = randomPassword();
+  try {
+    USERS = await userApi(username, {method: 'PUT', body: JSON.stringify({password})});
+    UI.cred = {text: `${username} 的密码已重置`, username, password};
+    render();
+  } catch (err) { toast(`重置失败：${err.message}`, true); }
+}
+async function deleteUser(username) {
+  if (!confirm(`删除账号 ${username}？已有记录上的署名保留。`)) return;
+  try {
+    USERS = await userApi(username, {method: 'DELETE'});
+    toast(`已删除 ${username}`);
+    render();
+  } catch (err) { toast(`删除失败：${err.message}`, true); }
 }
 async function load() {
   await Promise.all(KINDS.map(async (k) => { S[k] = await api(`/api/items?kind=${k}`); }));
@@ -1284,7 +1375,7 @@ function onClick(ev) {
 }
 
 // ---------- render ----------
-const VIEWS = {overview: viewOverview, scenes: viewScenes, objects: viewObjects, tasks: viewTasks, qa: viewQA};
+const VIEWS = {overview: viewOverview, scenes: viewScenes, objects: viewObjects, tasks: viewTasks, qa: viewQA, users: viewUsers};
 function render() {
   EP_BY_TASK = group(live(S.episode), (e) => e.auto.task);
   renderNav();

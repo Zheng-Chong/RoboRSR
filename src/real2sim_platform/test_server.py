@@ -71,12 +71,26 @@ def test_episodes_and_store():
     assert store.list("scene") == []
 
 
+def test_account_migration():
+    path = Path(tempfile.mkdtemp()) / "db.sqlite3"
+    old = server.sqlite3.connect(path)  # accounts table from before admins existed
+    old.execute("CREATE TABLE users (username TEXT PRIMARY KEY, name TEXT, pw TEXT)")
+    old.execute("INSERT INTO users VALUES ('bob', 'Bob', ?)", (server.hash_password("password1"),))
+    old.commit()
+    old.close()
+    store = server.Store(path)
+    assert store.users() == [{"username": "bob", "name": "Bob", "admin": False}]
+    assert store.check("bob", "password1") == {"username": "bob", "name": "Bob", "admin": False}
+    assert store.edit_user("bob", admin=True) and store.users()[0]["admin"]
+    assert not store.add_user("bob", "password2") and store.check("bob", "password1")
+
+
 def test_http():
     tmp = Path(tempfile.mkdtemp())
     run = make_run(tmp)
     (tmp / "secret.txt").write_text("x")
     store = server.Store(tmp / "db.sqlite3")
-    store.set_user("alice", "password1", "张三")
+    store.add_user("alice", "password1", "张三", admin=True)
     server.Handler.store, server.Handler.scan_args, server.Handler.roots = store, (tmp, [tmp]), [tmp]
     server.Handler.failures, server.FAIL_DELAY = {}, 0
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
@@ -98,7 +112,8 @@ def test_http():
         assert request("GET", "/api/info")[0] == 401 and request("GET", "/api/me")[0] == 401
         assert login("alice", "wrong-pass")[0] == 401 and login("nobody", "password1")[0] == 401
         status, me, cookie = login("alice", "password1")
-        assert status == 200 and me == {"username": "alice", "name": "张三"} and cookie.startswith("r2s_session=")
+        assert status == 200 and me == {"username": "alice", "name": "张三", "admin": True}
+        assert cookie.startswith("r2s_session=")
         session["Cookie"] = cookie
         assert json.loads(request("GET", "/api/me")[1])["name"] == "张三"
 
@@ -121,6 +136,32 @@ def test_http():
         assert server.scan_objects(tmp, {}, ["Rigid/cup/00000"])["Rigid/cup/00000"]["photos"] == [photo]
         assert request("DELETE", f"/api/photo?path={tmp / 'secret.txt'}")[0] == 400
         assert request("DELETE", f"/api/photo?path={photo}")[0] == 200 and not Path(photo).exists()
+
+        def users(method, path="/api/users", body=None, cookie=None):
+            headers = {"Cookie": cookie} if cookie else {}
+            status, data, _ = request(method, path, json.dumps(body) if body else None, headers)
+            return status, json.loads(data)
+
+        carol = {"username": "carol", "name": "李四", "password": "password1"}
+        assert users("POST", body={**carol, "password": "short"})[0] == 400
+        assert users("POST", body={**carol, "username": "a b"})[0] == 400
+        status, listed = users("POST", body=carol)
+        assert status == 200 and {"username": "carol", "name": "李四", "admin": False} in listed
+        assert users("POST", body=carol)[0] == 409
+        carol_cookie = login("carol", "password1")[2]
+        for method in ("GET", "POST", "PUT", "DELETE"):  # members cannot manage accounts
+            assert users(method, "/api/users?username=alice", {"admin": False}, carol_cookie)[0] == 403
+        assert users("PUT", "/api/users?username=alice", {"admin": False})[0] == 400  # admins cannot demote themselves
+        assert users("DELETE", "/api/users?username=alice")[0] == 400
+        assert users("PUT", "/api/users?username=nobody", {"name": "x"})[0] == 404
+        status, listed = users("PUT", "/api/users?username=carol", {"name": "王五", "password": "password9"})
+        assert status == 200 and {"username": "carol", "name": "王五", "admin": False} in listed
+        assert request("GET", "/api/me", headers={"Cookie": carol_cookie})[0] == 401  # reset password ends sessions
+        carol_cookie = login("carol", "password9")[2]
+        assert users("PUT", "/api/users?username=carol", {"admin": True})[1][1]["admin"]
+        assert users("GET", cookie=carol_cookie)[0] == 200
+        assert users("DELETE", "/api/users?username=carol")[1] == [{"username": "alice", "name": "张三", "admin": True}]
+        assert request("GET", "/api/me", headers={"Cookie": carol_cookie})[0] == 401
 
         other = login("alice", "password1")[2]  # a second browser
         change = json.dumps({"old": "password1", "new": "password2"})
