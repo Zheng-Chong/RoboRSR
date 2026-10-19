@@ -15,6 +15,13 @@
 
 ## 最近任务
 
+### 进行中：随机倒豆手 + 随机偏航 + 大范围位置的 100 条办公室数据（2026-10-19）
+
+- 用户要求：左右手随机、两杯偏航随机（“很重要”）、位置在能夹到的范围内尽量大；仍是 100 条、办公室、严格全量判据、LeRobot。
+- 代码：`scripted_demo.flat_turn` 读杯子偏航，手腕在 `C2C_FLAT_TURN`（相对原 45° 向外 35°、向内 15°）内转到让指垫闭合方向垂直一对平面，窗口外取模 90° 最近边界（56% 朝向正对，其余最多偏 20°）；杯在 45° 时转角为 0，旧行为不变。`inside()` 对量杯改用 `measuring_cup_shape.in_cavity`：原来用杯口内切圆柱，角落里的豆被当成已倒出，倒到只剩角落就回正，导致右手倒残留/撒豆。`prepare_office_beans_layouts` 改为倒豆手打乱的一半对一半 + 六维 Latin hypercube（高杯 |x| 0.05–0.22、矮杯 |x| 0.05–0.18、y −0.46…−0.28 m、偏航 0–90°）；测试同步。
+- 探测（运行目录 `5090-2:/data/robodojo-runs/office-beans-random-20261019`，`output/office_beans/exp{1,2,3}`，汇总脚本在本机 `.agent/remote-runs/office-beans-random/`）：exp1 中心位置极端偏航——接杯手多向内 25° 以上碰倒杯子、向外 44° 抓不起，右手倒常剩/撒 1–5 颗；exp2 修复后全随机偏航 18/24（左 11/12，右 7/12，无翻杯、无残留）；exp3 大范围 64 回合 26/64，失败主要是杯离机器人太远（y > −0.29）、矮杯太靠外（|x| > 0.19）时掉杯，或高杯太近（y < −0.46）够不到；选定范围内 16/23。
+- 下一步：用本提交代码在同一运行目录生成 400 个布局，8 GPU 采集，左右手各凑 50 条合格（硬链接到选择目录），导出 LeRobot 并做两项独立审计，再上传 ModelScope（同一账号私有）。
+
 ### 已完成：新量杯重采 100 条办公室全量倒豆 LeRobot 数据（2026-10-19）
 
 - 用户要求用实测新量杯 + 5.6 mm 红豆在办公室重采 100 条位置泛化数据，交付 LeRobot。数据集：`5090-2:/data/robodojo-runs/office-beans-measured-20261019/output/office_beans/collection_v2/lerobot`（535 MB，LeRobot v3.0，100 条 / 40279 帧 / 30 fps / 约 22.4 min，16 维 state/action，三路 640×480 H.264）。随附 `final_validation.json`、`sha256.json`、`validation_{raw,lerobot}.json`、`position_coverage.png`、`initial_positions.csv`、`collection_config.json`。

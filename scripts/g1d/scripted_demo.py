@@ -29,6 +29,9 @@ import numpy as np
 from scipy.spatial.transform import Rotation, Slerp
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from scripts.objects import measuring_cup_shape as cup_shape  # noqa: E402
+
 POLICY = "scripted_demo"
 
 # Calibration knobs: metres, radians, actions (30 Hz)
@@ -69,6 +72,10 @@ C2C_RAISE, C2C_LIFT = 0.06, {"plastic_cup": 0.12, "measuring_cup": 0.06}  # stra
 # fingers this far below horizontal. The cup tilts by rolling about the fingers, cos(tilt) = sin^2 p + cos^2 p cos(r):
 # at 35 deg the ~100 deg the beans need in the tall measuring cup takes ~140 deg of roll; the arm reaches ~116
 C2C_PITCH = {"plastic_cup": CUP_PITCH, "measuring_cup": 20}
+# the square measuring cups stand at any yaw: the wrist turns beyond CUP_YAW (deg, outward .. inward) so the pads close
+# across a pair of flats (they repeat every 90 deg); past this window the pads sit off the flats by the rest. Probed at
+# the table centre: 25 deg further inward knocks the cup over, 44 deg outward misses the pour
+C2C_FLAT_TURN = (-35, 15)
 C2C_MEET_X, C2C_MEET_Y = 0.03, -0.36  # target cup axis in mid-air: this far on its own side of the midline
 CUP_SPEED = 0.005  # m per action carrying a cup
 # source lip this far inside the target's near rim, this high above it. Lying flat, the source cup reaches a cup width
@@ -147,9 +154,20 @@ class Arm:
         return np.clip(q + jac.T @ np.linalg.solve(jac @ jac.T + 0.02**2 * np.eye(6), err), lim[:, 0], lim[:, 1])
 
 
-def cup_grasp(lm, out, label="cup", grip_up=CUP_GRIP_UP, pitch=CUP_PITCH):
+def flat_turn(rot, out):
+    """Wrist yaw (deg, world z) beyond out * CUP_YAW that closes the pads across a pair of a square cup's flats, within
+    C2C_FLAT_TURN: the pads close along world angle out * CUP_YAW (= 45 mod 90), the flats face the cup's yaw + k * 90
+    deg, and out * turn > 0 turns the wrist further inward. Past the window: the edge nearest a pair of flats."""
+    want = out * (np.degrees(rot.as_euler("zyx")[0]) % 90 - 45)
+    edges = (np.clip(w, *C2C_FLAT_TURN) for w in (want - 90, want, want + 90))
+    inward = min(edges, key=lambda c: abs((c - want + 45) % 90 - 45))
+    return out * float(inward)
+
+
+def cup_grasp(lm, out, label="cup", grip_up=CUP_GRIP_UP, pitch=CUP_PITCH, turn=0.0):
     """Side grasp around the body of the (handleless, tapered) cup by the arm on side `out` (+-1 in x): fingers
-    `pitch` deg down, turned CUP_YAW inward, pads closing across the body below the rim; the mouth stays free.
+    `pitch` deg down, turned CUP_YAW (+ `turn`) inward, pads closing across the body below the rim; the mouth stays
+    free.
 
     Returns the grasp point (on the body axis), hand rotation, rim height, rim radius and gripper opening.
     """
@@ -164,7 +182,7 @@ def cup_grasp(lm, out, label="cup", grip_up=CUP_GRIP_UP, pitch=CUP_PITCH):
     foot = circle.get("radius", radius)
     up = min(grip_up, hi[2] - lo[2])
     grip = np.r_[axis[:2], pos[2] + lo[2] + up]
-    hand = Rotation.from_euler("xz", [-pitch, out * CUP_YAW], degrees=True) * GRASP_ROT
+    hand = Rotation.from_euler("xz", [-pitch, out * CUP_YAW + turn], degrees=True) * GRASP_ROT
     return grip, hand, rim, radius, pad_open(2 * (foot + (radius - foot) * up / (hi[2] - lo[2])))
 
 
@@ -333,8 +351,16 @@ def cup_to_cup_actions(env):
         category = next(c for c in C2C_RIM_DOWN if name.startswith(c))
         heights[label + "_grip"] = heights[label] - C2C_RIM_DOWN[category]
     lift, pitch = C2C_LIFT[category], C2C_PITCH[category]
-    s_grip, s_hand, s_rim, s_r, s_open = cup_grasp(lm, side, "source_cup", heights["source_cup_grip"], pitch)
-    t_grip, t_hand, t_rim, t_r, t_open = cup_grasp(lm, -side, "target_cup", heights["target_cup_grip"], pitch)
+    turns = dict.fromkeys(("source_cup", "target_cup"), 0.0)
+    if category == "measuring_cup":
+        for label, out in (("source_cup", side), ("target_cup", -side)):
+            turns[label] = flat_turn(from_wxyz(as_np(lm.get_instance_pose(0, label=label)[1])), out)
+    s_grip, s_hand, s_rim, s_r, s_open = cup_grasp(
+        lm, side, "source_cup", heights["source_cup_grip"], pitch, turns["source_cup"]
+    )
+    t_grip, t_hand, t_rim, t_r, t_open = cup_grasp(
+        lm, -side, "target_cup", heights["target_cup_grip"], pitch, turns["target_cup"]
+    )
     height, t_height = heights["source_cup"], heights["target_cup"]
     up = heights["source_cup_grip"]  # pads above the cup bottom
 
@@ -385,10 +411,13 @@ def cup_to_cup_actions(env):
         return np.asarray(fluid.get_particle_positions()[0]).reshape(-1, 3) + fluid.init_pos
 
     def inside(label):
-        """Per bean: inside the cup's rim cylinder (cup frame, origin at the bbox centre)."""
+        """Per bean: inside the cup (cup frame, origin at the bbox centre): the measuring cups' actual cavity, whose
+        corners reach past the rim cylinder (beans left there read as poured), else the rim cylinder."""
         pos, rot = cup(label)
         local = rot.inv().apply(beans() - pos)
         r, h = (s_r, height) if label == "source_cup" else (t_r, t_height)
+        if category == "measuring_cup":
+            return cup_shape.in_cavity(local - cup_shape.origin_shift(h), h)
         return (np.hypot(local[:, 0], local[:, 1]) < r) & (np.abs(local[:, 2]) < h / 2)
 
     check = env.pour_check()
@@ -415,9 +444,10 @@ def cup_to_cup_actions(env):
         }
 
     print(
-        f"[scripted_demo] source {src0.round(3)} with {src_arm.arm_key} grip {s_grip.round(3)} open {s_open:.2f};"
+        f"[scripted_demo] source {src0.round(3)} with {src_arm.arm_key} grip {s_grip.round(3)} open {s_open:.2f}"
+        f" turn {turns['source_cup']:.0f};"
         f" target {as_np(lm.get_instance_pose(0, label='target_cup')[0]).round(3)} with {tgt_arm.arm_key}"
-        f" grip {t_grip.round(3)} open {t_open:.2f}"
+        f" grip {t_grip.round(3)} open {t_open:.2f} turn {turns['target_cup']:.0f}"
     )
     s_path = list(waypoints(src_arm.grasp_point(), src_arm.pose()[1], keys[0]))
     t_path = list(waypoints(tgt_arm.grasp_point(), tgt_arm.pose()[1], keys[1]))
