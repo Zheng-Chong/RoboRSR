@@ -15,6 +15,13 @@
 
 ## 最近任务
 
+### 红小豆实测尺寸与质量（2026-10-19）
+
+- 用户给出实测值：长宽高 7 × 5 × 5 mm，单粒约 0.1 g。`make_red_bean.py` 网格改为 7 × 5 × 5 mm（numpy 采样包围盒核对为 7.0/5.0/5.0）、质量 1e-4 kg；`build_asset.py` 的 `RED_BEAN_PHYSICS.particle_mass` 由 6e-5 改为 1e-4；`check_cup_beans.py` 绘制缩放 0.85→0.7，画出的豆子大小不变；`real2sim/ASSETS.md` 同步。
+- 用户随后确认 PBD 颗粒也改为等体积 5.6 mm 球：`RED_BEAN_PHYSICS` 的 rest/solid_rest_offset 0.002→0.0028，contact 偏移 0.0024→0.0034（保持 1.2 倍），fluid_rest_offset 0.0012→0.0017；`CUP_FLUID_Z`、`MEASURING_FLUID_Z` 各上移 0.8 mm，最低一层颗粒与杯底的间隙和 4 mm 时一致；两个任务的 `scatter_connect_radius` 0.009→0.012（约 2 个颗粒间距）；`check_cup_beans.py` 绘制缩放 0.8；600 Hz 步长的注释核对过（每步 4.17 mm，小于 5.6 + 2 mm）。
+- 预期影响（均未经仿真验证）：量杯约 95 ml 豆量从 1840 颗降到约 670 颗；13 mm 壶嘴之前实测会被 5 mm 颗粒卡住，`g1d_pour_water_into_cup` 预计倒不出来。`collect_office_beans.py` 的杯内判据只看颗粒中心，不受影响。正在运行的 100 条采集使用旧的 4 mm 资产，与新参数不一致；需重新运行 `build_asset.py` 后再复跑。
+- 只跑了 ruff check/format、py_compile、task_inventory --check、`git diff --check`；本机没有 scipy，`test_office_beans` 未运行。同一工作区里另一会话的量杯/马克杯实测改动（`make_plastic_cups.py`、`measuring_cup_shape.py` 等，以及 `build_asset.py` 中量杯注释和 `MEASURING_FLUID_Z` 的 -0.0487）未纳入本次提交；本提交中 `MEASURING_FLUID_Z` 为旧 158 mm 量杯的 -0.0427。
+
 ### 进行中：办公室量杯全量倒红豆 100 条 LeRobot 数据（2026-10-19）
 
 - 用户要求在 `5090-2` 的办公室场景用两个量杯，每次把所有豆子从高杯倒入矮杯，生成 100 条位置泛化数据；交付格式已明确为 LeRobot。

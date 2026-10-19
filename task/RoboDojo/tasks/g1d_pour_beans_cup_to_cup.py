@@ -37,7 +37,7 @@ class G1dPourBeansCupToCupCommon:
             B_z_threshold=0.001,
             C_residual_threshold=1 - POURED,
             ignore_scattered=True,
-            scatter_connect_radius=0.009,  # ~2 bean spacings (4 mm)
+            scatter_connect_radius=0.012,  # ~2 bean spacings (5.6 mm)
             scatter_min_component_size=7,
             max_ignore_ratio=0.02,
         )

@@ -1,7 +1,7 @@
 """Fill the plastic cups with the g1d tasks' granular red beans, let them settle, and render them.
 
 Cups (make_plastic_cups.py) are kinematic and loaded with RigidObject; beans are FluidObject PBD solid particles with
-RED_BEAN_PHYSICS (4 mm spheres), as in g1d_pour_beans_cup_to_cup. Writes under --out:
+RED_BEAN_PHYSICS (5.6 mm spheres), as in g1d_pour_beans_cup_to_cup. Writes under --out:
     spheres.png   the beans as simulated (particle spheres, RedBean.mdl)
     beans.png     the same settled positions drawn with the red_bean mesh (make_red_bean.py), random orientation,
                   display only; top.png the same from above
@@ -61,7 +61,7 @@ from scripts.objects import (
 DT = 0.004
 GPU_OVERRIDE = get_physx_interface().get_overwrite_gpu_setting()
 MARGIN = 0.003  # fill region inset from the inner wall/bottom: particle radius + contact offset
-BEAN_SCALE = 0.85  # bean mesh (5.8 mm) drawn near the 4 mm particle spacing
+BEAN_SCALE = 0.8  # bean mesh (7 mm) drawn near the 5.6 mm particle spacing
 # category/index, fill height above the outside bottom (m), y position
 CUPS = [("plastic_mug/00000", 0.055, -0.16), ("measuring_cup/00000", 0.085, 0.0), ("measuring_cup/00001", 0.105, 0.16)]
 

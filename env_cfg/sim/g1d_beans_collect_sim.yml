@@ -1,5 +1,5 @@
 decimation: 1
-# At 2.5 m/s a bean travels 4.17 mm per step, below the 4 mm bean + 2 mm cup-bottom thickness.
+# At 2.5 m/s a bean travels 4.17 mm per step, below the 5.6 mm bean + 2 mm cup-bottom thickness.
 dt: 0.0016666666666666668
 render_interval: 20
 scene:

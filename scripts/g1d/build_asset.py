@@ -49,17 +49,18 @@ SCENES = {  # env config: (scene dir, Room category, Room position, object (x, y
 # Red (adzuki) beans: Water_Opaque.mdl (glossy) with a dark maroon base colour (linear RGB).
 RED_BEAN_COLOR = "color(0.15, 0.008, 0.01)"
 RED_BEAN_MDL = "$Robodojo_ASSETS/Material/Fluid/RedBean.mdl"
-# Beans are PBD solid (granular) particles: 4 mm spheres of 0.06 g, smooth (friction 0.2), no cohesion. The 13 mm
-# pitcher pour opening jams 5 mm beans, or 4 mm ones at friction 0.4 (check_pitcher_fluid.py --red-beans).
+# Beans are PBD solid (granular) particles: 5.6 mm spheres of 0.1 g, the volume and mass of a real 7 x 5 x 5 mm bean,
+# smooth (friction 0.2), no cohesion. The 13 mm pitcher pour opening jams beans above ~5 mm, so the pitcher task no
+# longer pours (4 mm spheres did; check_pitcher_fluid.py --red-beans).
 RED_BEAN_PHYSICS = {
     "granular": True,
-    "particle_mass": 6e-5,
+    "particle_mass": 1e-4,
     "particle_system": {
-        "particle_contact_offset": 0.0024,
-        "contact_offset": 0.0024,
-        "rest_offset": 0.002,
-        "solid_rest_offset": 0.002,
-        "fluid_rest_offset": 0.0012,
+        "particle_contact_offset": 0.0034,
+        "contact_offset": 0.0034,
+        "rest_offset": 0.0028,
+        "solid_rest_offset": 0.0028,
+        "fluid_rest_offset": 0.0017,
         "max_velocity": 2.5,
         "smoothing": False,
         "anisotropy": False,
@@ -92,17 +93,18 @@ POUR_MIN_GAP = 0.03  # m between the jug's and the cup's footprints
 # Cup-to-cup pour (two plastic cups): each cup within the side grasp's reach of the arm on its side, |x| and y ranges
 # (from |x| = 0.178 the right arm cannot lift its cup up to the pour, 0.162 it can); the source cup a sixth full: the
 # 60 x 60 x 70 mm fluid ellipsoid scaled to 46 x 46 x 50 mm (~55 ml), its centre this far above the cup centre (inside
-# bottom + half its height + 2 mm)
+# bottom + half its height + 2.8 mm)
 CUP_PAIR_X, CUP_PAIR_Y = (0.10, 0.16), (-0.39, -0.31)
 CUP_FILL = (0.77, 0.77, 0.71)
-CUP_FLUID_Z = -0.0175
+CUP_FLUID_Z = -0.0167
 # Measuring cups (scripts/objects/make_plastic_cups.py): 500 ml source, 400 ml target, as in the desk photos. Turned
 # 45 deg about z so the pads, closing across the 45-deg-inward wrist, meet the square body's flats (72-75 mm) and not
-# its corners (88 mm, nearly the 95 mm jaw). Fluid 54 x 54 x 63 mm (~95 ml) on the 2 mm inside bottom of the 158 mm cup.
+# its corners (88 mm, nearly the 95 mm jaw). Fluid 54 x 54 x 63 mm (~95 ml) 0.8 mm above the 2 mm inside bottom of
+# the 158 mm cup.
 MEASURING_CUPS = ((1, "source_cup"), (0, "target_cup"))  # measuring_cup index, label
 MEASURING_ORI = [0.92388, 0.0, 0.0, 0.38268]
 MEASURING_FILL = (0.9, 0.9, 0.9)
-MEASURING_FLUID_Z = -0.0435
+MEASURING_FLUID_Z = -0.0427
 OBJECT_SECTIONS = ("Rigid", "Geometry", "Fluid", "Articulation", "Garment", "Clutter", "Dynamic")
 D435_INERTIAL = (
     '<inertial><origin xyz="0 0 0" rpy="0 0 0"/><mass value="0.01"/>'

@@ -20,7 +20,7 @@
 
 - 程序化生成 3 款玻璃冷水壶（`scripts/objects/make_pitcher.py`），碰撞体保留壶内空腔和出水口。
 - 流体倒水物理已验证：开口壶倒出 99.4%，封口对照保留 99.98%（`scripts/objects/check_pitcher_fluid.py`）。
-- 倒水任务改为倒 4 mm 红豆（PBD 颗粒），开口壶可倒出 58.7%，封口对照保留 100%。
+- 倒水任务改为倒红豆（PBD 颗粒，现为与实测等体积的 5.6 mm；4 mm 时开口壶可倒出 58.7%，封口对照保留 100%，5.6 mm 未复测，预计会堵 13 mm 壶嘴）。
 - 程序化生成水杯 / 塑料杯（`scripts/objects/make_water_cup.py`）。
 - 3 个按实拍重建的数字孪生场景（办公室、台面、实验室）、倒水场景包和 G1-D v4 机器人 URDF 都在 `real2sim/` 下，二进制文件走 Git LFS。
 

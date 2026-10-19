@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Procedural red (adzuki) bean as a RoboDojo `Rigid` asset, also used to draw settled bean particles as beans.
 
-Blunt-ended superellipsoid, 5.8 x 4.3 x 4.0 mm (typical adzuki), glossy dark maroon, with the white hilum stripe
+Blunt-ended superellipsoid, 7 x 5 x 5 mm and 0.1 g (measured adzuki), glossy dark maroon, with the white hilum stripe
 along the +Y side. The bean particles of the g1d tasks are 4 mm PBD spheres; this mesh is not their collider.
 
 Usage:
@@ -27,11 +27,11 @@ import make_pitcher as mp  # noqa: E402  (shared USD helpers; starts Kit when px
 from make_pitcher import Sdf, Usd, UsdGeom, UsdPhysics, UsdShade  # noqa: E402
 import make_plastic_cups as pc  # noqa: E402
 
-A, B, C = 0.0029, 0.00215, 0.0020  # half length, half width, half thickness
+A, B, C = 0.0035, 0.0025, 0.0025  # half length, half width, half thickness
 E_END = 0.85  # < 1: blunt ends
 HILUM_LEN, HILUM_HALF_W, HILUM_RAISE = 0.45, 0.10, 1.012  # fraction of length, half-width (rad), radial scale
 NU, NV = 40, 48
-MASS = 6e-5  # = RED_BEAN_PHYSICS particle_mass
+MASS = 1e-4  # = RED_BEAN_PHYSICS particle_mass
 COAT = (0.075, 0.006, 0.008)
 HILUM = (0.80, 0.77, 0.68)
 
@@ -108,14 +108,14 @@ def description(uid):
     caption = {
         "color": ["dark red", "maroon", "white stripe on the side"],
         "material": ["bean", "seed", "glossy seed coat"],
-        "size": ["about 6 mm long", "tiny", "smaller than a fingertip"],
+        "size": ["about 7 mm long", "tiny", "smaller than a fingertip"],
         "name": ["red bean", "adzuki bean", "azuki bean"],
         "shape": ["short rounded oblong", "blunt ends", "slightly flattened"],
         "function": ["cooking", "making red bean paste", "pouring between cups"],
     }
     desc = [
         "glossy dark red adzuki bean with a white stripe along one side",
-        "small maroon bean, about 6 mm long",
+        "small maroon bean, about 7 mm long",
         "single red bean with blunt rounded ends",
         "tiny oblong seed with a smooth shiny coat",
         "azuki bean as poured from one cup into another",
