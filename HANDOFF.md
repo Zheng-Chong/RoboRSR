@@ -1,6 +1,6 @@
 # Project Handoff
 
-更新时间：2026-10-17
+更新时间：2026-10-19
 当前分支：main（唯一分支）
 当前目标：在 RoboDojo 上接入 Unitree G1-D（Dex1-1 夹爪）做桌面操作仿真，后续加入自有物体和任务
 
@@ -184,12 +184,14 @@
 - 服务器上 `/usr/local/bin/ffmpeg` 不带 libx264，已在仿真环境 bin 中链接系统 ffmpeg；新建环境需同样处理，否则录视频时 BrokenPipe。
 - 自建资产在 `real2sim/`，`real2sim/**` 下的 usd/usdc/STL/图片走 Git LFS（`.gitattributes`），`preview/`、`demo/`、`*.bak` 不入库。`.gitignore` 用锚定的 `/Assets`：macOS 大小写不敏感，不锚定会把 `real2sim/scene3_pour_pack/assets/` 一起忽略。不要再往 `Assets/` 里放要入库的文件：`init_assets.sh` 发现 `Assets/` 不完整会把它整个挪成 `Assets.partial.<时间戳>`。本机 git-lfs 为官方二进制，装在 `~/.local/bin`（Homebrew 在此机会从源码编译整条依赖链，不要用）。
 - 杯对杯倒豆的杯子位置按布局随机抽取（种子取自瓶子三维坐标，含桌面高度），所以三个场景同一编号的杯子位置不同；其余任务同一编号在三个场景里相对机器人一致。
-- 共享资产库的 `Robots/g1d` 已于 2026-10-16 16:14 重建（无相机 Dex1 网格 + 当时的相机配置）；之后头部相机改为合同位姿，2026-10-17 11:49 只拷了 `*_robot_config.yml`（URDF/网格不变，备份 `/data2/tmp/robodojo/backup-shared-20261017-114936-g1d-camera.tgz`）。
+- 自建资产装没装进共享库、和真实的匹配程度，统一看 `real2sim/ASSETS.md`（2026-10-19 核对：共享库缺 `measuring_cup`、`plastic_mug`、`red_bean` 和量杯任务布局；`Robots/g1d` 是 10-17 带相机夹爪版）。
+- 自建物体的摩擦没有生效：`rigid.py` 只读 `physics.static_friction`/`dynamic_friction`（默认 0.6/1.5），生成脚本写的 `friction` 被忽略。现有成功率都是在默认摩擦下得到的；改成实测摩擦前要让生成脚本写这两个键，并重跑倒豆/抓取任务。
+- 所有自建物体和三个场景都没有卷尺/秤实测，尺寸来自照片拟合或常见规格估计；待测清单在 `real2sim/ASSETS.md`。
 
 ## 下一会话
 
 1. 先看 `git log` 和本文件；服务器环境已可用，直接用 demo_policy 跑 `--env-cfg g1d` 复现。量杯对倒：`CUDA_VISIBLE_DEVICES=N PYTHONPATH=.:XPolicyLab EVAL_NUM=1 python scripts/g1d/scripted_demo.py --env_cfg_type g1d_counter --task_name g1d_pour_beans_measuring_cups --seed 0`，需要先把 `measuring_cup` 和新布局装进资产库（`make_plastic_cups.py` + `build_asset.py`；共享库尚未安装，需用户同意）。
-2. 下一步建议：加入自有物体（`Assets/Object/RoboDojo/<类别>/<编号>/object.usd`）并写第一个 G1-D 专用任务及其评测布局。
+2. 下一步建议：按 `real2sim/ASSETS.md` 的待实测清单量桌子和杯子，写回生成脚本 / 场景尺度并更新登记表；改摩擦前先让生成脚本写 `static_friction`/`dynamic_friction`。
 
 ## Dex1-1 改回标准版（不带腕部相机模型，2026-10-16；已被 10-17 的带相机夹爪取代）
 
@@ -214,6 +216,8 @@
 - 共享资产库（用户同意）：新增 `Room/real_scene{2,3}`、`Rigid/{water_cup,plastic_cup}`、`Eval_Layout/RoboDojo/{g1d_counter,g1d_lab}`，`g1d` 的 G1-D 任务布局换成当前版本，`Room/real_scene1` 覆盖为同样内容；与隔离目录验证产物 `diff -r` 一致。改动前备份 `/data2/tmp/robodojo/backup-shared-20261016-174239.tgz`（原 `g1d` 布局和 `real_scene1`）。没有跑 `format.py`（运行时不读 `uuid_map.json`）。
 
 ## 最近历史
+
+- 2026-10-19：新增自建资产登记表 `real2sim/ASSETS.md`（物体、场景、机器人各属性的匹配等级与依据、共享库状态、待实测清单），README 资产规则指向它，修正 README TODO 里过时的相机内参描述。登记时发现自建物体的 `friction` 运行时不生效（见剩余事项）。只改文档；只读核对了服务器共享库，未跑运行时验证。
 
 - 2026-10-17：新任务 `g1d_pour_beans_measuring_cups`（500 ml 量杯倒进 400 ml），吧台 seed 0/1/2 与办公室、实验室 seed 0 全部成功；关键是量杯手指下倾 20°（35° 时倾不过 89°）；修量杯/马克杯杯底凸包超出 GPU 限制。
 
