@@ -6,124 +6,368 @@
 <title>Real2Sim 数采管理平台</title>
 <style>
 :root {
-  --bg: #f4f5f7; --card: #fff; --line: #e3e6eb; --text: #1f2329; --muted: #6b7280; --accent: #2563eb;
-  --ok: #15803d; --ok-bg: #dcfce7; --bad: #dc2626; --bad-bg: #fee2e2; --todo: #6b7280; --todo-bg: #eef0f3;
+  --bg: #F6F8FB; --surface: #FFFFFF; --surface-2: #F1F5F9; --surface-3: #E8EDF4;
+  --border: #E2E8F0; --border-strong: #CBD5E1;
+  --text: #0F172A; --text-2: #334155; --muted: #64748B; --faint: #94A3B8;
+  --primary: #1E40AF; --primary-hover: #1E3A8A; --primary-soft: #EFF6FF; --primary-line: #BFDBFE; --ring: #2563EB;
+  --accent: #D97706; --accent-text: #B45309; --accent-soft: #FEF3C7;
+  --ok: #15803D; --ok-soft: #DCFCE7; --ok-bar: #22C55E;
+  --bad: #B91C1C; --bad-soft: #FEE2E2; --bad-bar: #EF4444;
+  --todo: #475569; --todo-soft: #F1F5F9; --todo-bar: #D5DCE6;
+  --radius: 10px; --radius-sm: 6px;
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, .05);
+  --shadow-2: 0 6px 16px rgba(15, 23, 42, .08);
+  --shadow-3: 0 18px 48px rgba(15, 23, 42, .22);
+  --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Segoe UI", Roboto, sans-serif;
+  --mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --side: 236px;
 }
 * { box-sizing: border-box; }
-body { margin: 0; font: 14px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); }
-a { color: var(--accent); text-decoration: none; }
-header { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; min-height: 52px; padding: 0 20px; background: #111827; color: #fff; }
-header h1 { margin: 0; font-size: 16px; white-space: nowrap; }
-nav { white-space: nowrap; }
-nav a { display: inline-block; padding: 15px 10px; color: #cbd5e1; }
-nav a.on { color: #fff; box-shadow: inset 0 -3px 0 #60a5fa; }
-header input { width: 110px; color: var(--text); }
-.sp { flex: 1; }
-main { max-width: 1560px; margin: 0 auto; padding: 18px 20px 40px; }
-h2 { margin: 22px 0 10px; font-size: 15px; }
-h3 { margin: 20px 0 8px; font-size: 14px; }
-.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-.grid.wide { grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); }
-.cols { display: grid; grid-template-columns: 1.25fr 1fr; gap: 0 18px; }
-@media (max-width: 1100px) { .cols, .qa { grid-template-columns: 1fr !important; } }
-.card { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; color: inherit; }
-a.card:hover, .scene-card:hover { border-color: #93c5fd; }
-.kpi .v { font-size: 26px; font-weight: 600; }
-.kpi .l { color: var(--muted); font-size: 12px; }
-.scene-card { cursor: pointer; }
-.cover { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6px; background: #e5e7eb; }
-table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); }
-th, td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-th { background: #f9fafb; color: var(--muted); font-size: 12px; font-weight: 500; }
-table.plain { border: 0; background: none; }
-table.plain td, table.plain th { padding: 5px 6px; background: none; }
-tr.row { cursor: pointer; }
-tr.row:hover { background: #f8fafc; }
-tr.sel, tr.sel:hover { background: #eff6ff; }
-.chip { display: inline-block; margin: 1px 3px 1px 0; padding: 0 8px; border: 1px solid transparent; border-radius: 10px; background: var(--todo-bg); color: var(--todo); font-size: 12px; white-space: nowrap; }
-.chip.ok { background: var(--ok-bg); color: var(--ok); }
-.chip.bad { background: var(--bad-bg); color: var(--bad); }
-.chip.na { background: none; border: 1px dashed #cbd5e1; color: #9ca3af; }
-.chip.btn { cursor: pointer; }
-.chip.btn.on { border-color: var(--accent); background: #dbeafe; color: var(--accent); }
-.stages { display: flex; flex-wrap: wrap; margin-top: 6px; }
-.bar { display: flex; height: 8px; overflow: hidden; border-radius: 4px; background: var(--todo-bg); }
-.bar i { display: block; height: 100%; }
-.bar .ok { background: #22c55e; }
-.bar .bad { background: #ef4444; }
+html, body { margin: 0; }
+body { font: 14px/1.55 var(--font); color: var(--text); background: var(--bg); -webkit-font-smoothing: antialiased; }
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+h1, h2, h3 { letter-spacing: -.01em; }
+.mono, code { font-family: var(--mono); font-size: .92em; }
+.num { font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
-.warn { margin-bottom: 12px; padding: 8px 12px; border: 1px solid #fde68a; border-radius: 8px; background: #fffbeb; color: #92400e; font-size: 13px; }
-button { padding: 5px 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font: inherit; cursor: pointer; }
-button.primary { border-color: var(--accent); background: var(--accent); color: #fff; }
-button.ok { border-color: var(--ok); background: var(--ok); color: #fff; }
-button.bad { border-color: var(--bad); background: var(--bad); color: #fff; }
-input, select, textarea { padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font: inherit; color: inherit; }
-textarea { width: 100%; min-height: 64px; }
-.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
-.form { display: grid; grid-template-columns: 120px 1fr; gap: 8px 12px; align-items: center; }
-.form input[type=text], .form input:not([type]) { width: 100%; }
-.dims input { width: 84px; }
-#drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 6; width: min(680px, 100vw); overflow: auto; padding: 16px 20px 40px; border-left: 1px solid var(--line); background: #fff; box-shadow: -8px 0 24px rgba(0, 0, 0, .08); transform: translateX(100%); transition: transform .2s; }
-#drawer.open { transform: none; }
-#drawer .title { word-break: break-all; }
-.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
-.thumbs img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border: 1px solid var(--line); border-radius: 6px; cursor: zoom-in; }
-pre { overflow: auto; margin: 6px 0; padding: 10px 12px; border-radius: 8px; background: #0f172a; color: #e2e8f0; font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; }
-.qa { display: grid; grid-template-columns: minmax(440px, 1fr) minmax(480px, 1.15fr); gap: 14px; align-items: start; }
-.qa .list { max-height: calc(100vh - 150px); overflow: auto; }
-.qa .panel { position: sticky; top: 64px; }
-.videos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.videos figure { margin: 0; }
-.videos video { width: 100%; border-radius: 6px; background: #000; }
-#lightbox { position: fixed; inset: 0; z-index: 10; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, .85); }
-#lightbox img { max-width: 95vw; max-height: 95vh; }
-#toast { position: fixed; bottom: 22px; left: 50%; z-index: 11; display: none; padding: 8px 16px; border-radius: 8px; background: #111827; color: #fff; transform: translateX(-50%); }
+.nowrap { white-space: nowrap; }
+.txt-bad { color: var(--bad); }
+.txt-ok { color: var(--ok); }
+.sp { flex: 1; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ic { width: 16px; height: 16px; flex: none; vertical-align: -3px; }
+.ic-sm { width: 13px; height: 13px; }
+.ic-lg { width: 18px; height: 18px; }
+
+/* layout */
+.app { display: grid; grid-template-columns: var(--side) minmax(0, 1fr); min-height: 100vh; }
+.side { position: sticky; top: 0; z-index: 5; display: flex; flex-direction: column; gap: 18px; height: 100vh; padding: 18px 14px; background: var(--surface); border-right: 1px solid var(--border); }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 6px; }
+.mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 9px; background: var(--primary); color: #fff; font: 700 12px/1 var(--mono); letter-spacing: .03em; }
+.brand b { display: block; font-size: 15px; line-height: 1.2; }
+.brand small { color: var(--muted); font-size: 12px; }
+nav { display: flex; flex-direction: column; gap: 2px; }
+.nav-item { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 0 10px; border-radius: 8px; color: var(--text-2); font-weight: 500; transition: background .15s, color .15s; }
+.nav-item:hover { background: var(--surface-2); text-decoration: none; }
+.nav-item[aria-current="page"] { background: var(--primary-soft); color: var(--primary); }
+.nav-item .count { margin-left: auto; color: var(--faint); font: 500 12px var(--mono); }
+.nav-item .badge { margin-left: auto; min-width: 22px; padding: 0 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); font: 600 12px/20px var(--mono); text-align: center; }
+.side-foot { display: flex; flex-direction: column; gap: 10px; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); }
+.field { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
+.source { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; }
+.dot.ok { background: var(--ok-bar); }
+.dot.warn { background: var(--accent); }
+main { min-width: 0; padding: 26px 30px 56px; }
+.page { max-width: 1480px; margin: 0 auto; }
+.ph { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; margin-bottom: 20px; }
+.ph h1 { margin: 0; font-size: 22px; font-weight: 650; }
+.ph p { max-width: 820px; margin: 4px 0 0; color: var(--muted); }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.filters { margin-bottom: 14px; }
+@media (max-width: 960px) {
+  .app { grid-template-columns: 1fr; }
+  .side { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; height: auto; padding: 10px 14px; border-right: 0; border-bottom: 1px solid var(--border); }
+  nav { flex: 1 1 100%; flex-direction: row; order: 3; overflow-x: auto; }
+  .nav-item { flex: none; }
+  .side-foot { flex-direction: row; align-items: center; margin: 0 0 0 auto; padding: 0; border: 0; }
+  .side-foot .field > span, .source { display: none; }
+  main { padding: 18px 14px 40px; }
+}
+
+/* surfaces */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-1); }
+.card-h { display: flex; align-items: center; gap: 10px; padding: 14px 16px 0; }
+.card-h h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.card-b { padding: 12px 16px 16px; }
+.section-title { display: flex; align-items: center; gap: 8px; margin: 30px 0 12px; font-size: 15px; font-weight: 600; }
+.grid { display: grid; gap: 14px; }
+.kpis { grid-template-columns: repeat(auto-fill, minmax(206px, 1fr)); }
+.kpi { display: block; padding: 14px 16px 16px; color: inherit; transition: border-color .15s, box-shadow .15s; }
+.kpi:hover { border-color: var(--primary-line); box-shadow: var(--shadow-2); text-decoration: none; }
+.k-label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 500; }
+.k-value { margin: 8px 0 2px; font: 600 28px/1.1 var(--mono); letter-spacing: -.02em; }
+.k-meta { color: var(--muted); font-size: 12px; }
+.pipeline { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.trio { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1280px) { .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1100px) { .trio { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { .pipeline { grid-template-columns: 1fr; } }
+.step { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: var(--primary-soft); color: var(--primary); font: 700 11px var(--mono); }
+.meter { display: grid; grid-template-columns: minmax(96px, 1fr) minmax(60px, 1.2fr) auto; align-items: center; gap: 10px; padding: 5px 0; font-size: 13px; }
+.meter .lbl { color: var(--text-2); }
+.meter .val { min-width: 64px; color: var(--muted); font: 12px var(--mono); text-align: right; }
+.callout { display: flex; gap: 10px; margin-bottom: 14px; padding: 10px 12px; border: 1px solid #FDE68A; border-radius: 8px; background: #FFFBEB; color: #92400E; font-size: 13px; }
+.callout.bad { border-color: #FECACA; background: #FEF2F2; color: #991B1B; }
+.callout .ic { margin-top: 2px; }
+.empty { display: grid; place-items: center; gap: 6px; padding: 40px 16px; color: var(--muted); text-align: center; }
+.empty .ic { width: 28px; height: 28px; color: var(--faint); }
+.empty b { color: var(--text-2); }
+
+/* controls */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-2); font-weight: 500; white-space: nowrap; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+.btn:hover { background: var(--surface-2); text-decoration: none; }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn-primary { border-color: var(--primary); background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-ok { border-color: var(--ok); background: var(--ok); color: #fff; }
+.btn-ok:hover { background: #166534; }
+.btn-bad { border-color: var(--bad); background: var(--bad); color: #fff; }
+.btn-bad:hover { background: #991B1B; }
+.btn-ghost { border-color: transparent; background: transparent; }
+.btn-icon { width: 34px; padding: 0; }
+.btn-block { width: 100%; }
+.btn-lg { min-height: 44px; }
+kbd { padding: 0 5px; border: 1px solid currentColor; border-radius: 4px; font: 500 11px/16px var(--mono); opacity: .75; }
+input:not([type=checkbox]):not([type=file]), select, textarea { min-height: 34px; padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); transition: border-color .15s; }
+input:not([type=checkbox]):not([type=file]):hover, select:hover, textarea:hover { border-color: var(--faint); }
+input[type=checkbox] { width: 16px; height: 16px; margin: 0; accent-color: var(--primary); cursor: pointer; }
+textarea { width: 100%; min-height: 72px; resize: vertical; }
+select { cursor: pointer; }
+.search { position: relative; }
+.search .ic { position: absolute; top: 9px; left: 10px; color: var(--muted); pointer-events: none; }
+.search input { width: 230px; padding-left: 32px !important; }
+.check { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; color: var(--text-2); cursor: pointer; }
+.segctl { display: inline-flex; padding: 2px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-2); }
+.segctl button { min-height: 30px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--text-2); font-weight: 500; cursor: pointer; }
+.segctl button[aria-pressed="true"] { background: var(--surface); color: var(--primary); box-shadow: var(--shadow-1); }
+
+/* status */
+.st { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border: 1px solid transparent; border-radius: 999px; background: var(--todo-soft); color: var(--todo); font-size: 12px; font-weight: 500; white-space: nowrap; }
+.st .ic { width: 12px; height: 12px; }
+.st.ok { background: var(--ok-soft); color: var(--ok); }
+.st.bad { background: var(--bad-soft); color: var(--bad); }
+.st.warn { background: var(--accent-soft); color: var(--accent-text); }
+.st.na { background: transparent; border: 1px dashed var(--border-strong); color: var(--faint); }
+.tag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 6px; background: var(--surface-2); color: var(--text-2); font: 500 12px var(--mono); white-space: nowrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.togglechip { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-2); font-size: 12px; cursor: pointer; }
+.togglechip[aria-pressed="true"] { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); }
+.seg { display: flex; flex: 1; gap: 2px; min-width: 60px; }
+.seg i { flex: 1; height: 6px; border-radius: 2px; background: var(--todo-bar); }
+.seg i.ok { background: var(--ok-bar); }
+.seg i.bad { background: var(--bad-bar); }
+.seg i.na { background: repeating-linear-gradient(45deg, #E2E8F0 0 2px, #F8FAFC 2px 4px); }
+.progress-row { display: flex; align-items: center; gap: 10px; }
+.bar { display: flex; height: 8px; overflow: hidden; border-radius: 999px; background: var(--surface-3); }
+.bar i { display: block; height: 100%; }
+.bar .ok { background: var(--ok-bar); }
+.bar .bad { background: var(--bad-bar); }
+.bar .pri { background: var(--primary); }
+
+/* tables */
+.table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-1); }
+table { width: 100%; border-collapse: separate; border-spacing: 0; }
+th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+th { position: sticky; top: 0; z-index: 1; background: #F8FAFC; color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+tr[data-open] { cursor: pointer; }
+tr[data-open]:hover td { background: #F8FAFC; }
+tr.sel td, tr.sel:hover td { background: var(--primary-soft); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.t-main { font-weight: 600; }
+.t-sub { color: var(--muted); font-size: 12px; }
+.kv { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px 14px; margin: 0; font-size: 13px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; word-break: break-all; }
+table.plain { font-size: 13px; }
+table.plain th, table.plain td { position: static; padding: 7px 8px; background: none; }
+
+/* media */
+.scene-grid { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+.cards { grid-template-columns: repeat(auto-fill, minmax(214px, 1fr)); }
+.mcard { overflow: hidden; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.mcard:hover { border-color: var(--primary-line); box-shadow: var(--shadow-2); }
+.media { position: relative; display: grid; place-items: center; overflow: hidden; background: var(--surface-2); color: var(--faint); }
+.media.r169 { aspect-ratio: 16 / 9; }
+.media.r43 { aspect-ratio: 4 / 3; }
+.media > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.media .inset { position: absolute; right: 8px; bottom: 8px; width: 34%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border: 2px solid #fff; border-radius: 6px; box-shadow: var(--shadow-2); }
+.media .pills { position: absolute; top: 8px; left: 8px; display: flex; gap: 4px; }
+.pill { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; border-radius: 6px; background: rgba(15, 23, 42, .72); color: #fff; font: 500 11px var(--mono); }
+.mcard-b { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px 12px; }
+.mcard-t { display: flex; align-items: baseline; gap: 8px; }
+.mcard-t b { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.thumb { display: grid; place-items: center; width: 56px; height: 42px; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--faint); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: 8px; }
+.gthumb { position: relative; display: block; aspect-ratio: 4 / 3; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); cursor: zoom-in; }
+.gthumb img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .2s; }
+.gthumb:hover img { transform: scale(1.03); }
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 640px) { .compare { grid-template-columns: 1fr; } }
+.compare figure { margin: 0; min-width: 0; }
+.compare figcaption { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 13px; font-weight: 600; }
+.hero { display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); color: var(--muted); cursor: zoom-in; }
+.hero img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.hero.empty-hero { gap: 6px; padding: 16px; cursor: default; font-size: 12px; text-align: center; }
+.strip { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; }
+.strip .item { position: relative; flex: none; }
+.strip .gthumb { width: 64px; }
+.del { position: absolute; top: 3px; right: 3px; display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px; background: rgba(15, 23, 42, .75); color: #fff; cursor: pointer; opacity: 0; transition: opacity .15s; }
+.item:hover .del, .del:focus-visible { opacity: 1; }
+.upload { position: relative; overflow: hidden; }
+.upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.upload:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* drawer */
+#scrim { position: fixed; inset: 0; z-index: 20; background: rgba(15, 23, 42, .38); opacity: 0; pointer-events: none; transition: opacity .2s; }
+#scrim.on { opacity: 1; pointer-events: auto; }
+#drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 21; display: flex; flex-direction: column; width: min(780px, 100vw); background: var(--surface); box-shadow: var(--shadow-3); transform: translateX(100%); visibility: hidden; transition: transform .22s ease, visibility 0s .22s; }
+#drawer.on { transform: none; visibility: visible; transition: transform .22s ease; }
+.dr-h { display: flex; align-items: flex-start; gap: 12px; padding: 18px 22px 14px; border-bottom: 1px solid var(--border); }
+.dr-h h2 { margin: 0; font-size: 18px; font-weight: 650; word-break: break-all; }
+.dr-h p { margin: 3px 0 0; color: var(--muted); font-size: 12px; word-break: break-all; }
+.dr-b { flex: 1; overflow: auto; padding: 4px 22px 48px; }
+.sec { margin-top: 22px; }
+.sec > h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 10px; color: var(--text-2); font-size: 13px; font-weight: 650; }
+.sec > h3 .muted { font-weight: 400; }
+.stage-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: 8px; }
+.stage-list li { display: grid; grid-template-columns: 84px minmax(110px, 180px) minmax(0, 1fr); align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.stage-list li:last-child { border-bottom: 0; }
+.stage-list .sl-detail { color: var(--muted); font-size: 12px; }
+.form { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: center; gap: 10px 14px; }
+.form > label { color: var(--text-2); font-size: 13px; }
+.form .ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+.form .ctl > input:not([type=checkbox]), .form .ctl > select { flex: 1 1 200px; max-width: 360px; }
+.form .ctl.dims input { flex: 0 0 96px; width: 96px; min-width: 0; }
+.hint { color: var(--muted); font-size: 12px; }
+@media (max-width: 560px) { .form { grid-template-columns: 1fr; } .stage-list li { grid-template-columns: 84px 1fr; } .stage-list .sl-detail { grid-column: 1 / -1; } }
+.code { position: relative; }
+.code pre { margin: 0; padding: 12px 46px 12px 14px; overflow: auto; border-radius: 8px; background: #0F172A; color: #E2E8F0; font: 12px/1.65 var(--mono); white-space: pre-wrap; word-break: break-all; }
+.code .copy { position: absolute; top: 6px; right: 6px; border-color: rgba(255, 255, 255, .16); background: rgba(255, 255, 255, .06); color: #CBD5E1; }
+.code .copy:hover { background: rgba(255, 255, 255, .14); }
+
+/* QA */
+.qa { display: grid; grid-template-columns: minmax(420px, 5fr) minmax(480px, 6fr); align-items: start; gap: 16px; }
+.qa-list { max-height: calc(100vh - 210px); }
+.qa-panel { position: sticky; top: 20px; }
+@media (max-width: 1200px) { .qa { grid-template-columns: 1fr; } .qa-panel { position: static; } .qa-list { max-height: 460px; } }
+.bulkbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px 8px 0 0; background: var(--primary); color: #fff; font-size: 13px; }
+.bulkbar .btn { min-height: 30px; border-color: rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .08); color: #fff; }
+.bulkbar .btn:hover { background: rgba(255, 255, 255, .18); }
+.videos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.videos figure { position: relative; margin: 0; }
+.videos video { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; background: #000; }
+.videos figcaption { position: absolute; top: 8px; left: 8px; padding: 1px 6px; border-radius: 4px; background: rgba(15, 23, 42, .72); color: #fff; font: 500 11px var(--mono); pointer-events: none; }
+.decision { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+
+/* overlays */
+#lightbox { position: fixed; inset: 0; z-index: 30; display: none; grid-template-rows: auto minmax(0, 1fr); background: rgba(2, 6, 23, .9); }
+#lightbox.on { display: grid; }
+.lb-top { display: flex; align-items: center; gap: 10px; padding: 12px 16px; color: #E2E8F0; font-size: 13px; }
+.lb-top .btn { border-color: rgba(255, 255, 255, .2); background: rgba(255, 255, 255, .06); color: #E2E8F0; }
+.lb-stage { position: relative; display: grid; place-items: center; min-height: 0; padding: 0 64px 24px; }
+.lb-stage img { max-width: 100%; max-height: calc(100vh - 90px); border-radius: 6px; object-fit: contain; }
+.lb-nav { position: absolute; top: 50%; width: 44px; height: 44px; border-color: rgba(255, 255, 255, .2); border-radius: 50%; background: rgba(255, 255, 255, .08); color: #fff; transform: translateY(-50%); }
+.lb-nav:hover { background: rgba(255, 255, 255, .18); }
+.lb-prev { left: 12px; }
+.lb-next { right: 12px; }
+#toast { position: fixed; bottom: 24px; left: 50%; z-index: 40; display: flex; align-items: center; gap: 8px; max-width: min(560px, 92vw); padding: 10px 14px; border-radius: 10px; background: #0F172A; color: #fff; box-shadow: var(--shadow-3); font-size: 13px; opacity: 0; pointer-events: none; transform: translate(-50%, 12px); transition: opacity .2s, transform .2s; }
+#toast.on { opacity: 1; transform: translate(-50%, 0); }
+#toast.err { background: #7F1D1D; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>Real2Sim 数采管理平台</h1>
-  <nav>
-    <a href="#overview" data-tab="overview">总览</a>
-    <a href="#scenes" data-tab="scenes">场景重建</a>
-    <a href="#objects" data-tab="objects">物体资产</a>
-    <a href="#tasks" data-tab="tasks">任务采集</a>
-    <a href="#qa" data-tab="qa">数据质检</a>
-  </nav>
-  <span class="sp"></span>
-  <label class="small">操作人 <input id="user" placeholder="填写姓名"></label>
-  <button class="primary" onclick="sync()">从项目同步</button>
-</header>
-<main></main>
-<aside id="drawer"></aside>
-<div id="lightbox" onclick="this.style.display = 'none'"><img alt=""></div>
-<div id="toast"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></symbol>
+    <symbol id="i-scan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 15l3-4 2 2 2-3 3 5z"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></symbol>
+    <symbol id="i-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8z"/><rect x="2" y="6" width="14" height="12" rx="2"/></symbol>
+    <symbol id="i-compare" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M11 18H8a2 2 0 0 1-2-2V9"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+    <symbol id="i-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="8" stroke-dasharray="3.5 3.5"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l14 9-14 9z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 4v16"/><path d="M16 4v16"/></symbol>
+    <symbol id="i-rewind" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-chev-l" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-chev-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+    <symbol id="i-cube" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M12 22V12"/><path d="m3 7 9 5 9-5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18-8-14a2 2 0 0 0-3.5 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+    <symbol id="i-arrow-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></symbol>
+    <symbol id="i-table" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></symbol>
+  </defs>
+</svg>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="mark" aria-hidden="true">R2S</span><div><b>Real2Sim</b><small>数采管理平台</small></div></div>
+    <nav id="nav" aria-label="主导航"></nav>
+    <div class="side-foot">
+      <label class="field"><span>操作人</span><input id="user" placeholder="填写姓名" autocomplete="name"></label>
+      <button id="sync-btn" class="btn btn-primary btn-block" type="button" onclick="sync()"></button>
+      <div id="source" class="source"></div>
+    </div>
+  </aside>
+  <main id="main"><div class="empty">加载中…</div></main>
+</div>
+<div id="scrim" onclick="closeDrawer()"></div>
+<aside id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title"></aside>
+<div id="lightbox" role="dialog" aria-modal="true" aria-label="图片预览">
+  <div class="lb-top"><span id="lb-cap" class="mono"></span><span class="sp"></span>
+    <a id="lb-open" class="btn" target="_blank" rel="noopener"><svg class="ic" aria-hidden="true"><use href="#i-external"/></svg>原图</a>
+    <button id="lb-close" class="btn btn-icon" type="button" aria-label="关闭预览" onclick="closeLB()"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+  <div class="lb-stage">
+    <button class="btn btn-icon lb-nav lb-prev" type="button" aria-label="上一张" onclick="lbStep(-1)"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-chev-l"/></svg></button>
+    <img id="lb-img" alt="">
+    <button class="btn btn-icon lb-nav lb-next" type="button" aria-label="下一张" onclick="lbStep(1)"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-chev-r"/></svg></button>
+  </div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
 <script>
 'use strict';
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]);
 const file = (p) => `/file?path=${encodeURIComponent(p)}`;
 const num = (v) => v !== null && v !== undefined && v !== '' && !Number.isNaN(Number(v));
-const pct = (x) => (num(x) ? `${Math.round(x * 100)}%` : '-');
+const pct = (x) => (num(x) ? `${Math.round(x * 100)}%` : '—');
 const sum = (xs) => xs.reduce((a, b) => a + b, 0);
 const fmtTime = (t) => (t ? new Date(t * 1000).toLocaleString('zh-CN', {hour12: false}) : '');
 const live = (xs) => xs.filter((d) => !d.auto?.missing);
 const group = (xs, key) => xs.reduce((m, x) => ((m[key(x)] ||= []).push(x), m), {});
 const rel = (p) => (p && INFO.root && p.startsWith(`${INFO.root}/`) ? p.slice(INFO.root.length + 1) : p);
+const base = (p) => String(p).split('/').pop();
 const user = () => localStorage.user || '';
 const opts = (options, value) => Object.entries(options).map(([k, l]) => `<option value="${esc(k)}" ${k === String(value ?? '') ? 'selected' : ''}>${esc(l)}</option>`).join('');
+const ic = (name, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
 const KINDS = ['scene', 'object', 'task', 'episode'];
 const TAB_OF = {scene: 'scenes', object: 'objects', task: 'tasks', episode: 'qa'};
 const KIND_LABEL = {scene: '场景', object: '物体', task: '任务', episode: '回合'};
 const S = {scene: [], object: [], task: [], episode: []};
 const UI = {
-  tab: 'overview', drawer: null, ep: null, taskDim: 'custom', taskQ: '', obj: {q: '', role: ''},
+  tab: 'overview', drawer: null, ep: null, taskDim: 'custom', taskQ: '', sel: new Set(), loaded: false, syncing: false, syncedAt: '',
+  obj: {q: '', role: '', src: '', photo: false, view: localStorage.objView || 'cards'},
   qa: {task: '', config: '', policy: '', result: '', status: 'pending'},
 };
 let INFO = {};
 let EP_BY_TASK = {};
+const GAL = {};
 
 // ---------- stages: [key, label, doc -> {s: ok | bad | todo | na, t: detail}] ----------
 const ok = (t = '') => ({s: 'ok', t});
@@ -132,7 +376,9 @@ const todo = (t = '') => ({s: 'todo', t});
 const na = (t = '') => ({s: 'na', t});
 const flag = (v, hint) => (v ? ok('已完成') : todo(hint));
 const STATE = {ok: '通过', bad: '不通过', todo: '待办', na: '不适用'};
-const allOk = (stages, d) => stages.every(([, , fn]) => ['ok', 'na'].includes(fn(d).s));
+const STATE_IC = {ok: 'check', bad: 'x', todo: 'circle', na: 'minus'};
+const evalStages = (stages, d) => stages.map(([k, label, fn]) => ({k, label, ...fn(d)}));
+const allOk = (stages, d) => evalStages(stages, d).every((r) => r.s === 'ok' || r.s === 'na');
 
 const SCENE_STAGES = [
   ['photos', '照片采集', (d) => (d.auto.photos?.length ? ok(`${d.auto.photos.length} 张参考照片`) : todo('reference/ 下没有照片'))],
@@ -165,7 +411,7 @@ const SPLITS = {'': '未定', train: '训练', holdout: '保留（泛化评测�
 const METHODS = {'': '未定', script: '参数化脚本', photogrammetry: '摄影测量', generative: '3D 生成模型', library: '开源 / 官方物体库'};
 const CHECK_STATES = {'': '未测', pass: '通过', fail: '不通过', na: '不适用'};
 const PHYS = [
-  ['settle', '落地静置', '1 s 内稳定，倾斜 < 1°，速度 < 5 mm/s', (d) => `PYTHONPATH=. python scripts/objects/check_object.py Assets/Object/RoboDojo/${d.id} --image check.png`],
+  ['settle', '落地静置', '1 s 内稳定，倾斜 < 1°，速度 < 5 mm/s', (d) => `PYTHONPATH=. python scripts/objects/check_object.py Assets/Object/RoboDojo/${d.id} --image-dir real2sim/objects`],
   ['collision', '碰撞体', '与桌面、其他物体初始无穿插；容器口没被碰撞体封住', () => ''],
   ['grasp', '抓取', 'Dex1 用脚本抓起，保持 3 s 不滑落', () => ''],
   ['liquid', '盛液（仅容器）', '静置时液体保留率 ≥ 99%',
@@ -174,9 +420,9 @@ const PHYS = [
 ];
 const measured = (d) => Array.isArray(d.real_dims) && d.real_dims.length === 3 && d.real_dims.every(num) && num(d.real_mass);
 function dimCheck(d) {
-  const sim = d.auto.size;
-  if (!Array.isArray(sim) || !measured(d)) return null;
-  const a = sim.map((v) => v * 1000).sort((x, y) => y - x);
+  const simSize = d.auto.size;
+  if (!Array.isArray(simSize) || !measured(d)) return null;
+  const a = simSize.map((v) => v * 1000).sort((x, y) => y - x);
   const b = d.real_dims.map(Number).sort((x, y) => y - x);
   return a.map((v, i) => ({sim: v, real: b[i], err: Math.abs(v - b[i]), ok: Math.abs(v - b[i]) <= Math.max(2, 0.02 * b[i])}));
 }
@@ -258,210 +504,293 @@ function simReal(eps) {
   return {n, a, b, c, d, A, kappa: pe < 1 ? (A - pe) / (1 - pe) : null, trust: a + b ? a / (a + b) : null};
 }
 
-// ---------- shared widgets ----------
-const missingBadge = (d) => (d.auto?.missing ? ' <span class="chip bad">文件已不存在</span>' : '');
-const chips = (stages, d) => `<div class="stages">${stages.map(([, label, fn]) => {
-  const r = fn(d);
-  return `<span class="chip ${r.s}" title="${esc(`${STATE[r.s]}：${r.t}`)}">${esc(label)}</span>`;
-}).join('')}</div>`;
-const stageList = (stages, d) => `<table class="plain">${stages.map(([, label, fn]) => {
-  const r = fn(d);
-  return `<tr><td style="width:210px"><span class="chip ${r.s}">${STATE[r.s]}</span> ${esc(label)}</td><td class="small muted">${esc(r.t)}</td></tr>`;
-}).join('')}</table>`;
-function stageBars(title, stages, docs, href) {
+// ---------- widgets ----------
+const st = (s, text) => `<span class="st ${s}">${ic(STATE_IC[s])}${esc(text)}</span>`;
+const segBar = (rs) => {
+  const n = rs.filter((r) => r.s !== 'na').length, k = rs.filter((r) => r.s === 'ok').length;
+  return `<div class="seg" role="img" aria-label="${k}/${n} 项完成">${rs.map((r) => `<i class="${r.s}" title="${esc(`${r.label}：${STATE[r.s]}${r.t ? ` · ${r.t}` : ''}`)}"></i>`).join('')}</div>`;
+};
+const progress = (rs) => {
+  const n = rs.filter((r) => r.s !== 'na').length, k = rs.filter((r) => r.s === 'ok').length, b = rs.filter((r) => r.s === 'bad').length;
+  return `<div class="progress-row">${segBar(rs)}<span class="small num nowrap ${b ? 'txt-bad' : 'muted'}">${k}/${n}${b ? ` · ${b} 不通过` : ''}</span></div>`;
+};
+const stageChips = (rs) => `<div class="chips">${rs.map((r) => `<span class="st ${r.s}" title="${esc(`${STATE[r.s]}：${r.t}`)}">${ic(STATE_IC[r.s])}${esc(r.label)}</span>`).join('')}</div>`;
+const stageList = (rs) => `<ul class="stage-list">${rs.map((r) => `<li>${st(r.s, STATE[r.s])}<span>${esc(r.label)}</span><span class="sl-detail">${esc(r.t)}</span></li>`).join('')}</ul>`;
+const pageHead = (title, sub, actions = '') => `<header class="ph"><div><h1>${title}</h1>${sub ? `<p>${sub}</p>` : ''}</div>${actions ? `<div class="toolbar">${actions}</div>` : ''}</header>`;
+const empty = (icon, title, text) => `<div class="empty">${ic(icon)}<b>${title}</b><span class="small">${text}</span></div>`;
+const sec = (title, body, extra = '') => `<section class="sec"><h3>${title}${extra}</h3>${body}</section>`;
+const code = (text) => `<div class="code"><pre>${esc(text)}</pre><button class="btn btn-icon copy" type="button" aria-label="复制命令" onclick="copyCode(this)">${ic('copy')}</button></div>`;
+const missingBadge = (d) => (d.auto?.missing ? `<span class="st bad">${ic('alert')}文件已不存在</span>` : '');
+const val = (d, f) => f.split('.').reduce((o, k) => o?.[k], d);
+const fid = (f) => `f-${f.replace(/\./g, '-')}`;
+const inp = (d, f, type = 'text', attrs = '') => (type === 'checkbox'
+  ? `<input id="${fid(f)}" type="checkbox" data-f="${f}" ${val(d, f) ? 'checked' : ''} ${attrs}>`
+  : `<input id="${fid(f)}" type="${type}" data-f="${f}" value="${esc(val(d, f) ?? '')}" ${attrs}>`);
+const sel = (d, f, options, attrs = '') => `<select id="${fid(f)}" data-f="${f}" ${attrs}>${opts(options, val(d, f))}</select>`;
+const area = (d, f, attrs = '') => `<textarea id="${fid(f)}" data-f="${f}" ${attrs}>${esc(val(d, f) ?? '')}</textarea>`;
+const row = (label, f, control, hint = '') => `<label for="${fid(f)}">${label}</label><div class="ctl">${control}${hint ? `<span class="hint">${hint}</span>` : ''}</div>`;
+const searchBox = (id, value, setter, hint) => `<div class="search">${ic('search')}<input id="${id}" type="text" placeholder="${hint}" aria-label="${hint}" value="${esc(value)}"
+  oninput="if (!event.isComposing) { ${setter} = this.value; render(); }" oncompositionend="${setter} = this.value; render()"></div>`;
+const link = (kind, id, text = id) => `<a href="#${TAB_OF[kind]}" data-go="${kind}" data-id="${esc(id)}">${esc(text)}</a>`;
+const assetsWarning = () => (INFO.assets_ok ? '' : `<div class="callout">${ic('alert')}<div>资产库 <span class="mono">${esc(INFO.assets)}</span> 下没有 Object/：物体元数据和评测布局数不可用。
+  本机先运行 <span class="mono">scripts/init_assets.sh</span>，或在服务器上用 <span class="mono">--assets</span> 指向共享资产库。</div></div>`);
+function gallery(key, paths = [], limit = 24) {
+  GAL[key] = paths;
+  if (!paths.length) return '<div class="small muted">无</div>';
+  const more = paths.length > limit ? `<div class="small muted" style="margin-top:6px">共 ${paths.length} 张，显示前 ${limit} 张，点开后可翻看全部</div>` : '';
+  return `<div class="gallery">${paths.slice(0, limit).map((p, i) => `<button class="gthumb" type="button" data-lb="${esc(key)}" data-i="${i}" aria-label="查看 ${esc(base(p))}">
+    <img loading="lazy" decoding="async" src="${file(p)}" alt=""></button>`).join('')}</div>${more}`;
+}
+
+// ---------- navigation ----------
+function renderNav() {
+  const pending = live(S.episode).filter((e) => !e.qa || e.qa === 'pending').length;
+  const items = [
+    ['overview', '总览', 'grid', ''],
+    ['scenes', '场景重建', 'scan', S.scene.length],
+    ['objects', '物体资产', 'box', live(S.object).length],
+    ['tasks', '任务采集', 'list', live(S.task).filter((t) => t.auto.dimension === 'custom').length],
+    ['qa', '数据质检', 'clipboard', pending],
+  ];
+  $('#nav').innerHTML = items.map(([tab, label, icon, n]) => `<a class="nav-item" href="#${tab}" ${UI.tab === tab ? 'aria-current="page"' : ''}>${ic(icon, 'ic-lg')}<span>${label}</span>${
+    tab === 'qa' ? (n ? `<span class="badge" title="待审回合">${n}</span>` : '') : (n !== '' ? `<span class="count">${n}</span>` : '')}</a>`).join('');
+  $('#sync-btn').innerHTML = UI.syncing ? `${ic('refresh', 'spin')}同步中…` : `${ic('refresh')}同步项目数据`;
+  $('#sync-btn').disabled = UI.syncing;
+  $('#source').innerHTML = `<div><span class="dot ${INFO.assets_ok ? 'ok' : 'warn'}"></span>资产库${INFO.assets_ok ? '已连接' : '未找到'}</div>
+    <div>回合目录 ${(INFO.eval_roots || []).length} 个</div>${UI.syncedAt ? `<div>同步于 ${UI.syncedAt}</div>` : ''}`;
+}
+
+// ---------- overview ----------
+function moduleCard(step, title, href, stages, docs) {
   const rows = stages.map(([, label, fn]) => {
     const c = {ok: 0, bad: 0, todo: 0, na: 0};
     docs.forEach((d) => c[fn(d).s]++);
     const n = c.ok + c.bad + c.todo;
-    const bars = n ? `<i class="ok" style="width:${(c.ok / n) * 100}%"></i><i class="bad" style="width:${(c.bad / n) * 100}%"></i>` : '';
-    return `<tr><td class="small" style="width:200px">${esc(label)}</td><td><div class="bar">${bars}</div></td>
-      <td class="small muted" style="width:120px;text-align:right">${c.ok}/${n}${c.bad ? ` · <span style="color:var(--bad)">${c.bad} 不通过</span>` : ''}</td></tr>`;
+    return `<div class="meter"><span class="lbl">${esc(label)}</span>
+      <div class="bar" role="img" aria-label="${c.ok}/${n} 通过${c.bad ? `，${c.bad} 不通过` : ''}">${n ? `<i class="ok" style="width:${(c.ok / n) * 100}%"></i><i class="bad" style="width:${(c.bad / n) * 100}%"></i>` : ''}</div>
+      <span class="val ${c.bad ? 'txt-bad' : ''}">${c.ok}/${n}${c.bad ? ` ·${c.bad}✕` : ''}</span></div>`;
   }).join('');
-  return `<div class="card"><div class="toolbar" style="margin:0"><b>${esc(title)}</b><span class="muted small">${docs.length} 项</span><span class="sp"></span><a class="small" href="${href}">查看 →</a></div><table class="plain">${rows}</table></div>`;
+  return `<section class="card"><div class="card-h"><span class="step">${String(step).padStart(2, '0')}</span><h2>${title}</h2><span class="muted small">${docs.length} 项</span>
+    <span class="sp"></span><a class="small" href="${href}">查看 ${ic('arrow-r', 'ic-sm')}</a></div><div class="card-b">${rows}</div></section>`;
 }
-const val = (d, f) => f.split('.').reduce((o, k) => o?.[k], d);
-const inp = (d, f, type = 'text', attrs = '') => (type === 'checkbox'
-  ? `<input id="f-${f}" type="checkbox" data-f="${f}" ${val(d, f) ? 'checked' : ''}>`
-  : `<input id="f-${f}" type="${type}" data-f="${f}" value="${esc(val(d, f) ?? '')}" ${attrs}>`);
-const sel = (d, f, options) => `<select id="f-${f}" data-f="${f}">${opts(options, val(d, f))}</select>`;
-const area = (d, f, attrs = '') => `<textarea id="f-${f}" data-f="${f}" ${attrs}>${esc(val(d, f) ?? '')}</textarea>`;
-const searchBox = (id, value, setter, hint) => `<input id="${id}" type="text" placeholder="${hint}" value="${esc(value)}"
-  oninput="if (!event.isComposing) { ${setter} = this.value; render(); }" oncompositionend="${setter} = this.value; render()">`;
-const thumbs = (paths = [], limit = 24) => (!paths.length ? '<div class="small muted">无</div>'
-  : `<div class="thumbs">${paths.slice(0, limit).map((p) => `<img loading="lazy" src="${file(p)}" title="${esc(p.split('/').pop())}" onclick="lightbox(this.src)">`).join('')}</div>`
-    + (paths.length > limit ? `<div class="small muted">共 ${paths.length} 张，显示前 ${limit} 张</div>` : ''));
-const link = (kind, id, text = id) => `<a href="javascript:void 0" data-id="${esc(id)}" onclick="go('${kind}', this.dataset.id)">${esc(text)}</a>`;
-const assetsWarning = () => (INFO.assets_ok ? '' : `<div class="warn">资产库 ${esc(INFO.assets)} 下没有 Object/：物体元数据和评测布局数不可用。
-  本机先运行 scripts/init_assets.sh，或在服务器上用 <code>--assets</code> 指向共享资产库。</div>`);
-
-// ---------- overview ----------
 function viewOverview() {
   const scenes = live(S.scene), objs = live(S.object), eps = live(S.episode);
   const tasks = live(S.task).filter((t) => t.auto.dimension === 'custom');
-  const qa = group(eps, (e) => e.qa || 'pending'), sr = simReal(eps);
-  const kpi = (v, label, sub, href) => `<a class="card kpi" href="${href}"><div class="l">${label}</div><div class="v">${v}</div><div class="small muted">${sub}</div></a>`;
+  const qa = group(eps, (e) => e.qa || 'pending'), sr = simReal(eps), done = scenes.filter((d) => allOk(SCENE_STAGES, d)).length;
+  const kpi = (icon, label, value, meta, href, ratio) => `<a class="card kpi" href="${href}"><div class="k-label">${ic(icon)}${label}</div><div class="k-value num">${value}</div>
+    <div class="k-meta">${meta}</div>${ratio == null ? '' : `<div class="bar" style="margin-top:10px"><i class="pri" style="width:${Math.min(100, ratio * 100)}%"></i></div>`}</a>`;
   const rejected = eps.filter((e) => e.qa === 'reject');
-  const tagCount = TAGS.map((t) => [t, rejected.filter((e) => (e.tags || []).includes(t)).length]).filter(([, n]) => n);
-  const recent = KINDS.flatMap((k) => S[k].filter((d) => d._at).map((d) => ({k, d}))).sort((x, y) => y.d._at - x.d._at).slice(0, 10);
+  const tagCount = TAGS.map((t) => [t, rejected.filter((e) => (e.tags || []).includes(t)).length]).filter(([, n]) => n).sort((a, b) => b[1] - a[1]);
+  const recent = KINDS.flatMap((k) => S[k].filter((d) => d._at).map((d) => ({k, d}))).sort((x, y) => y.d._at - x.d._at).slice(0, 8);
+  const withPhoto = objs.filter((o) => o.auto.photos?.length).length, withRender = objs.filter((o) => o.auto.renders?.length).length;
   const roles = Object.entries(ROLE_TARGETS).map(([role, target]) => {
     const xs = objs.filter((o) => o.role === role), hold = xs.filter((o) => o.split === 'holdout').length;
-    return `<tr><td style="width:80px">${ROLES[role]}</td><td><div class="bar"><i class="ok" style="width:${Math.min(100, (xs.length / target) * 100)}%"></i></div></td>
-      <td class="small" style="width:60px">${xs.length}/${target}</td>
-      <td class="small muted">训练 ${xs.filter((o) => o.split === 'train').length} · 保留 ${hold}${xs.length ? `（${pct(hold / xs.length)}，目标 30%）` : ''}</td></tr>`;
+    return `<div class="meter"><span class="lbl">${ROLES[role]} <span class="muted small">目标 ${target}</span></span>
+      <div class="bar"><i class="pri" style="width:${Math.min(100, (xs.length / target) * 100)}%"></i></div><span class="val">${xs.length}/${target}</span></div>
+      <div class="small muted" style="margin:-2px 0 6px">训练 ${xs.filter((o) => o.split === 'train').length} · 保留 ${hold}${xs.length ? `（${pct(hold / xs.length)}，目标 30%）` : ''}</div>`;
   }).join('');
-  const srTable = !sr ? '<div class="small muted">还没有真机对照。在「数据质检」里给回合选择真机结果，这里会计算 AA、κ 和 P(真机成功 | 仿真成功)。</div>'
-    : `<table class="plain">
-      <tr><td>结果一致率 AA</td><td><b>${pct(sr.A)}</b></td><td class="small muted">单次试验里仿真结论与真机相同的比例</td></tr>
-      <tr><td>Cohen's κ</td><td><b>${sr.kappa == null ? '-' : sr.kappa.toFixed(2)}</b></td><td class="small muted">扣除“两边都大量失败”造成的虚高</td></tr>
-      <tr><td>仿真成功可信度</td><td><b>${pct(sr.trust)}</b></td><td class="small muted">P(真机成功 | 仿真成功)</td></tr>
-      <tr><td>配对</td><td><b>${sr.n}</b></td><td class="small muted">都成功 ${sr.a} · 仅仿真成功 ${sr.b} · 仅真机成功 ${sr.c} · 都失败 ${sr.d}</td></tr></table>`;
-  return `<div class="grid">
-    ${kpi(`${scenes.filter((d) => allOk(SCENE_STAGES, d)).length}/${scenes.length}`, '场景验收完成', '目标 7 个场景：3 孪生 + 4 泛化', '#scenes')}
-    ${kpi(objs.length, '物体资产', `已实测 ${objs.filter(measured).length} · 物理检验全过 ${objs.filter((d) => OBJ_STAGES[3][2](d).s === 'ok').length}`, '#objects')}
-    ${kpi(tasks.length, 'G1-D 任务', `评测布局 ${sum(tasks.map((t) => sum(Object.values(t.auto.layouts || {}))))} 个`, '#tasks')}
-    ${kpi(eps.length, '采集回合', `仿真成功率 ${pct(rate(eps))}`, '#qa')}
-    ${kpi((qa.pass || []).length, '质检通过', `拒绝 ${(qa.reject || []).length} · 待审 ${(qa.pending || []).length}`, '#qa')}
-    ${kpi(sr ? pct(sr.A) : '-', 'Sim ↔ Real 一致率', sr ? `κ ${sr.kappa == null ? '-' : sr.kappa.toFixed(2)} · ${sr.n} 对` : '尚无真机对照', '#qa')}
+  const srBody = !sr ? empty('compare', '还没有真机对照', '在「数据质检」给回合选择真机结果后，这里计算 AA、κ 和 P(真机成功 | 仿真成功)')
+    : `<dl class="kv"><dt>结果一致率 AA</dt><dd><b class="mono">${pct(sr.A)}</b> <span class="muted small">仿真与真机结论相同的比例</span></dd>
+      <dt>Cohen's κ</dt><dd><b class="mono">${sr.kappa == null ? '—' : sr.kappa.toFixed(2)}</b> <span class="muted small">扣除“两边都大量失败”的虚高</span></dd>
+      <dt>仿真成功可信度</dt><dd><b class="mono">${pct(sr.trust)}</b> <span class="muted small">P(真机成功 | 仿真成功)</span></dd>
+      <dt>配对</dt><dd><b class="mono">${sr.n}</b> <span class="muted small">都成功 ${sr.a} · 仅仿真 ${sr.b} · 仅真机 ${sr.c} · 都失败 ${sr.d}</span></dd></dl>`;
+  return `<div class="page">${pageHead('总览', '场景重建 → 物体资产 → 任务采集 → 数据质检，阈值取自 Notion「Real2Sim2Real」月度目标')}
+  <div class="grid kpis">
+    ${kpi('scan', '场景验收完成', `${done}/${scenes.length}`, '目标 7 个：3 孪生 + 4 泛化', '#scenes', done / 7)}
+    ${kpi('box', '物体资产', objs.length, `实拍 ${withPhoto} · 渲染 ${withRender} · 已实测 ${objs.filter(measured).length}`, '#objects')}
+    ${kpi('list', 'G1-D 任务', tasks.length, `评测布局 ${sum(tasks.map((t) => sum(Object.values(t.auto.layouts || {}))))} 个`, '#tasks')}
+    ${kpi('video', '采集回合', eps.length, `仿真成功率 ${pct(rate(eps))}`, '#qa')}
+    ${kpi('clipboard', '质检通过', (qa.pass || []).length, `拒绝 ${(qa.reject || []).length} · 待审 ${(qa.pending || []).length}`, '#qa', eps.length ? (qa.pass || []).length / eps.length : null)}
+    ${kpi('compare', 'Sim ↔ Real 一致率', sr ? pct(sr.A) : '—', sr ? `κ ${sr.kappa == null ? '—' : sr.kappa.toFixed(2)} · ${sr.n} 对` : '尚无真机对照', '#qa')}
   </div>
-  <div class="cols">
-    <div>
-      <h2>流程看板</h2>
-      ${stageBars('场景重建', SCENE_STAGES, scenes, '#scenes')}
-      ${stageBars('物体资产', OBJ_STAGES, objs, '#objects')}
-      ${stageBars('任务采集（G1-D）', TASK_STAGES, tasks, '#tasks')}
-      ${stageBars('数据质检', [...EP_CHECKS, QA_STAGE], eps, '#qa')}
-    </div>
-    <div>
-      <h2>资产泛化目标（倒水类任务）</h2>
-      <div class="card"><table class="plain">${roles}</table></div>
-      <h2>Sim ↔ Real 一致性</h2>
-      <div class="card">${srTable}</div>
-      <h2>拒绝原因</h2>
-      <div class="card">${tagCount.length ? `<table class="plain">${tagCount.map(([t, n]) => `<tr><td style="width:110px">${esc(t)}</td>
-        <td><div class="bar"><i class="bad" style="width:${(n / rejected.length) * 100}%"></i></div></td><td class="small" style="width:40px">${n}</td></tr>`).join('')}</table>`
-        : '<div class="small muted">没有带标签的拒绝回合</div>'}</div>
-      <h2>最近操作</h2>
-      <div class="card">${recent.length ? `<table class="plain small">${recent.map(({k, d}) => `<tr><td class="muted" style="width:150px">${fmtTime(d._at)}</td>
-        <td style="width:70px">${esc(d._by || '匿名')}</td><td>${KIND_LABEL[k]} ${link(k, d.id, k === 'episode' ? `${d.auto.task || d.auto.run_id} #${d.auto.index}` : d.id)}</td></tr>`).join('')}</table>`
-        : '<div class="small muted">还没有人工录入</div>'}</div>
-    </div>
+  <h2 class="section-title">${ic('layers')}数采流程</h2>
+  <div class="grid pipeline">
+    ${moduleCard(1, '场景重建', '#scenes', SCENE_STAGES, scenes)}
+    ${moduleCard(2, '物体资产', '#objects', OBJ_STAGES, objs)}
+    ${moduleCard(3, '任务采集', '#tasks', TASK_STAGES, tasks)}
+    ${moduleCard(4, '数据质检', '#qa', [...EP_CHECKS, QA_STAGE], eps)}
   </div>
-  <p class="small muted">数据来源：仓库 ${esc(INFO.root)} · 资产库 ${esc(INFO.assets)}${INFO.assets_ok ? '' : '（不存在）'} · 回合目录 ${esc((INFO.eval_roots || []).join('，'))} · 数据库 ${esc(INFO.db)}</p>`;
+  <div class="grid trio" style="margin-top:14px">
+    <section class="card"><div class="card-h"><h2>资产泛化目标</h2><span class="muted small">倒水类任务</span></div><div class="card-b">${roles}</div></section>
+    <section class="card"><div class="card-h"><h2>Sim ↔ Real 一致性</h2></div><div class="card-b">${srBody}</div></section>
+    <section class="card"><div class="card-h"><h2>拒绝原因</h2><span class="muted small">${rejected.length} 个拒绝回合</span></div><div class="card-b">${tagCount.length
+      ? tagCount.map(([t, n]) => `<div class="meter"><span class="lbl">${esc(t)}</span><div class="bar"><i class="bad" style="width:${(n / rejected.length) * 100}%"></i></div><span class="val">${n}</span></div>`).join('')
+      : empty('clipboard', '没有带标签的拒绝回合', '拒绝时选上问题标签，这里按原因统计')}</div></section>
+  </div>
+  <h2 class="section-title">最近操作</h2>
+  ${recent.length ? `<div class="table-wrap"><table><thead><tr><th>时间</th><th>操作人</th><th>类型</th><th>对象</th></tr></thead><tbody>${recent.map(({k, d}) => `<tr>
+    <td class="small muted nowrap num">${fmtTime(d._at)}</td><td>${esc(d._by || '匿名')}</td><td><span class="tag">${KIND_LABEL[k]}</span></td>
+    <td>${link(k, d.id, k === 'episode' ? `${d.auto.task || d.auto.run_id} #${d.auto.index}` : d.id)}</td></tr>`).join('')}</tbody></table></div>`
+    : `<div class="card">${empty('clipboard', '还没有人工录入', '在各页面录入验收结论或质检结果后，这里按时间列出')}</div>`}
+  <p class="small muted" style="margin-top:24px">数据来源：仓库 <span class="mono">${esc(INFO.root)}</span> · 资产库 <span class="mono">${esc(INFO.assets)}</span>${INFO.assets_ok ? '' : '（不存在）'}
+    · 回合目录 <span class="mono">${esc((INFO.eval_roots || []).join('，'))}</span> · 数据库 <span class="mono">${esc(INFO.db)}</span></p></div>`;
 }
 
 // ---------- scenes ----------
-const sceneDims = (a) => (num(a.top_z) ? `桌面 ${a.size.map((v) => v ?? '?').join(' × ')} m，高 ${a.top_z} m` : '没有 build_params.json');
+const sceneDims = (a) => (num(a.top_z) ? `桌面 ${a.size.map((v) => v ?? '?').join(' × ')} m · 高 ${a.top_z} m` : '没有 build_params.json');
 function viewScenes() {
-  return `<div class="toolbar"><h2 style="margin:0">场景重建</h2><span class="muted small">real2sim/scenes/ 下 ${S.scene.length} 个场景 · 目标 7 个（3 个孪生 + 2 个训练用泛化 + 2 个 L4 保留）</span></div>
-  <div class="grid wide">${S.scene.map((d) => {
-    const a = d.auto, cover = (a.previews || []).find((p) => /compar/.test(p)) || a.previews?.[0] || a.photos?.[0];
-    return `<div class="card scene-card" data-id="${esc(d.id)}" onclick="openDrawer('scene', this.dataset.id)">
-      ${cover ? `<img class="cover" loading="lazy" src="${file(cover)}">` : '<div class="cover"></div>'}
-      <div class="toolbar" style="margin:8px 0 2px"><b>${esc(d.id)}</b>${missingBadge(d)}<span class="sp"></span>${(a.configs || []).map((c) => `<span class="chip">${esc(c)}</span>`).join('')}</div>
-      <div class="small muted">${esc(sceneDims(a))}</div>${chips(SCENE_STAGES, d)}</div>`;
-  }).join('')}</div>`;
+  const cardsHtml = S.scene.map((d) => {
+    const a = d.auto, rs = evalStages(SCENE_STAGES, d), cover = (a.previews || []).find((p) => /compar/.test(p)) || a.previews?.[0] || a.photos?.[0];
+    return `<article class="card mcard" data-open="scene" data-id="${esc(d.id)}" tabindex="0" role="button" aria-label="打开场景 ${esc(d.id)}">
+      <div class="media r169">${cover ? `<img loading="lazy" decoding="async" src="${file(cover)}" alt="">` : ic('image', 'ic-lg')}
+        <div class="pills">${(a.configs || []).map((c) => `<span class="pill">${esc(c)}</span>`).join('')}</div></div>
+      <div class="mcard-b"><div class="mcard-t"><b class="mono">${esc(d.id)}</b>${missingBadge(d)}</div>
+        <div class="small muted">${esc(sceneDims(a))} · 照片 ${a.photos?.length || 0} · 预览 ${a.previews?.length || 0}</div>${progress(rs)}${stageChips(rs)}</div></article>`;
+  }).join('');
+  return `<div class="page">${pageHead('场景重建', `real2sim/scenes/ 下 ${S.scene.length} 个场景 · 目标 7 个（3 个孪生 + 2 个训练用泛化 + 2 个 L4 保留）`)}
+    ${S.scene.length ? `<div class="grid scene-grid">${cardsHtml}</div>` : `<div class="card">${empty('scan', '还没有场景', '在 real2sim/scenes/ 下建场景目录后点「同步项目数据」')}</div>`}</div>`;
 }
 function drawerScene(d) {
-  const a = d.auto, dir = rel(a.path);
+  const a = d.auto, dir = rel(a.path), rs = evalStages(SCENE_STAGES, d);
   const steps = ['fit_photo.py', 'build_scene.py', 'check_scene.py', 'preview.py'].filter((s) => (a.scripts || []).includes(s));
   const cmd = `cd ${dir}\nuv run --no-project --python 3.11 --with usd-core --with trimesh --with numpy --with shapely \\\n`
-    + `    --with opencv-python-headless --with scipy --with mapbox-earcut --with manifold3d \\\n`
+    + '    --with opencv-python-headless --with scipy --with mapbox-earcut --with manifold3d \\\n'
     + `    sh -c "${steps.map((s) => `python ${s}`).join(' && ')}"\n\n`
     + '# 装入 Assets/Room/ 并为各场景配置生成 G1-D 布局（改共享库前先在隔离目录验证、征得同意并备份）\npython scripts/g1d/build_asset.py';
-  return `<div class="small muted">${esc(dir)} · ${esc(sceneDims(a))} · env 配置 ${esc((a.configs || []).join('、') || '-')}</div>
-  ${stageList(SCENE_STAGES, d)}
-  ${a.checks_failed?.length ? `<div class="warn">未通过的离线检查：<br>${a.checks_failed.map(esc).join('<br>')}</div>` : ''}
-  <h3>验收录入</h3>
-  <div class="form">
-    <label>实测桌高 (m)</label><div>${inp(d, 'measured_top_z', 'number', 'step="0.001"')} <span class="small muted">仿真 ${a.top_z ?? '-'} m</span></div>
-    <label>桌沿偏差 (cm)</label><div>${inp(d, 'edge_err_cm', 'number', 'step="0.1"')} <span class="small muted">卷尺量桌沿相对机器人的位置，与仿真之差</span></div>
-    <label>叠图偏差 (px)</label><div>${inp(d, 'overlay_px', 'number', 'step="0.1"')} <span class="small muted">桌沿和物体轮廓的最大偏差</span></div>
-    <label>叠图视角数</label><div>${inp(d, 'overlay_views', 'number', 'min="0"')}</div>
-    <label>灯光建模</label><div>${inp(d, 'lighting', 'checkbox')} <span class="small muted">灯的类型、位置和大致亮度按现场记录</span></div>
-    <label>Isaac 渲染</label><div>${inp(d, 'isaac', 'checkbox')} <span class="small muted">与真机头部相机画面对比过</span></div>
-    <label>共享资产库</label><div>${inp(d, 'shared', 'checkbox')} <span class="small muted">已装入服务器共享 Assets/Room/</span></div>
-    <label>备注</label>${area(d, 'notes')}
-  </div>
-  <h3>参考照片</h3>${thumbs(a.photos)}
-  <h3>预览与对比</h3>${thumbs(a.previews)}
-  <h3>文档</h3><div class="small">${(a.docs || []).map((p) => `<a target="_blank" href="${file(p)}">${esc(p.split('/').pop())}</a>`).join(' · ') || '无'}</div>
-  <h3>命令</h3><pre>${esc(cmd)}</pre>`;
+  return {
+    title: d.id, sub: `${dir} · ${sceneDims(a)} · env 配置 ${(a.configs || []).join('、') || '—'}`,
+    body: `${sec('验收进度', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
+    ${a.checks_failed?.length ? `<div class="callout bad" style="margin-top:12px">${ic('alert')}<div><b>未通过的离线检查</b><br>${a.checks_failed.map(esc).join('<br>')}</div></div>` : ''}
+    ${sec('验收录入', `<div class="form">
+      ${row('实测桌高 (m)', 'measured_top_z', inp(d, 'measured_top_z', 'number', 'step="0.001"'), `仿真 ${a.top_z ?? '—'} m`)}
+      ${row('桌沿偏差 (cm)', 'edge_err_cm', inp(d, 'edge_err_cm', 'number', 'step="0.1"'), '卷尺量桌沿相对机器人的位置，与仿真之差')}
+      ${row('叠图偏差 (px)', 'overlay_px', inp(d, 'overlay_px', 'number', 'step="0.1"'), '桌沿和物体轮廓的最大偏差')}
+      ${row('叠图视角数', 'overlay_views', inp(d, 'overlay_views', 'number', 'min="0"'))}
+      ${row('灯光建模', 'lighting', inp(d, 'lighting', 'checkbox'), '灯的类型、位置和大致亮度按现场记录')}
+      ${row('Isaac 渲染', 'isaac', inp(d, 'isaac', 'checkbox'), '与真机头部相机画面对比过')}
+      ${row('共享资产库', 'shared', inp(d, 'shared', 'checkbox'), '已装入服务器共享 Assets/Room/')}
+      ${row('备注', 'notes', area(d, 'notes'))}</div>`)}
+    ${sec(`${ic('camera')}参考照片`, gallery(`scene-photos-${d.id}`, a.photos), ` <span class="muted small">${a.photos?.length || 0} 张</span>`)}
+    ${sec(`${ic('image')}预览与对比`, gallery(`scene-previews-${d.id}`, a.previews), ` <span class="muted small">${a.previews?.length || 0} 张</span>`)}
+    ${sec(`${ic('file')}文档`, `<div class="toolbar">${(a.docs || []).map((p) => `<a class="btn" target="_blank" rel="noopener" href="${file(p)}">${ic('file')}${esc(base(p))}</a>`).join('') || '<span class="small muted">无</span>'}</div>`)}
+    ${sec(`${ic('terminal')}命令`, code(cmd))}`,
+  };
 }
 
 // ---------- objects ----------
-const mm = (size, digits = 0) => (Array.isArray(size) ? size.map((v) => (v * 1000).toFixed(digits)).join(' × ') : '-');
-function viewObjects() {
+const mm = (size, digits = 0) => (Array.isArray(size) ? size.map((v) => (v * 1000).toFixed(digits)).join(' × ') : '—');
+const ownObj = (d) => Boolean(d.auto.generator || d.twin);
+const objName = (d) => d.name || d.auto.name || d.auto.category;
+function objMedia(d, thumb = false) {
+  const a = d.auto, render = a.renders?.[0], photo = a.photos?.[0], main = render || photo;
+  if (thumb) return `<span class="thumb">${main ? `<img loading="lazy" decoding="async" src="${file(main)}" alt="">` : ic('cube')}</span>`;
+  return `<div class="media r43">${main ? `<img loading="lazy" decoding="async" src="${file(main)}" alt="">` : ic('cube', 'ic-lg')}
+    ${render && photo ? `<img class="inset" loading="lazy" decoding="async" src="${file(photo)}" alt="实拍">` : ''}
+    <div class="pills">${a.photos?.length ? `<span class="pill" title="实拍照片">${ic('camera', 'ic-sm')}${a.photos.length}</span>` : ''}${render ? `<span class="pill" title="仿真渲染">${ic('cube', 'ic-sm')}渲染</span>` : ''}</div></div>`;
+}
+function objList() {
   const f = UI.obj, q = f.q.toLowerCase();
-  const docs = S.object.filter((d) => (!f.role || (d.role || '') === f.role)
-    && (!q || `${d.id} ${d.name || ''} ${d.auto.name || ''} ${(d.auto.tasks || []).join(' ')}`.toLowerCase().includes(q)));
+  return S.object.filter((d) => (!f.role || (d.role || '') === f.role)
+    && (!f.src || (f.src === 'own' ? ownObj(d) : f.src === 'official' ? !ownObj(d) : Boolean(d.twin)))
+    && (!f.photo || d.auto.photos?.length)
+    && (!q || `${d.id} ${d.name || ''} ${d.auto.name || ''} ${(d.auto.tasks || []).join(' ')}`.toLowerCase().includes(q)))
+    .sort((x, y) => Number(ownObj(y)) - Number(ownObj(x)) || x.id.localeCompare(y.id));
+}
+function viewObjects() {
+  const f = UI.obj, docs = objList(), objs = live(S.object);
   const roleOpts = {'': '全部角色', ...Object.fromEntries(Object.entries(ROLES).filter(([k]) => k))};
-  return `${assetsWarning()}
-  <div class="toolbar"><h2 style="margin:0">物体资产</h2><span class="muted small">G1-D 任务配置里用到的物体自动列出；新的实物孪生先在这里登记。
-    实测值定稿后写回生成脚本和 <a target="_blank" href="${file(`${INFO.root}/real2sim/ASSETS.md`)}">real2sim/ASSETS.md</a></span><span class="sp"></span>
-    ${searchBox('obj-q', f.q, 'UI.obj.q', '搜索 id / 名称 / 任务')}
-    <select onchange="UI.obj.role = this.value; render()">${opts(roleOpts, f.role)}</select>
-    <button class="primary" onclick="openDrawer('new-object')">登记物体</button></div>
-  <table><tr><th>物体</th><th>角色 / 划分</th><th>用于任务（标签）</th><th>仿真尺寸 mm</th><th>仿真质量 g</th><th>实测</th><th>流程</th></tr>
-  ${docs.map((d) => `<tr class="row ${UI.drawer?.id === d.id ? 'sel' : ''}" data-id="${esc(d.id)}" onclick="openDrawer('object', this.dataset.id)">
-    <td><b>${esc(d.id)}</b>${missingBadge(d)}<div class="small muted">${esc(d.name || d.auto.name || '')}${d.twin ? ' · 实物孪生' : ''}</div></td>
-    <td>${esc(ROLES[d.role || ''])}<div class="small muted">${esc(SPLITS[d.split || ''])}</div></td>
-    <td class="small">${(d.auto.tasks || []).map(esc).join('<br>') || '<span class="muted">-</span>'}<div class="muted">${esc((d.auto.labels || []).join(', '))}</div></td>
-    <td class="small">${mm(d.auto.size)}</td>
-    <td class="small">${num(d.auto.mass) ? (d.auto.mass * 1000).toFixed(0) : '-'}</td>
-    <td class="small">${measured(d) ? `${d.real_dims.join(' × ')}<br>${d.real_mass} g` : '-'}</td>
-    <td>${chips(OBJ_STAGES, d)}</td></tr>`).join('')}
-  </table>`;
+  const targets = Object.entries(ROLE_TARGETS).map(([role, target]) => {
+    const n = objs.filter((o) => o.role === role).length;
+    return `<div class="card" style="padding:12px 14px"><div class="k-label">${ROLES[role]}</div><div class="progress-row" style="margin-top:6px">
+      <div class="bar" style="flex:1"><i class="pri" style="width:${Math.min(100, (n / target) * 100)}%"></i></div><span class="small mono">${n}/${target}</span></div></div>`;
+  }).join('');
+  const body = !docs.length ? `<div class="card">${empty('box', '没有符合条件的物体', '调整筛选条件，或点「登记物体」新建')}</div>`
+    : f.view === 'cards' ? `<div class="grid cards">${docs.map((d) => {
+      const rs = evalStages(OBJ_STAGES, d);
+      return `<article class="card mcard" data-open="object" data-id="${esc(d.id)}" tabindex="0" role="button" aria-label="打开物体 ${esc(d.id)}">${objMedia(d)}
+        <div class="mcard-b"><div class="mcard-t"><b>${esc(objName(d))}</b>${d.twin ? '<span class="tag">孪生</span>' : ''}</div>
+          <div class="small muted mono" style="margin-top:-4px">${esc(d.id)}</div>
+          <div class="small muted">${esc(ROLES[d.role || ''])} · ${esc(SPLITS[d.split || ''])} · ${mm(d.auto.size)} mm</div>${progress(rs)}</div></article>`;
+    }).join('')}</div>`
+    : `<div class="table-wrap"><table><thead><tr><th></th><th>物体</th><th>角色 / 划分</th><th>用于任务（标签）</th><th class="num">仿真尺寸 mm</th><th class="num">质量 g</th><th>实测</th><th style="min-width:170px">流程</th></tr></thead><tbody>
+      ${docs.map((d) => `<tr data-open="object" data-id="${esc(d.id)}" tabindex="0" class="${UI.drawer?.id === d.id ? 'sel' : ''}">
+        <td>${objMedia(d, true)}</td>
+        <td><div class="t-main">${esc(objName(d))} ${missingBadge(d)}</div><div class="t-sub mono">${esc(d.id)}</div></td>
+        <td>${esc(ROLES[d.role || ''])}<div class="t-sub">${esc(SPLITS[d.split || ''])}</div></td>
+        <td class="small">${(d.auto.tasks || []).map(esc).join('<br>') || '<span class="muted">—</span>'}<div class="t-sub mono">${esc((d.auto.labels || []).join(', '))}</div></td>
+        <td class="num small">${mm(d.auto.size)}</td><td class="num small">${num(d.auto.mass) ? (d.auto.mass * 1000).toFixed(0) : '—'}</td>
+        <td class="small">${measured(d) ? `${d.real_dims.join(' × ')}<div class="t-sub">${d.real_mass} g</div>` : '<span class="muted">—</span>'}</td>
+        <td>${progress(evalStages(OBJ_STAGES, d))}</td></tr>`).join('')}</tbody></table></div>`;
+  return `<div class="page">${pageHead('物体资产', `G1-D 任务配置里用到的物体自动列出，新的实物孪生先登记。实测值定稿后写回生成脚本和
+    <a target="_blank" rel="noopener" href="${file(`${INFO.root}/real2sim/ASSETS.md`)}">real2sim/ASSETS.md</a>`,
+    `<button class="btn btn-primary" type="button" data-open="new-object">${ic('plus')}登记物体</button>`)}
+    ${assetsWarning()}
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));margin-bottom:16px">${targets}
+      <div class="card" style="padding:12px 14px"><div class="k-label">图片</div><div class="small" style="margin-top:6px">实拍 <b class="mono">${objs.filter((o) => o.auto.photos?.length).length}</b> 件 · 渲染 <b class="mono">${objs.filter((o) => o.auto.renders?.length).length}</b> 件</div></div></div>
+    <div class="toolbar filters">${searchBox('obj-q', f.q, 'UI.obj.q', '搜索 id / 名称 / 任务')}
+      <select aria-label="角色" onchange="UI.obj.role = this.value; render()">${opts(roleOpts, f.role)}</select>
+      <select aria-label="来源" onchange="UI.obj.src = this.value; render()">${opts({'': '全部来源', own: '自建', official: '官方库', twin: '实物孪生'}, f.src)}</select>
+      <label class="check"><input type="checkbox" ${f.photo ? 'checked' : ''} onchange="UI.obj.photo = this.checked; render()">只看有实拍</label>
+      <span class="muted small">${docs.length} 件</span><span class="sp"></span>
+      <div class="segctl" role="group" aria-label="显示方式">
+        <button type="button" aria-pressed="${f.view === 'cards'}" onclick="setObjView('cards')">${ic('grid', 'ic-sm')} 卡片</button>
+        <button type="button" aria-pressed="${f.view === 'table'}" onclick="setObjView('table')">${ic('table', 'ic-sm')} 列表</button></div></div>
+    ${body}</div>`;
+}
+function photoStrip(d) {
+  const photos = d.auto.photos || [];
+  GAL[`obj-photos-${d.id}`] = photos;
+  return photos.map((p, i) => `<div class="item"><button class="gthumb" type="button" data-lb="obj-photos-${esc(d.id)}" data-i="${i}" aria-label="查看 ${esc(base(p))}"><img loading="lazy" src="${file(p)}" alt=""></button>
+    <button class="del" type="button" data-path="${esc(p)}" onclick="deletePhoto(this.dataset.path)" aria-label="删除 ${esc(base(p))}">${ic('trash', 'ic-sm')}</button></div>`).join('');
 }
 function drawerObject(d) {
-  const a = d.auto, c = dimCheck(d);
-  return `${!(a.tasks || []).length ? `<div class="toolbar"><span class="sp"></span><button class="bad" data-id="${esc(d.id)}" onclick="removeDoc('object', this.dataset.id)">删除登记</button></div>` : ''}
-  ${stageList(OBJ_STAGES, d)}
-  <h3>基本信息</h3>
-  <div class="form">
-    <label>名称</label>${inp(d, 'name', 'text', `placeholder="${esc(a.name || '')}"`)}
-    <label>实物孪生</label><div>${inp(d, 'twin', 'checkbox')} <span class="small muted">有对应的实物，需要测量并核对尺寸</span></div>
-    <label>角色</label>${sel(d, 'role', ROLES)}
-    <label>划分</label>${sel(d, 'split', SPLITS)}
-    <label>建模方式</label>${sel(d, 'method', METHODS)}
-    <label>颜色</label>${inp(d, 'color')}
-    <label>材质</label>${inp(d, 'material', 'text', 'placeholder="玻璃 / 塑料 / 陶瓷 / 金属"')}
-  </div>
-  <h3>实物测量</h3>
-  <div class="form">
-    <label>尺寸 (mm)</label><div class="dims">${[0, 1, 2].map((i) => inp(d, `real_dims.${i}`, 'number', `step="0.1" placeholder="${['长', '宽', '高'][i]}"`)).join(' × ')}</div>
-    <label>质量 (g)</label>${inp(d, 'real_mass', 'number', 'step="1"')}
-    <label>静摩擦系数</label>${inp(d, 'real_friction', 'number', 'step="0.01" placeholder="斜面滑动法"')}
-    <label>照片目录</label>${inp(d, 'photos', 'text', 'placeholder="多角度照片所在路径"')}
-  </div>
-  ${c ? `<table class="plain small"><tr><th>尺寸（大→小）</th><th>仿真 mm</th><th>实测 mm</th><th>误差 mm</th></tr>
-    ${c.map((x, i) => `<tr><td>${i + 1}</td><td>${x.sim.toFixed(1)}</td><td>${x.real}</td><td style="color:var(--${x.ok ? 'ok' : 'bad'})">${x.err.toFixed(1)}</td></tr>`).join('')}</table>` : ''}
-  <div class="small muted">判据：每个尺寸误差 < 2 mm 或 2%；质量差 ≤ 5 g（仿真直接用实测质量）。</div>
-  <h3>物理检验</h3>
-  <table class="plain">${PHYS.map(([k, label, crit, cmd]) => `<tr><td style="width:110px">${label}</td>
-    <td class="small">${crit}${cmd(d) ? `<pre>${esc(cmd(d))}</pre>` : ''}</td><td style="width:100px">${sel(d, `checks.${k}`, CHECK_STATES)}</td></tr>`).join('')}</table>
-  <h3>仿真资产</h3>
-  <table class="plain small">
-    <tr><td style="width:110px">资产目录</td><td>${esc(rel(a.dir) || '-')} ${a.in_library ? '<span class="chip ok">已入库</span>' : '<span class="chip">未找到</span>'}</td></tr>
-    <tr><td>生成脚本</td><td>${esc(a.generator || '-')}</td></tr>
-    <tr><td>仿真尺寸</td><td>${mm(a.size, 1)} mm</td></tr>
-    <tr><td>仿真质量</td><td>${num(a.mass) ? `${(a.mass * 1000).toFixed(1)} g` : '-'}</td></tr>
-    <tr><td>摩擦（静 / 动）</td><td>${a.static_friction ?? '默认 0.6'} / ${a.dynamic_friction ?? '默认 1.5'}</td></tr>
-    <tr><td>用于任务</td><td>${(a.tasks || []).map((t) => link('task', t)).join('、') || '-'}</td></tr>
-    <tr><td>任务标签</td><td>${esc((a.labels || []).join(', ') || '-')}</td></tr>
-  </table>
-  <h3>备注</h3>${area(d, 'notes')}
-  ${a.generator ? `<h3>命令</h3><pre>${esc(`python ${a.generator}`)}</pre>` : ''}`;
+  const a = d.auto, c = dimCheck(d), rs = evalStages(OBJ_STAGES, d), photos = a.photos || [], renders = a.renders || [];
+  GAL[`obj-renders-${d.id}`] = renders;
+  const hero = (key, list, emptyText) => (list.length
+    ? `<button class="hero" type="button" data-lb="${esc(key)}" data-i="0" aria-label="放大查看"><img src="${file(list[0])}" alt=""></button>`
+    : `<div class="hero empty-hero">${ic('image', 'ic-lg')}${emptyText}</div>`);
+  return {
+    title: objName(d), sub: `${d.id} · ${a.in_library ? '资产库已有' : '资产库未找到'}${a.generator ? ` · ${a.generator}` : ''}`,
+    actions: !(a.tasks || []).length ? `<button class="btn" type="button" data-id="${esc(d.id)}" onclick="removeDoc('object', this.dataset.id)">${ic('trash')}删除登记</button>` : '',
+    body: `${sec('实物 vs 仿真', `<div class="compare">
+      <figure><figcaption>${ic('camera')}实物照片 <span class="muted small">${photos.length} 张</span><span class="sp"></span>
+        <label class="btn upload" title="jpg / png / webp，单张 ≤ 25 MB">${ic('upload')}上传<input type="file" accept="image/jpeg,image/png,image/webp" multiple data-id="${esc(d.id)}" onchange="uploadPhotos(this)" aria-label="上传实物照片"></label></figcaption>
+        ${hero(`obj-photos-${d.id}`, photos, '还没有实拍照片：上传多角度照片，保存到 real2sim/objects/&lt;id&gt;/reference/（随仓库，走 LFS）')}
+        <div class="strip">${photoStrip(d)}</div></figure>
+      <figure><figcaption>${ic('cube')}仿真渲染 <span class="muted small">${renders.length} 张</span></figcaption>
+        ${hero(`obj-renders-${d.id}`, renders, '还没有渲染图：在 GPU 服务器运行下方「渲染」命令，生成到 real2sim/objects/&lt;id&gt;/preview/')}
+        <div class="strip">${renders.slice(1).map((p, i) => `<div class="item"><button class="gthumb" type="button" data-lb="obj-renders-${esc(d.id)}" data-i="${i + 1}" aria-label="查看 ${esc(base(p))}"><img loading="lazy" src="${file(p)}" alt=""></button></div>`).join('')}</div></figure></div>`)}
+    ${sec('流程', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
+    ${sec('基本信息', `<div class="form">
+      ${row('名称', 'name', inp(d, 'name', 'text', `placeholder="${esc(a.name || '')}"`))}
+      ${row('实物孪生', 'twin', inp(d, 'twin', 'checkbox'), '有对应的实物，需要测量并核对尺寸')}
+      ${row('角色', 'role', sel(d, 'role', ROLES))}
+      ${row('划分', 'split', sel(d, 'split', SPLITS))}
+      ${row('建模方式', 'method', sel(d, 'method', METHODS))}
+      ${row('颜色', 'color', inp(d, 'color'))}
+      ${row('材质', 'material', inp(d, 'material', 'text', 'placeholder="玻璃 / 塑料 / 陶瓷 / 金属"'))}</div>`)}
+    ${sec('实物测量', `<div class="form">
+      <label for="${fid('real_dims.0')}">尺寸 (mm)</label><div class="ctl dims">${[0, 1, 2].map((i) => inp(d, `real_dims.${i}`, 'number', `step="0.1" placeholder="${['长', '宽', '高'][i]}" aria-label="${['长', '宽', '高'][i]} (mm)"`)).join('<span class="muted">×</span>')}</div>
+      ${row('质量 (g)', 'real_mass', inp(d, 'real_mass', 'number', 'step="1"'))}
+      ${row('静摩擦系数', 'real_friction', inp(d, 'real_friction', 'number', 'step="0.01" placeholder="斜面滑动法"'))}</div>
+      ${c ? `<table class="plain" style="margin-top:12px"><thead><tr><th>尺寸（大→小）</th><th class="num">仿真 mm</th><th class="num">实测 mm</th><th class="num">误差 mm</th><th>判定</th></tr></thead><tbody>
+        ${c.map((x, i) => `<tr><td>${i + 1}</td><td class="num">${x.sim.toFixed(1)}</td><td class="num">${x.real}</td><td class="num">${x.err.toFixed(1)}</td><td>${st(x.ok ? 'ok' : 'bad', x.ok ? '合格' : '超差')}</td></tr>`).join('')}</tbody></table>` : ''}
+      <p class="hint">判据：每个尺寸误差 &lt; 2 mm 或 2%；质量差 ≤ 5 g（仿真直接用实测质量）。</p>`)}
+    ${sec('物理检验', `<div class="table-wrap"><table class="plain"><tbody>${PHYS.map(([k, label, crit, cmd]) => `<tr><td style="width:110px"><label for="${fid(`checks.${k}`)}">${label}</label></td>
+      <td class="small">${crit}${cmd(d) ? `<div style="margin-top:6px">${code(cmd(d))}</div>` : ''}</td><td style="width:110px">${sel(d, `checks.${k}`, CHECK_STATES)}</td></tr>`).join('')}</tbody></table></div>`)}
+    ${sec('仿真资产', `<dl class="kv"><dt>资产目录</dt><dd class="mono small">${esc(rel(a.dir) || '—')} ${a.in_library ? st('ok', '已入库') : st('todo', '未找到')}</dd>
+      <dt>生成脚本</dt><dd class="mono small">${esc(a.generator || '—')}</dd>
+      <dt>仿真尺寸</dt><dd class="mono">${mm(a.size, 1)} mm</dd>
+      <dt>仿真质量</dt><dd class="mono">${num(a.mass) ? `${(a.mass * 1000).toFixed(1)} g` : '—'}</dd>
+      <dt>摩擦（静 / 动）</dt><dd class="mono">${a.static_friction ?? '默认 0.6'} / ${a.dynamic_friction ?? '默认 1.5'}</dd>
+      <dt>用于任务</dt><dd>${(a.tasks || []).map((t) => link('task', t)).join('、') || '—'}</dd>
+      <dt>任务标签</dt><dd class="mono small">${esc((a.labels || []).join(', ') || '—')}</dd></dl>`)}
+    ${sec('备注', area(d, 'notes'))}
+    ${sec(`${ic('terminal')}命令`, code(`${a.generator ? `python ${a.generator}   # 生成\n` : ''}PYTHONPATH=. python scripts/objects/check_object.py Assets/Object/RoboDojo/${d.id} --image-dir real2sim/objects   # 落地检查 + 渲染`))}`,
+  };
 }
 function drawerNewObject() {
-  return `<div class="form">
-    <label>类型</label><select id="no-type"><option>Rigid</option><option>Fluid</option></select>
-    <label>类别</label><input id="no-cat" placeholder="如 measuring_cup">
-    <label>编号</label><input id="no-idx" type="number" min="0" value="0">
-    <label>名称</label><input id="no-name" placeholder="如 500 ml 量杯">
-    <label>角色</label><select id="no-role">${opts(ROLES, '')}</select>
-  </div>
-  <p class="small muted">资产目录约定：Assets/Object/RoboDojo/&lt;类型&gt;/&lt;类别&gt;/&lt;5 位编号&gt;/（object.usd(z) + metadata.json）。还没建模也可以先登记，同步时会自动关联资产库。</p>
-  <button class="primary" onclick="createObject()">登记</button>`;
+  return {
+    title: '登记物体', sub: '还没建模也可以先登记，同步时会自动关联资产库',
+    body: `${sec('物体信息', `<div class="form">
+      <label for="no-type">类型</label><div class="ctl"><select id="no-type"><option>Rigid</option><option>Fluid</option></select></div>
+      <label for="no-cat">类别</label><div class="ctl"><input id="no-cat" placeholder="如 measuring_cup" autocomplete="off"></div>
+      <label for="no-idx">编号</label><div class="ctl"><input id="no-idx" type="number" min="0" value="0"></div>
+      <label for="no-name">名称</label><div class="ctl"><input id="no-name" placeholder="如 500 ml 量杯" autocomplete="off"></div>
+      <label for="no-role">角色</label><div class="ctl"><select id="no-role">${opts(ROLES, '')}</select></div></div>
+      <p class="hint">资产目录约定：Assets/Object/RoboDojo/&lt;类型&gt;/&lt;类别&gt;/&lt;5 位编号&gt;/（object.usd(z) + metadata.json）；实拍照片放 real2sim/objects/&lt;同一 id&gt;/reference/。</p>
+      <button class="btn btn-primary" type="button" onclick="createObject()">${ic('plus')}登记</button>`)}`,
+  };
 }
 
 // ---------- tasks ----------
@@ -469,24 +798,22 @@ function viewTasks() {
   const q = UI.taskQ.toLowerCase();
   const docs = live(S.task).filter((t) => (UI.taskDim === 'all' || t.auto.dimension === UI.taskDim) && (!q || t.id.toLowerCase().includes(q)))
     .sort((x, y) => x.id.localeCompare(y.id));
-  return `${assetsWarning()}
-  <div class="toolbar"><h2 style="margin:0">任务采集</h2><span class="muted small">任务来自 task/RoboDojo（与 robodojo.sh tasks 一致）</span><span class="sp"></span>
-    ${searchBox('task-q', UI.taskQ, 'UI.taskQ', '搜索任务')}
-    <select onchange="UI.taskDim = this.value; render()">${opts({...DIMS, all: '全部维度'}, UI.taskDim)}</select></div>
-  <table><tr><th>任务</th><th>评测布局</th><th>回合 / 仿真成功率</th><th>专家成功率</th><th>合格回合</th><th>流程</th></tr>
+  return `<div class="page">${pageHead('任务采集', '任务来自 task/RoboDojo（与 robodojo.sh tasks 一致）；合格回合 = 质检通过且仿真成功')}${assetsWarning()}
+  <div class="toolbar filters">${searchBox('task-q', UI.taskQ, 'UI.taskQ', '搜索任务')}
+    <select aria-label="能力维度" onchange="UI.taskDim = this.value; render()">${opts({...DIMS, all: '全部维度'}, UI.taskDim)}</select><span class="muted small">${docs.length} 个任务</span></div>
+  ${docs.length ? `<div class="table-wrap"><table><thead><tr><th>任务</th><th>评测布局</th><th class="num">回合</th><th class="num">仿真成功率</th><th class="num">专家成功率</th><th style="min-width:150px">合格回合</th><th style="min-width:170px">流程</th></tr></thead><tbody>
   ${docs.map((d) => {
-    const eps = EP_BY_TASK[d.id] || [], e = experts(eps), q2 = qualified(eps).length, target = d.target || 500;
-    return `<tr class="row ${UI.drawer?.id === d.id ? 'sel' : ''}" data-id="${esc(d.id)}" onclick="openDrawer('task', this.dataset.id)">
-      <td><b>${esc(d.id)}</b><div class="small muted">${esc(DIMS[d.auto.dimension] || d.auto.dimension || '-')} · step_lim ${d.auto.step_lim ?? '继承'}${d.owner ? ` · ${esc(d.owner)}` : ''}</div></td>
-      <td class="small">${Object.entries(d.auto.layouts || {}).map(([c, n]) => `${esc(c)} ${n}`).join('<br>') || '<span class="muted">-</span>'}</td>
-      <td class="small">${eps.length}<div class="muted">${pct(rate(eps))}</div></td>
-      <td class="small">${e.length ? `${pct(rate(e))}<div class="muted">${e.length} 回合</div>` : '-'}</td>
-      <td style="width:150px"><div class="bar"><i class="ok" style="width:${Math.min(100, (q2 / target) * 100)}%"></i></div><div class="small muted">${q2}/${target}</div></td>
-      <td>${chips(TASK_STAGES, d)}</td></tr>`;
-  }).join('')}</table>`;
+    const eps = EP_BY_TASK[d.id] || [], e = experts(eps), q2 = qualified(eps).length, target = d.target || 500, layouts = Object.entries(d.auto.layouts || {});
+    return `<tr data-open="task" data-id="${esc(d.id)}" tabindex="0" class="${UI.drawer?.id === d.id ? 'sel' : ''}">
+      <td><div class="t-main mono">${esc(d.id)}</div><div class="t-sub">${esc(DIMS[d.auto.dimension] || d.auto.dimension || '—')} · step_lim ${d.auto.step_lim ?? '继承'}${d.owner ? ` · ${esc(d.owner)}` : ''}</div></td>
+      <td><div class="chips">${layouts.map(([c, n]) => `<span class="tag">${esc(c)} ${n}</span>`).join('') || '<span class="muted small">—</span>'}</div></td>
+      <td class="num">${eps.length}</td><td class="num">${pct(rate(eps))}</td><td class="num ${e.length && rate(e) < 0.8 ? 'txt-bad' : ''}">${e.length ? pct(rate(e)) : '—'}</td>
+      <td><div class="progress-row"><div class="bar" style="flex:1"><i class="ok" style="width:${Math.min(100, (q2 / target) * 100)}%"></i></div><span class="small mono">${q2}/${target}</span></div></td>
+      <td>${progress(evalStages(TASK_STAGES, d))}</td></tr>`;
+  }).join('')}</tbody></table></div>` : `<div class="card">${empty('list', '没有符合条件的任务', '换一个维度或清空搜索')}</div>`}</div>`;
 }
 function drawerTask(d) {
-  const a = d.auto, eps = EP_BY_TASK[d.id] || [];
+  const a = d.auto, eps = EP_BY_TASK[d.id] || [], rs = evalStages(TASK_STAGES, d);
   const runs = group(eps, (e) => `${e.auto.config}\u0000${e.auto.policy}`);
   const sceneCfgs = [...new Set(S.scene.flatMap((s) => s.auto.configs || []))];
   const cfgs = Object.keys(a.layouts || {}).length ? Object.keys(a.layouts) : sceneCfgs;
@@ -494,35 +821,28 @@ function drawerTask(d) {
     ? cfgs.map((c) => `CUDA_VISIBLE_DEVICES=0 PYTHONPATH=.:XPolicyLab EVAL_NUM=1 python scripts/g1d/scripted_demo.py --env_cfg_type ${c} --task_name ${d.id} --seed 0`)
     : [`bash scripts/robodojo.sh eval --policy-dir XPolicyLab/policy/<POLICY> --task ${d.id} --ckpt <CKPT> --policy-env <ENV> --eval-num 1`];
   const objects = Object.entries(a.objects || {});
-  return `<div class="small muted">${esc(DIMS[a.dimension] || a.dimension)} · ${esc(a.module)} · ${esc(a.config)}</div>
-  ${stageList(TASK_STAGES, d)}
-  <h3>采集计划</h3>
-  <div class="form">
-    <label>负责人</label>${inp(d, 'owner')}
-    <label>合格回合目标</label>${inp(d, 'target', 'number', 'min="0" placeholder="500"')}
-    <label>备注</label>${area(d, 'notes')}
-  </div>
-  <h3>分级泛化评测集</h3>
-  <p class="small muted">每一级只改变一个因素，其余与 L0 相同；布局预先生成为固定 JSON，并先用 scripted_demo 过滤，L0–L3 专家成功率目标 ≥ 80%。</p>
-  <table class="plain"><tr><th>级别</th><th>变化因素与范围</th><th>目标</th><th>已生成</th></tr>
-  ${LEVELS.map(([k, name, range, target]) => `<tr><td style="width:70px"><b>${k}</b> ${name}</td><td class="small">${range}</td><td>${target}</td>
-    <td style="width:90px">${inp(d, `levels.${k}`, 'number', 'min="0" style="width:80px"')}</td></tr>`).join('')}
-  </table>
-  <h3>物体与标签</h3>
-  ${objects.length ? `<div>${objects.map(([oid, labels]) => `<span class="chip btn" data-id="${esc(oid)}" onclick="go('object', this.dataset.id)">${esc(oid)}${labels.length ? ` · ${esc(labels.join(', '))}` : ''}</span>`).join('')}</div>`
-    : '<div class="small muted">只解析 G1-D 自建任务用到的物体</div>'}
-  <h3>评测布局</h3>
-  ${Object.keys(a.layouts || {}).length ? `<table class="plain small">${Object.entries(a.layouts).map(([c, n]) => `<tr><td style="width:160px">${esc(c)}</td><td>${n}</td></tr>`).join('')}</table>`
-    : '<div class="small muted">资产库里没有该任务的布局</div>'}
-  <h3>采集回合</h3>
-  ${Object.keys(runs).length ? `<table class="plain small"><tr><th>配置</th><th>策略</th><th>回合</th><th>仿真成功率</th><th>通过 / 拒绝 / 待审</th><th></th></tr>
-    ${Object.entries(runs).map(([key, xs]) => {
-      const [cfg, pol] = key.split('\u0000'), g = group(xs, (e) => e.qa || 'pending');
-      return `<tr><td>${esc(cfg)}</td><td>${esc(pol)}</td><td>${xs.length}</td><td>${pct(rate(xs))}</td>
-        <td>${(g.pass || []).length} / ${(g.reject || []).length} / ${(g.pending || []).length}</td>
-        <td><a href="javascript:void 0" data-t="${esc(d.id)}" data-c="${esc(cfg)}" data-p="${esc(pol)}" onclick="qaFilter(this.dataset)">去质检 →</a></td></tr>`;
-    }).join('')}</table>` : '<div class="small muted">还没有回合</div>'}
-  <h3>采集命令</h3><pre>${esc(cmds.join('\n'))}</pre>`;
+  return {
+    title: d.id, sub: `${DIMS[a.dimension] || a.dimension} · ${a.module} · ${a.config}`,
+    body: `${sec('流程', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
+    ${sec('采集计划', `<div class="form">${row('负责人', 'owner', inp(d, 'owner'))}
+      ${row('合格回合目标', 'target', inp(d, 'target', 'number', 'min="0" placeholder="500"'))}${row('备注', 'notes', area(d, 'notes'))}</div>`)}
+    ${sec('分级泛化评测集', `<p class="hint" style="margin:0 0 10px">每一级只改变一个因素，其余与 L0 相同；布局预先生成为固定 JSON，并先用 scripted_demo 过滤，L0–L3 专家成功率目标 ≥ 80%。</p>
+      <div class="table-wrap"><table class="plain"><thead><tr><th>级别</th><th>变化因素与范围</th><th class="num">目标</th><th>已生成</th></tr></thead><tbody>
+      ${LEVELS.map(([k, name, range, target]) => `<tr><td class="nowrap"><b class="mono">${k}</b> ${name}</td><td class="small">${range}</td><td class="num">${target}</td>
+        <td style="width:110px">${inp(d, `levels.${k}`, 'number', `min="0" style="width:90px" aria-label="${k} 已生成布局数"`)}</td></tr>`).join('')}</tbody></table></div>`)}
+    ${sec('物体与标签', objects.length ? `<div class="chips">${objects.map(([oid, labels]) => `<a class="tag" href="#objects" data-go="object" data-id="${esc(oid)}">${esc(oid)}${labels.length ? ` · ${esc(labels.join(', '))}` : ''}</a>`).join('')}</div>`
+      : '<div class="small muted">只解析 G1-D 自建任务用到的物体</div>')}
+    ${sec('评测布局', Object.keys(a.layouts || {}).length ? `<div class="chips">${Object.entries(a.layouts).map(([c, n]) => `<span class="tag">${esc(c)} · ${n}</span>`).join('')}</div>`
+      : '<div class="small muted">资产库里没有该任务的布局</div>')}
+    ${sec('采集回合', Object.keys(runs).length ? `<div class="table-wrap"><table class="plain"><thead><tr><th>配置</th><th>策略</th><th class="num">回合</th><th class="num">仿真成功率</th><th>通过 / 拒绝 / 待审</th><th></th></tr></thead><tbody>
+      ${Object.entries(runs).map(([key, xs]) => {
+        const [cfg, pol] = key.split('\u0000'), g = group(xs, (e) => e.qa || 'pending');
+        return `<tr><td class="mono small">${esc(cfg)}</td><td class="mono small">${esc(pol)}</td><td class="num">${xs.length}</td><td class="num">${pct(rate(xs))}</td>
+          <td class="small">${(g.pass || []).length} / ${(g.reject || []).length} / ${(g.pending || []).length}</td>
+          <td><a href="#qa" data-t="${esc(d.id)}" data-c="${esc(cfg)}" data-p="${esc(pol)}" onclick="event.preventDefault(); qaFilter(this.dataset)">去质检 ${ic('arrow-r', 'ic-sm')}</a></td></tr>`;
+      }).join('')}</tbody></table></div>` : '<div class="small muted">还没有回合</div>')}
+    ${sec(`${ic('terminal')}采集命令`, code(cmds.join('\n')))}`,
+  };
 }
 
 // ---------- QA ----------
@@ -536,51 +856,59 @@ function qaList() {
 function viewQA() {
   const eps = live(S.episode), f = UI.qa, list = qaList();
   const values = (key) => Object.fromEntries([...new Set(eps.map((e) => e.auto[key]).filter(Boolean))].sort().map((v) => [v, v]));
-  const pickSel = (key, all, options) => `<select onchange="UI.qa.${key} = this.value; render()">${opts({'': all, ...options}, f[key])}</select>`;
+  const pickSel = (key, all, options) => `<select aria-label="${all}" onchange="UI.qa.${key} = this.value; UI.sel.clear(); render()">${opts({'': all, ...options}, f[key])}</select>`;
+  const ids = new Set(list.map((e) => e.id));
+  [...UI.sel].forEach((id) => { if (!ids.has(id)) UI.sel.delete(id); });
+  const allSel = list.length && list.every((e) => UI.sel.has(e.id));
+  const qaChip = (e) => st({pass: 'ok', reject: 'bad'}[e.qa] || 'todo', QA_STATES[e.qa || 'pending']);
   const autoChip = (e) => {
     const failed = EP_CHECKS.filter(([, , fn]) => fn(e).s !== 'ok');
-    return failed.length ? `<span class="chip bad" title="${esc(failed.map(([, l]) => l).join('、'))}">${failed.length} 项异常</span>` : '<span class="chip ok">正常</span>';
+    return failed.length ? `<span class="st bad" title="${esc(failed.map(([, l]) => l).join('、'))}">${ic('x')}${failed.length} 项异常</span>` : st('ok', '正常');
   };
-  const qaChip = (e) => `<span class="chip ${{pass: 'ok', reject: 'bad'}[e.qa] || ''}">${QA_STATES[e.qa || 'pending']}</span>`;
-  return `<div class="toolbar"><h2 style="margin:0">数据质检</h2>
-    ${pickSel('task', '全部任务', values('task'))}${pickSel('config', '全部配置', values('config'))}${pickSel('policy', '全部策略', values('policy'))}
-    ${pickSel('result', '全部结果', {true: '仿真成功', false: '仿真失败'})}${pickSel('status', '全部状态', QA_STATES)}
-    <span class="muted small">${list.length} 个回合</span><span class="sp"></span>
-    <button onclick="exportPassed()">导出质检通过清单</button></div>
+  const bulk = UI.sel.size ? `<div class="bulkbar"><b>已选 ${UI.sel.size} 个</b><span class="sp"></span>
+    <button class="btn" type="button" onclick="bulkQA('pass')">${ic('check')}批量通过</button><button class="btn" type="button" onclick="bulkQA('reject')">${ic('x')}批量拒绝</button>
+    <button class="btn" type="button" onclick="bulkQA('pending')">设为待审</button><button class="btn" type="button" onclick="UI.sel.clear(); render()">取消</button></div>` : '';
+  return `<div class="page">${pageHead('数据质检', `${list.length} 个回合 · 快捷键 J / K 切换，P 通过并跳到下一条，R 拒绝（先选问题标签），U 待审`,
+    `<button class="btn" type="button" onclick="exportPassed()">${ic('download')}导出质检通过清单</button>`)}
+  <div class="toolbar filters">${pickSel('task', '全部任务', values('task'))}${pickSel('config', '全部配置', values('config'))}${pickSel('policy', '全部策略', values('policy'))}
+    ${pickSel('result', '全部结果', {true: '仿真成功', false: '仿真失败'})}${pickSel('status', '全部状态', QA_STATES)}</div>
   <div class="qa">
-    <div class="list"><table><tr><th>任务 / 配置</th><th>策略 · seed · 布局</th><th>仿真</th><th>自动检查</th><th>质检</th></tr>
-    ${list.map((e) => `<tr class="row ${e.id === UI.ep ? 'sel' : ''}" data-id="${esc(e.id)}" onclick="pick(this.dataset.id)">
-      <td>${esc(e.auto.task || '（非标准目录）')}<div class="small muted">${esc(e.auto.config || e.auto.run_id)}</div></td>
-      <td class="small">${esc(e.auto.policy || '-')}<div class="muted">seed ${e.auto.seed ?? '-'} · 布局 ${e.auto.layout_id ?? '-'} · #${e.auto.index}</div></td>
-      <td>${e.auto.success ? '<span class="chip ok">成功</span>' : '<span class="chip bad">失败</span>'}</td>
-      <td>${autoChip(e)}</td>
-      <td>${qaChip(e)}${(e.tags || []).length ? `<div class="small muted">${esc(e.tags.join('、'))}</div>` : ''}</td></tr>`).join('')
-      || '<tr><td colspan="5" class="muted">当前筛选下没有回合</td></tr>'}</table></div>
-    <div class="panel">${qaPanel(S.episode.find((e) => e.id === UI.ep))}</div>
-  </div>`;
+    <div class="table-wrap qa-list">${bulk}<table><thead><tr>
+      <th style="width:36px"><input type="checkbox" aria-label="全选当前筛选" ${allSel ? 'checked' : ''} onchange="toggleAll(this.checked)"></th>
+      <th>任务 / 配置</th><th>策略 · seed · 布局</th><th>仿真</th><th>自动检查</th><th>质检</th></tr></thead><tbody>
+    ${list.map((e) => `<tr data-open="episode" data-id="${esc(e.id)}" tabindex="0" class="${e.id === UI.ep ? 'sel' : ''}">
+      <td><input type="checkbox" data-sel="${esc(e.id)}" ${UI.sel.has(e.id) ? 'checked' : ''} aria-label="选择回合 #${e.auto.index}"></td>
+      <td><div class="t-main mono small">${esc(e.auto.task || '（非标准目录）')}</div><div class="t-sub mono">${esc(e.auto.config || e.auto.run_id)}</div></td>
+      <td class="small"><span class="mono">${esc(e.auto.policy || '—')}</span><div class="t-sub">seed ${e.auto.seed ?? '—'} · 布局 ${e.auto.layout_id ?? '—'} · #${e.auto.index}</div></td>
+      <td>${e.auto.success ? st('ok', '成功') : st('bad', '失败')}</td><td>${autoChip(e)}</td>
+      <td>${qaChip(e)}${(e.tags || []).length ? `<div class="t-sub">${esc(e.tags.join('、'))}</div>` : ''}</td></tr>`).join('')
+      || `<tr><td colspan="6">${empty('clipboard', '当前筛选下没有回合', '换个筛选条件，或把评测结果目录加到 --eval-root 后同步')}</td></tr>`}</tbody></table></div>
+    <div class="qa-panel">${qaPanel(S.episode.find((e) => e.id === UI.ep))}</div>
+  </div></div>`;
 }
 function qaPanel(e) {
-  if (!e) return '<div class="card muted">在左侧选择回合开始审核。快捷键：J / K 上下切换，P 通过（自动跳到下一条），R 拒绝（先选问题标签），U 待审。</div>';
+  if (!e) return `<div class="card">${empty('video', '选择左侧回合开始审核', 'J / K 上下切换 · P 通过并跳到下一条 · R 拒绝 · U 待审')}</div>`;
   const a = e.auto;
   return `<div class="card"><div id="qa-videos" data-ep="${esc(e.id)}">
-    <div class="toolbar"><b>${esc(a.task || '（非标准目录）')}</b><span class="small muted">${esc(a.config)} · ${esc(a.policy)} · seed ${a.seed ?? '-'} · 布局 ${a.layout_id ?? '-'} · #${a.index}</span>
-      <span class="sp"></span><button onclick="playAll()">同步播放</button></div>
-    <div class="videos">${cams(e).map((c) => `<figure><video src="${file(a.videos[c])}" controls muted preload="metadata"></video>
-      <figcaption class="small muted">${esc(c)}</figcaption></figure>`).join('') || '<div class="muted">没有视频</div>'}</div></div>
-  <div data-kind="episode" data-id="${esc(e.id)}">
-    <h3>自动检查</h3>${stageList(EP_CHECKS, e)}
-    <h3>质检结论</h3>
-    <div class="toolbar"><button class="${e.qa === 'pass' ? 'ok' : ''}" onclick="setQA('pass')">通过 (P)</button>
-      <button class="${e.qa === 'reject' ? 'bad' : ''}" onclick="setQA('reject')">拒绝 (R)</button>
-      <button onclick="setQA('pending')">待审 (U)</button>
-      <span class="small muted">${e._by || e._at ? `${esc(e._by || '匿名')} · ${fmtTime(e._at)}` : ''}</span></div>
-    <div>${TAGS.map((t, i) => `<span class="chip btn ${(e.tags || []).includes(t) ? 'on' : ''}" onclick="toggleTag(${i})">${esc(t)}</span>`).join('')}</div>
-    <div class="form" style="margin-top:10px">
-      <label>备注</label>${area(e, 'note', 'placeholder="失败发生在哪一步、怎么复现"')}
-      <label>真机对照</label><div>${sel(e, 'real', {'': '未测', success: '真机成功', fail: '真机失败'})} <span class="small muted">同一布局在真机上的结果，用于 Sim ↔ Real 一致率</span></div>
-    </div>
-    <p class="small muted">仿真 ${a.success ? '成功' : '失败'}，得分 ${a.score ?? '-'} · ${esc(a.run)}</p>
-  </div></div>`;
+    <div class="card-h" style="padding-bottom:10px"><div style="min-width:0"><h2 class="mono" style="font-size:14px">${esc(a.task || '（非标准目录）')}</h2>
+      <div class="small muted">${esc(a.config)} · ${esc(a.policy)} · seed ${a.seed ?? '—'} · 布局 ${a.layout_id ?? '—'} · #${a.index}</div></div><span class="sp"></span>${a.success ? st('ok', '仿真成功') : st('bad', '仿真失败')}</div>
+    <div style="padding:0 16px">${cams(e).length ? `<div class="videos">${cams(e).map((c) => `<figure><video src="${file(a.videos[c])}" controls muted playsinline preload="metadata" aria-label="${esc(c)} 视频"></video>
+      <figcaption>${esc(c)}</figcaption></figure>`).join('')}</div>` : empty('video', '没有视频', '这个回合目录里没有 episode_*_cam_*.mp4')}
+      <div class="toolbar" style="margin-top:8px"><button class="btn" type="button" onclick="videos('play')">${ic('play')}同步播放</button>
+        <button class="btn" type="button" onclick="videos('pause')">${ic('pause')}暂停</button><button class="btn" type="button" onclick="videos('restart')">${ic('rewind')}从头</button>
+        <select aria-label="播放速度" onchange="videos('rate', this.value)">${opts({0.5: '0.5×', 1: '1×', 2: '2×', 4: '4×'}, '1')}</select></div></div></div>
+  <div class="card-b" data-kind="episode" data-id="${esc(e.id)}">
+    ${sec('自动检查', stageList(evalStages(EP_CHECKS, e)))}
+    ${sec('质检结论', `<div class="decision">
+      <button class="btn btn-lg ${e.qa === 'pass' ? 'btn-ok' : ''}" type="button" aria-pressed="${e.qa === 'pass'}" onclick="setQA('pass')">${ic('check')}通过 <kbd>P</kbd></button>
+      <button class="btn btn-lg ${e.qa === 'reject' ? 'btn-bad' : ''}" type="button" aria-pressed="${e.qa === 'reject'}" onclick="setQA('reject')">${ic('x')}拒绝 <kbd>R</kbd></button>
+      <button class="btn btn-lg" type="button" aria-pressed="${!e.qa || e.qa === 'pending'}" onclick="setQA('pending')">待审 <kbd>U</kbd></button></div>
+      ${e._by || e._at ? `<p class="hint" style="margin:8px 0 0">${esc(e._by || '匿名')} · ${fmtTime(e._at)}</p>` : ''}`)}
+    ${sec('问题标签', `<div class="chips">${TAGS.map((t, i) => `<button class="togglechip" type="button" aria-pressed="${(e.tags || []).includes(t)}" onclick="toggleTag(${i})">${esc(t)}</button>`).join('')}</div>`)}
+    ${sec('备注与真机对照', `<div class="form">${row('备注', 'note', area(e, 'note', 'placeholder="失败发生在哪一步、怎么复现"'))}
+      <span>真机对照</span><div class="ctl"><div class="segctl" role="group" aria-label="真机对照结果">${Object.entries({'': '未测', success: '真机成功', fail: '真机失败'}).map(([k, l]) => `<button type="button" aria-pressed="${(e.real || '') === k}" onclick="setReal('${k}')">${l}</button>`).join('')}</div>
+        <span class="hint">同一布局在真机上的结果，用于 Sim ↔ Real 一致率</span></div></div>`)}
+    <p class="hint mono" style="margin-top:16px;word-break:break-all">得分 ${a.score ?? '—'} · ${esc(a.run)}</p></div></div>`;
 }
 
 // ---------- actions ----------
@@ -591,32 +919,40 @@ async function api(url, options = {}) {
 }
 async function load() {
   await Promise.all(KINDS.map(async (k) => { S[k] = await api(`/api/items?kind=${k}`); }));
+  UI.loaded = true;
+  UI.syncedAt = new Date().toLocaleTimeString('zh-CN', {hour12: false});
   render();
 }
 async function sync(quiet = false) {
+  UI.syncing = true;
+  renderNav();
   try {
     const n = await api('/api/scan', {method: 'POST'});
     await load();
     if (!quiet) toast(`同步完成：场景 ${n.scene} · 物体 ${n.object} · 任务 ${n.task} · 回合 ${n.episode}`);
-  } catch (err) { toast(`同步失败：${err.message}`); }
+  } catch (err) { toast(`同步失败：${err.message}`, true); }
+  UI.syncing = false;
+  renderNav();
 }
-async function save(kind, id, patch) {
+async function save(kind, id, patch, quiet = false) {
   try {
     const doc = await api(`/api/items?kind=${kind}&id=${encodeURIComponent(id)}`, {method: 'PUT', body: JSON.stringify({...patch, _by: user()})});
     const i = S[kind].findIndex((x) => x.id === id);
     if (i >= 0) S[kind][i] = doc; else S[kind].push(doc);
-    render();
-  } catch (err) { toast(`保存失败：${err.message}`); }
+    if (!quiet) render();
+    return true;
+  } catch (err) { toast(`保存失败：${err.message}`, true); return false; }
 }
 async function removeDoc(kind, id) {
   if (!confirm(`删除 ${id} 的登记和录入内容？`)) return;
   await api(`/api/items?kind=${kind}&id=${encodeURIComponent(id)}`, {method: 'DELETE'});
   S[kind] = S[kind].filter((x) => x.id !== id);
   closeDrawer();
+  toast('已删除');
 }
 async function createObject() {
   const cat = $('#no-cat').value.trim(), idx = $('#no-idx').value.trim();
-  if (!/^\w[\w-]*$/.test(cat) || !/^\d+$/.test(idx)) return toast('类别只能含字母、数字、下划线和连字符，编号为非负整数');
+  if (!/^\w[\w-]*$/.test(cat) || !/^\d+$/.test(idx)) return toast('类别只能含字母、数字、下划线和连字符，编号为非负整数', true);
   const id = `${$('#no-type').value}/${cat}/${idx.padStart(5, '0')}`;
   if (!S.object.some((d) => d.id === id)) {
     await api(`/api/items?kind=object&id=${encodeURIComponent(id)}`, {method: 'PUT',
@@ -625,8 +961,32 @@ async function createObject() {
   }
   openDrawer('object', id);
 }
+async function uploadPhotos(input) {
+  const id = input.dataset.id, files = [...input.files];
+  if (!files.length) return;
+  toast(`正在上传 ${files.length} 张照片…`);
+  try {
+    for (const f of files) {
+      if (f.size > 25 * 1024 * 1024) { toast(`${f.name} 超过 25 MB，已跳过`, true); continue; }
+      const r = await fetch(`/api/photo?id=${encodeURIComponent(id)}&name=${encodeURIComponent(f.name)}`, {method: 'POST', body: f});
+      if (!r.ok) throw new Error(`${f.name}：${r.status}`);
+    }
+    await sync(true);
+    toast(`已上传 ${files.length} 张照片`);
+  } catch (err) { toast(`上传失败：${err.message}`, true); }
+}
+async function deletePhoto(path) {
+  if (!confirm(`删除照片 ${base(path)}？`)) return;
+  try {
+    await api(`/api/photo?path=${encodeURIComponent(path)}`, {method: 'DELETE'});
+    await sync(true);
+    toast('照片已删除');
+  } catch (err) { toast(`删除失败：${err.message}`, true); }
+}
 function onFieldChange(ev) {
-  const el = ev.target, f = el.dataset.f, box = el.closest('[data-kind]');
+  const el = ev.target;
+  if (el.dataset.sel !== undefined) { if (el.checked) UI.sel.add(el.dataset.sel); else UI.sel.delete(el.dataset.sel); render(); return; }
+  const f = el.dataset.f, box = el.closest('[data-kind]');
   if (!f || !box) return;
   const {kind, id} = box.dataset, doc = S[kind].find((x) => x.id === id) || {};
   let v = el.type === 'checkbox' ? el.checked : el.value;
@@ -642,19 +1002,38 @@ async function setQA(status) {
   await save('episode', UI.ep, {qa: status});
   if (status === 'pass' && list[i + 1]) pick(list[i + 1].id);
 }
+const setReal = (v) => save('episode', UI.ep, {real: v});
 function toggleTag(i) {
   const e = S.episode.find((x) => x.id === UI.ep), tags = new Set(e.tags || []);
   if (tags.has(TAGS[i])) tags.delete(TAGS[i]); else tags.add(TAGS[i]);
   save('episode', e.id, {tags: [...tags]});
 }
+function toggleAll(checked) {
+  qaList().forEach((e) => (checked ? UI.sel.add(e.id) : UI.sel.delete(e.id)));
+  render();
+}
+async function bulkQA(status) {
+  const ids = [...UI.sel];
+  if (!ids.length || !confirm(`将 ${ids.length} 个回合设为「${QA_STATES[status]}」？`)) return;
+  let n = 0;
+  for (const id of ids) n += await save('episode', id, {qa: status}, true) ? 1 : 0;
+  UI.sel.clear();
+  render();
+  toast(`已将 ${n} 个回合设为「${QA_STATES[status]}」`);
+}
 function pick(id) {
   if (!id) return;
   UI.ep = id;
   render();
-  $('.list tr.sel')?.scrollIntoView({block: 'nearest'});
+  $('.qa-list tr.sel')?.scrollIntoView({block: 'nearest'});
 }
-function playAll() {
-  document.querySelectorAll('#qa-videos video').forEach((v) => { v.currentTime = 0; v.play(); });
+function videos(action, value) {
+  document.querySelectorAll('#qa-videos video').forEach((v) => {
+    if (action === 'play') v.play();
+    else if (action === 'pause') v.pause();
+    else if (action === 'restart') { v.currentTime = 0; v.play(); }
+    else if (action === 'rate') v.playbackRate = Number(value);
+  });
 }
 function qaFilter(ds) {
   UI.qa = {task: ds.t, config: ds.c, policy: ds.p, result: '', status: ''};
@@ -671,9 +1050,10 @@ function go(kind, id) {
     UI.drawer = null;
     UI.qa = {task: '', config: '', policy: '', result: '', status: ''};
     UI.ep = id;
-  } else UI.drawer = {kind, id};
-  render();
+    render();
+  } else openDrawer(kind, id);
 }
+function setObjView(view) { UI.obj.view = localStorage.objView = view; render(); }
 function exportPassed() {
   const f = UI.qa;
   const rows = live(S.episode).filter((e) => e.qa === 'pass' && (!f.task || e.auto.task === f.task)
@@ -681,32 +1061,97 @@ function exportPassed() {
     .map((e) => ({id: e.id, task: e.auto.task, config: e.auto.config, policy: e.auto.policy, seed: e.auto.seed, layout_id: e.auto.layout_id,
       success: e.auto.success, score: e.auto.score, run: e.auto.run, videos: e.auto.videos, tags: e.tags || [], note: e.note || '',
       real: e.real || '', reviewer: e._by || '', reviewed_at: e._at}));
-  if (!rows.length) return toast('当前任务 / 配置 / 策略筛选下没有质检通过的回合');
+  if (!rows.length) return toast('当前任务 / 配置 / 策略筛选下没有质检通过的回合', true);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(rows, null, 2)], {type: 'application/json'}));
   a.download = `qa_pass_${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
+  toast(`已导出 ${rows.length} 个回合`);
 }
-function lightbox(src) {
-  $('#lightbox img').src = src;
-  $('#lightbox').style.display = 'flex';
+async function copyCode(btn) {
+  const text = btn.previousElementSibling.textContent;
+  try {
+    if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
+    else {
+      const ta = Object.assign(document.createElement('textarea'), {value: text});
+      document.body.append(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    toast('已复制');
+  } catch { toast('复制失败，请手动选中复制', true); }
 }
-function toast(msg) {
+function toast(msg, error = false) {
   const t = $('#toast');
-  t.textContent = msg;
-  t.style.display = 'block';
+  t.innerHTML = `${ic(error ? 'alert' : 'check')}<span>${esc(msg)}</span>`;
+  t.className = `on${error ? ' err' : ''}`;
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => { t.style.display = 'none'; }, 3500);
+  toast.timer = setTimeout(() => { t.className = ''; }, error ? 5000 : 3000);
 }
-function openDrawer(kind, id) { UI.drawer = {kind, id}; render(); }
-function closeDrawer() { UI.drawer = null; render(); }
+
+// ---------- overlays ----------
+const LB = {list: [], i: 0, ret: null};
+function lightbox(list, i) {
+  if (!list?.length) return;
+  LB.list = list; LB.i = i; LB.ret = document.activeElement;
+  renderLB();
+  $('#lightbox').classList.add('on');
+  $('#lb-close').focus();
+}
+function renderLB() {
+  const p = LB.list[LB.i];
+  $('#lb-img').src = file(p);
+  $('#lb-img').alt = base(p);
+  $('#lb-cap').textContent = `${base(p)} · ${LB.i + 1} / ${LB.list.length}`;
+  $('#lb-open').href = file(p);
+  document.querySelectorAll('.lb-nav').forEach((b) => { b.hidden = LB.list.length < 2; });
+}
+function lbStep(d) { LB.i = (LB.i + d + LB.list.length) % LB.list.length; renderLB(); }
+function closeLB() { $('#lightbox').classList.remove('on'); LB.ret?.focus?.(); }
+function openDrawer(kind, id, trigger) {
+  const wasOpen = Boolean(UI.drawer);
+  UI.drawer = {kind, id};
+  if (!wasOpen) UI.drawerRet = trigger || document.activeElement;
+  UI.drawerFocus = true;
+  render();
+}
+function closeDrawer() {
+  if (!UI.drawer) return;
+  UI.drawer = null;
+  render();
+  UI.drawerRet?.focus?.();
+}
+function renderDrawer() {
+  const dr = $('#drawer'), x = UI.drawer;
+  $('#scrim').classList.toggle('on', Boolean(x));
+  if (!x) { dr.classList.remove('on'); dr.dataset.k = ''; return; }
+  const key = `${x.kind}|${x.id}`;
+  if (x.kind === 'new-object' && dr.dataset.k === key) return;
+  const d = S[x.kind]?.find((y) => y.id === x.id);
+  const view = x.kind === 'new-object' ? drawerNewObject() : d ? {scene: drawerScene, object: drawerObject, task: drawerTask}[x.kind](d) : {title: '记录不存在', body: ''};
+  const scroll = dr.dataset.k === key ? $('#drawer .dr-b')?.scrollTop : 0;
+  dr.innerHTML = `<div class="dr-h"><div style="min-width:0;flex:1"><h2 id="drawer-title">${esc(view.title)}</h2>${view.sub ? `<p>${esc(view.sub)}</p>` : ''}</div>
+    ${view.actions || ''}<button class="btn btn-icon dr-close" type="button" aria-label="关闭（Esc）" onclick="closeDrawer()">${ic('close')}</button></div>
+    <div class="dr-b"${d && x.kind !== 'new-object' ? ` data-kind="${x.kind}" data-id="${esc(d.id)}"` : ''}>${view.body}
+    ${d?._by || d?._at ? `<p class="hint" style="margin-top:24px">最近修改：${esc(d._by || '匿名')} · ${fmtTime(d._at)}</p>` : ''}</div>`;
+  dr.dataset.k = key;
+  dr.classList.add('on');
+  if (scroll) $('#drawer .dr-b').scrollTop = scroll;
+  if (UI.drawerFocus) { UI.drawerFocus = false; $('#drawer .dr-close').focus({preventScroll: true}); }
+}
 function onKey(ev) {
-  if (ev.key === 'Escape') {
-    $('#lightbox').style.display = 'none';
-    if (UI.drawer) closeDrawer();
+  if ($('#lightbox').classList.contains('on')) {
+    if (ev.key === 'Escape') closeLB();
+    else if (ev.key === 'ArrowLeft') lbStep(-1);
+    else if (ev.key === 'ArrowRight') lbStep(1);
+    else return;
+    ev.preventDefault();
     return;
   }
-  if (UI.tab !== 'qa' || ev.target.matches('input, textarea, select') || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  if (ev.key === 'Escape' && UI.drawer) { closeDrawer(); return; }
+  if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches('[data-open][tabindex]')) { ev.preventDefault(); ev.target.click(); return; }
+  if (UI.tab !== 'qa' || UI.drawer || ev.target.matches('input, textarea, select, video') || ev.metaKey || ev.ctrlKey || ev.altKey) return;
   const list = qaList(), i = list.findIndex((e) => e.id === UI.ep), k = ev.key.toLowerCase();
   if (k === 'j' || k === 'arrowdown') pick(list[Math.min(i + 1, list.length - 1)]?.id);
   else if (k === 'k' || k === 'arrowup') pick(list[Math.max(i - 1, 0)]?.id);
@@ -716,46 +1161,48 @@ function onKey(ev) {
   else return;
   ev.preventDefault();
 }
+function onClick(ev) {
+  const lb = ev.target.closest('[data-lb]');
+  if (lb) { lightbox(GAL[lb.dataset.lb], Number(lb.dataset.i)); return; }
+  const g = ev.target.closest('[data-go]');
+  if (g) { ev.preventDefault(); go(g.dataset.go, g.dataset.id); return; }
+  const o = ev.target.closest('[data-open]');
+  if (!o) return;
+  const control = ev.target.closest('input, button, a, label, select, textarea, video');
+  if (control && control !== o && o.contains(control)) return;  // controls inside a row or card act on their own
+  if (o.dataset.open === 'episode') pick(o.dataset.id);
+  else openDrawer(o.dataset.open, o.dataset.id, o);
+}
 
 // ---------- render ----------
 const VIEWS = {overview: viewOverview, scenes: viewScenes, objects: viewObjects, tasks: viewTasks, qa: viewQA};
-function renderDrawer() {
-  const dr = $('#drawer'), x = UI.drawer;
-  if (!x) { dr.classList.remove('open'); dr.dataset.k = ''; return; }
-  const key = `${x.kind}|${x.id}`;
-  if (x.kind === 'new-object' && dr.dataset.k === key) return;
-  const d = S[x.kind]?.find((y) => y.id === x.id);
-  const title = x.kind === 'new-object' ? '登记物体' : `${KIND_LABEL[x.kind]} · ${x.id}`;
-  const body = x.kind === 'new-object' ? drawerNewObject() : !d ? '<div class="muted">记录不存在</div>'
-    : `<div data-kind="${x.kind}" data-id="${esc(d.id)}">${{scene: drawerScene, object: drawerObject, task: drawerTask}[x.kind](d)}
-      ${d._by || d._at ? `<p class="small muted">最近修改：${esc(d._by || '匿名')} · ${fmtTime(d._at)}</p>` : ''}</div>`;
-  dr.innerHTML = `<div class="toolbar"><b class="title">${esc(title)}</b><span class="sp"></span><button onclick="closeDrawer()">关闭 (Esc)</button></div>${body}`;
-  dr.dataset.k = key;
-  dr.classList.add('open');
-}
 function render() {
   EP_BY_TASK = group(live(S.episode), (e) => e.auto.task);
-  document.querySelectorAll('nav a').forEach((a) => a.classList.toggle('on', a.dataset.tab === UI.tab));
-  const focus = document.activeElement?.id, scroll = $('.list')?.scrollTop, videos = $('#qa-videos');
-  $('main').innerHTML = VIEWS[UI.tab]();
+  renderNav();
+  if (!UI.loaded) return;
+  const focus = document.activeElement?.id, scroll = $('.qa-list')?.scrollTop, oldVideos = $('#qa-videos'), opening = UI.drawerFocus;
+  $('#main').innerHTML = VIEWS[UI.tab]();
   const slot = $('#qa-videos');
-  if (videos && slot && videos.dataset.ep === slot.dataset.ep) slot.replaceWith(videos);  // keep playback position
-  if (scroll && $('.list')) $('.list').scrollTop = scroll;
+  if (oldVideos && slot && oldVideos.dataset.ep === slot.dataset.ep) slot.replaceWith(oldVideos);  // keep playback position
+  if (scroll && $('.qa-list')) $('.qa-list').scrollTop = scroll;
   renderDrawer();
   const el = focus && document.getElementById(focus);
-  if (el && el !== document.activeElement) {
-    el.focus();
+  if (el && el !== document.activeElement && !opening) {
+    el.focus({preventScroll: true});
     if (el.type === 'text') el.setSelectionRange(el.value.length, el.value.length);
   }
 }
 const tabFromHash = () => (VIEWS[location.hash.slice(1)] ? location.hash.slice(1) : 'overview');
-window.addEventListener('hashchange', () => { UI.tab = tabFromHash(); UI.drawer = null; render(); });
+window.addEventListener('hashchange', () => { UI.tab = tabFromHash(); UI.drawer = null; render(); window.scrollTo(0, 0); });
 document.addEventListener('change', onFieldChange);
 document.addEventListener('keydown', onKey);
+document.addEventListener('click', onClick);
+$('#lightbox').addEventListener('click', (ev) => { if (ev.target.classList.contains('lb-stage')) closeLB(); });
 $('#user').value = user();
 $('#user').addEventListener('change', (ev) => { localStorage.user = ev.target.value.trim(); });
 UI.tab = tabFromHash();
-api('/api/info').then((info) => { INFO = info; return load(); }).catch((err) => toast(`加载失败：${err.message}`));
+renderNav();
+api('/api/info').then((info) => { INFO = info; return load(); }).catch((err) => toast(`加载失败：${err.message}`, true));
 </script>
 </body>
 </html>

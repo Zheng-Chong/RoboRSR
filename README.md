@@ -122,12 +122,18 @@ REAL2SIM_PLATFORM_AUTH=用户名:密码 python3 src/real2sim_platform/server.py 
 | 页面 | 自动得到 | 人工录入（按 Notion 月度目标的验收标准判定） |
 | :-- | :-- | :-- |
 | 场景重建 | 照片、拟合、构建、离线检查 | 卷尺实测（< 1 cm）、头部相机叠图（< 5 px，≥ 3 视角）、灯光、Isaac 渲染、入共享库 |
-| 物体资产 | 用于哪些任务和标签、生成脚本、仿真尺寸/质量/摩擦 | 实测尺寸和质量（误差 < 2 mm 或 2%、≤ 5 g）、5 项物理检验、角色（源/接收/干扰）与 7:3 划分 |
+| 物体资产 | 用于哪些任务和标签、生成脚本、仿真尺寸/质量/摩擦、实拍照片与仿真渲染对照 | 上传实拍照片、实测尺寸和质量（误差 < 2 mm 或 2%、≤ 5 g）、5 项物理检验、角色（源/接收/干扰）与 7:3 划分 |
 | 任务采集 | 布局数、回合数、`scripted_demo` 专家成功率（≥ 80%） | 合格回合目标（默认 500）、L0–L4 分级评测集进度、负责人 |
 | 数据质检 | 结果写入、三路相机齐全、视频标签与结果一致 | 通过/拒绝（快捷键 J/K/P/R/U）、问题标签、真机对照结果；导出质检通过清单 |
 | 总览 | 各环节完成度、资产泛化目标、拒绝原因 | Sim↔Real 结果一致率 AA、Cohen's κ、P(真机成功 \| 仿真成功) |
 
 扫描结果和人工录入分开存（SQLite，默认 `.cache/real2sim_platform.sqlite3`，`--db` 可改），重新扫描不会覆盖录入内容。平台里的实测值是工作记录，定稿后按 `real2sim/ASSETS.md` 的维护规则写回生成脚本和登记表。自检：`python3 src/real2sim_platform/test_server.py`。
+
+物体图片按 id（`<类型>/<类别>/<编号>`，与 `Assets/Object/RoboDojo/` 下相同）放在 `real2sim/objects/<id>/`：`reference/` 是实物照片（随仓库，走 LFS；网页上传也存到这里），`preview/` 是仿真渲染（可重新生成，不入库）。渲染在 GPU 服务器上每个物体单独出图：
+
+```bash
+PYTHONPATH=. python scripts/objects/check_object.py Assets/Object/RoboDojo/Rigid/measuring_cup/0000{0,1} --image-dir real2sim/objects
+```
 
 ## 仓库结构
 
@@ -146,6 +152,7 @@ src/real2sim_platform/                  Real2Sim 数采管理平台（场景重�
 task/RoboDojo/{config,tasks}/g1d_*      G1-D 任务
 real2sim/                               自建资产（随仓库，二进制走 Git LFS）
   ASSETS.md                             自建资产登记表：真实对应物、匹配程度、共享库状态、待实测清单
+  objects/<类型>/<类别>/<编号>/          物体实拍照片 reference/（入库）和仿真渲染 preview/（不入库）
   robot/g1d_v4/                         G1-D + Dex1-1 v4 URDF、网格、physics_contract（build_asset.py 的输入）
   scenes/real_scene1_office/            办公室孪生场景 → Room/real_scene1
   scenes/real_scene2_counter/           台面孪生场景 → Room/real_scene2

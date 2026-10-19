@@ -43,7 +43,10 @@ OBJECT_ID = re.compile(r"\w+/\w[\w-]*/\d+")  # <type>/<category>/<index>, e.g. R
 EXPECTED_CAMERAS = {"head", "left_wrist", "right_wrist"}  # same acceptance as scripts/internal/summarize_result.py
 VIDEO_RE = re.compile(r"episode_(\d+)_cam_(.+)_(success|fail)\.mp4")
 SKIP_DIRS = {".git", "_stream", "Assets", "third_party", "XPolicyLab", "__pycache__"}
-SERVED_SUFFIXES = {".jpg", ".jpeg", ".png", ".mp4", ".webm", ".md", ".json"}
+OBJECTS_DIR = ROOT / "real2sim" / "objects"  # <id>/reference/: real-object photos (git LFS); <id>/preview/: renders
+IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
+SERVED_SUFFIXES = IMAGE_SUFFIXES | {".mp4", ".webm", ".md", ".json"}
+MAX_UPLOAD = 25 << 20
 
 
 def load_json(path):
@@ -51,6 +54,10 @@ def load_json(path):
         return json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
+
+
+def images(folder):
+    return sorted(str(p) for p in Path(folder).glob("*") if p.suffix.lower() in IMAGE_SUFFIXES)
 
 
 class Store:
@@ -210,9 +217,11 @@ def scan_objects(assets, tasks, keep):
             "in_library": meta is not None,
             "name": names[0],
             "mass": physics.get("mass"),
-            "size": physics.get("size"),
+            "size": physics.get("size") or ((meta or {}).get("geometry", {}).get("aligned_bbox") or {}).get("extents"),
             "static_friction": physics.get("static_friction"),
             "dynamic_friction": physics.get("dynamic_friction"),
+            "photos": images(OBJECTS_DIR / oid / "reference"),
+            "renders": images(OBJECTS_DIR / oid / "preview") + images(d),
         }
     return found
 
@@ -262,6 +271,7 @@ def scan(store, assets, eval_roots):
     tasks = scan_tasks(assets)
     custom = {name: t for name, t in tasks.items() if t["dimension"] == "custom"}
     keep = [d["id"] for d in store.list("object") if set(d) - {"id", "auto"}]
+    keep += [str(p.relative_to(OBJECTS_DIR)) for p in OBJECTS_DIR.glob("*/*/*") if p.is_dir()]  # have photos or renders
     found = {
         "scene": scan_scenes(),
         "task": tasks,
@@ -307,9 +317,24 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(404)
 
     def do_POST(self):
-        if urlparse(self.path).path != "/api/scan":
+        url = urlparse(self.path)
+        if url.path == "/api/scan":
+            return self.send_json(scan(self.store, *self.scan_args))
+        if url.path != "/api/photo":
             return self.send_error(404)
-        self.send_json(scan(self.store, *self.scan_args))
+        query = {k: v[0] for k, v in parse_qs(url.query).items()}
+        oid, name = query.get("id", ""), Path(query.get("name", "")).name
+        size, suffix = int(self.headers.get("Content-Length", 0)), Path(name).suffix.lower()
+        if not OBJECT_ID.fullmatch(oid) or suffix not in IMAGE_SUFFIXES or not 0 < size <= MAX_UPLOAD:
+            return self.send_error(400)
+        folder = OBJECTS_DIR / oid / "reference"
+        folder.mkdir(parents=True, exist_ok=True)
+        stem = re.sub(r"[^\w.-]", "_", Path(name).stem)[:60] or "photo"
+        path, n = folder / f"{stem}{suffix}", 1
+        while path.exists():
+            path, n = folder / f"{stem}-{n}{suffix}", n + 1
+        path.write_bytes(self.rfile.read(size))
+        self.send_json({"path": str(path)})
 
     def do_PUT(self):
         kind, id_ = self.target()
@@ -322,6 +347,14 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(self.store.update(kind, id_, fields))
 
     def do_DELETE(self):
+        url = urlparse(self.path)
+        if url.path == "/api/photo":
+            path = Path(parse_qs(url.query).get("path", [""])[0]).resolve()
+            photo = path.parent.name == "reference" and path.suffix.lower() in IMAGE_SUFFIXES
+            if not (photo and path.is_file() and path.is_relative_to(OBJECTS_DIR.resolve())):
+                return self.send_error(400)
+            path.unlink()
+            return self.send_json({"ok": True})
         kind, id_ = self.target()
         if not kind:
             return self.send_error(400)

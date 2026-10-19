@@ -97,6 +97,14 @@ def test_http():
         assert json.loads(request("POST", "/api/scan")[1])["episode"] == 1
         assert json.loads(request("GET", "/api/items?kind=task")[1])
         assert b"Real2Sim" in request("GET", "/")[1]
+        server.OBJECTS_DIR = tmp / "objects"
+        status, body, _ = request("POST", "/api/photo?id=Rigid/cup/00000&name=../a%20b.JPG", b"jpg")
+        photo = json.loads(body)["path"]
+        assert status == 200 and photo == str(tmp / "objects/Rigid/cup/00000/reference/a_b.jpg")
+        assert request("POST", "/api/photo?id=Rigid/cup/00000&name=x.exe", b"x")[0] == 400
+        assert server.scan_objects(tmp, {}, ["Rigid/cup/00000"])["Rigid/cup/00000"]["photos"] == [photo]
+        assert request("DELETE", f"/api/photo?path={tmp / 'secret.txt'}")[0] == 400
+        assert request("DELETE", f"/api/photo?path={photo}")[0] == 200 and not Path(photo).exists()
         server.Handler.auth = "Basic dTpw"  # u:p
         assert request("GET", "/api/info")[0] == 401
         assert request("PUT", "/api/items?kind=task&id=x", b"{}", {"Authorization": "Basic dTp4"})[0] == 401

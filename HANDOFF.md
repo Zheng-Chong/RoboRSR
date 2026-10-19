@@ -182,6 +182,11 @@
 - 阿里云侧：10080–10100 里 10080/10088/10099/10100 已被占用，选 10081。`/root/.ssh/authorized_keys` 里有一行 `5090-2` 专用密钥 `~/.ssh/real2sim_tunnel` 的公钥（注释 `real2sim-platform-tunnel@5090-2`），限制为 `restrict,port-forwarding,permitlisten="0.0.0.0:10081",permitopen="127.0.0.1:9",command="/bin/false"`（同样的限制在旧密钥上验证过：不能执行命令、不能监听其他端口）。每次改动前都备份为 `authorized_keys.bak-real2sim-<时间戳>`。阿里云原有隧道（DSW 反向 SSH 加本地 `autossh -L`）未动。
 - 运维：`5090-2` 的仓库设了 `receive.denyCurrentBranch updateInstead` 并让 LFS 检出时不下载（`filter.lfs.smudge/process --skip`），所以在本机 `GIT_LFS_SKIP_PUSH=1 git push 5090-2:/root/RoboDojo main` 就能更新代码，新增的 LFS 文件（照片等）再用 rsync 拷到同一路径；然后 `ssh 5090-2 'tmux send-keys -t r2s-platform C-c'`（循环 3 s 后用新代码重启）。停用：`tmux kill-session -t r2s-platform; tmux kill-session -t r2s-tunnel`，再删掉阿里云 `authorized_keys` 里 `real2sim-platform-tunnel@5090-2` 那一行。
 - 部署验证（从本机经公网访问）：无凭据返回 401；带凭据后 `/api/info`、首页、场景图片 200，`5090-2` 的访问日志记录到这些请求；`test_server.py` 在 Python 3.10.12 下 4 项通过（在同版本的 `rtx5090-180` 上跑的）。
+- 物体图片（2026-10-19，用户问物体页为何没有渲染图和照片）：约定 `real2sim/objects/<类型>/<类别>/<编号>/`，`reference/` 放实物照片（入库，LFS），`preview/` 放仿真渲染（`.gitignore` 已有 `real2sim/**/preview/`，不入库）。扫描器给每个物体加 `auto.photos`、`auto.renders`（`preview/` 加资产目录里的图片）；`real2sim/objects/` 下有目录的物体即使不在任务里也列出（`plastic_mug`、`red_bean`）。官方物体 metadata 没有 `physics.size`，仿真尺寸回退到 `geometry.aligned_bbox.extents`。新接口 `POST /api/photo?id=&name=`（原始字节，≤ 25 MB，jpg/png/webp，文件名清洗、重名加序号）、`DELETE /api/photo?path=`（只能删 `real2sim/objects/**/reference/` 下的图）。
+- 已有照片：用户 10-17 的三张桌面照片 IMG_4867/4868/4871（会话附件）分到两只量杯、`plastic_mug`（4871）、`red_bean`（4867/4868）；`plastic_cup/00000` 用真机片段 `G1D-PourBeansPlusEps222_ep002.mp4` 第 0.5 s 帧（头部相机，桌上两只塑料杯）。
+- 渲染：`check_object.py` 新增 `--image-dir DIR`，一次启动每个物体配一台 640×480 相机（物体间距改 0.6 m，地板随一排物体加长并居中；相机从侧前上方，距离 = 3.7 × 包围盒对角线，按 USD 默认 50 mm 镜头的 18° 竖直视角算，之前按 47° 估太近），写 `<DIR>/<类型>/<类别>/<编号>/preview/sim.png`。21196 隔离目录 `agent-remote-runs/objrender-20261019-103920`（自建 9 个由当前生成脚本重新生成到 `ovl/Rigid/`，官方 54 个只读共享库，共享库未改）出了 63 张，已同步到本机和 `5090-2` 的 `real2sim/objects/`。落地检查：自建 9/9 OK；官方 34/54 OK，其余多为 z 偏差——官方资产原点在底部而脚本假定在包围盒中心，z 判据对官方物体不成立，倾角才有意义（clock、drawing_compass、toy 倒下 75–90°，piler 6.6°）。锯子 `saw/00000` 资产竖立建模、落地后倒平，按竖立尺寸取景偏远，缩略图很小。
+- 界面重做（用户要求用 ui-ux-pro-max 技能，已用官方 CLI `npx ui-ux-pro-max-cli init --ai cursor --global` 装到 `~/.cursor/skills/`，v2.15.0）：按其设计系统检索（内部运营看板、密度 8）取 Swiss 极简 + 海军蓝 `#1E40AF` / 琥珀 `#D97706`；没用它推荐的 Google Fonts（Fira 无中文字形，且国内经阿里云访问会卡），改系统中文字体 + 等宽数字；没用 GSAP。实现：左侧栏导航（计数、待审角标、同步状态、窄屏变顶栏）、设计 token、内联 SVG 图标（Lucide 路径）、状态都带图标和文字（不只靠颜色）、分段进度条、焦点环、`prefers-reduced-motion`、抽屉带遮罩并在关闭后还焦点、灯箱（←/→ 翻页、Esc）、复制命令按钮。物体页默认卡片（渲染主图 + 实拍小图），抽屉里实物与仿真左右对照、上传/删除照片；质检页加批量勾选和批量结论、视频统一播放/暂停/从头/倍速、真机结果分段按钮。
+- 界面验证：本机 `test_server.py` 4 项（含上传/删除和路径校验）、ruff、`node --check` 页面脚本；浏览器实际操作总览、物体卡片与抽屉、质检（选回合、勾选出批量栏、4 路视频）、场景抽屉灯箱（翻页、Esc 先关灯箱、焦点回到缩略图、再 Esc 关抽屉）、网页上传中文文件名照片并删除。注意：Cursor 内置浏览器的某个标签页曾进入拦截所有点击的状态（页面内连 body 的点击都到不了 document 监听器），换新标签页后一切正常，属于工具环境问题。
 - 验证（本机）：`python3 src/real2sim_platform/test_server.py` 4 项通过（任务配置解析、仓库扫描、回合扫描 + 重扫保留录入 / 标记缺失、HTTP Range、路径限制、非法物体 id 返回 400）；`uvx ruff check`、`ruff format --check` 通过。浏览器里用临时库 `/tmp/r2s_test.sqlite3` 和 `/tmp/r2s_fixture`（假资产库 + 3 回合运行，视频取自本机 `eval_result/real_scene1`）实际操作五个页面：场景录入后阶段判定随之变化、重启服务后录入仍在、量杯关联 metadata 后尺寸核对通过、质检快捷键 P 通过并跳到下一条 / R 拒绝后停留、改标签不打断视频播放、登记新物体、Sim↔Real 指标（AA 0.67、κ 0.40，与手算一致）。未在服务器 21196 的共享资产库和隔离目录上运行（本机 `Assets/` 为空，物体元数据和布局数只用假数据验证过）。
 
 ## 剩余事项与风险
@@ -202,7 +207,7 @@
 - 自建资产装没装进共享库、和真实的匹配程度，统一看 `real2sim/ASSETS.md`（2026-10-19 核对：共享库缺 `measuring_cup`、`plastic_mug`、`red_bean` 和量杯任务布局；`Robots/g1d` 是 10-17 带相机夹爪版）。
 - 自建物体的摩擦没有生效：`rigid.py` 只读 `physics.static_friction`/`dynamic_friction`（默认 0.6/1.5），生成脚本写的 `friction` 被忽略。现有成功率都是在默认摩擦下得到的；改成实测摩擦前要让生成脚本写这两个键，并重跑倒豆/抓取任务。
 - 所有自建物体和三个场景都没有卷尺/秤实测，尺寸来自照片拟合或常见规格估计；待测清单在 `real2sim/ASSETS.md`。
-- 数采平台：只有单一账号的 Basic 登录，没有分角色权限（未设 `REAL2SIM_PLATFORM_AUTH` 时完全无登录）；不从网页启动仿真，命令只展示供复制；回合质检只看视频和 `_result.json`，Notion 里的关节速度/加速度/加加速度、接触力、最小间距等运动合理性指标要等轨迹录制器输出关节数据后再接；L0–L4 进度是人工填写，布局还没按级别生成；实测值在平台和 `ASSETS.md` 两处，需要人工同步。
+- 数采平台：只有单一账号的 Basic 登录，没有分角色权限（未设 `REAL2SIM_PLATFORM_AUTH` 时完全无登录）；不从网页启动仿真，命令只展示供复制；回合质检只看视频和 `_result.json`，Notion 里的关节速度/加速度/加加速度、接触力、最小间距等运动合理性指标要等轨迹录制器输出关节数据后再接；L0–L4 进度是人工填写，布局还没按级别生成；实测值在平台和 `ASSETS.md` 两处，需要人工同步。渲染图不入库，换部署机器要 rsync `real2sim/objects/`（或在 GPU 机重跑 `check_object.py --image-dir`）；网页上传的照片落在部署机的仓库工作区，要入库得在那台机器（或拷回本机）提交。缩略图直接用原图，没有服务端缩图（只用标准库），场景预览较大时经公网加载会慢。
 
 ## 下一会话
 
@@ -233,6 +238,8 @@
 - 共享资产库（用户同意）：新增 `Room/real_scene{2,3}`、`Rigid/{water_cup,plastic_cup}`、`Eval_Layout/RoboDojo/{g1d_counter,g1d_lab}`，`g1d` 的 G1-D 任务布局换成当前版本，`Room/real_scene1` 覆盖为同样内容；与隔离目录验证产物 `diff -r` 一致。改动前备份 `/data2/tmp/robodojo/backup-shared-20261016-174239.tgz`（原 `g1d` 布局和 `real_scene1`）。没有跑 `format.py`（运行时不读 `uuid_map.json`）。
 
 ## 最近历史
+
+- 2026-10-19：数采平台界面按 ui-ux-pro-max 重做（侧栏导航、设计 token、状态图标、物体卡片、实物 vs 仿真对照、质检批量操作）；物体实拍照片入 `real2sim/objects/<id>/reference/`，`check_object.py --image-dir` 在 21196 为 63 个物体出单独渲染（不入库，已同步到 `5090-2`）。
 
 - 2026-10-19：数采平台部署从误选的 `rtx5090-180` 迁到新加别名的 `5090-2`（GitHub 不通，内网拷仓库，本机 `git push` 更新），公网入口和账号不变，旧机器已清理。
 - 2026-10-19：数采平台加 HTTP Basic 登录（`REAL2SIM_PLATFORM_AUTH`），经 `Aliyun` 10081 端口反向隧道对外；隧道密钥在阿里云上限定只能监听该端口。

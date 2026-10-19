@@ -78,5 +78,6 @@
 ## 维护规则
 
 - 新增资产、改生成参数、量到实测值，都更新本表对应行，和代码放在同一个提交里。
+- 实物照片放 `real2sim/objects/<类型>/<类别>/<编号>/reference/`（数采平台物体页也能上传到这里），仿真渲染由 `check_object.py --image-dir real2sim/objects` 生成到同一 id 的 `preview/`（不入库）。
 - 装进或更新服务器共享资产库后改“共享库”一栏（流程见 README「改服务器共享资产库」）。
 - 核对共享库：`ssh 21196 'ls /data2/zhongzheng/Project/RoboDojo_assets/Assets/Object/RoboDojo/Rigid/<类别>'`。
