@@ -1,0 +1,20 @@
+# Office collection profile; retain g1d layout and result namespace.
+config_name: g1d
+
+config:
+  sim: g1d_beans_collect_sim
+  scene: default
+  robot: g1d
+  camera: g1d_camera
+
+observation:
+  collect_freq: 30
+  robot:
+    joint_states: true
+    world_ee_state: true
+  vision:
+    approximate_depth: false
+    depth: false
+    intrinsic_matrix: false
+    extrinsic_matrix: false
+    shape: true
