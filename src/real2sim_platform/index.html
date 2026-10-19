@@ -23,6 +23,7 @@
   --side: 236px;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body { font: 14px/1.55 var(--font); color: var(--text); background: var(--bg); -webkit-font-smoothing: antialiased; }
 a { color: var(--primary); text-decoration: none; }
@@ -58,6 +59,21 @@ nav { display: flex; flex-direction: column; gap: 2px; }
 .nav-item .badge { margin-left: auto; min-width: 22px; padding: 0 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); font: 600 12px/20px var(--mono); text-align: center; }
 .side-foot { display: flex; flex-direction: column; gap: 10px; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); }
 .field { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
+.me { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.avatar { display: grid; flex: none; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font-weight: 650; }
+.me-name { min-width: 0; overflow: hidden; line-height: 1.3; }
+.me-name b { display: block; overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.me-name small { color: var(--muted); font: 11px var(--mono); }
+.login { display: grid; min-height: 100vh; place-items: center; padding: 24px; background: radial-gradient(circle at 20% 10%, #E0E7FF 0, transparent 40%), var(--bg); }
+.login-card { display: flex; flex-direction: column; gap: 14px; width: min(400px, 100%); padding: 28px; box-shadow: var(--shadow-2); }
+.login-card h1 { margin: 6px 0 0; font-size: 20px; }
+.login-card p { margin: 0; }
+.login-card .field { color: var(--text-2); font-size: 13px; font-weight: 500; }
+.login-card input:not([type=checkbox]) { width: 100%; min-height: 40px; }
+.pw { position: relative; }
+.pw input { padding-right: 42px !important; }
+.pw .btn { position: absolute; top: 3px; right: 3px; min-height: 34px; border: 0; background: transparent; }
+.field-error { margin: 0; color: var(--bad); font-size: 12px; }
 .source { color: var(--muted); font-size: 12px; line-height: 1.6; }
 .dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; }
 .dot.ok { background: var(--ok-bar); }
@@ -75,7 +91,7 @@ main { min-width: 0; padding: 26px 30px 56px; }
   nav { flex: 1 1 100%; flex-direction: row; order: 3; overflow-x: auto; }
   .nav-item { flex: none; }
   .side-foot { flex-direction: row; align-items: center; margin: 0 0 0 auto; padding: 0; border: 0; }
-  .side-foot .field > span, .source { display: none; }
+  .source, .me-name { display: none; }
   main { padding: 18px 14px 40px; }
 }
 
@@ -311,15 +327,31 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
     <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
     <symbol id="i-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
     <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.2A10.4 10.4 0 0 1 12 4c6.4 0 10 8 10 8a17.6 17.6 0 0 1-2.2 3.2"/><path d="M6.6 6.6C3.9 8.4 2 12 2 12s3.6 8 10 8a9.7 9.7 0 0 0 5.4-1.6"/><path d="M14.1 14.1a3 3 0 0 1-4.2-4.2"/><path d="m2 2 20 20"/></symbol>
     <symbol id="i-table" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></symbol>
   </defs>
 </svg>
-<div class="app">
+<div id="login" class="login" hidden>
+  <form class="card login-card" onsubmit="event.preventDefault(); doLogin()" novalidate>
+    <div class="brand" style="padding:0"><span class="mark" aria-hidden="true">R2S</span><div><b>Real2Sim</b><small>数采管理平台</small></div></div>
+    <div><h1>登录</h1><p class="muted small">用管理员分配的账号登录，你的录入和质检结论都会以这个账号署名。</p></div>
+    <label class="field">用户名<input id="lg-user" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" required></label>
+    <label class="field">密码<span class="pw"><input id="lg-pass" name="password" type="password" autocomplete="current-password" required aria-describedby="lg-err">
+      <button class="btn btn-icon" type="button" aria-label="显示密码" aria-pressed="false" onclick="togglePw(this)"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button></span></label>
+    <p id="lg-err" class="field-error" role="alert"></p>
+    <button id="lg-btn" class="btn btn-primary btn-lg btn-block" type="submit">登录</button>
+    <p class="hint">没有账号？请管理员在服务器上运行 <span class="mono">server.py --add-user</span> 创建。</p>
+  </form>
+</div>
+<div class="app" hidden>
   <aside class="side">
     <div class="brand"><span class="mark" aria-hidden="true">R2S</span><div><b>Real2Sim</b><small>数采管理平台</small></div></div>
     <nav id="nav" aria-label="主导航"></nav>
     <div class="side-foot">
-      <label class="field"><span>操作人</span><input id="user" placeholder="填写姓名" autocomplete="name"></label>
+      <div id="me" class="me"></div>
       <button id="sync-btn" class="btn btn-primary btn-block" type="button" onclick="sync()"></button>
       <div id="source" class="source"></div>
     </div>
@@ -352,7 +384,6 @@ const live = (xs) => xs.filter((d) => !d.auto?.missing);
 const group = (xs, key) => xs.reduce((m, x) => ((m[key(x)] ||= []).push(x), m), {});
 const rel = (p) => (p && INFO.root && p.startsWith(`${INFO.root}/`) ? p.slice(INFO.root.length + 1) : p);
 const base = (p) => String(p).split('/').pop();
-const user = () => localStorage.user || '';
 const opts = (options, value) => Object.entries(options).map(([k, l]) => `<option value="${esc(k)}" ${k === String(value ?? '') ? 'selected' : ''}>${esc(l)}</option>`).join('');
 const ic = (name, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
@@ -366,6 +397,7 @@ const UI = {
   qa: {task: '', config: '', policy: '', result: '', status: 'pending'},
 };
 let INFO = {};
+let ME = null;
 let EP_BY_TASK = {};
 const GAL = {};
 
@@ -558,6 +590,10 @@ function renderNav() {
   $('#sync-btn').disabled = UI.syncing;
   $('#source').innerHTML = `<div><span class="dot ${INFO.assets_ok ? 'ok' : 'warn'}"></span>资产库${INFO.assets_ok ? '已连接' : '未找到'}</div>
     <div>回合目录 ${(INFO.eval_roots || []).length} 个</div>${UI.syncedAt ? `<div>同步于 ${UI.syncedAt}</div>` : ''}`;
+  $('#me').innerHTML = ME ? `<span class="avatar" aria-hidden="true">${esc([...ME.name][0] || '?')}</span>
+    <span class="me-name"><b>${esc(ME.name)}</b><small>${esc(ME.username)}</small></span><span class="sp"></span>
+    <button class="btn btn-icon btn-ghost" type="button" data-open="account" aria-label="修改密码" title="修改密码">${ic('key')}</button>
+    <button class="btn btn-icon btn-ghost" type="button" onclick="logout()" aria-label="退出登录" title="退出登录">${ic('logout')}</button>` : '';
 }
 
 // ---------- overview ----------
@@ -914,8 +950,79 @@ function qaPanel(e) {
 // ---------- actions ----------
 async function api(url, options = {}) {
   const r = await fetch(url, {headers: {'Content-Type': 'application/json'}, ...options});
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  if (r.status === 401 && ME && url !== '/api/password') { showLogin('登录已过期，请重新登录'); throw new Error('请先登录'); }
+  if (!r.ok) throw new Error((await r.json().catch(() => null))?.error || `${r.status} ${r.statusText}`);
   return r.json();
+}
+function showLogin(message = '') {
+  ME = null;
+  UI.drawer = null;
+  renderDrawer();
+  closeLB();
+  document.querySelector('.app').hidden = true;
+  $('#login').hidden = false;
+  $('#lg-err').textContent = message;
+  $('#lg-user').setAttribute('aria-invalid', String(Boolean(message)));
+  ($('#lg-user').value ? $('#lg-pass') : $('#lg-user')).focus();
+}
+async function doLogin() {
+  const btn = $('#lg-btn'), username = $('#lg-user').value.trim(), password = $('#lg-pass').value;
+  if (!username || !password) { $('#lg-err').textContent = '请输入用户名和密码'; return; }
+  btn.disabled = true;
+  btn.textContent = '登录中…';
+  try {
+    ME = await api('/api/login', {method: 'POST', body: JSON.stringify({username, password})});
+    $('#lg-pass').value = '';
+    $('#lg-err').textContent = '';
+    await enter();
+  } catch (err) {
+    $('#lg-err').textContent = err.message;
+    $('#lg-pass').select();
+  }
+  btn.disabled = false;
+  btn.textContent = '登录';
+}
+async function logout() {
+  await fetch('/api/logout', {method: 'POST'}).catch(() => null);
+  KINDS.forEach((k) => { S[k] = []; });
+  UI.loaded = false;
+  showLogin();
+}
+async function enter() {
+  $('#login').hidden = true;
+  document.querySelector('.app').hidden = false;
+  INFO = await api('/api/info');
+  renderNav();
+  await load();
+}
+function togglePw(btn) {
+  const input = btn.previousElementSibling, show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  btn.setAttribute('aria-pressed', String(show));
+  btn.setAttribute('aria-label', show ? '隐藏密码' : '显示密码');
+  btn.innerHTML = ic(show ? 'eye-off' : 'eye');
+}
+async function changePassword() {
+  const old = $('#pw-old').value, next = $('#pw-new').value, again = $('#pw-again').value, err = $('#pw-err');
+  err.textContent = next.length < 8 ? '新密码至少 8 位' : next !== again ? '两次输入的新密码不一致' : '';
+  if (err.textContent) return;
+  try {
+    await api('/api/password', {method: 'POST', body: JSON.stringify({old, new: next})});
+    closeDrawer();
+    toast('密码已修改，其他设备上的登录已退出');
+  } catch (e) { err.textContent = e.message; }
+}
+function drawerAccount() {
+  const pw = (id, label, auto) => `<label for="${id}">${label}</label><div class="ctl"><span class="pw" style="flex:1 1 200px;max-width:360px">
+    <input id="${id}" type="password" autocomplete="${auto}" aria-describedby="pw-err" style="width:100%">
+    <button class="btn btn-icon" type="button" aria-label="显示密码" aria-pressed="false" onclick="togglePw(this)">${ic('eye')}</button></span></div>`;
+  return {
+    title: ME.name, sub: `账号 ${ME.username} · 录入和质检结论以「${ME.name}」署名`,
+    body: sec('修改密码', `<form class="form" onsubmit="event.preventDefault(); changePassword()">
+      ${pw('pw-old', '当前密码', 'current-password')}${pw('pw-new', '新密码', 'new-password')}${pw('pw-again', '再输一次', 'new-password')}
+      <span></span><div class="ctl"><p id="pw-err" class="field-error" role="alert"></p></div>
+      <span></span><div class="ctl"><button class="btn btn-primary" type="submit">${ic('key')}修改密码</button><span class="hint">至少 8 位；修改后其他设备需要重新登录</span></div></form>`),
+  };
 }
 async function load() {
   await Promise.all(KINDS.map(async (k) => { S[k] = await api(`/api/items?kind=${k}`); }));
@@ -936,7 +1043,7 @@ async function sync(quiet = false) {
 }
 async function save(kind, id, patch, quiet = false) {
   try {
-    const doc = await api(`/api/items?kind=${kind}&id=${encodeURIComponent(id)}`, {method: 'PUT', body: JSON.stringify({...patch, _by: user()})});
+    const doc = await api(`/api/items?kind=${kind}&id=${encodeURIComponent(id)}`, {method: 'PUT', body: JSON.stringify(patch)});
     const i = S[kind].findIndex((x) => x.id === id);
     if (i >= 0) S[kind][i] = doc; else S[kind].push(doc);
     if (!quiet) render();
@@ -956,7 +1063,7 @@ async function createObject() {
   const id = `${$('#no-type').value}/${cat}/${idx.padStart(5, '0')}`;
   if (!S.object.some((d) => d.id === id)) {
     await api(`/api/items?kind=object&id=${encodeURIComponent(id)}`, {method: 'PUT',
-      body: JSON.stringify({name: $('#no-name').value.trim(), role: $('#no-role').value, twin: true, _by: user()})});
+      body: JSON.stringify({name: $('#no-name').value.trim(), role: $('#no-role').value, twin: true})});
     await sync(true);
   }
   openDrawer('object', id);
@@ -1127,9 +1234,10 @@ function renderDrawer() {
   $('#scrim').classList.toggle('on', Boolean(x));
   if (!x) { dr.classList.remove('on'); dr.dataset.k = ''; return; }
   const key = `${x.kind}|${x.id}`;
-  if (x.kind === 'new-object' && dr.dataset.k === key) return;
+  if ((x.kind === 'new-object' || x.kind === 'account') && dr.dataset.k === key) return;  // keep typed input
   const d = S[x.kind]?.find((y) => y.id === x.id);
-  const view = x.kind === 'new-object' ? drawerNewObject() : d ? {scene: drawerScene, object: drawerObject, task: drawerTask}[x.kind](d) : {title: '记录不存在', body: ''};
+  const view = x.kind === 'new-object' ? drawerNewObject() : x.kind === 'account' ? drawerAccount()
+    : d ? {scene: drawerScene, object: drawerObject, task: drawerTask}[x.kind](d) : {title: '记录不存在', body: ''};
   const scroll = dr.dataset.k === key ? $('#drawer .dr-b')?.scrollTop : 0;
   dr.innerHTML = `<div class="dr-h"><div style="min-width:0;flex:1"><h2 id="drawer-title">${esc(view.title)}</h2>${view.sub ? `<p>${esc(view.sub)}</p>` : ''}</div>
     ${view.actions || ''}<button class="btn btn-icon dr-close" type="button" aria-label="关闭（Esc）" onclick="closeDrawer()">${ic('close')}</button></div>
@@ -1149,6 +1257,7 @@ function onKey(ev) {
     ev.preventDefault();
     return;
   }
+  if (!ME) return;
   if (ev.key === 'Escape' && UI.drawer) { closeDrawer(); return; }
   if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches('[data-open][tabindex]')) { ev.preventDefault(); ev.target.click(); return; }
   if (UI.tab !== 'qa' || UI.drawer || ev.target.matches('input, textarea, select, video') || ev.metaKey || ev.ctrlKey || ev.altKey) return;
@@ -1198,11 +1307,13 @@ document.addEventListener('change', onFieldChange);
 document.addEventListener('keydown', onKey);
 document.addEventListener('click', onClick);
 $('#lightbox').addEventListener('click', (ev) => { if (ev.target.classList.contains('lb-stage')) closeLB(); });
-$('#user').value = user();
-$('#user').addEventListener('change', (ev) => { localStorage.user = ev.target.value.trim(); });
 UI.tab = tabFromHash();
 renderNav();
-api('/api/info').then((info) => { INFO = info; return load(); }).catch((err) => toast(`加载失败：${err.message}`, true));
+fetch('/api/me').then((r) => (r.ok ? r.json() : null)).then((me) => {
+  if (!me) return showLogin();
+  ME = me;
+  return enter();
+}).catch((err) => toast(`加载失败：${err.message}`, true));
 </script>
 </body>
 </html>

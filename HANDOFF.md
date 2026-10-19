@@ -176,8 +176,8 @@
 - 数据契约：每条记录的 `auto` 是扫描结果，其余键是人工录入；重扫只替换 `auto`。扫描不到的记录：没有人工内容就删除，有就标 `auto.missing`。回合 id = 运行目录绝对路径 + `#` + 回合序号（移动 eval 目录后录入会和新路径脱钩）。物体 id 必须是 `<类型>/<类别>/<编号>`（服务端校验，防路径穿越）。`/file` 只提供 `real2sim/`、`output/`、资产库和 eval 根目录下的图片、视频、md、json。
 - 判定（前端 `*_STAGES`，阈值取自 Notion 月度目标）：场景实测 < 1 cm、叠图 < 5 px 且 ≥ 3 视角；物体尺寸误差 < max(2 mm, 2%)（bbox 与实测各自从大到小排序后逐项比）、质量差 ≤ 5 g、5 项物理检验；角色目标源 ≥ 12、接收 ≥ 15、干扰 ≥ 30，保留 30%；专家（`scripted_demo`）成功率 ≥ 80%；合格回合 = 质检通过且仿真成功，默认目标 500；回合自动检查 = `eval_time` ≥ 1、head/left_wrist/right_wrist 视频齐全（同 `summarize_result.py`）、视频文件名标签与 `_result.json` 一致（能发现并发写进同一时间戳目录造成的串结果）；Sim↔Real 用回合上的「真机对照」算 AA、Cohen's κ、P(真机成功 | 仿真成功)。
 - 和 `real2sim/ASSETS.md` 的关系：登记表是定稿来源；平台里的实测值是工作记录，定稿后写回生成脚本和登记表（README 与物体页都写明）。
-- 登录：环境变量 `REAL2SIM_PLATFORM_AUTH=用户名:密码` 开启 HTTP Basic 认证（`Handler.parse_request` 统一拦截所有方法，`hmac.compare_digest` 比较）；不设则无登录。端口能从外部访问时必须设。
-- 部署（2026-10-19，用户要求放到 5090-2 并经阿里云穿透）：SSH 别名 `5090-2`（主机名 ecs-5090-cb2-0028，内网与 `rtx5090-180` 同网段）上的 `/root/RoboDojo`。这台机器访问不了 GitHub，仓库是从同网段机器内网拷来的（含 `.git` 和 LFS 文件，以及本机同步的未入库 `real2sim/scenes/*/preview/`、`eval_result/`），apt 装了 git-lfs。tmux 会话 `r2s-platform` 跑 `server.py --port 8765`（只监听 127.0.0.1，登录凭据在 `.cache/platform.env`，权限 600，不入库；日志 `.cache/platform.log`），`r2s-tunnel` 维持 `ssh -N -R 0.0.0.0:10081:127.0.0.1:8765` 到别名 `Aliyun` 的主机（断线 5 s 后重连，日志 `.cache/tunnel.log`）。公网入口是 `Aliyun` 的 10081 端口，用户名 `real2sim`。tmux 不随重启恢复。
+- 登录（2026-10-19 用户要求“加上登录功能取代操作人”，取代了上午的共享 Basic 登录 `REAL2SIM_PLATFORM_AUTH`）：账号存平台 SQLite 的 `users` 表（PBKDF2-SHA256 20 万轮加盐），会话存 `sessions` 表（只存 token 的 SHA-256，14 天过期）。cookie `r2s_session` 为 HttpOnly + SameSite=Lax，没有 Secure（HTTP）。`Handler.parse_request` 统一拦截：只有 `/`（页面本身，不含数据）和 `/api/login` 免登录，其余返回 401 JSON。`_by` 由服务端写成会话账号的显示名，前端传的 `_by` 被忽略；前端去掉了“操作人”输入框，侧栏显示当前账号并可改密码（`/api/password`，改完踢掉该账号的其他会话）、退出（`/api/logout`）。防爆破：同一用户名 5 次失败锁 5 分钟（内存里，重启清零；经隧道来的请求都是 127.0.0.1，没法按 IP 限），失败时等 0.5 s，未知用户名也算一次哈希。账号管理只在服务器命令行：`--add-user/--name/--remove-user/--list-users`（密码交互输入两次，或从标准输入第一行读）。
+- 部署（2026-10-19，用户要求放到 5090-2 并经阿里云穿透）：SSH 别名 `5090-2`（主机名 ecs-5090-cb2-0028，内网与 `rtx5090-180` 同网段）上的 `/root/RoboDojo`。这台机器访问不了 GitHub，仓库是从同网段机器内网拷来的（含 `.git` 和 LFS 文件，以及本机同步的未入库 `real2sim/scenes/*/preview/`、`eval_result/`），apt 装了 git-lfs。tmux 会话 `r2s-platform` 跑 `server.py --port 8765`（只监听 127.0.0.1；账号在 `.cache/real2sim_platform.sqlite3`，初始账号 `real2sim` 沿用之前共享登录的密码，原 `.cache/platform.env` 已删除；日志 `.cache/platform.log`），`r2s-tunnel` 维持 `ssh -N -R 0.0.0.0:10081:127.0.0.1:8765` 到别名 `Aliyun` 的主机（断线 5 s 后重连，日志 `.cache/tunnel.log`）。公网入口是 `Aliyun` 的 10081 端口，用户名 `real2sim`。tmux 不随重启恢复。
 - 曾误部署到 `rtx5090-180`（当时本机没有 `5090-2` 别名，按编号推断错了）：已停掉会话，删掉那里的 `/root/RoboDojo`、隧道密钥和阿里云上对应的授权行。
 - 阿里云侧：10080–10100 里 10080/10088/10099/10100 已被占用，选 10081。`/root/.ssh/authorized_keys` 里有一行 `5090-2` 专用密钥 `~/.ssh/real2sim_tunnel` 的公钥（注释 `real2sim-platform-tunnel@5090-2`），限制为 `restrict,port-forwarding,permitlisten="0.0.0.0:10081",permitopen="127.0.0.1:9",command="/bin/false"`（同样的限制在旧密钥上验证过：不能执行命令、不能监听其他端口）。每次改动前都备份为 `authorized_keys.bak-real2sim-<时间戳>`。阿里云原有隧道（DSW 反向 SSH 加本地 `autossh -L`）未动。
 - 运维：`5090-2` 的仓库设了 `receive.denyCurrentBranch updateInstead` 并让 LFS 检出时不下载（`filter.lfs.smudge/process --skip`），所以在本机 `GIT_LFS_SKIP_PUSH=1 git push 5090-2:/root/RoboDojo main` 就能更新代码，新增的 LFS 文件（照片等）和渲染图再 `rsync -az real2sim/objects/ 5090-2:/root/RoboDojo/real2sim/objects/`，之后在那边 `git add real2sim/objects`（只刷新 LFS 文件的 stat，不产生改动）。两个 tmux 会话分别只跑 `.cache/run-platform.sh`、`.cache/run-tunnel.sh`（服务器本地脚本，含阿里云地址，不入库）。重启服务用 `ssh 5090-2 'pkill -f "[p]ython3 src/real2sim_platform/server.py"'`（循环 3 s 后用新代码拉起）。**不要**在会话里按 Ctrl-C（SIGINT 会连外层循环一起结束），也**不要** `pkill -f src/real2sim_platform/server.py`：tmux 服务进程的命令行是第一次建会话时的命令，曾因此把 tmux 连同隧道一起杀掉（2026-10-19 约 2 分钟中断，已改成脚本启动避免）。停用：`tmux kill-session -t r2s-platform; tmux kill-session -t r2s-tunnel`，再删掉阿里云 `authorized_keys` 里 `real2sim-platform-tunnel@5090-2` 那一行。
@@ -207,7 +207,7 @@
 - 自建资产装没装进共享库、和真实的匹配程度，统一看 `real2sim/ASSETS.md`（2026-10-19 核对：共享库缺 `measuring_cup`、`plastic_mug`、`red_bean` 和量杯任务布局；`Robots/g1d` 是 10-17 带相机夹爪版）。
 - 自建物体的摩擦没有生效：`rigid.py` 只读 `physics.static_friction`/`dynamic_friction`（默认 0.6/1.5），生成脚本写的 `friction` 被忽略。现有成功率都是在默认摩擦下得到的；改成实测摩擦前要让生成脚本写这两个键，并重跑倒豆/抓取任务。
 - 所有自建物体和三个场景都没有卷尺/秤实测，尺寸来自照片拟合或常见规格估计；待测清单在 `real2sim/ASSETS.md`。
-- 数采平台：只有单一账号的 Basic 登录，没有分角色权限（未设 `REAL2SIM_PLATFORM_AUTH` 时完全无登录）；不从网页启动仿真，命令只展示供复制；回合质检只看视频和 `_result.json`，Notion 里的关节速度/加速度/加加速度、接触力、最小间距等运动合理性指标要等轨迹录制器输出关节数据后再接；L0–L4 进度是人工填写，布局还没按级别生成；实测值在平台和 `ASSETS.md` 两处，需要人工同步。渲染图不入库，换部署机器要 rsync `real2sim/objects/`（或在 GPU 机重跑 `check_object.py --image-dir`）；网页上传的照片落在部署机的仓库工作区，要入库得在那台机器（或拷回本机）提交。缩略图直接用原图，没有服务端缩图（只用标准库），场景预览较大时经公网加载会慢。
+- 数采平台：账号没有分角色权限（登录后都能改所有记录），也没有网页上的成员管理（建号、删号要在服务器命令行）；HTTP 明文传输密码；不从网页启动仿真，命令只展示供复制；回合质检只看视频和 `_result.json`，Notion 里的关节速度/加速度/加加速度、接触力、最小间距等运动合理性指标要等轨迹录制器输出关节数据后再接；L0–L4 进度是人工填写，布局还没按级别生成；实测值在平台和 `ASSETS.md` 两处，需要人工同步。渲染图不入库，换部署机器要 rsync `real2sim/objects/`（或在 GPU 机重跑 `check_object.py --image-dir`）；网页上传的照片落在部署机的仓库工作区，要入库得在那台机器（或拷回本机）提交。缩略图直接用原图，没有服务端缩图（只用标准库），场景预览较大时经公网加载会慢。
 
 ## 下一会话
 
@@ -238,6 +238,8 @@
 - 共享资产库（用户同意）：新增 `Room/real_scene{2,3}`、`Rigid/{water_cup,plastic_cup}`、`Eval_Layout/RoboDojo/{g1d_counter,g1d_lab}`，`g1d` 的 G1-D 任务布局换成当前版本，`Room/real_scene1` 覆盖为同样内容；与隔离目录验证产物 `diff -r` 一致。改动前备份 `/data2/tmp/robodojo/backup-shared-20261016-174239.tgz`（原 `g1d` 布局和 `real_scene1`）。没有跑 `format.py`（运行时不读 `uuid_map.json`）。
 
 ## 最近历史
+
+- 2026-10-19：数采平台改为账号登录（每人一个账号，署名由服务端按账号写入），取代“操作人”输入框和共享 Basic 登录；侧栏可改密码、退出；账号在服务器用 `server.py --add-user` 管理。
 
 - 2026-10-19：数采平台界面按 ui-ux-pro-max 重做（侧栏导航、设计 token、状态图标、物体卡片、实物 vs 仿真对照、质检批量操作）；物体实拍照片入 `real2sim/objects/<id>/reference/`，`check_object.py --image-dir` 在 21196 为 63 个物体出单独渲染（不入库，已同步到 `5090-2`）。
 

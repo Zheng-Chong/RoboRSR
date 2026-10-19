@@ -108,14 +108,15 @@ PYTHONPATH=. python scripts/objects/check_pitcher_fluid.py --device cpu --out ou
 **Real2Sim 数采管理平台**（Web，只用 Python 标准库，本机无 Isaac 也能跑）：
 
 ```bash
-python3 src/real2sim_platform/server.py          # 打开 http://127.0.0.1:8765
-# 服务器上给团队用：指向共享资产库和各隔离目录的评测结果；端口能从外部访问时必须设登录
-REAL2SIM_PLATFORM_AUTH=用户名:密码 python3 src/real2sim_platform/server.py --host 0.0.0.0 \
+python3 src/real2sim_platform/server.py --add-user alice --name 张三   # 先建账号（提示输入密码，至少 8 位）
+python3 src/real2sim_platform/server.py          # 打开 http://127.0.0.1:8765 登录
+# 服务器上给团队用：指向共享资产库和各隔离目录的评测结果
+python3 src/real2sim_platform/server.py --host 0.0.0.0 \
     --assets /data2/zhongzheng/Project/RoboDojo_assets/Assets \
     --eval-root eval_result --eval-root /data2/tmp/robodojo/agent-remote-runs
 ```
 
-设了 `REAL2SIM_PLATFORM_AUTH` 后所有请求都要 HTTP Basic 登录（浏览器会弹窗）；不设则无登录，只适合本机或可信网络。
+每个人用自己的账号登录，录入和质检结论自动以账号的显示名署名（页面上没法改署名）。账号存在平台数据库里（密码 PBKDF2 加盐哈希），在服务器上管理：`--add-user 用户名 [--name 显示名]` 新建或重置密码（会踢掉该账号已有的登录），`--remove-user 用户名`，`--list-users`；脚本里可以把密码放在标准输入第一行。登录后在侧栏底部可以改自己的密码、退出登录。会话 14 天有效；同一用户名连续输错 5 次锁定 5 分钟。平台走 HTTP，密码在网络上是明文传输，经公网访问时有被窃听的风险。
 
 启动时和点「从项目同步」时扫描仓库：`real2sim/scenes/`（照片、相机拟合残差、USD、`check_report.json`）、任务清单和 G1-D 任务用到的物体、资产库里的 `metadata.json` 和评测布局数、`--eval-root` 下的 `_result.json` 与各相机视频。页面分五块：
 

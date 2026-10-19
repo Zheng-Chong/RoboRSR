@@ -7,25 +7,29 @@ Stdlib only (any python3 >= 3.10, no Isaac). On start, and on "从项目同步" 
     <assets>/Eval_Layout/RoboDojo/<cfg>/  eval layouts per task and env config
     <eval-root>/**/_result.json           collected episodes and their camera videos (src/eval_client/eval_env.py)
 Scan results go to each record's "auto"; what is entered in the page (measurements, check verdicts, QA) sits next to it
-and survives rescans. Records live in one SQLite file (--db). With REAL2SIM_PLATFORM_AUTH=user:password set, every
-request needs that HTTP Basic login (set it whenever the port is reachable from outside).
+and survives rescans. Records live in one SQLite file (--db), together with the accounts: everyone signs in, and every
+change is stamped with the signed-in account's name. Accounts are managed on the server with --add-user / --remove-user.
 
 Usage:
+    python3 src/real2sim_platform/server.py --add-user alice --name 张三   # asks for the password
     python3 src/real2sim_platform/server.py         # http://127.0.0.1:8765
-    REAL2SIM_PLATFORM_AUTH=user:password python3 src/real2sim_platform/server.py --assets /path/to/shared/Assets \
+    python3 src/real2sim_platform/server.py --assets /path/to/shared/Assets \
         --eval-root eval_result --eval-root /data2/tmp/robodojo/agent-remote-runs
 """
 
 import argparse
-import base64
 from collections import Counter
+import getpass
+import hashlib
 import hmac
+from http.cookies import CookieError, SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import mimetypes
 import os
 from pathlib import Path
 import re
+import secrets
 import sqlite3
 import sys
 import threading
@@ -47,6 +51,29 @@ OBJECTS_DIR = ROOT / "real2sim" / "objects"  # <id>/reference/: real-object phot
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 SERVED_SUFFIXES = IMAGE_SUFFIXES | {".mp4", ".webm", ".md", ".json"}
 MAX_UPLOAD = 25 << 20
+USERNAME = re.compile(r"[\w.-]{1,32}")
+PBKDF2_ROUNDS = 200_000
+COOKIE, SESSION_DAYS = "r2s_session", 14
+LOCK_AFTER, LOCK_SECONDS, FAIL_DELAY = 5, 300, 0.5  # failed logins per username before a lockout; HTTP only, no TLS
+
+
+def hash_password(password, salt=None):
+    salt = salt or secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, PBKDF2_ROUNDS)
+    return f"pbkdf2_sha256${PBKDF2_ROUNDS}${salt.hex()}${digest.hex()}"
+
+
+def verify_password(password, stored):
+    _, rounds, salt, digest = stored.split("$")
+    got = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt), int(rounds))
+    return hmac.compare_digest(got.hex(), digest)
+
+
+DUMMY_HASH = hash_password(secrets.token_hex())  # unknown users cost the same time as wrong passwords
+
+
+def token_key(token):
+    return hashlib.sha256(token.encode()).hexdigest()  # the database only holds hashes of session tokens
 
 
 def load_json(path):
@@ -67,7 +94,69 @@ class Store:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.db.execute("CREATE TABLE IF NOT EXISTS items (kind TEXT, id TEXT, doc TEXT, PRIMARY KEY (kind, id))")
+        self.db.execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, name TEXT, pw TEXT)")
+        self.db.execute("CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, username TEXT, expires REAL)")
+        self.db.commit()
         self.lock = threading.Lock()
+
+    def set_user(self, username, password, name=None):
+        """Create the account, or reset its password (and name if given); either way its sessions end."""
+        with self.lock, self.db:
+            self.db.execute(
+                "INSERT INTO users VALUES (?, ?, ?) ON CONFLICT(username) DO UPDATE SET pw = excluded.pw, "
+                "name = COALESCE(?, name)",
+                (username, name or username, hash_password(password), name),
+            )
+            self.db.execute("DELETE FROM sessions WHERE username = ?", (username,))
+
+    def remove_user(self, username):
+        with self.lock, self.db:
+            self.db.execute("DELETE FROM sessions WHERE username = ?", (username,))
+            return self.db.execute("DELETE FROM users WHERE username = ?", (username,)).rowcount
+
+    def users(self):
+        with self.lock:
+            return self.db.execute("SELECT username, name FROM users ORDER BY username").fetchall()
+
+    def check(self, username, password):
+        """{username, name} if the password is right, else None."""
+        with self.lock:
+            row = self.db.execute("SELECT name, pw FROM users WHERE username = ?", (username,)).fetchone()
+        right = verify_password(password, row[1] if row else DUMMY_HASH)
+        return {"username": username, "name": row[0] or username} if row and right else None
+
+    def open_session(self, username):
+        token, now = secrets.token_urlsafe(32), time.time()
+        with self.lock, self.db:
+            self.db.execute("DELETE FROM sessions WHERE expires < ?", (now,))
+            expires = now + SESSION_DAYS * 86400
+            self.db.execute("INSERT INTO sessions VALUES (?, ?, ?)", (token_key(token), username, expires))
+        return token
+
+    def session_user(self, token):
+        if not token:
+            return None
+        with self.lock:
+            row = self.db.execute(
+                "SELECT u.username, u.name FROM sessions s JOIN users u USING (username) "
+                "WHERE s.token = ? AND s.expires > ?",
+                (token_key(token), time.time()),
+            ).fetchone()
+        return {"username": row[0], "name": row[1] or row[0]} if row else None
+
+    def end_session(self, token):
+        with self.lock, self.db:
+            self.db.execute("DELETE FROM sessions WHERE token = ?", (token_key(token or ""),))
+
+    def close_sessions(self, username, keep=None):
+        """End the given account's sessions, all but `keep` (a token) if given."""
+        with self.lock, self.db:
+            self.db.execute("DELETE FROM sessions WHERE username = ? AND token != ?", (username, token_key(keep or "")))
+
+    def change_password(self, username, password, keep):
+        with self.lock, self.db:
+            self.db.execute("UPDATE users SET pw = ? WHERE username = ?", (hash_password(password), username))
+        self.close_sessions(username, keep)
 
     def _get(self, kind, id_):
         row = self.db.execute("SELECT doc FROM items WHERE kind = ? AND id = ?", (kind, id_)).fetchone()
@@ -81,11 +170,11 @@ class Store:
             rows = self.db.execute("SELECT doc FROM items WHERE kind = ?", (kind,)).fetchall()
         return [json.loads(row[0]) for row in rows]
 
-    def update(self, kind, id_, fields):
+    def update(self, kind, id_, fields, by):
         with self.lock, self.db:
             doc = self._get(kind, id_) or {"id": id_, "auto": {}}
-            doc["_by"] = str(fields.pop("_by", ""))
-            doc.update({k: v for k, v in fields.items() if k not in ("id", "auto")})
+            doc.update({k: v for k, v in fields.items() if k not in ("id", "auto", "_by", "_at")})
+            doc["_by"] = by
             doc["_at"] = time.time()
             self._put(kind, doc)
         return doc
@@ -289,24 +378,57 @@ def servable(path, roots):
 
 
 class Handler(BaseHTTPRequestHandler):
-    store, scan_args, roots, info, auth = None, (), [], {}, None
+    store, scan_args, roots, info = None, (), [], {}
+    failures = {}  # username -> recent failed login times
+    PUBLIC = {"/", "/api/login"}  # the page itself carries no data; it shows the sign-in form until /api/me answers
 
     def parse_request(self):
         if not super().parse_request():
             return False
-        if self.auth and not hmac.compare_digest(self.headers.get("Authorization", "").encode(), self.auth.encode()):
-            self.send_response(401)
-            self.send_header("WWW-Authenticate", 'Basic realm="Real2Sim platform"')
-            self.send_header("Content-Length", "0")
-            self.end_headers()
-            return False
-        return True
+        self.user = self.store.session_user(self.cookie())
+        if self.user or urlparse(self.path).path in self.PUBLIC:
+            return True
+        self.send_json({"error": "请先登录"}, 401)
+        return False
+
+    def cookie(self):
+        try:
+            jar = SimpleCookie(self.headers.get("Cookie", ""))
+        except CookieError:
+            return None
+        return jar[COOKIE].value if COOKIE in jar else None
+
+    def body(self):
+        try:
+            data = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+        except ValueError:
+            return None
+        return data if isinstance(data, dict) else None
+
+    def login(self):
+        data, now = self.body() or {}, time.time()
+        username, password = str(data.get("username", "")).strip(), str(data.get("password", ""))
+        if len(self.failures) > 10_000:
+            self.failures.clear()  # ponytail: in-memory lockout, forgets on restart; enough for a team tool
+        recent = [t for t in self.failures.get(username, []) if now - t < LOCK_SECONDS]
+        if len(recent) >= LOCK_AFTER:
+            return self.send_json({"error": f"连续输错 {LOCK_AFTER} 次，请 {LOCK_SECONDS // 60} 分钟后再试"}, 429)
+        user = self.store.check(username, password) if USERNAME.fullmatch(username) else None
+        if not user:
+            self.failures[username] = [*recent, now]
+            time.sleep(FAIL_DELAY)
+            return self.send_json({"error": "用户名或密码错误"}, 401)
+        self.failures.pop(username, None)
+        token = self.store.open_session(username)
+        self.send_json(user, cookie=f"{COOKIE}={token}; Max-Age={SESSION_DAYS * 86400}")
 
     def do_GET(self):
         url = urlparse(self.path)
         query = {k: v[0] for k, v in parse_qs(url.query).items()}
         if url.path == "/":
             self.send_file(HERE / "index.html")
+        elif url.path == "/api/me":
+            self.send_json(self.user)
         elif url.path == "/api/info":
             self.send_json(self.info)
         elif url.path == "/api/items" and query.get("kind") in KINDS:
@@ -318,6 +440,20 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         url = urlparse(self.path)
+        if url.path == "/api/login":
+            return self.login()
+        if url.path == "/api/logout":
+            self.store.end_session(self.cookie())
+            return self.send_json({"ok": True}, cookie=f"{COOKIE}=; Max-Age=0")
+        if url.path == "/api/password":
+            data = self.body() or {}
+            old, new = str(data.get("old", "")), str(data.get("new", ""))
+            if not self.store.check(self.user["username"], old):
+                return self.send_json({"error": "当前密码不对"}, 400)
+            if len(new) < 8:
+                return self.send_json({"error": "新密码至少 8 位"}, 400)
+            self.store.change_password(self.user["username"], new, keep=self.cookie())
+            return self.send_json({"ok": True})
         if url.path == "/api/scan":
             return self.send_json(scan(self.store, *self.scan_args))
         if url.path != "/api/photo":
@@ -338,13 +474,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_PUT(self):
         kind, id_ = self.target()
-        try:
-            fields = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
-        except ValueError:
-            fields = None
-        if not kind or not isinstance(fields, dict) or (kind == "object" and not OBJECT_ID.fullmatch(id_)):
+        fields = self.body()
+        if not kind or fields is None or (kind == "object" and not OBJECT_ID.fullmatch(id_)):
             return self.send_error(400)
-        self.send_json(self.store.update(kind, id_, fields))
+        self.send_json(self.store.update(kind, id_, fields, by=self.user["name"]))
 
     def do_DELETE(self):
         url = urlparse(self.path)
@@ -368,11 +501,14 @@ class Handler(BaseHTTPRequestHandler):
             return query["kind"], query["id"]
         return None, None
 
-    def send_json(self, obj):
+    def send_json(self, obj, status=200, cookie=None):
         body = json.dumps(obj, ensure_ascii=False).encode()
-        self.send_response(200)
+        self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        if cookie:  # no Secure flag: the platform is served over plain HTTP
+            self.send_header("Set-Cookie", f"{cookie}; Path=/; HttpOnly; SameSite=Lax")
         self.end_headers()
         self.wfile.write(body)
 
@@ -409,23 +545,48 @@ class Handler(BaseHTTPRequestHandler):
             pass  # the browser dropped a video range request while seeking
 
 
+def manage_users(parser, store, args):
+    if args.list_users:
+        for username, name in store.users():
+            print(f"{username}\t{name}")
+    if args.remove_user:
+        print("removed" if store.remove_user(args.remove_user) else f"no account {args.remove_user}")
+    if args.add_user:
+        if not USERNAME.fullmatch(args.add_user):
+            parser.error("username: 1-32 letters, digits, '_', '.', '-'")
+        if sys.stdin.isatty():
+            password = getpass.getpass("密码：")
+            if password != getpass.getpass("再输一次："):
+                parser.error("两次输入的密码不一致")
+        else:
+            password = sys.stdin.readline().rstrip("\n")  # scripted: the password on the first line of stdin
+        if len(password) < 8:
+            parser.error("密码至少 8 位")
+        store.set_user(args.add_user, password, args.name)
+        print(f"account {args.add_user} ready")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--host", default="127.0.0.1", help="0.0.0.0 shares it on the LAN (set REAL2SIM_PLATFORM_AUTH)")
+    parser.add_argument("--host", default="127.0.0.1", help="0.0.0.0 shares it on the LAN")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--db", type=Path, default=ROOT / ".cache" / "real2sim_platform.sqlite3")
     parser.add_argument("--assets", type=Path, default=ROOT / "Assets", help="asset library with Object/, Eval_Layout/")
     parser.add_argument(
         "--eval-root", type=Path, action="append", help="searched for _result.json; repeatable (default eval_result/)"
     )
+    parser.add_argument("--add-user", metavar="USERNAME", help="create the account or reset its password, then exit")
+    parser.add_argument("--name", help="with --add-user: display name stamped on that account's changes")
+    parser.add_argument("--remove-user", metavar="USERNAME", help="delete the account, then exit")
+    parser.add_argument("--list-users", action="store_true", help="list the accounts, then exit")
     args = parser.parse_args()
+    store = Store(args.db)
+    if args.add_user or args.remove_user or args.list_users:
+        return manage_users(parser, store, args)
+    if not store.users():
+        print(f"no accounts yet: python3 {Path(__file__).relative_to(ROOT)} --add-user NAME", flush=True)
     assets = args.assets.resolve()
     eval_roots = [p.resolve() for p in args.eval_root or [ROOT / "eval_result"]]
-    login = os.environ.get("REAL2SIM_PLATFORM_AUTH")
-    if login is not None and ":" not in login:
-        parser.error("REAL2SIM_PLATFORM_AUTH must be user:password")
-    store = Store(args.db)
-    Handler.auth = f"Basic {base64.b64encode(login.encode()).decode()}" if login else None
     Handler.store, Handler.scan_args = store, (assets, eval_roots)
     Handler.roots = [ROOT / "real2sim", ROOT / "output", assets, *eval_roots]
     Handler.info = {
