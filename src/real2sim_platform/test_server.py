@@ -109,6 +109,9 @@ def test_http():
 
     try:
         assert b"Real2Sim" in request("GET", "/")[1]  # the page itself is public, its data is not
+        status, _, resp = request("GET", "/%23scenes")  # a reload that encoded the tab fragment
+        assert (status, resp.getheader("Location")) == (302, "/#scenes")
+        assert request("GET", "/%23a%0D%0ASet-Cookie:x")[0] == 401  # no header injection through the redirect
         assert request("GET", "/api/info")[0] == 401 and request("GET", "/api/me")[0] == 401
         assert login("alice", "wrong-pass")[0] == 401 and login("nobody", "password1")[0] == 401
         status, me, cookie = login("alice", "password1")

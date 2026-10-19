@@ -35,7 +35,7 @@ import sqlite3
 import sys
 import threading
 import time
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -396,6 +396,13 @@ class Handler(BaseHTTPRequestHandler):
 
     def parse_request(self):
         if not super().parse_request():
+            return False
+        # some browsers reload "/#scenes" as "/%23scenes": send them back to the page with the tab in the fragment
+        if tab := re.fullmatch(r"/#([\w-]*)", unquote(urlparse(self.path).path)):
+            self.send_response(302)
+            self.send_header("Location", f"/#{tab[1]}")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
             return False
         self.user = self.store.session_user(self.cookie())
         if self.user or urlparse(self.path).path in self.PUBLIC:
