@@ -9,7 +9,8 @@ from isaaclab.app import AppLauncher
 
 MAX_INPROC_RESTARTS = 3
 
-parser = argparse.ArgumentParser()
+# AppLauncher pre-parses before adding --device; it must not abbreviate --device_id.
+parser = argparse.ArgumentParser(allow_abbrev=False)
 parser.add_argument("--task_name", type=str)
 parser.add_argument("--num_envs", type=int, default=1, help="Number of environments to spawn.")
 parser.add_argument(

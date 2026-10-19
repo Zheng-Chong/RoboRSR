@@ -35,6 +35,8 @@ PYTHONPATH=.:XPolicyLab python scripts/g1d/collect_office_beans.py \
 
 单回合确认后再运行 seed 9 的候选布局，使用独立的 `output/office_beans/raw/seed9` 输出目录。
 
+多卡采集时每个进程使用不同 seed 和输出目录，并显式指定设备（例如可见所有卡时 `--device cuda:1 --device_id 1`）；采集入口禁用单进程跨卡渲染。`--device` 与 `--device_id` 是不同参数，评测入口已禁用参数缩写，避免 AppLauncher 预解析时混淆。
+
 导出前必须已有 100 个不同位置的合格回合；导出器会检查数量、按 10 µm 精度去重位置、校验每路视频和轨迹帧数，然后回读数据集的首末帧：
 
 ```bash

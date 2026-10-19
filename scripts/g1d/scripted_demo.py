@@ -603,7 +603,7 @@ class NoServer:
         return None
 
 
-def main():
+def main(extra_kit_args=""):
     import client_server.ws.model_client as ws
 
     ws.WsModelClient = NoServer
@@ -617,7 +617,10 @@ def main():
     args += [x for k, v in defaults.items() if k not in args for x in (k, v)]
     sys.argv = [str(ROOT / "src/eval_client/main.py"), *args, "--policy_name", POLICY, "--port", "0"]
     sys.argv += ["--additional_info", "scripted", "--headless", "--enable_cameras"]
-    sys.argv += ["--kit_args", "--enable isaacsim.replicator.behavior --enable isaacsim.sensors.camera"]
+    sys.argv += [
+        "--kit_args",
+        f"--enable isaacsim.replicator.behavior --enable isaacsim.sensors.camera {extra_kit_args}".strip(),
+    ]
     runpy.run_path(sys.argv[0], run_name="__main__")
 
 

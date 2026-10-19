@@ -223,7 +223,7 @@ def main():
         "g1d_pour_beans_measuring_cups",
         *remaining,
     ]
-    demo.main()
+    demo.main(extra_kit_args="--/renderer/multiGpu/enabled=false")
 
 
 if __name__ == "__main__":
