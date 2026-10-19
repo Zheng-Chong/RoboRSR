@@ -7,9 +7,11 @@ Stdlib only (any python3 >= 3.10, no Isaac). On start, and on "从项目同步" 
     <assets>/Eval_Layout/RoboDojo/<cfg>/  eval layouts per task and env config
     <eval-root>/**/_result.json           collected episodes and their camera videos (src/eval_client/eval_env.py)
 Scan results go to each record's "auto"; what is entered in the page (measurements, check verdicts, QA) sits next to it
-and survives rescans. Records live in one SQLite file (--db), together with the accounts: everyone signs in, and every
-change is stamped with the signed-in account's name. Admins manage accounts in the page (成员管理); the first admin is
-created on the server with --add-user NAME --admin.
+and survives rescans. A registered real object (twin) is also written to real2sim/objects/<id>/spec.json, next to its
+photos, as the input for modeling it; the built asset reports its size per registered dimension in metadata.json
+"measurements_mm", which the page checks against the measured values. Records live in one SQLite file (--db),
+together with the accounts: everyone signs in, and every change is stamped with the signed-in account's name. Admins
+manage accounts in the page (成员管理); the first admin is created on the server with --add-user NAME --admin.
 
 Usage:
     python3 src/real2sim_platform/server.py --add-user alice --name 张三 --admin   # asks for the password
@@ -321,10 +323,51 @@ def scan_objects(assets, tasks, keep):
             "size": physics.get("size") or ((meta or {}).get("geometry", {}).get("aligned_bbox") or {}).get("extents"),
             "static_friction": physics.get("static_friction"),
             "dynamic_friction": physics.get("dynamic_friction"),
+            "measurements": (meta or {}).get("measurements_mm") or {},  # model size per registered dimension name
             "photos": images(OBJECTS_DIR / oid / "reference"),
             "renders": images(OBJECTS_DIR / oid / "preview") + images(d),
         }
     return found
+
+
+def object_indices(assets, store):
+    """{"Rigid/cup": [0, 1, ...]}: indices taken per <type>/<category> in the library, real2sim/objects or the store."""
+    roots = (assets / "Object" / "RoboDojo", OBJECTS_DIR)
+    ids = [str(p.relative_to(root)) for root in roots for p in root.glob("*/*/*") if p.is_dir()]
+    taken = {}
+    for oid in ids + [d["id"] for d in store.list("object")]:
+        if OBJECT_ID.fullmatch(oid):
+            group, index = oid.rsplit("/", 1)
+            taken.setdefault(group, set()).add(int(index))
+    return {group: sorted(indices) for group, indices in sorted(taken.items())}
+
+
+def write_spec(doc):
+    """A twin's registration as real2sim/objects/<id>/spec.json, next to its photos: the input for modeling it."""
+    path = OBJECTS_DIR / doc["id"] / "spec.json"
+    if not doc.get("twin"):
+        return path.unlink(missing_ok=True)
+    rows = [(str(d.get("name", "")).strip(), d.get("real")) for d in doc.get("dims") or []]
+    dims = {name: real for name, real in rows if name and real is not None}
+    spec = {
+        "id": doc["id"],
+        "name": doc.get("name") or doc["auto"].get("name"),
+        "tasks": sorted({*doc["auto"].get("tasks", []), *(doc.get("tasks") or [])}),
+        "role": doc.get("role"),
+        "material": doc.get("material"),
+        "color": doc.get("color"),
+        "mass_g": doc.get("real_mass"),
+        "static_friction": doc.get("real_friction"),
+        "dimensions_mm": dims,
+        "features": doc.get("features"),
+        "requirements": doc.get("requirements"),
+        "notes": doc.get("notes"),
+        "updated_by": doc.get("_by"),
+        "updated_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(doc["_at"])),
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps({k: v for k, v in spec.items() if v not in (None, "", [], {})}, ensure_ascii=False, indent=2)
+    path.write_text(text + "\n", encoding="utf-8")
 
 
 def scan_episodes(roots):
@@ -486,6 +529,8 @@ class Handler(BaseHTTPRequestHandler):
             self.accounts("GET")
         elif url.path == "/api/info":
             self.send_json(self.info)
+        elif url.path == "/api/object-indices":
+            self.send_json(object_indices(self.scan_args[0], self.store))
         elif url.path == "/api/items" and query.get("kind") in KINDS:
             self.send_json(self.store.list(query["kind"]))
         elif url.path == "/file" and servable(query.get("path", ""), self.roots):
@@ -536,7 +581,10 @@ class Handler(BaseHTTPRequestHandler):
         fields = self.body()
         if not kind or fields is None or (kind == "object" and not OBJECT_ID.fullmatch(id_)):
             return self.send_error(400)
-        self.send_json(self.store.update(kind, id_, fields, by=self.user["name"]))
+        doc = self.store.update(kind, id_, fields, by=self.user["name"])
+        if kind == "object":
+            write_spec(doc)
+        self.send_json(doc)
 
     def do_DELETE(self):
         url = urlparse(self.path)
@@ -553,6 +601,8 @@ class Handler(BaseHTTPRequestHandler):
         if not kind:
             return self.send_error(400)
         self.store.delete(kind, id_)
+        if kind == "object" and OBJECT_ID.fullmatch(id_):
+            (OBJECTS_DIR / id_ / "spec.json").unlink(missing_ok=True)
         self.send_json({"ok": True})
 
     def target(self):
