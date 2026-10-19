@@ -13,7 +13,7 @@ from scipy.spatial.transform import Rotation
 from scripts.g1d import collect_office_beans as collector
 from scripts.g1d.collect_office_beans import all_transferred, counts, in_cavity
 from scripts.g1d.export_office_beans import select_episodes, validated_trajectory
-from scripts.g1d.prepare_office_beans_layouts import sample_positions
+from scripts.g1d.prepare_office_beans_layouts import RANGES, sample_layouts
 from scripts.objects.measuring_cup_shape import origin_shift
 
 
@@ -123,11 +123,16 @@ class AcceptanceTests(unittest.TestCase):
                 self.assertEqual(data["action"].shape, data["state"].shape)
         self.assertIs(env.reward_manager.get_reward, legacy_reward)
 
-    def test_position_sampling_covers_each_axis_without_duplicates(self):
-        samples = np.asarray(sample_positions(100, 20261019))
+    def test_layout_sampling_balances_hands_and_covers_each_axis(self):
+        samples = np.asarray(sample_layouts(100, 20261019))
         self.assertEqual(len(set(map(tuple, samples))), 100)
-        self.assertTrue(np.array_equal(samples, sample_positions(100, 20261019)))
-        for column, (low, high) in zip(samples.T, ((-0.16, -0.10), (-0.39, -0.31), (0.10, 0.16), (-0.39, -0.31))):
+        self.assertTrue(np.array_equal(samples, sample_layouts(100, 20261019)))
+        side = samples[:, 0]
+        self.assertEqual(sorted(side), [-1] * 50 + [1] * 50)
+        np.testing.assert_array_equal(np.sign(samples[:, 1]), side)  # tall cup on the pouring hand's side
+        np.testing.assert_array_equal(np.sign(samples[:, 3]), -side)
+        unsigned = np.c_[np.abs(samples[:, 1]), samples[:, 2], np.abs(samples[:, 3]), samples[:, 4:]]
+        for column, (low, high) in zip(unsigned.T, RANGES):
             bins = ((column - low) / (high - low) * 100).astype(int)
             self.assertEqual(sorted(bins), list(range(100)))
 
