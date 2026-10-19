@@ -1,0 +1,17 @@
+{
+  "scene": "real_scene1_office",
+  "env_cfg": "g1d",
+  "photos": ["reference/p*.jpg", "reference/v*.jpg"],
+  "reconstruction": "SfM from a 16.5 s phone video and 5 photos (PLAN.md, REPORT.md); build_scene.py, check_scene.py",
+  "scale_basis": "estimated: three agreeing priors, white desk 1.20 m long, orange desk 0.75 m high, 0.50 m carpet tiles",
+  "measurements": {
+    "table_top_z": null,
+    "table_length": null,
+    "table_width": null,
+    "table_edge_from_robot_root": null,
+    "table_centre_x_from_robot_root": null
+  },
+  "overlay": [],
+  "lighting": {"status": "estimated", "note": "sun direction from the video; brightness not compared with the head camera"},
+  "notes": "The robot stand is chosen for reach (root y = -0.73), not measured; in the source video the robot stood near room y = -0.95. The 2026-09-21 real run had the desk and sofa elsewhere, so its head frames cannot be used for the overlay. The 5 tabletop objects in usd/objects/ are not loaded by real_scene1.usd."
+}

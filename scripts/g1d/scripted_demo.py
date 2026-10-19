@@ -23,7 +23,6 @@ import itertools
 from pathlib import Path
 import runpy
 import sys
-import types
 
 import numpy as np
 from scipy.spatial.transform import Rotation, Slerp
@@ -315,9 +314,11 @@ def pour_actions(env):
         yield steer(0.0)
 
 
-def cup_to_cup_actions(env):
+def cup_to_cup_actions(env, pour_share=None):
     """Each arm side-grasps the cup on its side and lifts it; the target cup is held up in front of the chest and the
-    source cup rolls about its rim lip over the target's mouth until most beans have gone over; back upright."""
+    source cup rolls about its rim lip over the target's mouth until `pour_share` (default C2C_POUR) of the beans have
+    gone over; back upright."""
+    pour_share = C2C_POUR if pour_share is None else pour_share
     lm = env.scene_manager.layout_manager
     fluid = lm.get_scene_object(0, lm.get_instance_name(0, "beans"))
     src0 = as_np(lm.get_instance_pose(0, label="source_cup")[0])
@@ -452,7 +453,7 @@ def cup_to_cup_actions(env):
     while theta < C2C_DRY:
         theta = min(theta + C2C_DRY_RATE, C2C_DRY)
         yield steer(theta)
-    while (now := 1 - inside("source_cup").mean()) < C2C_POUR and step < env.step_lim - returning:
+    while (now := 1 - inside("source_cup").mean()) < pour_share and step < env.step_lim - returning:
         if now - prev < C2C_FLOW:  # tilt further only while the stream is weak
             theta = min(theta + C2C_TILT_RATE, C2C_TILT)
         prev = now
@@ -596,27 +597,13 @@ def eval_one_episode(TASK_ENV, model_client):
         TASK_ENV.end_flag[0] = True
 
 
-class NoServer:
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def call(self, func_name, **kwargs):
-        return None
-
-
-def main(extra_kit_args=""):
-    import client_server.ws.model_client as ws
-
-    ws.WsModelClient = NoServer
-    package = types.ModuleType(f"XPolicyLab.policy.{POLICY}")
-    deploy = types.ModuleType(f"XPolicyLab.policy.{POLICY}.deploy")
-    deploy.eval_one_episode = eval_one_episode
-    sys.modules |= {package.__name__: package, deploy.__name__: deploy}
-
+def main(extra_kit_args="", policy_module="scripts.g1d.scripted_demo"):
+    """Run src/eval_client/main.py in-process with `policy_module`'s eval_one_episode as the policy (no server)."""
     args = sys.argv[1:]
     defaults = {"--task_name": "g1d_pour_water_into_cup", "--seed": "0", "--device_id": "0"}
     args += [x for k, v in defaults.items() if k not in args for x in (k, v)]
     sys.argv = [str(ROOT / "src/eval_client/main.py"), *args, "--policy_name", POLICY, "--port", "0"]
+    sys.argv += ["--policy_module", policy_module]
     sys.argv += ["--additional_info", "scripted", "--headless", "--enable_cameras"]
     sys.argv += [
         "--kit_args",

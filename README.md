@@ -105,6 +105,17 @@ PYTHONPATH=. python scripts/objects/check_pitcher_fluid.py --device cpu --out ou
 
 流体检查必须用 `--device cpu`（CPU 状态管线，PBD 求解仍在 GPU）；GPU 状态管线下粒子坐标不会回读，结果无效。
 
+**仿真数据生成**：脚本专家逐回合录成 XPolicyLab 标准轨迹（HDF5），通过任务插件的严格验收后，用 XPolicyLab 官方转换器导出为 LeRobot v3.0。训练在仓库外，数据格式和语义的约定见 [`scripts/datagen/CONTRACT.md`](scripts/datagen/CONTRACT.md)，完整流程见 [`scripts/datagen/SKILL.md`](scripts/datagen/SKILL.md)，已有数据集登记在 `scripts/datagen/registry.json`。
+
+```bash
+python scripts/datagen/run_batch.py --task g1d_pour_beans_measuring_cups --env-cfg g1d_beans_collect \
+    --candidates 9 --shards 100-107 --gpus 0-7 --target 100 --output output/datagen/<批次>   # 多卡采集
+python scripts/datagen/export.py --run output/datagen/<批次> --episodes 100 --name <名称>    # LeRobot 环境
+python scripts/datagen/audit.py --dataset output/datagen/<批次>/lerobot/<名称>             # 独立审计
+PYTHONPATH=.:XPolicyLab python scripts/datagen/replay.py --raw output/datagen/<批次>/raw/seed100 \
+    --report output/datagen/<批次>/replay.json [--env-cfg g1d]                              # 开环回放一致性
+```
+
 **Real2Sim 数采管理平台**（Web，只用 Python 标准库，本机无 Isaac 也能跑）：
 
 ```bash
@@ -151,6 +162,9 @@ scripts/g1d/                            资产构建、脚本专家演示
 scripts/objects/                        壶/杯生成、刚体/流体物理检验
 src/real2sim_platform/                  Real2Sim 数采管理平台（场景重建、物体资产、任务采集、数据质检）
 task/RoboDojo/{config,tasks}/g1d_*      G1-D 任务
+scripts/datagen/                        仿真数据生成与发布；CONTRACT.md 数据契约，SKILL.md 流程，registry.json 数据集登记
+scripts/scenes/                         场景工具：ChArUco 标定板、相机叠图检查、场景验收汇总；流程见 real2sim/scenes/SKILL.md
+scripts/check.sh                        提交前的 CPU 检查（CI 也运行它）
 real2sim/                               自建资产（随仓库，二进制走 Git LFS）
   ASSETS.md                             自建资产登记表：真实对应物、匹配程度、共享库状态、待实测清单
   objects/<类型>/<类别>/<编号>/          物体实拍照片 reference/（入库）和仿真渲染 preview/（不入库）
@@ -210,9 +224,9 @@ HANDOFF.md                              跨会话交接记录（当前状态、�
 - **分支**：仓库只保留 `main`。小改动直接提交到 `main`；大改动开短期分支（`<名字>/<范围>-<简述>`，如 `zixuan/task-hang-mugs`），合并回 `main` 后删除。
 - **完成后**：更新 `HANDOFF.md`（日期、做了什么、关键决策、实际跑过的验证、遗留问题），和代码放在同一个提交里。
 - **提交信息**：`[Scope] type: 简述`，Scope 取 `Task`、`Env`、`Config`、`scripts`、`utils`、`fix`、`refactor`，type 取 `feat`、`fix`、`update`、`refactor`、`docs`、`chore`。
-- **多人同时改**：只提交自己改的文件，`git add` 时逐个列出文件，不要用 `git add -A`。`HANDOFF.md` 经常有人同时在改，用 `git add -p HANDOFF.md` 只暂存自己的段落。
+- **多人同时改**：每个人（每个 agent 会话）用自己的 `git worktree` 和短分支，不在同一个工作区里并行改；共用一个工作区时，曾经出现过把别人暂存的文件提交进自己 commit 的情况。只提交自己改的文件，`git add` 时逐个列出文件，不要用 `git add -A`。
 - **远程仓库**：只推送到 `origin`（Zheng-Chong/RoboRSR）；`upstream` 是 RoboDojo 官方仓库，不要往上推。子模块 `XPolicyLab/`、`third_party/` 不在本仓库里改。
-- **提交前验证**：至少跑一遍 `ruff check .`、`python scripts/internal/task_inventory.py --format json --check`、`git diff --check`。改了任务、环境或资产的，在服务器上跑一次脚本演示或评测，确认退出码为 0，并且 `_result.json` 里 `eval_time >= 1`；只看退出码不够。
+- **提交前验证**：`bash scripts/check.sh`，它会对改动过的 Python 文件跑 ruff，再跑单元测试、`task_inventory.py --check` 和 `git diff --check`；GitHub Actions 对每次推送和 PR 跑同样的检查。改了任务、环境或资产的，还要在服务器上跑一次脚本演示或评测，确认退出码为 0，并且 `_result.json` 里 `eval_time >= 1`；只看退出码不够。
 - **git-lfs**：macOS 上装官方二进制（[git-lfs releases](https://github.com/git-lfs/git-lfs/releases)），不要用 Homebrew 装，它会从源码编译一整条依赖链。
 
 ## TODO

@@ -34,6 +34,11 @@ class ObsManager:
             seeds_per_env=seeds_per_env,
         )
         self.robot_cfg = obs_config.get("robot", {})
+        # Gripper opening in obs["state"]: the last command ("command", default) or the finger joints ("measured");
+        # obs["action"] always holds the command.
+        self.ee_state = self.robot_cfg.get("ee_state", "command")
+        if self.ee_state not in ("command", "measured"):
+            raise ValueError(f"observation.robot.ee_state must be 'command' or 'measured', got {self.ee_state!r}")
         self.collect_freq = self.obs_config.get("collect_freq", 0)
         # Frames the SDG dispatcher must deliver after the physics step before
         # images are read. One is exact with the zero-delay Kit settings that
@@ -183,6 +188,11 @@ class ObsManager:
                                 obs[env_idx]["state"][f"{name}_ee_pose"] = endpose[env_idx]
 
                 if hasattr(self.robot_manager, "control_manager"):
+                    measured = (
+                        self._measured_grippers(env_idx_list)
+                        if self.ee_state == "measured" and self.robot_cfg["joint_states"]
+                        else {}
+                    )
                     for env_idx in env_idx_list:
                         for (
                             key,
@@ -193,18 +203,12 @@ class ObsManager:
                                 end_effector_name = self.robot_manager.restore_name(deepcopy(key))
                                 robot = self.robot_manager.get_robot_by_gripper_name(end_effector_name)
                                 if robot.ee_type == "gripper":
-                                    val = position[0]
-                                    if robot.gripper_move["sign"] == 1:
-                                        val = (val - robot.gripper_scale[0]) / (
-                                            robot.gripper_scale[1] - robot.gripper_scale[0]
-                                        )
-                                    else:
-                                        val = (robot.gripper_scale[1] - val) / (
-                                            robot.gripper_scale[1] - robot.gripper_scale[0]
-                                        )
+                                    val = self._to_gripper_scale(robot, position[0])
                                     obs[env_idx]["action"][key] = [val]
                                     if self.robot_cfg["joint_states"]:
-                                        obs[env_idx]["state"][key] = [val]
+                                        obs[env_idx]["state"][key] = [
+                                            measured.get(end_effector_name, {}).get(env_idx, val)
+                                        ]
                                 else:
                                     obs[env_idx]["action"][key] = position
                                     if self.robot_cfg["joint_states"]:
@@ -218,3 +222,26 @@ class ObsManager:
                 print("[get_obs] Robot observation capture failed.")
                 raise e
         return obs
+
+    @staticmethod
+    def _to_gripper_scale(robot, q):
+        """Finger joint position -> the 0..1 scale of gripper commands (inverse of EvalEnv.take_action_batch)."""
+        lo, hi = robot.gripper_scale
+        return (q - lo) / (hi - lo) if robot.gripper_move["sign"] == 1 else (hi - q) / (hi - lo)
+
+    def _measured_grippers(self, env_idx_list):
+        """{gripper_name: {env_idx: opening}} from the finger joints on the command scale: the mean over the fingers,
+        the mimic finger mapped back onto the base one (Dex1 fingers are separate joints and stop on an object apart)."""
+        result = {}
+        for robot in self.robot_manager.robot_list:
+            if robot.type != "target" or robot.ee_type != "gripper":
+                continue
+            joints = self.robot_manager.get_end_effector_real_val(robot=robot, env_idx_list=env_idx_list)
+            mimic, gain, offset = robot.gripper_move["mimic"]
+            result[robot.gripper_name] = {}
+            for env_idx in env_idx_list:
+                base = [
+                    (q - offset) / gain if n == mimic else q for n, q in zip(robot.gripper_joints_name, joints[env_idx])
+                ]
+                result[robot.gripper_name][env_idx] = float(self._to_gripper_scale(robot, np.mean(base)))
+        return result

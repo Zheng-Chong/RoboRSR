@@ -60,6 +60,23 @@ parser.add_argument(
 
 
 parser.add_argument("--seed", type=int, required=True, help="policy seed for eval")
+parser.add_argument(
+    "--policy_module",
+    type=str,
+    default="",
+    help=(
+        "Run eval_one_episode from this module in-process, with no policy server, instead of "
+        "XPolicyLab.policy.<policy_name>.deploy (scripted experts, data collection, replay)"
+    ),
+)
+parser.add_argument(
+    "--layout_ids", type=str, default="", help="Comma-separated layout ids of the seed folder to run (default: all)"
+)
+parser.add_argument(
+    "--allow_train_layouts",
+    action="store_true",
+    help="Allow a seed folder marked as training layouts (split.json); data collection and replay only",
+)
 
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
@@ -269,9 +286,12 @@ def main():
     eval_cfg["additional_info"] = args_cli.additional_info
     eval_cfg["seed"] = args_cli.seed
     eval_cfg["physx_monitor_enabled"] = enable_monitor
+    eval_cfg["layout_ids"] = [int(i) for i in args_cli.layout_ids.split(",") if i.strip()]
+    eval_cfg["allow_train_layouts"] = args_cli.allow_train_layouts
 
     deploy_cfg = {}
     deploy_cfg["policy_name"] = args_cli.policy_name
+    deploy_cfg["policy_module"] = args_cli.policy_module
     deploy_cfg["port"] = args_cli.port
     deploy_cfg["host"] = args_cli.host
     deploy_cfg["protocol"] = args_cli.protocol
@@ -311,10 +331,7 @@ def main():
     )
     capped_num_envs = resolve_random_task_num_envs(task_name, num_envs, env_cfg.sim)
     if capped_num_envs != num_envs:
-        print(
-            f"[main] Random task {task_name}: num_envs capped "
-            f"{num_envs} -> {capped_num_envs} "
-        )
+        print(f"[main] Random task {task_name}: num_envs capped {num_envs} -> {capped_num_envs} ")
     num_envs = capped_num_envs
     if not eval_batch and num_envs != 1:
         print(

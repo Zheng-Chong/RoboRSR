@@ -40,6 +40,13 @@ def _patch_websockets_proxy_compat():
     websockets.connect = connect_without_proxy
 
 
+class _InProcessClient:
+    """Stands in for the policy server when the policy runs in-process (--policy_module)."""
+
+    def call(self, func_name, **kwargs):
+        return None
+
+
 def create_eval_env(config, app, resume_state=None, **kwargs):
     task_name = config.eval_cfg.get("task_name", None)
     if task_name is None:
@@ -113,6 +120,10 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
 
             self.success = [True] * self.num_envs
             self.end_flag = [False] * self.num_envs
+            # A policy may clear end_on_success to keep stepping past the task's success check (data collection with
+            # its own acceptance); task_success records whether the check fired.
+            self.end_on_success = True
+            self.task_success = [False] * self.num_envs
             self.take_action_cnt = [0] * self.num_envs
             # Per-env streaming video writers: {env_idx: {camera_key: writer}}.
             # Replaces the old full-episode frame cache; only vision frames are
@@ -179,21 +190,27 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
             if self.port is None:
                 raise ValueError("Port must be specified in deploy_cfg for the policy server!")
             self.host = self.deploy_cfg.get("host", "localhost")
-            _patch_websockets_proxy_compat()
-
-            policy_server_url = self.deploy_cfg.get("policy_server_url") or f"ws://{self.host}:{self.port}"
-            evaluation_id = self.deploy_cfg.get("evaluation_id", self.run_id)
-            trial_id = self.deploy_cfg.get("trial_id", f"{self.task_name}-{self.run_id}")
-            action_case_id = self.deploy_cfg.get("action_case_id", f"{self.task_name}_case")
-            self.model_client = WsModelClient(
-                url=policy_server_url,
-                evaluation_id=evaluation_id,
-                trial_id=trial_id,
-                action_case_id=action_case_id,
-                repeat_index=self.deploy_cfg.get("repeat_index"),
-                ws_ping_interval_s=self.deploy_cfg.get("ws_ping_interval_s", 20.0),
-                ws_ping_timeout_s=self.deploy_cfg.get("ws_ping_timeout_s", 20.0),
+            self.policy_module = (
+                self.deploy_cfg.get("policy_module") or f"XPolicyLab.policy.{self.deploy_cfg['policy_name']}.deploy"
             )
+            if self.deploy_cfg.get("policy_module"):
+                self.model_client = _InProcessClient()
+            else:
+                _patch_websockets_proxy_compat()
+
+                policy_server_url = self.deploy_cfg.get("policy_server_url") or f"ws://{self.host}:{self.port}"
+                evaluation_id = self.deploy_cfg.get("evaluation_id", self.run_id)
+                trial_id = self.deploy_cfg.get("trial_id", f"{self.task_name}-{self.run_id}")
+                action_case_id = self.deploy_cfg.get("action_case_id", f"{self.task_name}_case")
+                self.model_client = WsModelClient(
+                    url=policy_server_url,
+                    evaluation_id=evaluation_id,
+                    trial_id=trial_id,
+                    action_case_id=action_case_id,
+                    repeat_index=self.deploy_cfg.get("repeat_index"),
+                    ws_ping_interval_s=self.deploy_cfg.get("ws_ping_interval_s", 20.0),
+                    ws_ping_timeout_s=self.deploy_cfg.get("ws_ping_timeout_s", 20.0),
+                )
             self.robot_action_dim_info = get_robot_action_dim_info(env_cfg=self.eval_cfg)
 
         def close(self):
@@ -217,6 +234,8 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
 
             self.success = [True] * self.num_envs
             self.end_flag = [False] * self.num_envs
+            self.end_on_success = True
+            self.task_success = [False] * self.num_envs
             self.take_action_cnt = [0] * self.num_envs
             # Discard any writers left open by a previous (e.g. crashed or
             # unstable) batch before starting a fresh one.
@@ -285,16 +304,12 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
             return data_list
 
         def eval_one_episode(self):
-            policy_name = self.deploy_cfg["policy_name"]
             try:
-                eval_module = __import__(
-                    f"XPolicyLab.policy.{policy_name}.deploy",
-                    fromlist=["eval_one_episode"],
-                )
+                eval_module = __import__(self.policy_module, fromlist=["eval_one_episode"])
             except ImportError as e:
                 print(
                     "[TestEnv]",
-                    f"Failed to import policy module: XPolicyLab.policy.{policy_name}.deploy. Error: {e}",
+                    f"Failed to import policy module: {self.policy_module}. Error: {e}",
                     "ERROR",
                 )
                 raise e
@@ -302,7 +317,7 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
             if not hasattr(eval_module, "eval_one_episode"):
                 print(
                     "[TestEnv]",
-                    f"Module '.{policy_name}.deploy' does not have 'eval_one_episode' function",
+                    f"Module '{self.policy_module}' does not have 'eval_one_episode' function",
                     "ERROR",
                 )
                 raise AttributeError("Missing eval_one_episode in policy module")
@@ -310,16 +325,12 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
             eval_module.eval_one_episode(TASK_ENV=self, model_client=self.model_client)
 
         def eval_one_episode_batch(self):
-            policy_name = self.deploy_cfg["policy_name"]
             try:
-                eval_module = __import__(
-                    f"XPolicyLab.policy.{policy_name}.deploy",
-                    fromlist=["eval_one_episode_batch"],
-                )
+                eval_module = __import__(self.policy_module, fromlist=["eval_one_episode_batch"])
             except ImportError as e:
                 print(
                     "[TestEnv]",
-                    f"Failed to import policy module: XPolicyLab.policy.{policy_name}.deploy. Error: {e}",
+                    f"Failed to import policy module: {self.policy_module}. Error: {e}",
                     "ERROR",
                 )
                 raise e
@@ -327,7 +338,7 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
             if not hasattr(eval_module, "eval_one_episode_batch"):
                 print(
                     "[TestEnv]",
-                    f"Module '.{policy_name}.deploy' does not have 'eval_one_episode_batch' function",
+                    f"Module '{self.policy_module}' does not have 'eval_one_episode_batch' function",
                     "ERROR",
                 )
                 raise AttributeError("Missing eval_one_episode_batch in policy module")
@@ -622,7 +633,7 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
                     continue
                 value = action_dict[key]
 
-                if not isinstance(value, (np.ndarray, list, tuple)):
+                if not isinstance(value, np.ndarray | list | tuple):
                     raise TypeError(f"action_dict['{key}'] must be array-like, got {type(value)}")
 
                 arr = np.asarray(value)
@@ -852,9 +863,11 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
                 if self.end_flag[env_idx]:
                     continue
                 if reward_list[env_idx] > 1 - 1e-3:
-                    self.end_flag[env_idx] = True
-                    self.success[env_idx] = True
-                    continue
+                    self.task_success[env_idx] = True
+                    if self.end_on_success:
+                        self.end_flag[env_idx] = True
+                        self.success[env_idx] = True
+                        continue
                 if self.take_action_cnt[env_idx] >= self.step_lim or not self.success[env_idx]:
                     self.end_flag[env_idx] = True
                     self.success[env_idx] = False
