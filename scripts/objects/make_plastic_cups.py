@@ -51,7 +51,9 @@ MEASURING = [(0.135, 400, 0.045), (0.158, 500, 0.055)]  # height, top graduation
 CLEAR_PP = (0.94, 0.95, 0.96)
 # milky share of the wall (rest transmits), specular reflection weight, surface roughness (also blurs transmission;
 # above 0.35 OmniSurface switches to its strong-roughness transmission and the wall darkens)
-CLEAR_MIX = dict(milky=0.08, reflection=0.1, roughness=0.3)  # milky > 0.1 washes beans inside to grey
+# milky 0.25: whitish like the photos in the bright counter scene, beans still visible through the wall (beans greyer
+# in check_cup_beans.py's dim grey-floor scene)
+CLEAR_MIX = dict(milky=0.25, reflection=0.1, roughness=0.3)
 FRICTION = 0.5
 
 
