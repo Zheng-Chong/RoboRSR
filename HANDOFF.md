@@ -15,6 +15,16 @@
 
 ## 最近任务
 
+### 量杯按实测尺寸重建（2026-10-19）
+
+- 用户实测（两只量杯同截面）：壁厚 2 mm，杯口 75 mm、杯底 63 mm（对边宽），高杯 170 mm / 60 g，矮杯 140 mm / 40 g；俯视照片：杯底为倒角方形（圆角八边形），杯口为大圆角方形，杯口有卡盖带和外凸翻边。
+- 新增 `scripts/objects/measuring_cup_shape.py`（只依赖 numpy）：尺寸、截面、内外壁环、`origin_shift`、`in_cavity`。`make_plastic_cups.py` 的量杯改为从它放样：杯身为杯底八边形到翻边下圆角方形的直纹面（对边 63→68.4 mm），翻边 75 mm × 2 mm，卡盖带 70 mm，翻边下沿到杯口 12.5 mm；挂片移到翻边上（仍在 +X 面，照片里在角上，未改，免得影响 45° 侧抓）。75 mm 理解为含翻边的最大外宽；杯身中部那圈细台阶未建模。
+- 采集判据 `collect_office_beans.in_cavity` 改为调用共享模块，不再手抄超椭圆尺寸；`check_cup_beans.py` 填充区改用杯底八边形内壁；`build_asset.py` 的 `MEASURING_FLUID_Z` -0.0427→-0.0487（豆堆离杯底高度不变，杯高 158→170 mm）及注释；`scripted_demo.py` 注释；`real2sim/ASSETS.md` 量杯行。
+- 结果（本机 numpy/scipy，pxr 打桩）：外形 82 × 75 × 140 / 170 mm（含挂片），满口 512 / 622 ml，400 ml 刻度在 112 mm（80%）、500 ml 在 140 mm（82%）；每只 65 个碰撞凸包、实际顶点最多 24（GPU 上限 64）；`self_check` 不侵入内腔，bbox 与 `origin_shift` 一致；截面图 `output/measuring_cup/measuring_cup_check.png`（不入库）。`test_office_beans` 6 项通过（新增杯底倒角处在外、杯口同位置在内的用例），ruff check/format、task_inventory --check、git diff --check 通过。
+- 服务器验证（21196，GPU 4，隔离目录 `/data2/tmp/robodojo/agent-remote-runs/mcups-measured-20261019`，同步的是当前工作区，含其他会话的马克杯/红豆改动；资产生成到该目录 `gen/Rigid`，共享资产库未改动）：`make_plastic_cups.py` 退出码 0，metadata 尺寸 0.082 × 0.075 × 0.14 / 0.17 m，质量 0.04 / 0.06 kg。`check_object.py` 两只量杯都是 OK：z 0.0700 / 0.0850（等于预期），倾斜 0°，速度 0.0007 / 0.0014 m/s。`check_cup_beans.py --device cpu`：量杯 1350 / 1620 颗 5.6 mm 豆子，100% 在杯内，沉降 0.62 / 0.93 mm（>0.5，判据通过）；截图确认八边形杯底、翻边、挂片，豆子不穿壁。脚本退出码为 1，原因只在马克杯：沉降 0.33 mm，低于 0.5 mm 阈值（100% 在杯内）。这是其他会话的马克杯/5.6 mm 豆改动导致的，不是量杯问题，尚未处理。截图在本机 `output/measuring_cup/server/`（不入库）。
+- 未做：未跑任务或 `scripted_demo`。风险：杯更高、翻边更宽可能影响 `scripted_demo` 侧抓与倒豆可达性。正在运行的 100 条采集用的是旧量杯，需重建资产（`make_plastic_cups.py` → `format.py` → `build_asset.py`）后重跑。
+- 本次只提交量杯部分：`make_plastic_cups.py` 中的马克杯实测（`MUG`、描述文字）、`ASSETS.md` 马克杯行、`export_office_beans.py` 线程参数是其他会话的未提交改动，留在工作区未纳入；服务器 check_cup_beans 中马克杯沉降 0.33 mm 未过阈值，也留给那边处理。
+
 ### 红小豆实测尺寸与质量（2026-10-19）
 
 - 用户给出实测值：长宽高 7 × 5 × 5 mm，单粒约 0.1 g。`make_red_bean.py` 网格改为 7 × 5 × 5 mm（numpy 采样包围盒核对为 7.0/5.0/5.0）、质量 1e-4 kg；`build_asset.py` 的 `RED_BEAN_PHYSICS.particle_mass` 由 6e-5 改为 1e-4；`check_cup_beans.py` 绘制缩放 0.85→0.7，画出的豆子大小不变；`real2sim/ASSETS.md` 同步。

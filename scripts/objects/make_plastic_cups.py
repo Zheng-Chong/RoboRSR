@@ -2,11 +2,11 @@
 """Procedural plastic cups from the 2026-10-17 desk photos as RoboDojo `Rigid` assets.
 
 - plastic_mug/00000: white PP mug, slightly tapered round body, flat D-shaped strap handle on +X.
-- measuring_cup/00000, 00001: milky translucent PP rounded-square measuring cups (400 ml / 500 ml graduations) with a
-  snap-lid collar around the mouth and a small hanging tab. Same cross-section, the 500 ml one is taller.
+- measuring_cup/00000, 00001: milky translucent PP measuring cups (400 ml / 500 ml graduations), 14 / 17 cm tall:
+  chamfered-square bottom widening to a rounded-square mouth, snap-lid band with a flange and a small hanging tab.
 
-No ruler in the photos: absolute size is a typical-product guess; the cups' height ratio and where the 400/500 ml
-graduations sit on each cup (about 3/4 of the height) were matched against the photos.
+Measuring-cup dimensions and masses are measured (measuring_cup_shape.py). The mug has no ruler measurement: its
+absolute size is a typical-product guess matched to the photos.
 
 Usage:
     python scripts/objects/make_plastic_cups.py [RIGID_DIR]    # default Assets/Object/RoboDojo/Rigid
@@ -17,6 +17,7 @@ Writes RIGID_DIR/<category>/<index>/{object.usdz, metadata.json, description.jso
 Frame: Z up, metres, origin at bbox centre.
 USD:   /root (RigidBodyAPI) -> visual/model (whole cup, one material)
                             -> collision/hull_NN (bottom slab + wall staves + collar/handle pieces, hollow inside)
+Profiles loft rings (N_THETA, 2), or scalars times a unit section, along Z.
 """
 
 import json
@@ -33,9 +34,10 @@ from scipy.spatial import ConvexHull
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import make_pitcher as mp  # noqa: E402  (shared USD helpers; starts Kit when pxr needs it)
 from make_pitcher import Sdf, Usd, UsdGeom, UsdPhysics, UsdShade  # noqa: E402
+import measuring_cup_shape as shape  # noqa: E402
 
 RIGID_DIR = Path(__file__).resolve().parents[2] / "Assets/Object/RoboDojo/Rigid"
-N_THETA = 192
+N_THETA = shape.N_THETA
 STAVE_TOL = 0.0003  # max collision-wall intrusion into the cavity
 BOTTOM_SIDES = 24  # bottom slab polygon: PhysX GPU convexes (particle contacts) take <= 64 vertices, <= 32 per face
 
@@ -45,9 +47,6 @@ MUG = dict(
 )  # fmt: skip
 WHITE_PP = (0.90, 0.89, 0.85)
 
-# half-widths at face centre; body tapers A0 -> A1 up to the collar, inner wall keeps tapering to the rim
-CUP = dict(SQ=4.0, A0=0.032, A1=0.0375, A_COLLAR=0.0410, COLLAR_H=0.014, T_WALL=0.0015, T_BOTTOM=0.002, FILLET=0.004)
-MEASURING = [(0.135, 400, 0.045), (0.158, 500, 0.055)]  # height, top graduation (ml), mass
 CLEAR_PP = (0.94, 0.95, 0.96)
 # milky share of the wall (rest transmits), specular reflection weight, surface roughness (also blurs transmission;
 # above 0.35 OmniSurface switches to its strong-roughness transmission and the wall darkens)
@@ -67,20 +66,20 @@ def unit_section(sq):
     return np.c_[np.interp(u, s, closed[:, 0]), np.interp(u, s, closed[:, 1])]
 
 
-def loft(profile, sec):
-    """Closed surface through scaled sections [(r, z)] stacked along Z; r == 0 is a pole.
-    Repeat a point for a sharp edge."""
+def loft(profile, sec=None):
+    """Closed surface through sections [(r, z)] stacked along Z: r is a ring (N_THETA, 2) or a scale of `sec`;
+    r == 0 is a pole. Repeat a point for a sharp edge."""
     pts, rings = [], []
     for r, z in profile:
-        if r == 0:
+        if np.isscalar(r) and r == 0:
             rings.append([len(pts)] * N_THETA)
             pts.append((0.0, 0.0, z))
         else:
             rings.append(list(range(len(pts), len(pts) + N_THETA)))
-            pts += [(x, y, z) for x, y in r * sec]
+            pts += [(x, y, z) for x, y in (r * sec if np.isscalar(r) else r)]
     faces = []
     for (p, q), a, b in zip(zip(profile, profile[1:]), rings, rings[1:]):
-        if p == q:
+        if p[1] == q[1] and np.array_equal(p[0], q[0]):
             continue
         for j in range(N_THETA):
             k = (j + 1) % N_THETA
@@ -95,21 +94,21 @@ def chord_sag(ring, a, b):
     return np.max(np.abs(d[0] * v[:, 1] - d[1] * v[:, 0])) / np.linalg.norm(d)
 
 
-def wall_staves(sec, levels):
-    """Convex wall pieces between consecutive levels [(z, outer r, inner r)]. Inner face uses only the stave's end
-    columns so it stays a chord, at most STAVE_TOL inside the inner wall."""
+def wall_staves(levels):
+    """Convex wall pieces between consecutive levels [(z, outer ring, inner ring)]. Inner face uses only the stave's
+    end columns so it stays a chord, at most STAVE_TOL inside the inner wall."""
     hulls = []
     for (z0, o0, i0), (z1, o1, i1) in zip(levels, levels[1:]):
         cuts = [0]
         while cuts[-1] < N_THETA:
             a, b = cuts[-1], cuts[-1] + 1
-            while b < N_THETA and max(chord_sag(r * sec, a, b + 1) for r in (i0, i1)) <= STAVE_TOL:
+            while b < N_THETA and max(chord_sag(r, a, b + 1) for r in (i0, i1)) <= STAVE_TOL:
                 b += 1
             cuts.append(b)
         for a, b in zip(cuts, cuts[1:]):
             idx = np.arange(a, b + 1) % N_THETA
-            ring = [(*p, z) for r, z in ((o0, z0), (o1, z1)) for p in r * sec[idx]]
-            hulls.append(np.array(ring + [(*p, z) for r, z in ((i0, z0), (i1, z1)) for p in r * sec[idx[[0, -1]]]]))
+            ring = [(*p, z) for r, z in ((o0, z0), (o1, z1)) for p in r[idx]]
+            hulls.append(np.array(ring + [(*p, z) for r, z in ((i0, z0), (i1, z1)) for p in r[idx[[0, -1]]]]))
     return hulls
 
 
@@ -118,13 +117,14 @@ def fillet(r, f, n=6):
     return mp.arc(r - f, f, f, -np.pi / 2, 0, n)
 
 
-def cavity_probe(sec, inner, z0, z1):
+def cavity_probe(inner, z0, z1):
+    """Points filling the cavity; inner(z) is the inner wall ring."""
     return np.array(
         [
-            (*(f * inner(z) * p), z)
+            (*(f * p), z)
             for z in np.linspace(z0 + 1e-3, z1 - 1e-3, 12)
             for f in np.linspace(0, 0.97, 6)
-            for p in sec[:: N_THETA // 48]
+            for p in inner(z)[:: N_THETA // 48]
         ]
     )
 
@@ -161,72 +161,79 @@ def build_mug():
     normals = np.concatenate([mp.vertex_normals(*body), mp.vertex_normals(h_pts, h_faces)])
 
     hulls = [np.array([(*(g["R0"] * p), z) for p in sec[:: N_THETA // BOTTOM_SIDES] for z in (0.0, TB)])]
-    hulls += wall_staves(sec, [(0.0, g["R0"], inner(0.0)), (H, g["R1"], inner(H))])
+    hulls += wall_staves([(0.0, g["R0"] * sec, inner(0.0) * sec), (H, g["R1"] * sec, inner(H) * sec)])
     hulls += [np.concatenate([h_rings[i], h_rings[i + 1]]) for i in range(len(h_rings) - 1)]
 
     for part in (body, (h_pts, h_faces)):
         assert mp.signed_volume(*part) > 0, "part has inward-facing winding"
-    ml = volume_ml(sec, inner, TB, H)
+    ml = volume_ml(lambda z: inner(z) * sec, TB, H)
     return dict(
-        pts=pts, faces=faces, normals=normals, hulls=hulls, probe=cavity_probe(sec, inner, TB, H), ml=ml,
+        pts=pts, faces=faces, normals=normals, hulls=hulls, probe=cavity_probe(lambda z: inner(z) * sec, TB, H), ml=ml,
         contact_r=g["R0"] - g["FILLET"], grip=np.array([x_out, 0.0, (zt + zb) / 2]),
     )  # fmt: skip
 
 
 def build_measuring_cup(H):
-    g = CUP
-    sec = unit_section(g["SQ"])
-    zc, TB, T = H - g["COLLAR_H"], g["T_BOTTOM"], g["T_WALL"]
-
-    def outer(z):
-        return g["A0"] + (g["A1"] - g["A0"]) * z / zc
+    g, top = shape.CUP, shape.TOP
+    zf, TB = shape.flange_z(H), g["T_BOTTOM"]
+    zl = zf + g["LIP_T"]
 
     def inner(z):
-        return outer(z) - T
+        return shape.inner_ring(z, H)
 
-    ac = g["A_COLLAR"]
-    assert ac - T > outer(H), "collar thinner than the wall"
+    lip, collar = g["A_LIP"] * top, g["A_COLLAR"] * top
+    assert g["A_COLLAR"] - inner(H)[0, 0] >= g["T_WALL"], "lid band thinner than the wall"
     profile = (
         [(0.0, 0.0)]
-        + fillet(g["A0"], g["FILLET"])
-        + [(g["A1"], zc), (g["A1"], zc), (ac, zc), (ac, zc), (ac, H), (ac, H)]
-        + [(inner(H), H), (inner(H), H), (inner(TB), TB), (inner(TB), TB), (0.0, TB)]
+        + [(r * shape.BOTTOM, z) for r, z in fillet(g["A0"], g["FILLET"])]
+        + [(shape.outer_ring(zf, H), zf)] * 2
+        + [(lip, zf)] * 2
+        + [(lip, zl)] * 2
+        + [(collar, zl)] * 2
+        + [(collar, H)] * 2
+        + [(inner(H), H)] * 2
+        + [(inner(TB), TB)] * 2
+        + [(0.0, TB)]
     )
-    body = loft(profile, sec)
-    tab = [(ac - 0.002, -0.006), (ac + 0.006, -0.0045), (ac + 0.006, 0.0045), (ac - 0.002, 0.006)]
-    t_pts, t_faces = mp.prism(tab, H - 0.002, H)
+    body = loft(profile)
+    a, w = g["A_LIP"], shape.TAB_W / 2
+    tab = [(a - 0.002, -w), (a + shape.TAB_OUT, -0.75 * w), (a + shape.TAB_OUT, 0.75 * w), (a - 0.002, w)]
+    t_pts, t_faces = mp.prism(tab, zf, zl)
     pts = np.concatenate([body[0], t_pts])
     faces = body[1] + [[i + len(body[0]) for i in f] for f in t_faces]
     normals = np.concatenate([mp.vertex_normals(*body), mp.vertex_normals(t_pts, t_faces)])
 
-    hulls = [np.array([(*(g["A0"] * p), z) for p in sec[:: N_THETA // BOTTOM_SIDES] for z in (0.0, TB)])]
-    hulls += wall_staves(sec, [(0.0, g["A0"], inner(0.0)), (zc, g["A1"], inner(zc))])
-    hulls += wall_staves(sec, [(zc, ac, inner(zc)), (H, ac, inner(H))])
-    hulls.append(np.array([(x, y, z) for x, y in tab for z in (H - 0.002, H)]))
+    bottom = g["A0"] * shape.BOTTOM[:: N_THETA // BOTTOM_SIDES]
+    hulls = [np.array([(*p, z) for p in bottom for z in (0.0, TB)])]
+    hulls += wall_staves([(0.0, g["A0"] * shape.BOTTOM, inner(0.0)), (zf, shape.outer_ring(zf, H), inner(zf))])
+    hulls += wall_staves([(zf, lip, inner(zf)), (zl, lip, inner(zl))])
+    hulls += wall_staves([(zl, collar, inner(zl)), (H, collar, inner(H))])
+    hulls.append(np.array([(x, y, z) for x, y in tab for z in (zf, zl)]))
 
     for part in (body, (t_pts, t_faces)):
         assert mp.signed_volume(*part) > 0, "part has inward-facing winding"
     return dict(
-        pts=pts, faces=faces, normals=normals, hulls=hulls, probe=cavity_probe(sec, inner, TB, H),
-        ml=volume_ml(sec, inner, TB, H), contact_r=g["A0"] - g["FILLET"], sec=sec, inner=inner, TB=TB, H=H,
+        pts=pts, faces=faces, normals=normals, hulls=hulls, probe=cavity_probe(inner, TB, H),
+        ml=volume_ml(inner, TB, H), contact_r=g["A0"] - g["FILLET"], inner=inner, TB=TB, H=H,
     )  # fmt: skip
 
 
-def section_area(sec):
-    x, y = sec.T
+def section_area(ring):
+    x, y = ring.T
     return 0.5 * abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
 
 
-def volume_ml(sec, inner, z0, z1, n=400):
+def volume_ml(inner, z0, z1, n=400):
     z = np.linspace(z0, z1, n)
-    a = section_area(sec) * inner(z) ** 2
+    a = np.array([section_area(inner(h)) for h in z])
     return float(np.sum((a[1:] + a[:-1]) / 2 * np.diff(z)) * 1e6)
 
 
 def fill_height(c, ml):
     """Height above the outside bottom at which the cup holds `ml`."""
     z = np.linspace(c["TB"], c["H"], 2000)
-    v = np.r_[0, np.cumsum(section_area(c["sec"]) * c["inner"](z[1:]) ** 2 * np.diff(z))] * 1e6
+    a = np.array([section_area(c["inner"](h)) for h in z])
+    v = np.r_[0, np.cumsum((a[1:] + a[:-1]) / 2 * np.diff(z))] * 1e6
     return float(np.interp(ml, v, z))
 
 
@@ -378,12 +385,12 @@ def measuring_description(uid, mark, ml, H):
         "material": ["plastic", "polypropylene", "PP"],
         "size": [f"{mark} ml graduation", f"holds about {ml:.0f} ml to the brim", f"about {H * 100:.1f} cm tall"],
         "name": ["measuring cup", "plastic measuring cup", "storage cup"],
-        "shape": ["rounded square body", "wider at the top", "collar around the mouth"],
+        "shape": ["chamfered square bottom", "rounded square mouth", "collar around the mouth"],
         "function": ["measuring beans", "measuring water", "pouring into another cup"],
     }
     desc = [
         f"translucent rounded-square plastic measuring cup marked up to {mark} ml",
-        "translucent square cup with rounded corners and a snap-lid collar",
+        "translucent square cup, chamfered at the bottom, with a snap-lid collar",
         f"tall milky polypropylene cup that holds about {ml:.0f} ml",
         "frosted measuring cup with a small hanging tab on the rim",
         "light plastic cup grasped around its square body",
@@ -410,9 +417,11 @@ def main(rigid_dir):
     d, meta = save(rigid_dir, "plastic_mug", 0, mug, white_pp, MUG["MASS"], lambda u: mug_description(u, mug["ml"]))
     print(f"{d}: {mug['ml']:.0f} ml, size {meta['physics']['size']}, {len(mug['hulls'])} collision hulls")
 
-    for idx, (H, mark, mass) in enumerate(MEASURING):
+    for idx, (H, mark, mass) in enumerate(shape.MEASURING):
         c = build_measuring_cup(H)
         self_check(c)
+        lo, hi = c["pts"].min(0), c["pts"].max(0)
+        assert np.allclose(-(lo + hi) / 2, shape.origin_shift(H), atol=1e-6), "bbox differs from origin_shift()"
         z = fill_height(c, mark)
         d, meta = save(
             rigid_dir, "measuring_cup", idx, c, clear_pp, mass, lambda u: measuring_description(u, mark, c["ml"], H)

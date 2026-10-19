@@ -98,13 +98,13 @@ CUP_PAIR_X, CUP_PAIR_Y = (0.10, 0.16), (-0.39, -0.31)
 CUP_FILL = (0.77, 0.77, 0.71)
 CUP_FLUID_Z = -0.0167
 # Measuring cups (scripts/objects/make_plastic_cups.py): 500 ml source, 400 ml target, as in the desk photos. Turned
-# 45 deg about z so the pads, closing across the 45-deg-inward wrist, meet the square body's flats (72-75 mm) and not
-# its corners (88 mm, nearly the 95 mm jaw). Fluid 54 x 54 x 63 mm (~95 ml) 0.8 mm above the 2 mm inside bottom of
-# the 158 mm cup.
+# 45 deg about z so the pads, closing across the 45-deg-inward wrist, meet the square body's flats (63-68 mm) and not
+# its corners (75-88 mm, nearly the 95 mm jaw). Fluid 54 x 54 x 63 mm (~95 ml) 0.8 mm above the 2 mm inside bottom of
+# the 170 mm cup.
 MEASURING_CUPS = ((1, "source_cup"), (0, "target_cup"))  # measuring_cup index, label
 MEASURING_ORI = [0.92388, 0.0, 0.0, 0.38268]
 MEASURING_FILL = (0.9, 0.9, 0.9)
-MEASURING_FLUID_Z = -0.0427
+MEASURING_FLUID_Z = -0.0487
 OBJECT_SECTIONS = ("Rigid", "Geometry", "Fluid", "Articulation", "Garment", "Clutter", "Dynamic")
 D435_INERTIAL = (
     '<inertial><origin xyz="0 0 0" rpy="0 0 0"/><mass value="0.01"/>'

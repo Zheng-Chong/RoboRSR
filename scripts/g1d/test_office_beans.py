@@ -14,6 +14,7 @@ from scripts.g1d import collect_office_beans as collector
 from scripts.g1d.collect_office_beans import all_transferred, counts, in_cavity
 from scripts.g1d.export_office_beans import select_episodes, validated_trajectory
 from scripts.g1d.prepare_office_beans_layouts import sample_positions
+from scripts.objects.measuring_cup_shape import origin_shift
 
 
 class AcceptanceTests(unittest.TestCase):
@@ -131,12 +132,16 @@ class AcceptanceTests(unittest.TestCase):
             self.assertEqual(sorted(bins), list(range(100)))
 
     def test_cavity_excludes_tab_wall_and_below_bottom(self):
-        points = np.array([[-0.003, 0, 0], [0.040, 0, 0.06], [0.033, 0.033, 0], [-0.003, 0, -0.067]])
-        self.assertEqual(in_cavity(points, [0, 0, 0], [1, 0, 0, 0], 0.135).tolist(), [True, False, False, False])
+        # cup frame (outside bottom centre): centre, wall, chamfered bottom corner, same xy under the rounded mouth,
+        # tab, below the inner bottom
+        bottom = [[0, 0, 0.07], [0.032, 0, 0.07], [0.027, 0.027, 0.01], [0.027, 0.027, 0.13], [0.041, 0, 0.128]]
+        points = np.array(bottom + [[0, 0, 0.001]]) + origin_shift(0.14)
+        expected = [True, False, False, True, False, False]
+        self.assertEqual(in_cavity(points, [0, 0, 0], [1, 0, 0, 0], 0.14).tolist(), expected)
         rotation = Rotation.from_euler("xyz", [20, -80, 45], degrees=True)
         q = rotation.as_quat()[[3, 0, 1, 2]]
         shifted = rotation.apply(points) + [1, 2, 3]
-        self.assertEqual(in_cavity(shifted, [1, 2, 3], q, 0.135).tolist(), [True, False, False, False])
+        self.assertEqual(in_cavity(shifted, [1, 2, 3], q, 0.14).tolist(), expected)
 
     def test_one_spilled_or_residual_bean_fails(self):
         poses = {"source_cup": [[-0.15, 0, 0], [1, 0, 0, 0]], "target_cup": [[0.15, 0, 0], [1, 0, 0, 0]]}

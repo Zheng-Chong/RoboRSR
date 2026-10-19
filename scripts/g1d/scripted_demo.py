@@ -61,8 +61,8 @@ SPOUT_GAIN, SPOUT_SLACK = 0.2, 0.05  # per action, share of the spout error (act
 CUP_GRIP_UP = 0.065  # pads this far above the cup bottom
 CUP_PITCH, CUP_YAW = 35, 45  # deg, fingers below horizontal; wrist turned inward from fingers-forward
 CUP_SLIDE = 0.08  # m the open pads slide along the fingers onto the cup body
-# Cup-to-cup pour (two 9.5 cm plastic cups, as in the real G1D-PourBeansPlus clips, or the 13.5 / 15.8 cm measuring
-# cups): pads this far below the rim; on the measuring cups below their 14 mm snap-lid collar
+# Cup-to-cup pour (two 9.5 cm plastic cups, as in the real G1D-PourBeansPlus clips, or the 14 / 17 cm measuring
+# cups): pads this far below the rim; on the measuring cups below their 12.5 mm snap-lid band and flange
 C2C_RIM_DOWN = {"plastic_cup": 0.02, "measuring_cup": 0.032}
 C2C_RAISE, C2C_LIFT = 0.06, {"plastic_cup": 0.12, "measuring_cup": 0.06}  # straight up first; target bottom lifted
 # fingers this far below horizontal. The cup tilts by rolling about the fingers, cos(tilt) = sin^2 p + cos^2 p cos(r):

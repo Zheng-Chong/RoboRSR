@@ -23,7 +23,7 @@
 | `pitcher/00000–00002` 冷水壶 | Luminarc Quadro 1.1 L 同款，未确认有实物 | `scripts/objects/make_pitcher.py` | 估计：按产品规格高 24.5 cm、宽 8.9 cm | 未做：0.5 kg 是加载器上限 | 默认 | 估计：烟灰/琥珀/透明三色 | 已装 |
 | `water_cup/00000` 搪瓷杯 | `scene3_pour_pack` 里的接水杯 | `make_water_cup.py` | 估计：取自 `scene_spec.json`（该文件写明物体尺寸是估计的），高 118 mm、口径 73 mm | 估计 0.165 kg | 默认 | 估计 | 已装 |
 | `plastic_cup/00000` 透明杯 | 真机片段 G1D-PourBeansPlus 里的一次性杯 | `make_water_cup.py --plastic` | 估计：对着视频里的夹爪目测，高 95 mm、口径 72 mm | 估计 30 g | 默认 | 估计 | 已装 |
-| `measuring_cup/00000、00001` 量杯 | 2026-10-17 桌面照片中的 400 / 500 ml 量杯 | `make_plastic_cups.py` | 绝对尺寸估计（照片无尺子），高度比例和刻度位置按照片拟合；高 135 / 158 mm | 估计 45 / 55 g | 默认 | 估计：对照照片调材质 | **未装** |
+| `measuring_cup/00000、00001` 量杯 | 2026-10-17 桌面照片中的 400 / 500 ml 量杯 | `make_plastic_cups.py` | 实测：高 140 / 170 mm，壁厚 2 mm，杯口（翻边）75 mm、杯底 63 mm（对边）；杯底倒角方形、杯口圆角方形按俯视照片 | 实测 40 / 60 g | 默认 | 估计：对照照片调材质 | **未装** |
 | `plastic_mug/00000` 白色马克杯 | 同一组照片中的塑料马克杯 | `make_plastic_cups.py` | 估计：高 95 mm、口径 80 mm | 估计 90 g | 默认 | 估计 | **未装**，无任务使用 |
 | `red_bean/00000` 单颗红豆 | 红小豆 | `make_red_bean.py` | 实测：7 × 5 × 5 mm | 实测约 0.1 g | — | 估计 | **未装**，只用于渲染 |
 

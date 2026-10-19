@@ -71,7 +71,8 @@ def fill_region(category, top):
     if category == "plastic_mug":
         sec, r, tb = pc.unit_section(2.0), pc.MUG["R0"] - pc.MUG["T_WALL"], pc.MUG["T_BOTTOM"]
     else:
-        sec, r, tb = pc.unit_section(pc.CUP["SQ"]), pc.CUP["A0"] - pc.CUP["T_WALL"], pc.CUP["T_BOTTOM"]
+        g = pc.shape.CUP  # inner wall is narrowest at the bottom, so its prism fits the whole cavity
+        sec, r, tb = pc.shape.BOTTOM, g["A0"] - g["T_WALL"], g["T_BOTTOM"]
     ring = (r - MARGIN) * sec[::4]
     return np.array([(x, y, z) for z in (tb + MARGIN, top) for x, y in ring])
 
