@@ -31,6 +31,7 @@
 - 验证：本机 numpy/scipy（stub 掉 pxr）构建几何：外形 119 × 84 × 100 mm，把手外伸 35.0、高 70.0、条宽 13.0 mm，容积约 482 ml，44 个碰撞凸包，`self_check` 不侵入内腔。5090-2 隔离目录 `/data/robodojo-runs/mug-render-20261019-171418`（Assets 软链到采集运行目录、只读）生成 USDZ 到 `ovl/Rigid/`（metadata：0.089 kg、0.119 × 0.084 × 0.1 m），GPU 7 跑 `check_object.py`：z=0.0500（符合预期）、倾斜 0°、速度 0.0002 m/s；渲染图在本机 `output/plastic_mug/`（不入库）。未跑 `check_cup_beans.py`，共享资产库（21196）未安装该杯。
 - 教训：首次提交 `b077d1d` 与另一会话共用 git 暂存区发生竞态，实际提交进去的是红豆改动（后被 amend 为 `9bfdd78`），马克杯改动当时没有入库，第一次服务器渲染因此用了旧模型。并行会话同一工作区提交时用临时索引（`GIT_INDEX_FILE` + `commit-tree` + `update-ref` 带旧值校验）。
 - 数采平台（5090-2）：`real2sim/objects/Rigid/plastic_mug/00000/preview/sim.png` 换成新渲染；资产元数据镜像 `/root/RoboDojo_assets/Assets/Object/RoboDojo/Rigid/plastic_mug/00000/{metadata,description}.json` 手动放入新生成的文件（21196 共享库没有这只杯，下次整体重跑镜像命令会把它删掉，需重新放或先装进共享库）。
+- 平台孪生记录（2026-10-19，用户指出没标）：在 5090-2 平台数据库里给 `Rigid/plastic_mug/00000` 写入实测尺寸 119 × 84 × 100 mm（长 = 外径 84 + 把手外伸 35）、89 g、建模方式“参数化脚本”和备注，`_by` 为 Claude；写前备份 `.cache/real2sim_platform.sqlite3.bak-mug-20261019-172609`。仿真尺寸/质量与实测误差为 0。两只量杯在平台上的孪生勾选和实测值还没填。
 
 ### 红小豆实测尺寸与质量（2026-10-19）
 
