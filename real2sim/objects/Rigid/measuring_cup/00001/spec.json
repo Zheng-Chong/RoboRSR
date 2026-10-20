@@ -1,0 +1,12 @@
+{
+  "id": "Rigid/measuring_cup/00001",
+  "name": " measuring cup",
+  "tasks": [
+    "g1d_pour_beans_measuring_cups"
+  ],
+  "material": "PP 塑料",
+  "color": "乳白色半透明",
+  "mass_g": 60,
+  "updated_by": "种政",
+  "updated_at": "2026-10-20 18:54:46"
+}
