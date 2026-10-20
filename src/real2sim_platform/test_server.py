@@ -163,16 +163,19 @@ def test_http():
         built.mkdir(parents=True)
         (built / "metadata.json").write_text(json.dumps({"physics": {"mass": 0.05}, "measurements_mm": {"高": 95.5}}))
         assert server.scan_objects(tmp, {}, ["Rigid/cup/00003"])["Rigid/cup/00003"]["measurements"] == {"高": 95.5}
-        twin = {"twin": True, "name": "量杯", "real_mass": 55, "material": "PP 塑料"}
+        twin = {"twin": True, "name": "量杯", "name_en": "Measuring Cup", "real_mass": 55, "material": "PP 塑料"}
+        twin["gen"] = {"count": 3, "color": True, "size": False, "requirements": "尺寸不变，只换颜色"}
         twin["dimensions"] = "开口直径 82，高 158"
         assert request("PUT", "/api/items?kind=object&id=Rigid/cup/00000", json.dumps({**twin, "color": ""}))[0] == 200
         spec = json.loads((tmp / "objects/Rigid/cup/00000/spec.json").read_text(encoding="utf-8"))
         assert spec.pop("updated_at") and spec == {  # empty fields left out
             "id": "Rigid/cup/00000",
             "name": "量杯",
+            "name_en": "Measuring Cup",
             "material": "PP 塑料",
             "mass_g": 55,
             "dimensions_mm": "开口直径 82，高 158",
+            "generalization": {"count": 3, "color": True, "requirements": "尺寸不变，只换颜色"},
             "updated_by": "张三",
         }
         assert {0, 3} <= set(json.loads(request("GET", "/api/object-indices")[1])["Rigid/cup"])  # registered, library

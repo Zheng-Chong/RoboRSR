@@ -237,6 +237,71 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
 .upload { position: relative; overflow: hidden; }
 .upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .upload:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* registration wizard */
+.wz-steps { display: flex; align-items: center; gap: 10px; margin: 6px 0 4px; padding: 0; list-style: none; }
+.wz-steps button { display: flex; align-items: center; gap: 8px; padding: 4px 2px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.wz-dot { display: grid; place-items: center; width: 28px; height: 28px; border: 1.5px solid var(--border-strong); border-radius: 50%; background: var(--surface); font: 600 12px var(--mono); transition: background .2s, border-color .2s, color .2s; }
+.wz-dot .ic { display: none; width: 14px; height: 14px; }
+.wz-steps button.on { color: var(--text); font-weight: 600; }
+.wz-steps button.on .wz-dot { border-color: var(--primary); background: var(--primary); color: #fff; box-shadow: 0 0 0 4px var(--primary-soft); }
+.wz-steps button.done { color: var(--text-2); }
+.wz-steps button.done .wz-dot { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.wz-steps button.done .wz-dot span { display: none; }
+.wz-steps button.done .wz-dot .ic { display: block; }
+.wz-line { flex: 1; min-width: 16px; height: 2px; border-radius: 1px; background: var(--border); }
+.wz-head { margin: 22px 0 6px; }
+.wz-head span { color: var(--primary); font: 600 11px var(--mono); letter-spacing: .06em; }
+.wz-head h3 { margin: 4px 0 4px; font-size: 18px; }
+.wz-head p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.wz-group { margin-top: 18px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.wz-group > h4 { margin: 0 0 12px; color: var(--text-2); font-size: 13px; font-weight: 650; }
+.wz-group .opt { margin-left: 4px; padding: 1px 6px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 11px; font-weight: 500; }
+.wz-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+@media (max-width: 560px) { .wz-grid { grid-template-columns: 1fr; } .wz-t { display: none; } .wz-steps button.on .wz-t { display: inline; } }
+.fld { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fld.wide { grid-column: 1 / -1; }
+.fld > label { color: var(--text-2); font-size: 12.5px; font-weight: 550; }
+.fld > label em { margin-left: 3px; color: var(--bad); font-style: normal; }
+.fld > small { color: var(--muted); font-size: 12px; }
+.fld > input, .fld > select, .fld > textarea { width: 100%; }
+.wiz-pane input:focus, .wiz-pane select:focus, .wiz-pane textarea:focus { border-color: var(--ring); outline: none; box-shadow: 0 0 0 3px var(--primary-soft); }
+.wiz-pane [aria-invalid="true"] { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-soft); }
+.wz-id { display: flex; align-items: center; min-height: 34px; padding: 6px 10px; border: 1px dashed var(--primary-line); border-radius: 8px; background: var(--primary-soft); color: var(--primary); font-size: 12.5px; overflow-wrap: anywhere; }
+.wz-id.bad { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); }
+.unit { display: flex; }
+.unit input { flex: 1; min-width: 0; border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+.unit span { display: grid; place-items: center; padding: 0 12px; border: 1px solid var(--border-strong); border-left: 0; border-radius: 0 8px 8px 0; background: var(--surface-2); color: var(--muted); font-size: 12.5px; }
+.drop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 16px; border: 1.5px dashed var(--border-strong); border-radius: var(--radius); background: var(--surface-2); color: var(--text-2); text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+.drop b { font-weight: 600; }
+.drop small { color: var(--muted); font-size: 12px; }
+.drop-ic { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 4px; border-radius: 50%; background: var(--surface); color: var(--primary); box-shadow: var(--shadow-1); }
+.drop-ic .ic { width: 20px; height: 20px; }
+.drop.over, .drop:hover { border-color: var(--ring); background: var(--primary-soft); }
+.drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.drop:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; }
+.wz-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.wz-thumbs:not(:empty) { margin-top: 12px; }
+.wz-thumb { position: relative; margin: 0; }
+.wz-thumb img { display: block; width: 100%; aspect-ratio: 1; border: 1px solid var(--border); border-radius: 8px; object-fit: cover; }
+.wz-thumb figcaption { margin-top: 4px; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.wz-thumb button { position: absolute; top: 5px; right: 5px; display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: rgba(15, 23, 42, .7); color: #fff; cursor: pointer; }
+.num-step { display: flex; align-items: center; gap: 8px; }
+.num-step button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-2); cursor: pointer; }
+.num-step button:hover { border-color: var(--ring); color: var(--primary); }
+.num-step input { width: 72px; height: 36px; font: 600 15px var(--mono); text-align: center; }
+.toggles { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.toggle span { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-2); cursor: pointer; transition: all .15s; }
+.toggle span .ic { display: none; width: 14px; height: 14px; }
+.toggle input:checked + span { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+.toggle input:checked + span .ic { display: block; }
+.toggle input:focus-visible + span { outline: 2px solid var(--ring); outline-offset: 2px; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.presets button { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border: 1px dashed var(--border-strong); border-radius: 999px; background: none; color: var(--text-2); font-size: 12px; cursor: pointer; }
+.presets button:hover { border-color: var(--ring); color: var(--primary); }
+.wz-foot { position: sticky; bottom: -48px; z-index: 1; display: flex; align-items: center; gap: 12px; margin: 24px -22px -48px; padding: 14px 22px; border-top: 1px solid var(--border); background: rgba(255, 255, 255, .94); backdrop-filter: blur(6px); }
+.wz-foot .field-error { flex: 1; min-width: 0; text-align: center; }
+.wz-foot .btn { min-height: 40px; padding: 0 16px; }
 
 /* drawer */
 #scrim { position: fixed; inset: 0; z-index: 20; background: rgba(15, 23, 42, .38); opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -382,6 +447,7 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
 <script>
 'use strict';
 const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]);
 const file = (p) => `/file?path=${encodeURIComponent(p)}`;
 const num = (v) => v !== null && v !== undefined && v !== '' && !Number.isNaN(Number(v));
@@ -768,7 +834,22 @@ function photoStrip(d) {
     <button class="del" type="button" data-path="${esc(p)}" onclick="deletePhoto(this.dataset.path)" aria-label="删除 ${esc(base(p))}">${ic('trash', 'ic-sm')}</button></div>`).join('');
 }
 const DIM_HINT = '每项写「名称 数值」，单位 mm，按物体形状自己定名称，如：开口直径 82，底部直径 64，高 135';
+const GEN_ATTRS = {color: '颜色', material: '材质', size: '尺寸', shape: '形状'};
+const GEN_HINT = '如：尺寸和形状保持不变，只改颜色，做红、蓝、绿各一个；或只写要求，具体参数由 coding agent 设计';
+const GEN_NOTE = '泛化变体是同一类别下的新编号，不是实物孪生、没有实测；用于训练多样性或保留评测（L3 物体泛化）。没勾的属性与本体保持一致。';
 const materialList = () => `<datalist id="dl-materials">${MATERIALS.map((m) => `<option value="${esc(m)}">`).join('')}</datalist>`;
+function genBrief(d) {  // brief lines for the variants asked in step 3 of the registration
+  const g = d.gen || {}, vary = Object.keys(GEN_ATTRS).filter((k) => g[k]);
+  if (!g.count && !g.requirements) return [];
+  const [group, index] = [d.id.replace(/\/\d+$/, ''), Number(d.id.split('/').pop())];
+  return [
+    `泛化：在本体之外再建${g.count ? ` ${g.count} 个` : '若干'}变体，放在 ${group}/ 下、编号从 ${String(index + 1).padStart(5, '0')} 起取没被占用的号，和本体共用同一个生成脚本（参数化出来）。`,
+    `- 允许变化：${vary.length ? vary.map((k) => GEN_ATTRS[k]).join('、') : '未指定，按泛化要求定'}；${vary.length ? `其余（${Object.keys(GEN_ATTRS).filter((k) => !g[k]).map((k) => GEN_ATTRS[k]).join('、') || '无'}）与本体一致。` : ''}`,
+    g.requirements ? `- 泛化要求：${g.requirements}` : '- 泛化要求：未写，变体参数由你设计，彼此要有明显区别且仍在机器人可抓取范围内。',
+    '- 每个变体的参数列进交付说明，在 real2sim/ASSETS.md 标成泛化变体（无实测）；变体不写 measurements_mm 核对，但 check_object.py 落地检查要过。',
+    '',
+  ];
+}
 function modelingBrief(d) {  // the task for a coding agent that builds this twin; skipped fields are null
   const a = d.auto, dir = `real2sim/objects/${d.id}`, photos = (a.photos || []).map(base);
   const fact = (k, v) => (v === undefined || v === null || v === '' ? null : `- ${k}：${v}`);
@@ -778,11 +859,12 @@ function modelingBrief(d) {  // the task for a coding agent that builds this twi
     `输入：${dir}/spec.json（平台登记信息）和 ${dir}/reference/ 下的 ${photos.length} 张实拍照片${photos.length ? `（${photos.join('、')}）` : ''}。这些文件在平台所在机器的 ${INFO.root}/${dir}/，本机没有就先把这个目录同步过来。`,
     '',
     '登记信息：',
-    fact('名称', objName(d)), fact('任务配置里用到', (a.tasks || []).join('、')), fact('材质', d.material), fact('颜色', d.color),
+    fact('名称', objName(d)), fact('英文名', d.name_en), fact('任务配置里用到', (a.tasks || []).join('、')), fact('材质', d.material), fact('颜色', d.color),
     fact('质量', num(d.real_mass) ? `${d.real_mass} g` : ''), fact('静摩擦系数', d.real_friction),
     d.dimensions ? `- 实测尺寸（mm）：${d.dimensions}` : '- 实测尺寸：未填，按照片估计，并在交付说明里标出是估计值',
     fact('外观与结构', d.features), fact('建模要求', d.requirements), fact('备注', d.notes),
     '',
+    ...genBrief(d),
     '验收：',
     `1. ${a.generator ? `在现有生成脚本 ${a.generator} 上修改` : `新建生成脚本 scripts/objects/make_${d.id.split('/')[1]}.py`}，资产生成到 Assets/Object/RoboDojo/${d.id}/（object.usdz、metadata.json、description.json），生成结果不入库。`,
     '2. metadata.json 顶层 measurements_mm 的键和上面实测尺寸的名称一字不差，值从生成的网格量；每项误差 < max(2 mm, 2%)，质量用实测值。平台按名称自动核对。',
@@ -813,6 +895,7 @@ function drawerObject(d) {
     ${sec('流程', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
     ${sec('基本信息', `<div class="form">
       ${row('名称', 'name', inp(d, 'name', 'text', `placeholder="${esc(a.name || '')}"`))}
+      ${row('英文名', 'name_en', inp(d, 'name_en'))}
       ${row('实物孪生', 'twin', inp(d, 'twin', 'checkbox'), '有对应的实物，需要测量并核对尺寸；勾上后登记信息写入 spec.json')}
       ${row('划分', 'split', sel(d, 'split', SPLITS))}
       ${row('建模方式', 'method', sel(d, 'method', METHODS))}</div>`)}
@@ -828,6 +911,10 @@ function drawerObject(d) {
         ${c.map((x) => `<tr><td>${esc(x.name)}</td><td class="num">${x.real}</td><td class="num">${x.sim == null ? '—' : x.sim.toFixed(1)}</td>
           <td class="num">${x.err == null ? '—' : x.err.toFixed(1)}</td><td>${x.sim == null ? st('todo', '待核对') : st(x.ok ? 'ok' : 'bad', x.ok ? '合格' : '超差')}</td></tr>`).join('')}</tbody></table>` : ''}
       <p class="hint">尺寸文本里的每个「名称 数值」会和建好的模型 metadata.json 里同名的 measurements_mm 自动比对；仿真包围盒 ${mm(a.size, 1)} mm 可作参考。判据：每个尺寸误差 &lt; 2 mm 或 2%；质量差 ≤ 5 g。</p>`)}
+    ${d.twin ? sec('泛化变体', `<div class="form">
+      ${row('变体数量', 'gen.count', inp(d, 'gen.count', 'number', 'min="0" step="1" style="flex:0 0 110px"'), '0 表示不做泛化')}
+      <label>允许变化</label><div class="ctl">${Object.entries(GEN_ATTRS).map(([k, t]) => `<label class="check">${inp(d, `gen.${k}`, 'checkbox')}${t}</label>`).join('')}</div>
+      ${row('泛化要求', 'gen.requirements', area(d, 'gen.requirements', `placeholder="${GEN_HINT}"`))}</div><p class="hint">${GEN_NOTE}</p>`) : ''}
     ${a.in_library ? brief : ''}
     ${sec('物理检验', `<div class="table-wrap"><table class="plain"><tbody>${PHYS.map(([k, label, crit, cmd]) => `<tr><td style="width:110px"><label for="${fid(`checks.${k}`)}">${label}</label></td>
       <td class="small">${crit}${cmd(d) ? `<div style="margin-top:6px">${code(cmd(d))}</div>` : ''}</td><td style="width:110px">${sel(d, `checks.${k}`, CHECK_STATES)}</td></tr>`).join('')}</tbody></table></div>`)}
@@ -842,30 +929,57 @@ function drawerObject(d) {
     ${sec(`${ic('terminal')}命令`, code(`${a.generator ? `python ${a.generator}   # 生成\n` : ''}PYTHONPATH=. python scripts/objects/check_object.py Assets/Object/RoboDojo/${d.id} --image-dir real2sim/objects   # 落地检查 + 渲染`))}`,
   };
 }
+const WIZ = [
+  ['名称与照片', '起个名字，定好资产编号。照片可选：拍了更好建模，没拍就在下一步把尺寸量全。'],
+  ['实物测量', '卡尺量到 1 mm，秤称到 1 g。量不到的留空，coding agent 会按照片估计并标出。'],
+  ['泛化', '在这个物体之外再建几个变体，用于训练多样性或保留评测。可以只给数量和要求，参数交给 coding agent 设计。'],
+];
+const GEN_PRESETS = ['尺寸和形状不变，只换颜色', '颜色不变，整体尺寸缩放 ±20%', '换成不同材质（玻璃、陶瓷、不锈钢），外形不变', '参数由 coding agent 设计，彼此差异明显'];
 function drawerNewObject() {
   const types = [...new Set(['Rigid', ...Object.keys(IDX).map((g) => g.split('/')[0])])];
-  const field = (id, label, control) => `<label for="${id}">${label}</label><div class="ctl">${control}</div>`;
+  const fld = (id, label, control, opts = {}) => `<div class="fld${opts.wide ? ' wide' : ''}"><label for="${id}">${label}${opts.req ? '<em aria-hidden="true">*</em>' : ''}</label>${control}${opts.hint ? `<small>${opts.hint}</small>` : ''}</div>`;
+  const unit = (id, u, attrs = '') => `<div class="unit"><input id="${id}" type="number" step="any" min="0" ${attrs}><span>${u}</span></div>`;
+  const pane = (n, body) => `<div class="wiz-pane" data-step="${n}"${n ? ' hidden' : ''}>
+    <header class="wz-head"><span>第 ${n + 1} 步 · 共 ${WIZ.length} 步</span><h3>${WIZ[n][0]}</h3><p>${WIZ[n][1]}</p></header>${body}</div>`;
+  const group = (title, body) => `<section class="wz-group"><h4>${title}</h4>${body}</section>`;
   return {
-    title: '登记物体', sub: '填实物的测量信息、传照片，登记后生成给 coding agent 的建模任务；建好的资产同步时自动关联',
+    title: '登记物体', sub: '登记后生成给 coding agent 的建模任务，建好的资产同步时自动关联',
     body: `${materialList()}<datalist id="dl-cats"></datalist>
-    ${sec('物体', `<div class="form">
-      ${field('no-type', '类型', `<select id="no-type" onchange="suggestIndex()">${types.map((t) => `<option value="${esc(t)}">${esc(OBJECT_TYPES[t] || t)}</option>`).join('')}</select>`)}
-      ${field('no-cat', '类别', '<input id="no-cat" list="dl-cats" placeholder="小写加下划线，如 measuring_cup" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="suggestIndex()">')}
-      ${field('no-idx', '编号', '<input id="no-idx" type="number" min="0" value="0" style="flex:0 0 110px" oninput="suggestIndex(false)"><span id="no-id" class="hint mono"></span>')}
-      ${field('no-name', '名称', '<input id="no-name" placeholder="如 500 ml 量杯" autocomplete="off">')}</div>
-      <p class="hint">编号自动取这个类别里下一个没被资产库和已登记物体占用的号。资产目录 Assets/Object/RoboDojo/&lt;id&gt;/，照片和登记信息在 real2sim/objects/&lt;id&gt;/。</p>`)}
-    ${sec('实物测量', `<div class="form">
-      ${field('no-material', '材质', '<input id="no-material" list="dl-materials" placeholder="如 PP 塑料、玻璃" autocomplete="off">')}
-      ${field('no-color', '颜色', '<input id="no-color" placeholder="如 半透明乳白" autocomplete="off">')}
-      ${field('no-mass', '质量 (g)', '<input id="no-mass" type="number" step="any" min="0" style="flex:0 0 110px">')}
-      ${field('no-dims', '尺寸 (mm)', `<textarea id="no-dims" placeholder="${DIM_HINT}"></textarea>`)}
-      ${field('no-features', '外观与结构', '<textarea id="no-features" placeholder="颜色、透明度、把手、刻度、纹理、壁厚等"></textarea>')}
-      ${field('no-req', '建模要求', '<textarea id="no-req" placeholder="如 中空能装豆子、把手可抓、刻度不用建模"></textarea>')}</div>
-      <p class="hint">尺寸用卡尺量到 1 mm；建好的模型按同样的名称在 metadata.json 里写 measurements_mm，平台自动比对。</p>`)}
-    ${sec('实拍照片', `<label class="btn upload">${ic('upload')}选择照片<input id="no-photos" type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="previewPhotos(this)" aria-label="选择实拍照片"></label>
-      <div id="no-previews" class="strip"></div><p class="hint">多角度各一张（正面、侧面、俯视、开口、底部），jpg / png / webp，单张 ≤ 25 MB；手机上可以直接拍。</p>`)}
-    <p id="no-err" class="field-error" role="alert" style="margin-top:18px"></p>
-    <button class="btn btn-primary btn-lg" type="button" onclick="createObject(this)">${ic('plus')}登记并生成建模任务</button>`,
+    <nav aria-label="登记步骤"><ol class="wz-steps">${WIZ.map(([t], n) => `<li><button type="button" data-wiz="${n}" onclick="wizGo(${n})">
+      <span class="wz-dot"><span>${n + 1}</span>${ic('check')}</span><span class="wz-t">${t}</span></button></li>`).join('<li class="wz-line" aria-hidden="true"></li>')}</ol></nav>
+    ${pane(0, `${group('物体', `<div class="wz-grid">
+      ${fld('no-name', '中文名称', '<input id="no-name" placeholder="500 ml 量杯" autocomplete="off">', {req: true})}
+      ${fld('no-name-en', '英文名称', '<input id="no-name-en" placeholder="Measuring Cup" autocomplete="off" oninput="suggestCategory()">', {req: true})}
+      ${fld('no-type', '类型', `<select id="no-type" onchange="suggestIndex()">${types.map((t) => `<option value="${esc(t)}">${esc(OBJECT_TYPES[t] || t)}</option>`).join('')}</select>`)}
+      ${fld('no-cat', '类别', '<input id="no-cat" class="mono" list="dl-cats" placeholder="measuring_cup" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="this.dataset.edited = 1; suggestIndex()">', {hint: '由英文名生成，可改成已有类别'})}
+      ${fld('no-idx', '编号', '<input id="no-idx" class="mono" type="number" min="0" value="0" oninput="suggestIndex(false)">', {hint: '自动取下一个空号'})}
+      <div class="fld"><label>资产 ID</label><code id="no-id" class="wz-id">填写英文名称后生成</code></div></div>`)}
+    ${group('多角度照片 <span class="opt">可选</span>', `<label class="drop" ondragover="event.preventDefault(); this.classList.add('over')" ondragleave="this.classList.remove('over')"
+        ondrop="event.preventDefault(); this.classList.remove('over'); addPhotos(event.dataTransfer.files)">
+        <span class="drop-ic">${ic('camera')}</span><b>拖入照片，或点击选择</b><small>正面、侧面、俯视、开口、底部各一张 · jpg / png / webp · 单张 ≤ 25 MB</small>
+        <input type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="addPhotos(this.files); this.value = ''" aria-label="选择实拍照片"></label>
+      <div id="no-previews" class="wz-thumbs"></div>`)}`)}
+    ${pane(1, `${group('物理量', `<div class="wz-grid">
+      ${fld('no-mass', '质量', unit('no-mass', 'g'))}
+      ${fld('no-friction', '静摩擦系数', '<input id="no-friction" type="number" step="0.01" min="0" placeholder="可不填">', {hint: '斜面滑动法'})}
+      ${fld('no-dims', '关键尺寸', `<textarea id="no-dims" rows="3" placeholder="开口直径 82，底部直径 64，高 135"></textarea>`, {wide: true, hint: '每项写「名称 数值」，单位 mm；建好的模型按同名的 measurements_mm 自动比对'})}</div>`)}
+    ${group('外观', `<div class="wz-grid">
+      ${fld('no-material', '材质', '<input id="no-material" list="dl-materials" placeholder="PP 塑料" autocomplete="off">')}
+      ${fld('no-color', '颜色', '<input id="no-color" placeholder="半透明乳白" autocomplete="off">')}
+      ${fld('no-features', '外观与结构', '<textarea id="no-features" rows="2" placeholder="透明度、把手、刻度、纹理、壁厚等"></textarea>', {wide: true})}
+      ${fld('no-req', '建模要求', '<textarea id="no-req" rows="2" placeholder="中空能装豆子、把手可抓、刻度不用建模"></textarea>', {wide: true})}</div>`)}`)}
+    ${pane(2, `${group('数量', `<div class="num-step"><button type="button" aria-label="减少一个" onclick="genCount(-1)">${ic('minus')}</button>
+        <input id="no-gen-count" type="number" min="0" step="1" value="0" aria-label="变体数量"><button type="button" aria-label="增加一个" onclick="genCount(1)">${ic('plus')}</button>
+        <span class="muted small">个变体 · 0 表示不做泛化</span></div>`)}
+    ${group('允许变化的属性', `<div class="toggles">${Object.entries(GEN_ATTRS).map(([k, t]) => `<label class="toggle"><input type="checkbox" data-gen="${k}"><span>${ic('check')}${t}</span></label>`).join('')}</div>
+      <small class="muted">没选的属性与本体保持一致。</small>`)}
+    ${group('泛化要求', `<textarea id="no-gen-req" rows="3" placeholder="${GEN_HINT}" aria-label="泛化要求"></textarea>
+      <div class="presets">${GEN_PRESETS.map((t) => `<button type="button" onclick="genPreset(this)">${ic('plus', 'ic-sm')}${esc(t)}</button>`).join('')}</div>
+      <p class="hint">${GEN_NOTE}</p>`)}`)}
+    <div class="wz-foot"><button id="wiz-back" class="btn" type="button" onclick="wizGo(WIZ_AT - 1)">${ic('chev-l')}上一步</button>
+      <p id="no-err" class="field-error" role="alert"></p>
+      <button id="wiz-next" class="btn btn-primary" type="button" onclick="wizGo(WIZ_AT + 1)">下一步${ic('arrow-r')}</button>
+      <button id="wiz-done" class="btn btn-primary" type="button" onclick="createObject(this)">${ic('check')}登记并生成建模任务</button></div>`,
   };
 }
 
@@ -1177,9 +1291,45 @@ async function removeDoc(kind, id) {
   closeDrawer();
   toast('已删除');
 }
+let NEW_PHOTOS = [], WIZ_AT = 0;  // the registration wizard: photos picked so far, current step
 async function openNewObject(btn) {
   try { IDX = await api('/api/object-indices'); } catch (err) { return toast(`读取编号失败：${err.message}`, true); }
+  NEW_PHOTOS = [];
   openDrawer('new-object', 'new', btn);
+  suggestIndex();
+  wizGo(0);
+}
+function wizError() {  // [message, field selector] blocking the current step, or ['']
+  const type = $('#no-type').value, cat = $('#no-cat').value.trim(), idx = $('#no-idx').value.trim();
+  const taken = IDX[`${type}/${cat}`] || [], next = taken.length ? Math.max(...taken) + 1 : 0;
+  if (WIZ_AT === 0) {
+    return !$('#no-name').value.trim() ? ['填写中文名称', '#no-name'] : !$('#no-name-en').value.trim() ? ['填写英文名称', '#no-name-en']
+      : !/^\w[\w-]*$/.test(cat) ? ['类别只能含字母、数字、下划线和连字符，如 measuring_cup', '#no-cat']
+      : !/^\d+$/.test(idx) ? ['编号为非负整数', '#no-idx'] : taken.includes(Number(idx)) ? [`这个编号已被资产库或已登记的物体占用，下一个空闲编号是 ${next}`, '#no-idx'] : [''];
+  }
+  if (WIZ_AT === 1 && !NEW_PHOTOS.length && !$('#no-dims').value.trim()) return ['没有照片时至少填实测尺寸，否则无从建模', '#no-dims'];
+  return [''];
+}
+function wizGo(n) {
+  n = Math.max(0, Math.min(WIZ.length - 1, n));
+  const from = WIZ_AT;
+  let [e, bad] = [''];
+  if (n < WIZ_AT) WIZ_AT = n;
+  else while (WIZ_AT < n && !([e, bad] = wizError())[0]) WIZ_AT++;  // forward: every step passed on the way must be complete
+  $('#no-err').textContent = e;
+  $$('.wiz-pane [aria-invalid]').forEach((x) => x.removeAttribute('aria-invalid'));
+  $$('.wiz-pane').forEach((p) => { p.hidden = Number(p.dataset.step) !== WIZ_AT; });
+  $$('[data-wiz]').forEach((b) => { const k = Number(b.dataset.wiz); b.className = k === WIZ_AT ? 'on' : k < WIZ_AT ? 'done' : ''; b.setAttribute('aria-current', k === WIZ_AT ? 'step' : 'false'); });
+  $('#wiz-back').style.visibility = WIZ_AT ? '' : 'hidden';
+  $('#wiz-next').hidden = WIZ_AT === WIZ.length - 1;
+  $('#wiz-done').hidden = WIZ_AT !== WIZ.length - 1;
+  if (bad) { $(bad).setAttribute('aria-invalid', 'true'); $(bad).setAttribute('aria-describedby', 'no-err'); $(bad).focus(); }  // the field to fix
+  else if (WIZ_AT !== from) { $('#drawer .dr-b').scrollTop = 0; $(`.wiz-pane[data-step="${WIZ_AT}"] input, .wiz-pane[data-step="${WIZ_AT}"] textarea`)?.focus({preventScroll: true}); }
+}
+function suggestCategory() {  // "Measuring Cup" -> measuring_cup, until the category is typed by hand
+  const cat = $('#no-cat');
+  if (cat.dataset.edited) return;
+  cat.value = $('#no-name-en').value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
   suggestIndex();
 }
 function suggestIndex(fromCategory = true) {
@@ -1187,32 +1337,49 @@ function suggestIndex(fromCategory = true) {
   $('#dl-cats').innerHTML = Object.keys(IDX).filter((g) => g.startsWith(`${type}/`)).map((g) => `<option value="${esc(g.split('/')[1])}">`).join('');
   if (fromCategory) $('#no-idx').value = taken.length ? Math.max(...taken) + 1 : 0;
   const idx = Number($('#no-idx').value);
-  $('#no-id').textContent = cat ? `${type}/${cat}/${String(idx).padStart(5, '0')}${taken.includes(idx) ? ' · 已被占用' : ''}` : '';
+  $('#no-id').textContent = cat ? `${type}/${cat}/${String(idx).padStart(5, '0')}${taken.includes(idx) ? ' · 已被占用' : ''}` : '填写英文名称后生成';
+  $('#no-id').classList.toggle('bad', taken.includes(idx));
 }
-function previewPhotos(input) {
-  $('#no-previews').innerHTML = [...input.files].map((f) => `<div class="item"><span class="gthumb"><img src="${URL.createObjectURL(f)}" alt="${esc(f.name)}"></span></div>`).join('');
+function addPhotos(files) {
+  const ok = [...files].filter((f) => /^image\/(jpeg|png|webp)$/.test(f.type));
+  if (ok.length < files.length) toast(`只收 jpg / png / webp，跳过 ${files.length - ok.length} 个文件`, true);
+  NEW_PHOTOS.push(...ok);
+  previewPhotos();
+}
+function genCount(d) { const el = $('#no-gen-count'); el.value = Math.max(0, (Number(el.value) || 0) + d); }
+function genPreset(btn) {
+  const el = $('#no-gen-req'), t = btn.textContent.trim();
+  el.value = el.value.trim() ? `${el.value.trim()}；${t}` : t;
+  if (!Number($('#no-gen-count').value)) $('#no-gen-count').value = 3;
+  el.focus();
+}
+function removeNewPhoto(i) { NEW_PHOTOS.splice(i, 1); previewPhotos(); }
+function previewPhotos() {
+  $('#no-previews').innerHTML = NEW_PHOTOS.map((f, i) => `<figure class="wz-thumb"><img src="${URL.createObjectURL(f)}" alt="${esc(f.name)}"><figcaption>${esc(f.name)}</figcaption>
+    <button type="button" onclick="removeNewPhoto(${i})" aria-label="移除 ${esc(f.name)}">${ic('close', 'ic-sm')}</button></figure>`).join('');
 }
 async function createObject(btn) {
-  const type = $('#no-type').value, cat = $('#no-cat').value.trim(), idx = $('#no-idx').value.trim(), err = $('#no-err');
-  const taken = IDX[`${type}/${cat}`] || [], next = taken.length ? Math.max(...taken) + 1 : 0;
-  err.textContent = !/^\w[\w-]*$/.test(cat) ? '类别只能含字母、数字、下划线和连字符，如 measuring_cup'
-    : !/^\d+$/.test(idx) ? '编号为非负整数' : taken.includes(Number(idx)) ? `这个编号已被资产库或已登记的物体占用，下一个空闲编号是 ${next}` : '';
-  if (err.textContent) return;
-  const id = `${type}/${cat}/${idx.padStart(5, '0')}`, value = (sel) => $(sel).value.trim(), files = [...$('#no-photos').files];
+  const err = $('#no-err');
+  const id = `${$('#no-type').value}/${$('#no-cat').value.trim()}/${$('#no-idx').value.trim().padStart(5, '0')}`;
+  const value = (sel) => $(sel).value.trim(), number = (sel) => ($(sel).value === '' ? null : Number($(sel).value));
+  const gen = {count: number('#no-gen-count') || 0, requirements: value('#no-gen-req')};
+  $$('[data-gen]').forEach((c) => { gen[c.dataset.gen] = c.checked; });
   const doc = {
-    twin: true, name: value('#no-name'), material: value('#no-material'), color: value('#no-color'),
-    real_mass: $('#no-mass').value === '' ? null : Number($('#no-mass').value), dimensions: value('#no-dims'), features: value('#no-features'), requirements: value('#no-req'),
+    twin: true, name: value('#no-name'), name_en: value('#no-name-en'), material: value('#no-material'), color: value('#no-color'),
+    real_mass: number('#no-mass'), real_friction: number('#no-friction'), dimensions: value('#no-dims'), features: value('#no-features'), requirements: value('#no-req'), gen,
   };
   btn.disabled = true;
+  btn.lastChild.textContent = NEW_PHOTOS.length ? `登记中，上传 ${NEW_PHOTOS.length} 张照片…` : '登记中…';
   try {
     await api(`/api/items?kind=object&id=${encodeURIComponent(id)}`, {method: 'PUT', body: JSON.stringify(doc)});
-    const n = files.length ? await uploadFiles(id, files) : 0;
+    const n = NEW_PHOTOS.length ? await uploadFiles(id, NEW_PHOTOS) : 0;
     await sync(true);
     openDrawer('object', id);
     toast(`已登记 ${id}${n ? `，上传 ${n} 张照片` : ''}；建模任务在抽屉顶部`);
   } catch (e) {
     err.textContent = `登记失败：${e.message}`;
     btn.disabled = false;
+    btn.lastChild.textContent = '重试登记';
   }
 }
 async function uploadFiles(id, files) {
