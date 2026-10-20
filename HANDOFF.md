@@ -1,7 +1,7 @@
 # Project Handoff
 
 更新时间：2026-10-20
-当前分支：`chongzheng/scene-school`（学校场景接入，未合并）；`main` 上，流水线规范化的改动已通过 [PR #1](https://github.com/Zheng-Chong/RoboRSR/pull/1) 合并（2026-10-20），短分支 `chongzheng/datagen-real2sim-pipeline` 已删除。
+当前分支：`main`。流水线规范化（[PR #1](https://github.com/Zheng-Chong/RoboRSR/pull/1)）和学校场景接入（[PR #2](https://github.com/Zheng-Chong/RoboRSR/pull/2)）都已于 2026-10-20 合并，两个短分支已删除。
 当前目标：把 G1-D 的三条流水线规范化：Real2Sim 采集（物体、场景）、仿真数据生成，以及本仓库内的仿真评估。训练在仓库外。
 
 本文件只记录当前状态。逐次实验的细节（相机拟合、抓取调参、倒豆参数扫描、各次服务器验证）见 `git show 4fb9290:HANDOFF.md`。数采平台的运维细节（端口、账号、隧道、重启方法）已移到本机 `.agent/ops.local.md`，不入库，因为仓库是公开的。
@@ -32,7 +32,7 @@
 
 ## 最近任务
 
-### 学校实验室场景和纸杯纸盘接入（2026-10-20，分支 `chongzheng/scene-school`）
+### 学校实验室场景和纸杯纸盘接入（2026-10-20，PR #2，已合并进 `main`）
 
 - **来源**：同事在 sys01 上做的 MuJoCo 孪生 `g1d_food_sorting`，10-20 整包拷到了 `5090-2:/root/g1d_sim_assets_20261020`（`SHA256SUMS` 通过）。用户选的范围：场景，加上杯盘（用包里的拟合几何）；花材（40 簇）不接。
 - **场景** `real2sim/scenes/real_scene4_school/`（Room `real_scene4`，env 配置 `g1d_school`）：
@@ -172,11 +172,11 @@
 2. 下一批数据用新流水线采集。先跑单回合探针，确认 `joint_names`、夹爪 state 和图像都正常，再按 `scripts/datagen/SKILL.md` 批量采集、导出、审计、回放，最后登记。
 3. 去现场按 `real2sim/scenes/SKILL.md` 采集（ChArUco 标定板照片、卷尺、灯光、机器人相机画面），回来跑 `overlay.py` 和 `acceptance.py`。
 4. 给 XPolicyLab 提 PR，注册 `g1d*` 的动作维度；然后用一个 LeRobot 策略在 `--env-cfg g1d_beans_collect` 下走通"外部训练 → 本仓库评估"的整条链。
-5. 学校场景：合并 `chongzheng/scene-school`；用户重建 sys01 连接后拷真机画面做叠图（`overlay.py --env-cfg g1d_school`）；要用学校场景做任务时，再写杯盘布局和任务。
+5. 学校场景：用户重建 sys01 连接后拷真机画面做叠图（`overlay.py --env-cfg g1d_school`）；要用学校场景做任务时，再写杯盘布局和任务。
 
 ## 最近历史
 
-- 2026-10-20：接入学校实验室绿幕桌（`real_scene4` / `g1d_school`）和纸杯、纸盘资产，来自同事的 MuJoCo 孪生（分支 `chongzheng/scene-school`）。
+- 2026-10-20：接入学校实验室绿幕桌（`real_scene4` / `g1d_school`）和纸杯、纸盘资产，来自同事的 MuJoCo 孪生（PR #2）。
 - 2026-10-20：采集、评估流水线规范化合并进 `main`（PR #1）：数据契约、通用采集流水线、场景工具、Agent 文档和 CI。
 - 2026-10-20：随机朝向那批 100 条数据私有上传 ModelScope（`4562fb4`）。
 - 2026-10-19：随机倒豆手、杯子偏航和大范围杯位（`a1b6db5`），修复量杯在倒豆循环里的豆子计数；按这套设置采完 100 条，左右手各 50（`353730a`）。
