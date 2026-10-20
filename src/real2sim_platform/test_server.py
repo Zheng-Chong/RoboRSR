@@ -95,7 +95,7 @@ def test_http():
     server.Handler.failures, server.FAIL_DELAY = {}, 0
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    session, scenes_dir = {}, server.build_asset.SCENES_DIR
+    session, scenes_dir, tasks_dir = {}, server.build_asset.SCENES_DIR, server.TASKS_DIR
 
     def request(method, path, body=None, headers=None):
         conn = http.client.HTTPConnection("127.0.0.1", httpd.server_port)
@@ -223,6 +223,27 @@ def test_http():
         assert request("DELETE", scene)[0] == 200
         assert not (tmp / "scenes/real_scene9_kitchen/registration.json").exists()
 
+        server.TASKS_DIR = tmp / "tasks"
+        task = "/api/items?kind=task&id=g1d_wipe_table"
+        roles = [{"label": "sponge", "candidates": ["Rigid/sponge/00000"], "count": 1, "xlim": None, "yaw_deg": 0}]
+        reg = {"name": "擦桌子", "instruction": "Wipe the table.", "success": "污渍清除", "roles": roles}
+        reg |= {"scenes": {"real_scene3_lab": "train", "real_scene1_office": "holdout", "real_scene2_counter": ""}}
+        reg |= {"levels": {"L0": {"target": 25, "range": "孪生"}}, "distractors": {"count": None, "candidates": []}}
+        assert request("PUT", "/api/items?kind=task&id=../x", json.dumps({"registered": True}))[0] == 400
+        assert request("PUT", task, json.dumps({"registered": True, "reg": reg}))[0] == 200
+        written = json.loads((tmp / "tasks/g1d_wipe_table/registration.json").read_text(encoding="utf-8"))
+        roles[0].pop("xlim")  # empty fields left out, also inside lists
+        assert written["objects"] == roles
+        assert written["scenes"] == {  # with the env configs that load each scene
+            "train": [{"scene": "real_scene3_lab", "env_cfg": ["g1d_lab"]}],
+            "holdout": [{"scene": "real_scene1_office", "env_cfg": ["g1d"]}],
+        }
+        assert "distractors" not in written and written["levels"] == {"L0": {"target": 25, "range": "孪生"}}
+        listed = server.scan_tasks(tmp)["g1d_wipe_table"]  # registered, not implemented: listed, not runnable
+        assert listed["registered"] and not listed["runnable"] and listed["module"] is None
+        assert not server.scan_tasks(tmp)["g1d_stack_blocks"]["registered"]
+        assert request("DELETE", task)[0] == 200 and "g1d_wipe_table" not in server.scan_tasks(tmp)
+
         def users(method, path="/api/users", body=None, cookie=None):
             headers = {"Cookie": cookie} if cookie else {}
             status, data, _ = request(method, path, json.dumps(body) if body else None, headers)
@@ -260,7 +281,7 @@ def test_http():
         assert [login("alice", "bad-pass")[0] for _ in range(5)] == [401] * 5
         assert login("alice", "password2")[0] == 429  # locked out after 5 failures, even with the right password
     finally:
-        server.build_asset.SCENES_DIR = scenes_dir
+        server.build_asset.SCENES_DIR, server.TASKS_DIR = scenes_dir, tasks_dir
         httpd.shutdown()
 
 

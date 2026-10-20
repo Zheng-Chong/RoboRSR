@@ -10,7 +10,9 @@ Scan results go to each record's "auto"; what is entered in the page (measuremen
 and survives rescans. A registered real object (twin) is also written to real2sim/objects/<id>/spec.json, next to its
 photos, as the input for modeling it; the built asset reports its size per measured dimension (by name) in
 metadata.json "measurements_mm", which the page checks against the measured values. A registered scene is written the
-same way to real2sim/scenes/<scene>/registration.json, next to its reference/ photos. Records live in one SQLite file
+same way to real2sim/scenes/<scene>/registration.json, next to its reference/ photos, and a registered task (objects,
+distractors, scenes, generalization levels) to real2sim/tasks/<task>/registration.json; a registered task shows in
+the task list before it is implemented. Records live in one SQLite file
 (--db), together with the accounts: everyone signs in, and every change is stamped with the signed-in account's name.
 Admins manage accounts in the page (成员管理); the first admin is created on the server with --add-user NAME --admin.
 
@@ -53,6 +55,8 @@ VIDEO_RE = re.compile(r"episode_(\d+)_cam_(.+)_(success|fail)\.mp4")
 SKIP_DIRS = {".git", "_stream", "Assets", "third_party", "XPolicyLab", "__pycache__"}
 OBJECTS_DIR = ROOT / "real2sim" / "objects"  # <id>/reference/: real-object photos (git LFS); <id>/preview/: renders
 SCENE_ID = re.compile(r"real_scene\d+_[a-z0-9_]+")  # directory under real2sim/scenes/, e.g. real_scene5_kitchen
+TASKS_DIR = ROOT / "real2sim" / "tasks"  # <task>/registration.json: a task registered on the platform
+TASK_ID = re.compile(r"[A-Za-z]\w*")  # task module name; new G1-D tasks are g1d_<name>
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 SERVED_SUFFIXES = IMAGE_SUFFIXES | {".mp4", ".webm", ".md", ".json"}
 MAX_UPLOAD = 25 << 20
@@ -294,7 +298,14 @@ def scan_tasks(assets):
             "step_lim": int(step[1]) if step else None,
             "objects": config_objects(ROOT / t["config"]) if t["config"] and t["dimension"] == "custom" else {},
             "layouts": {cfg: n for (task, cfg), n in sorted(layouts.items()) if task == t["name"]},
+            "registered": (TASKS_DIR / t["name"] / "registration.json").is_file(),
         }
+    for path in sorted(TASKS_DIR.glob("*/registration.json")):  # registered on the platform, not implemented yet
+        found.setdefault(
+            path.parent.name,
+            {"dimension": "custom", "runnable": False, "module": None, "config": None, "step_lim": None}
+            | {"objects": {}, "layouts": {}, "registered": True},
+        )
     return found
 
 
@@ -385,6 +396,8 @@ def write_spec(doc):
 
 def compact(value):
     """Drop empty fields, recursively; what is left is what was entered."""
+    if isinstance(value, list):
+        return [compact(v) for v in value]
     if isinstance(value, dict):
         pairs = ((k, compact(v)) for k, v in value.items())
         value = {k: v for k, v in pairs if v is not None and v is not False and v not in ("", [], {})}
@@ -445,6 +458,48 @@ def write_registration(doc):
             "daylight": r.get("daylight"),
         },
         "tasks": r.get("tasks"),
+        "requirements": r.get("requirements"),
+        "notes": r.get("notes"),
+        "updated_by": doc.get("_by"),
+        "updated_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(doc["_at"])),
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(compact(reg), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def write_task_registration(doc):
+    """A registered task as real2sim/tasks/<task>/registration.json: the input for implementing it.
+
+    Scenes are listed with the env configs that load them (build_asset.SCENES); not built yet means no config."""
+    path = TASKS_DIR / doc["id"] / "registration.json"
+    if not doc.get("registered"):
+        return path.unlink(missing_ok=True)
+    r = doc.get("reg") or {}
+    configs = {}
+    for config, (scene, *_) in build_asset.SCENES.items():
+        configs.setdefault(scene, []).append(config)
+    scenes = {
+        use: [{"scene": s, "env_cfg": configs.get(s, [])} for s, u in (r.get("scenes") or {}).items() if u == use]
+        for use in ("train", "holdout")
+    }
+    reg = {
+        "task": doc["id"],
+        "existing": r.get("existing"),  # registers a generalization plan for a task already in task/RoboDojo
+        "name": r.get("name"),
+        "name_en": r.get("name_en"),
+        "instruction": r.get("instruction"),
+        "success": r.get("success"),
+        "hand": r.get("hand"),
+        "horizon_s": r.get("horizon_s"),
+        "target_episodes": r.get("target"),
+        "owner": r.get("owner"),
+        "objects": r.get("roles"),  # [{label, candidates, count, xlim, ylim, yaw_deg}]; table frame, m
+        "distractors": r.get("distractors"),
+        "scenes": scenes,
+        "levels": r.get("levels"),  # {"L1": {"target": 50, "range": "..."}}, only the chosen levels
+        "holdout_objects": r.get("holdout_objects"),
+        "extra_generalization": r.get("extra"),
+        "expert": r.get("expert"),
         "requirements": r.get("requirements"),
         "notes": r.get("notes"),
         "updated_by": doc.get("_by"),
@@ -674,11 +729,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_error(400)
         if kind == "scene" and fields.get("registered") and not SCENE_ID.fullmatch(id_):
             return self.send_error(400)
+        if kind == "task" and not TASK_ID.fullmatch(id_):
+            return self.send_error(400)
         doc = self.store.update(kind, id_, fields, by=self.user["name"])
         if kind == "object":
             write_spec(doc)
         elif kind == "scene" and SCENE_ID.fullmatch(id_):
             write_registration(doc)
+        elif kind == "task":
+            write_task_registration(doc)
         self.send_json(doc)
 
     def do_DELETE(self):
@@ -701,6 +760,8 @@ class Handler(BaseHTTPRequestHandler):
             (OBJECTS_DIR / id_ / "spec.json").unlink(missing_ok=True)
         elif kind == "scene" and SCENE_ID.fullmatch(id_):
             (build_asset.SCENES_DIR / id_ / "registration.json").unlink(missing_ok=True)
+        elif kind == "task" and TASK_ID.fullmatch(id_):
+            (TASKS_DIR / id_ / "registration.json").unlink(missing_ok=True)
         self.send_json({"ok": True})
 
     def target(self):
