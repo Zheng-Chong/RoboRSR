@@ -52,9 +52,14 @@ class OverlayTests(unittest.TestCase):
 
 class SpecTests(unittest.TestCase):
     def test_scene_specs_are_complete_and_read_the_model(self):
-        expected = {"g1d": (0.13, 0.0), "g1d_counter": (0.2, -0.35), "g1d_lab": (0.13, 0.0)}  # edge ahead, centre x
+        expected = {  # edge ahead, centre x
+            "g1d": (0.13, 0.0),
+            "g1d_counter": (0.2, -0.35),
+            "g1d_lab": (0.13, 0.0),
+            "g1d_school": (0.19, 0.0828),
+        }
         specs = sorted((ROOT / "real2sim/scenes").glob("*/scene_spec.json"))
-        self.assertEqual(len(specs), 3)
+        self.assertEqual(len(specs), 4)
         for path in specs:
             spec = json.loads(path.read_text())
             report = acceptance.evaluate(spec)

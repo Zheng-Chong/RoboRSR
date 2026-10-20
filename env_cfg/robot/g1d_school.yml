@@ -1,0 +1,14 @@
+robots:
+  - {
+    robot_type: arm,
+    robot_name: g1d,
+    coupled: True,
+    need_planner: False,
+    # Stand fitted with the school twin (real2sim/scenes/real_scene4_school/usd/build_params.json `robot`): table edge
+    # 0.19 m ahead of the root, root 0.083 m left of the table centre, chassis turned 1.63 deg left of the table normal.
+    default_root_pos: [0.0, -0.79, 0.1115],
+    default_root_rot: [0.697, 0, 0, 0.7171],
+    # Lift and waist at zero: the twin fitted the tabletop 0.082 m below the torso (0.763 m over the floor at zero
+    # lift). Unlike g1d_counter / g1d_lab the torso keeps the real height over the table, not the office one.
+    init_joint_pos: {LZ_mt_Joint: 0.0, LZ_it_Joint: 0.0}
+  }

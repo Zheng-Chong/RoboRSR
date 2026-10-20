@@ -1,7 +1,7 @@
 # Project Handoff
 
-更新时间：2026-10-19
-当前分支：`main`。流水线规范化的改动已通过 [PR #1](https://github.com/Zheng-Chong/RoboRSR/pull/1) 合并（2026-10-20），短分支 `chongzheng/datagen-real2sim-pipeline` 已删除。
+更新时间：2026-10-20
+当前分支：`chongzheng/scene-school`（学校场景接入，未合并）；`main` 上，流水线规范化的改动已通过 [PR #1](https://github.com/Zheng-Chong/RoboRSR/pull/1) 合并（2026-10-20），短分支 `chongzheng/datagen-real2sim-pipeline` 已删除。
 当前目标：把 G1-D 的三条流水线规范化：Real2Sim 采集（物体、场景）、仿真数据生成，以及本仓库内的仿真评估。训练在仓库外。
 
 本文件只记录当前状态。逐次实验的细节（相机拟合、抓取调参、倒豆参数扫描、各次服务器验证）见 `git show 4fb9290:HANDOFF.md`。数采平台的运维细节（端口、账号、隧道、重启方法）已移到本机 `.agent/ops.local.md`，不入库，因为仓库是公开的。
@@ -12,10 +12,11 @@
   - 头部用双目的左眼 `cam_head`（棋盘格标定 fx≈279.5，宇树合同外参），两个腕部相机 fx≈314；投影到真机画面核对过（误差 0.4–3.6 px）。
   - 关节驱动参数（刚度 4400、阻尼 40）和夹爪力是拍定的，没做系统辨识。同事把"相机+动作标定工具包"作为 `g1d_calib_toolkit_20261019.zip` 传到了仓库根目录，还没接入。
   - 构建：`python scripts/g1d/build_asset.py`（读 `real2sim/robot/g1d_v4`）。下载官方资产后先跑一次 `utils/update_embodiment_config_path.py`。
-- **场景**（`real2sim/scenes/`）：env 配置 `g1d` 是办公室，`g1d_counter` 是吧台，`g1d_lab` 是实验室。三个都是从照片拟合的，尺度靠先验；没有卷尺实测，也没有叠图验收。状态汇总：`python scripts/scenes/acceptance.py`（目前全部 pending）。
+- **场景**（`real2sim/scenes/`）：env 配置 `g1d` 是办公室，`g1d_counter` 是吧台，`g1d_lab` 是公司实验室，`g1d_school` 是学校实验室绿幕桌。前三个从照片拟合，尺度靠先验；学校的来自同事用真机相机画面拟合的 MuJoCo 孪生。都没有卷尺实测，也没有叠图验收。状态汇总：`python scripts/scenes/acceptance.py`（目前全部 pending）。
 - **物体**：每件资产的来源和匹配程度看 `real2sim/ASSETS.md`。
   - 量杯、塑料马克杯、红豆有实测尺寸和质量。
   - 共享资产库缺 `measuring_cup`、`plastic_mug`，以及量杯任务的布局。
+  - 学校的纸杯 `paper_cup/0000{0,1}`、纸盘 `paper_plate/0000{0,1,2}` 是孪生的拟合几何，没在平台登记，没有实测，未装共享库。
   - 自建物体写的 `friction` 不生效：运行时只读 `physics.static_friction` 和 `dynamic_friction`。
 - **任务和脚本专家**（`scripts/g1d/scripted_demo.py`）：
   - 拾取、叠块：三个场景 seed 0 都成功。
@@ -30,6 +31,26 @@
   - `5090-2`（8×5090）：仿真环境 `/root/miniconda3/envs/RoboDojo`；导出环境 `robodojo-lerobot`（lerobot 0.4.4，10-19 补装了 h5py 3.16，`pip -i` 用清华镜像）；上传环境 `/data/robodojo-runs/ms-venv`；运行目录在 `/data/robodojo-runs/`。
 
 ## 最近任务
+
+### 学校实验室场景和纸杯纸盘接入（2026-10-20，分支 `chongzheng/scene-school`）
+
+- **来源**：同事在 sys01 上做的 MuJoCo 孪生 `g1d_food_sorting`，10-20 整包拷到了 `5090-2:/root/g1d_sim_assets_20261020`（`SHA256SUMS` 通过）。用户选的范围：场景，加上杯盘（用包里的拟合几何）；花材（40 簇）不接。
+- **场景** `real2sim/scenes/real_scene4_school/`（Room `real_scene4`，env 配置 `g1d_school`）：
+  - `build_scene.py` 读 `bundle/environment_manifest.json` 里的桌面四角（初始躯干坐标系），按 `reference.npz` 里记录的躯干偏航（12 号电机 0.067 rad）换到底盘坐标系，拟合成矩形：1.065 × 0.596 m，离地 0.763 m，四角残差 15 mm。绿幕取自源场景的 `backdrop`。桌腿、房间、灯光没观测到，是随手定的。只需要 pxr 和 numpy：`uv run --no-project --with usd-core --with numpy python real2sim/scenes/real_scene4_school/build_scene.py`。
+  - 站位：桌沿在根节点前 0.19 m，桌面中心在机器人右侧 0.083 m，底盘左偏 1.63°（`env_cfg/robot/g1d_school.yml` 根节点 y=-0.79）。`build_asset.py` 里 `SCENES` 新增一行：Room 位置 (0.0828, -0.302)，物体平移 (0, -0.06)。
+  - **和前三个场景不同**：升降柱保持 0，桌面相对躯干的高差按拟合值保留（0.082 m），不统一成办公室的 0.165 m。偏航来自"12 号电机就是 `torso_Joint`、方向与 URDF 相同"这个假设，没在真机上核对。细节见该目录的 `PLAN.md`。
+- **物体** `scripts/objects/make_school_tableware.py`：复用 `make_plastic_cups.py` 的放样、杯壁分片碰撞体和 `save()`。
+  - 纸杯：读 `bundle/cup_shapes.json` 的拟合轮廓（每只是两只纸杯套在一起）。
+  - 纸盘：平底加锥形边，尺寸取自孪生的网格。
+  - 质量取自孪生的密度假设，颜色是孪生的 sRGB 纯色换算成线性值（第一次没换算，黑杯渲染成灰色）。
+- **验证**：
+  - 本机：`scripts/check.sh` 通过（22 passed，1 skipped：worktree 里 XPolicyLab 是空的）；`test_scenes.py` 的期望值加上了 `g1d_school`。新文件已手动跑过 ruff（check.sh 只看已跟踪的文件）。
+  - `5090-2` 隔离目录 `/data/robodojo-runs/school-scene-20261020-114517`：
+    - `Assets/` 复制自 `office-beans-random-20261019` 的覆盖目录，再手动装上 `Room/real_scene4`。
+    - `g1d_school` 的布局由运行目录里的 `school_layouts.py` 从该目录的 `g1d` 布局换算得到：Room 换掉，物体抬高 0.0828 m、平移 -0.06 m。**没有跑 `build_asset.py`**，因为 5090-2 没有 `g1d_v4`、`unitree_ros` 和完整资产库。
+    - `check_object.py`：5 件物体全部 OK（倾角 0°，落地高度和半高相差 ≤ 0.1 mm）。
+    - `scripted_demo.py --env_cfg_type g1d_school --task_name g1d_pour_beans_measuring_cups --seed 0`：成功，`_result.json` 的 success_rate 1.0、eval_time 1。头部画面和源孪生的渲染一致（深绿幕、木色桌板）。注意这个配置的步长是 1/300 s，颗粒任务正式评估仍然要用 `g1d_beans_collect`。
+- **没做**：卷尺、叠图（真机画面在 sys01 上，这次 SSH 连不上）、灯光；杯盘没有任务和布局；没有装共享库。
 
 ### 采集、评估流水线规范化（2026-10-19，PR #1，2026-10-20 合并进 `main`）
 
@@ -126,6 +147,7 @@
 - **XPolicyLab 注册**：`XPolicyLab/utils/robot/_robot_info.json` 里还没有 `g1d*`，用 XPolicyLab 的 `train.sh` 会拿不到动作维度。要给 XPolicyLab 提 PR（子模块不在本仓库里改）。
 - **legacy 数据集**：和新契约在头部图像键、指令两处不同；用它训练的策略，评估前要先对齐。
 - **新流水线还没跑过整批**：collection_v3 是用旧采集器采的，下一批数据应该改用 `scripts/datagen/run_batch.py`。
+- **学校场景**：桌面高度和底盘偏航都依赖假设（零升降、12 号电机即躯干偏航），要用卷尺和叠图核对；从 sys01 拷真机头部和腕部画面（`outputs/g1d-real2sim`）做叠图。杯盘要在数采平台登记实测后，按 `scripts/objects/SKILL.md` 重建。
 - **场景**：没有卷尺实测，没有叠图；`real_scene1` 和 09-21 那次真机运行时的摆放不一样，那批画面不能用来叠图。下次去现场按 `real2sim/scenes/SKILL.md` 一次采齐。
 - **真机对齐**：
   - 动力学没做系统辨识；末端位姿动作还不支持（需要 G1-D 的 cuRobo 配置，并且左右臂各用一个 planner）；
@@ -150,9 +172,11 @@
 2. 下一批数据用新流水线采集。先跑单回合探针，确认 `joint_names`、夹爪 state 和图像都正常，再按 `scripts/datagen/SKILL.md` 批量采集、导出、审计、回放，最后登记。
 3. 去现场按 `real2sim/scenes/SKILL.md` 采集（ChArUco 标定板照片、卷尺、灯光、机器人相机画面），回来跑 `overlay.py` 和 `acceptance.py`。
 4. 给 XPolicyLab 提 PR，注册 `g1d*` 的动作维度；然后用一个 LeRobot 策略在 `--env-cfg g1d_beans_collect` 下走通"外部训练 → 本仓库评估"的整条链。
+5. 学校场景：合并 `chongzheng/scene-school`；用户重建 sys01 连接后拷真机画面做叠图（`overlay.py --env-cfg g1d_school`）；要用学校场景做任务时，再写杯盘布局和任务。
 
 ## 最近历史
 
+- 2026-10-20：接入学校实验室绿幕桌（`real_scene4` / `g1d_school`）和纸杯、纸盘资产，来自同事的 MuJoCo 孪生（分支 `chongzheng/scene-school`）。
 - 2026-10-20：采集、评估流水线规范化合并进 `main`（PR #1）：数据契约、通用采集流水线、场景工具、Agent 文档和 CI。
 - 2026-10-20：随机朝向那批 100 条数据私有上传 ModelScope（`4562fb4`）。
 - 2026-10-19：随机倒豆手、杯子偏航和大范围杯位（`a1b6db5`），修复量杯在倒豆循环里的豆子计数；按这套设置采完 100 条，左右手各 50（`353730a`）。

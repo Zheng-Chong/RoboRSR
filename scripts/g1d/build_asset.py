@@ -7,7 +7,7 @@ unitree_ros g1_29dof_mode_15_with_dex1_1.urdf and locks the wheels (tabletop onl
 Writes:
     Assets/Robots/g1d/                     g1d_dex1.urdf, meshes/, physics_contract.json (self-collision filters),
                                            {left,right}_robot_config.yml
-    Assets/Room/real_scene{1,2,3}/          the real scenes in SCENES (office, counter, lab): <room>.usd + usd/
+    Assets/Room/real_scene{1,2,3,4}/        the real scenes in SCENES (office, counter, lab, school): <room>.usd + usd/
     Assets/Eval_Layout/RoboDojo/<config>/  per scene config in SCENES, layouts for the G1-D tasks in G1D_TASKS (bottle
                                            swapped for our pitcher of red beans or two cups, set in the real scene);
                                            g1d/ also gets the arx_x5 layouts minus the camera stand (it would sit
@@ -44,6 +44,9 @@ SCENES = {  # env config: (scene dir, Room category, Room position, object (x, y
     # floor cabinet: the chassis cannot go under it, so the robot stands 7 cm further back (root y=-0.80)
     "g1d_counter": ("real_scene2_counter", "real_scene2", [-0.35, -0.32, 0.0], (0.0, -0.07)),
     "g1d_lab": ("real_scene3_lab", "real_scene3", [0.0, -0.257, 0.0], (0.0, 0.0)),
+    # school green-screen table: robot 0.19 m behind the edge (root y=-0.79), 0.083 m left of the table centre, lift at
+    # zero (the torso keeps its fitted height over this table, see env_cfg/robot/g1d_school.yml)
+    "g1d_school": ("real_scene4_school", "real_scene4", [0.0828, -0.302, 0.0], (0.0, -0.06)),
 }
 # ponytail: lights live in the per-env Room, so N parallel envs get N suns; move them to /World if num_envs > 1 matters.
 # Red (adzuki) beans: Water_Opaque.mdl (glossy) with a dark maroon base colour (linear RGB).

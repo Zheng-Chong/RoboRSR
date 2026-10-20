@@ -1,0 +1,60 @@
+#usda 1.0
+(
+    defaultPrim = "Lights"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "Lights"
+{
+    def RectLight "CeilingPanel_0"
+    {
+        float inputs:colorTemperature = 6500
+        bool inputs:enableColorTemperature = 1
+        float inputs:height = 0.6
+        float inputs:intensity = 24000
+        float inputs:width = 1.2
+        double3 xformOp:translate = (-1, -1, 2.78)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def RectLight "CeilingPanel_1"
+    {
+        float inputs:colorTemperature = 6500
+        bool inputs:enableColorTemperature = 1
+        float inputs:height = 0.6
+        float inputs:intensity = 24000
+        float inputs:width = 1.2
+        double3 xformOp:translate = (1, -1, 2.78)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def RectLight "CeilingPanel_2"
+    {
+        float inputs:colorTemperature = 6500
+        bool inputs:enableColorTemperature = 1
+        float inputs:height = 0.6
+        float inputs:intensity = 24000
+        float inputs:width = 1.2
+        double3 xformOp:translate = (-1, 1, 2.78)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def RectLight "CeilingPanel_3"
+    {
+        float inputs:colorTemperature = 6500
+        bool inputs:enableColorTemperature = 1
+        float inputs:height = 0.6
+        float inputs:intensity = 24000
+        float inputs:width = 1.2
+        double3 xformOp:translate = (1, 1, 2.78)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def DomeLight "AmbientDome"
+    {
+        color3f inputs:color = (0.95, 0.95, 1)
+        float inputs:intensity = 150
+    }
+}

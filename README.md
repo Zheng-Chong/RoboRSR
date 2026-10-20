@@ -56,23 +56,25 @@ python utils/update_embodiment_config_path.py
 python scripts/objects/make_pitcher.py            # 冷水壶 pitcher
 python scripts/objects/make_water_cup.py          # 水杯 water_cup
 python scripts/objects/make_water_cup.py --plastic   # 塑料杯 plastic_cup
+python scripts/objects/make_school_tableware.py   # 学校纸杯 paper_cup、纸盘 paper_plate
 python Assets/Object/RoboDojo/Rigid/format.py
 
 # 5. 构建 G1-D 机器人（读 real2sim/robot/g1d_v4，写 Assets/Robots/g1d/）、红豆材质，
-#    安装 3 个场景到 Assets/Room/real_scene{1,2,3}/，并为每个场景生成 G1-D 任务的评测布局。
+#    安装 4 个场景到 Assets/Room/real_scene{1,2,3,4}/，并为每个场景生成 G1-D 任务的评测布局。
 #    会从 GitHub 拉 unitree_ros 的 G1 URDF；离线时用 --src 指向本地 unitree_ros 镜像。
 python scripts/g1d/build_asset.py
 ```
 
 第 4 步必须在第 5 步之前：`build_asset.py` 生成布局时要读壶和杯子的 `metadata.json`。
 
-**场景切换**：每个场景对应一个 env 配置，评测和脚本演示时用 `--env-cfg`（`scripted_demo.py` 用 `--env_cfg_type`）选择。机器人站位和升降柱高度写在各自的 `env_cfg/robot/<配置>.yml` 里，物体跟着机器人平移，同一编号的布局在三个场景里物体相对机器人的位置一致（例外：杯对杯倒豆的两个杯子按布局随机抽取，各场景抽到的位置不同）。
+**场景切换**：每个场景对应一个 env 配置，评测和脚本演示时用 `--env-cfg`（`scripted_demo.py` 用 `--env_cfg_type`）选择。机器人站位和升降柱高度写在各自的 `env_cfg/robot/<配置>.yml` 里，物体跟着机器人平移，同一编号的布局在各场景里物体相对机器人的位置一致（例外：杯对杯倒豆的两个杯子按布局随机抽取，各场景抽到的位置不同）。
 
 | env 配置 | 场景 | 桌面高度 | 机器人 |
 | :-- | :-- | :-- | :-- |
 | `g1d` | `real_scene1` 办公室升降桌 | 0.68 m | 根节点 y=-0.73，升降柱 0 |
 | `g1d_counter` | `real_scene2` 吧台（落地柜） | 0.833 m | 根节点 y=-0.80（底盘伸不进柜下），升降柱各 0.0765 |
 | `g1d_lab` | `real_scene3` 实验室培训桌 | 0.749 m | 根节点 y=-0.73，升降柱各 0.0345 |
+| `g1d_school` | `real_scene4` 学校实验室绿幕桌 | 0.763 m | 根节点 y=-0.79、左偏 1.63°，升降柱 0（桌面相对躯干的高差按拟合值保留） |
 
 布局写在 `Assets/Eval_Layout/RoboDojo/<配置>/`，评测结果也按配置分目录。
 
@@ -172,6 +174,7 @@ real2sim/                               自建资产（随仓库，二进制走 
   scenes/real_scene1_office/            办公室孪生场景 → Room/real_scene1
   scenes/real_scene2_counter/           台面孪生场景 → Room/real_scene2
   scenes/real_scene3_lab/               实验室孪生场景 → Room/real_scene3
+  scenes/real_scene4_school/            学校实验室绿幕桌孪生场景 → Room/real_scene4
   scene3_pour_pack/                     倒水场景包（场景、物体、运动学与规划脚本）
 Assets/                                 下载的官方资产 + 生成的 G1-D 资产（不入库，见快速开始）
 HANDOFF.md                              跨会话交接记录（当前状态、决策、验证、遗留问题）
