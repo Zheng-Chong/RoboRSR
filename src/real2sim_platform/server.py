@@ -310,6 +310,8 @@ def scan_objects(assets, tasks, keep):
         d = assets / "Object" / "RoboDojo" / oid
         meta = load_json(d / "metadata.json")
         physics = (meta or {}).get("physics", {})
+        # check_object.py --image-dir result, synced with the renders: a built asset, maybe not installed yet
+        check = load_json(OBJECTS_DIR / oid / "preview" / "check.json") or {}
         names = ((load_json(d / "description.json") or {}).get("caption") or {}).get("name") or [None]
         pattern = re.compile(rf"Rigid/{category}\b|\"{category}\"")
         generator = next((p for p, text in generators.items() if pattern.search(text)), None)
@@ -322,11 +324,16 @@ def scan_objects(assets, tasks, keep):
             "generator": str(generator.relative_to(ROOT)) if generator else None,
             "in_library": meta is not None,
             "name": names[0],
-            "mass": physics.get("mass"),
-            "size": physics.get("size") or ((meta or {}).get("geometry", {}).get("aligned_bbox") or {}).get("extents"),
+            "built": meta is not None or bool(check),
+            "check": check,
+            "mass": physics.get("mass", check.get("mass_kg")),
+            "size": physics.get("size")
+            or ((meta or {}).get("geometry", {}).get("aligned_bbox") or {}).get("extents")
+            or check.get("size_m"),
             "static_friction": physics.get("static_friction"),
             "dynamic_friction": physics.get("dynamic_friction"),
-            "measurements": (meta or {}).get("measurements_mm") or {},  # model size per registered dimension name
+            # model size per registered dimension name
+            "measurements": (meta or {}).get("measurements_mm") or check.get("measurements_mm") or {},
             "photos": images(OBJECTS_DIR / oid / "reference"),
             "renders": images(OBJECTS_DIR / oid / "preview") + images(d),
         }

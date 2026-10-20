@@ -14,7 +14,7 @@ description: 按 Real2Sim 数采平台的物体登记（real2sim/objects/<id>/sp
 | 登记（输入） | 部署机 `<仓库>/real2sim/objects/<id>/`：`spec.json`、`reference/*.jpg` | 拷回本机后入库 | 只读；同步到本机，随脚本一起提交 |
 | 生成代码 | `scripts/objects/make_*.py`；任务也要用的几何放 `scripts/objects/<类别>_shape.py`（只依赖 numpy） | 入库 | 新建或修改 |
 | 生成结果 | `Assets/Object/RoboDojo/<id>/`（`object.usdz`、`metadata.json`、`description.json`） | 不入库 | 只由脚本写，不手改；不要往 `Assets/` 放要入库的文件 |
-| 渲染预览 | `real2sim/objects/<id>/preview/sim.png` | 不入库 | `check_object.py --image-dir` 生成，同步到部署机给平台显示 |
+| 渲染预览和检查结果 | `real2sim/objects/<id>/preview/sim.png`、`check.json` | 不入库 | `check_object.py --image-dir` 生成，同步到部署机：平台据此显示渲染图，并在资产装进共享库之前就推进「建模」「尺寸核对」「物理检验」 |
 | 验证 | `5090-2` 的隔离目录 `/data/robodojo-runs/<名称>-<时间>/` | 不入库 | 生成到隔离目录的覆盖目录里再检查 |
 | 共享资产库 | 21196 的 `/data2/zhongzheng/Project/RoboDojo_assets/Assets`（只当资产来源，不在 21196 上跑） | 不入库 | 只有用户同意后，按 README「改服务器共享资产库」装 |
 | 登记表 | `real2sim/ASSETS.md`、README「快速开始」第 4 步、`HANDOFF.md` | 入库 | 更新 |
@@ -164,6 +164,7 @@ CUDA_VISIBLE_DEVICES=<卡> PYTHONPATH=. python scripts/objects/check_object.py o
 
 - 把 `preview/sim.png` 和 `reference/` 里的照片并排看：轮廓比例、颜色、透明度、把手位置。差得明显就调几何或材质。
 - 把 `preview/` 同步回本机和部署机的同一路径（平台读部署机上的），这个目录不入库。
+- `preview/check.json` 由 `check_object.py` 写：落地结果（`settle`）、资产的质量、尺寸和 `measurements_mm`。其余物理检验做了哪项，就在里面加 `"checks": {"collision" | "grasp" | "liquid" | "render": "pass" | "fail" | "na"}` 和 `"notes": {项: 依据}`（如「容器口未封，check_cup_beans 保留 100%」「非容器」）；没做的不写，不要为了通过而写 pass。重跑 `check_object.py` 会覆盖这个文件，补写的项要重新加。平台上人工选的结论优先。
 
 ### 9. 登记、提交、交付说明
 
@@ -177,7 +178,7 @@ CUDA_VISIBLE_DEVICES=<卡> PYTHONPATH=. python scripts/objects/check_object.py o
 - 在第 1 步开的 worktree 短分支上提交，`git add` 逐个列出文件，提交前跑 `bash scripts/check.sh`，然后推分支、开 PR，等 CI 通过再合并进 `main`。
 - 提交信息：`[scripts] feat: add <类别> twin asset from platform registration`（重建用 `update`）。
 - 本机 `Assets/` 里生成后，可以按 README 跑 `format.py` 刷新 `uuid_map.json`。运行时不读这个文件，隔离目录和共享库都不需要跑。
-- **交付说明**：资产 id、生成脚本、尺寸对照表、`check_object.py` 输出和渲染图路径、哪些值是估计的、装没装共享库。平台物体页的「物理检验」由人勾选，把对应的检查结果写清楚，方便他们勾。
+- **交付说明**：资产 id、生成脚本、尺寸对照表、`check_object.py` 输出和渲染图路径、哪些值是估计的、装没装共享库。平台物体页的「物理检验」读 `check.json`，人工结论可以覆盖；交付说明里写清每项的依据。
 
 ### 10. 共享资产库（必须先得到用户同意）
 

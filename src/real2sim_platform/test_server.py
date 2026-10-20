@@ -163,6 +163,13 @@ def test_http():
         built.mkdir(parents=True)
         (built / "metadata.json").write_text(json.dumps({"physics": {"mass": 0.05}, "measurements_mm": {"高": 95.5}}))
         assert server.scan_objects(tmp, {}, ["Rigid/cup/00003"])["Rigid/cup/00003"]["measurements"] == {"高": 95.5}
+        preview = tmp / "objects/Rigid/cup/00004/preview"  # built and checked, not in the library yet
+        preview.mkdir(parents=True)
+        check = {"settle": "pass", "mass_kg": 0.038, "size_m": [0.05, 0.04, 0.02], "measurements_mm": {"高": 46.4}}
+        (preview / "check.json").write_text(json.dumps(check))
+        built = server.scan_objects(tmp, {}, ["Rigid/cup/00004"])["Rigid/cup/00004"]
+        assert not built["in_library"] and built["built"] and built["check"]["settle"] == "pass"
+        assert (built["mass"], built["size"], built["measurements"]) == (0.038, [0.05, 0.04, 0.02], {"高": 46.4})
         twin = {"twin": True, "name": "量杯", "name_en": "Measuring Cup", "real_mass": 55, "material": "PP 塑料"}
         twin["gen"] = {"count": 3, "color": True, "size": False, "requirements": "尺寸不变，只换颜色"}
         twin["dimensions"] = "开口直径 82，高 158"
