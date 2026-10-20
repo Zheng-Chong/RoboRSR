@@ -161,7 +161,7 @@ env_cfg/robot/g1d{,_counter,_lab}.yml   各场景的机器人站位、升降柱�
 env_cfg/sim/g1d_sim_config.yml          仿真步长 1/300 s
 env_cfg/camera/g1d_camera.yml           头部双目 + 双腕相机
 scripts/g1d/                            资产构建、脚本专家演示
-scripts/objects/                        壶/杯生成、刚体/流体物理检验
+scripts/objects/                        壶/杯生成、刚体/流体物理检验；SKILL.md：按平台登记给实物建模的流程
 src/real2sim_platform/                  Real2Sim 数采管理平台（场景重建、物体资产、任务采集、数据质检）
 task/RoboDojo/{config,tasks}/g1d_*      G1-D 任务
 scripts/datagen/                        仿真数据生成与发布；CONTRACT.md 数据契约，SKILL.md 流程，registry.json 数据集登记
@@ -206,7 +206,7 @@ HANDOFF.md                              跨会话交接记录（当前状态、�
 
 ### 新增或修改资产
 
-1. **能用脚本生成的**（参数化物体、布局）：只提交脚本，并在「快速开始」第 4 步或第 5 步加上生成命令。
+1. **能用脚本生成的**（参数化物体、布局）：只提交脚本，并在「快速开始」第 4 步或第 5 步加上生成命令。按数采平台的登记给实物建模，照 [`scripts/objects/SKILL.md`](scripts/objects/SKILL.md) 的流程做。
 2. **不能生成的**（照片重建的场景、实测的 URDF 和网格）：放进 `real2sim/`。`.usd`、`.usdc`、`.stl`/`.STL`、`.png`、`.jpg`/`.jpeg` 会自动走 LFS；其他二进制格式（如 `.usdz`、`.glb`、`.obj`、`.mp4`）要先加到 `.gitattributes`，否则会以普通文件进入 git 历史，之后只能改写历史才能清掉。
 3. **安装到 `Assets/`** 统一交给 `build_asset.py`，不要手动拷贝：新场景加到 `SCENES`（同时新增 `env_cfg/g1d_<场景>.yml` 和 `env_cfg/robot/g1d_<场景>.yml`），新任务的布局加到 `G1D_TASKS`。
 4. **登记**：在 `real2sim/ASSETS.md` 加一行或更新对应行（真实对应物、各属性的匹配等级和依据、共享库状态）。
