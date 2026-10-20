@@ -33,7 +33,7 @@
 
 ## 最近任务
 
-### 数采平台场景登记（2026-10-20，分支 `chongzheng/platform-scene-register`，未部署）
+### 数采平台场景登记（2026-10-20，[PR #10](https://github.com/Zheng-Chong/RoboRSR/pull/10) 合并进 `main`，已部署）
 
 - **用户要求**：场景重建也按物体资产那样登记，每个场景不少于 5 张不同角度的照片，再加需要人工提供的信息（字段由 agent 设计）。
 - **页面**：「场景重建」新增「登记场景」三步向导，和物体向导共用步骤条、校验和拖放组件（抽成 `wzFld`/`wzPane`/`wzNav`/`wzFoot`/`photoDrop`，`wizGo` 按当前打开的向导取步骤和校验函数）。
@@ -41,6 +41,7 @@
   2. 卷尺：桌面离地高、长、宽必填（cm），可选厚度、测量日期、支撑形式、桌面外观、桌沿形状；机器人站位（桌沿到根节点、横向偏移、偏角、升降柱读数）；ChArUco 标定板（勾上后格子实测边长必填，加板角到桌左沿、前沿的距离）；
   3. 地面、墙面、后沿到墙距离、要建模的固定物；光源、色温、照度、自然光；是否已拍机器人相机画面；计划任务（G1-D 自建任务多选）、建模要求、备注。
 - **落盘**：服务端 `write_registration` 写 `real2sim/scenes/<场景>/registration.json`。卷尺值换成米，按 `scene_spec.json` 的 `measurements` 键和格式写（`table_top_z` 等，`tool: 卷尺`、`date`），空字段省略（0 保留）。照片上传 `/api/photo?kind=scene` 进 `reference/`，删除照片放行 `real2sim/scenes/`。场景 id 校验 `real_scene\d+_[a-z0-9_]+`。不新建 `scene_spec.json`：`acceptance.py` 要求场景已接入 `build_asset.py`，未建模的场景放进去会报错。
+- **部署**（23:2x）：`5090-2` 从 `daf4ea0` 快进到 `4e9567b`（推临时分支再 `--ff-only`）。快进前删掉了和 `main` 内容一致的未跟踪 airpods 文件（`spec.json` 和 3 张照片，LFS oid 核对过），检出后照片只剩 LFS 指针，又从本机 rsync 回真实图片；部署机 `HANDOFF.md` 里另一会话（绿幕桌相机标定）未提交的一段先存为 `.cache/handoff-local-*.patch`，快进后重新应用。重启服务后扫描到 5 个场景（含未入库的 `g1d_green_table/`），本机和公网未登录 `/api/info` 都是 401，页面带「登记场景」。
 - **显示**：「照片」阶段改为至少 5 张才算通过，旧场景里吧台（2 张）、实验室（4 张）、学校（2 张渲染）因此变成待办。「尺寸实测」阶段没有手填桌高时，用登记的桌高。已登记但还没建模的场景，抽屉顶部是给 coding agent 的建模任务文本（指向 `real2sim/scenes/SKILL.md`），下面是照片上传/删除、验收进度和可编辑的登记信息；建好后登记信息仍在抽屉里。`real2sim/scenes/SKILL.md` 加了「平台登记」一节。
 - **验证**：`test_server.py`（新增：登记写出的 JSON 全量比对、坏 id 返回 400、场景照片上传/删除、扫描识别已登记、删除登记会删文件）；`check.sh` 里的 ruff 0.11.7、`git diff --check`、任务清单；pytest 22 passed、1 skipped（本机没有 pytest，用 `uv run --with pytest ...` 补）。本机起服务在浏览器里走完向导：3 张照片被拦、6 张通过、缺桌高被拦、勾标定板不填格子被拦；提交后 `registration.json` 和 6 张照片落盘，抽屉显示建模任务；抽屉里改墙面会写回文件。测试场景目录已删。没有在手机宽度下截图检查。
 
@@ -181,7 +182,7 @@
   - 真机腕部相机的流名左右互换（部署端 `SWAP_WRISTS=True`）。
 - **可达性**：杯对杯 seed 1、壶倒杯 seed 0 都是够不到的老问题。G1 手臂在桌面高度的可达距离约 0.45 m，自有任务的物体应放在 y≈[-0.55, -0.25]。
 - **数采平台**：
-  - 场景登记还没部署到 `5090-2`；部署后线上登记的 `registration.json` 和照片要像物体登记那样拷回入库；
+  - 线上登记的场景（`registration.json` 和照片）要像物体登记那样拷回入库；
   - 权限只有两级；HTTP 明文传密码；
   - `5090-2` 上的资产库是手动刷新的元数据镜像；学校纸杯、纸盘的 `metadata.json`/`description.json` 是 10-20 从隔离目录 `school-scene-20261020-114517` 的 `ovl/Rigid/` 手动放进镜像的（共享库里没有），平台因此显示为「已入库」；下次整体重刷镜像会被删掉，要么先装共享库，要么重刷后再放一次；
   - 看不到 `scripts/datagen` 的产出（`quality.json`、数据集登记表）；
@@ -196,13 +197,13 @@
 
 1. 先看 `git log`、本文件和 `scripts/datagen/CONTRACT.md`。主工作区里还有物体建模 SKILL 会话没提交的改动（见"最近任务"里的"并行会话"）；拉取新的 `main` 前，先让那个会话提交，或者先 stash。
 2. 下一批数据用新流水线采集。先跑单回合探针，确认 `joint_names`、夹爪 state 和图像都正常，再按 `scripts/datagen/SKILL.md` 批量采集、导出、审计、回放，最后登记。
-3. 去现场按 `real2sim/scenes/SKILL.md` 采集（ChArUco 标定板照片、卷尺、灯光、机器人相机画面），在平台「登记场景」录入，回来跑 `overlay.py` 和 `acceptance.py`。场景登记合并后先部署到 `5090-2`。
+3. 去现场按 `real2sim/scenes/SKILL.md` 采集（ChArUco 标定板照片、卷尺、灯光、机器人相机画面），在平台「登记场景」录入，回来跑 `overlay.py` 和 `acceptance.py`。
 4. 给 XPolicyLab 提 PR，注册 `g1d*` 的动作维度；然后用一个 LeRobot 策略在 `--env-cfg g1d_beans_collect` 下走通"外部训练 → 本仓库评估"的整条链。
 5. 学校场景：用户重建 sys01 连接后拷真机画面做叠图（`overlay.py --env-cfg g1d_school`）；要用学校场景做任务时，再写杯盘布局和任务。
 
 ## 最近历史
 
-- 2026-10-20：数采平台新增「登记场景」三步向导（≥ 5 张照片 + 卷尺实测 + 站位、标定板、环境、灯光等），写 `real2sim/scenes/<场景>/registration.json`，抽屉生成建模任务文本（分支 `chongzheng/platform-scene-register`）。
+- 2026-10-20：数采平台新增「登记场景」三步向导（≥ 5 张照片 + 卷尺实测 + 站位、标定板、环境、灯光等），写 `real2sim/scenes/<场景>/registration.json`，抽屉生成建模任务文本（PR #10，已部署到 `5090-2`）。
 - 2026-10-20：按平台登记新建耳机充电盒 `airpods/00000`（`make_airpods.py`，PR #7），实测尺寸和质量，`5090-2` 落地检查通过；经用户同意装进共享库，平台镜像已补上。
 - 2026-10-20：物体流程在建好之后能自动推进了（用户反馈 airpods 建好后流程不动、物理检验不应全靠人工、「训练 / 保留划分」没用）。原因：平台只看资产库镜像，agent 在隔离目录建好、未装共享库时平台看不到；`check_object.py` 只打印结果；尺寸写成「（高 × 宽 × 厚）：a × b × c」时解析成乱码，和 `measurements_mm` 对不上。改动：`check_object.py --image-dir` 在 `preview/` 里和 `sim.png` 一起写 `check.json`（落地结果、质量、尺寸、`measurements_mm`、资产路径），agent 可补 `checks`/`notes`（碰撞、抓取、盛液、渲染）；平台扫描它，资产库没有时用它的质量和尺寸做核对，「建模」与「入共享库」拆开，物理检验取 `check.json`、人工结论优先；尺寸解析支持括号名 + × 分隔值；删掉物体的训练 / 保留划分（没有代码读它）。建模任务文本和 `scripts/objects/SKILL.md` 同步。验证：`check.sh`、`test_server.py`（新增 check.json 回退）、解析 4 种写法、本机浏览器用 airpods 的真实 metadata 造 `check.json` 看流程 3/5 和物理检验显示；`check_object.py` 只做了编译检查，没在 GPU 上跑。airpods 要在合并部署后重跑一次 `check_object.py --image-dir` 并同步 `preview/`，流程才会在线上推进。
 - 2026-10-20：数采平台「登记物体」改成三步向导（分支 `chongzheng/platform-object-wizard`）：① 中英文名称、类型（类别由英文名自动生成，可改）、编号，多角度照片可拖放、可不传；② 实物测量（材质、颜色、质量、静摩擦、尺寸、外观、建模要求，可留空，但没照片时必须填尺寸）；③ 泛化：变体数量、允许变化的属性（颜色/材质/尺寸/形状）、泛化要求（可只写数量和要求，让 coding agent 设计参数）。`spec.json` 新增 `name_en`、`generalization`；物体抽屉可改英文名和泛化，「建模任务」文本按泛化设置要求在同类别后续空号建变体（不实测、标为泛化变体）。界面按 UI UX Pro Max skill（装在 `~/.claude/skills/ui-ux-pro-max`）的表单规范做了第二版：圆点连线步骤条、上标签两列网格、带单位输入、资产 ID 标签、大拖放区和方形缩略图、属性可选标签、数量步进器、泛化要求快捷示例、吸底操作栏；校验错误标在对应字段（`aria-invalid` 并聚焦），换步骤时聚焦首个输入，提交中按钮显示进度。验证：`test_server.py`（spec 新字段）、ruff；本机起服务在浏览器里走完三步（含 1280 宽和手机宽截图核对；校验、英文名转类别、拖放过滤非图片、提交、抽屉里改泛化写回 spec.json）。PR #5 合并（`8da8d30`），19:13 部署到 `5090-2`：推到临时分支再快进（线上未入库的登记改动不受影响），重启服务后页面和未登录 401 正常，隧道在。线上登记的 `measuring_cup/00001`（删 `IMG_4871.jpg`、新增 3 张照片和 `spec.json`，其中 `tempImageK59SQD.jpg` 与 `tempImageKLstnv.jpg` 内容相同）和 `plastic_mug/00000/spec.json` 拷回入库（分支 `chongzheng/platform-registrations-1020`）；合并后部署机要先删掉这些未跟踪的同名文件再快进。部署机上还有不明来源的未入库目录 `real2sim/scenes/g1d_green_table/`，没动。
