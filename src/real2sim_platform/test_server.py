@@ -95,7 +95,7 @@ def test_http():
     server.Handler.failures, server.FAIL_DELAY = {}, 0
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    session = {}
+    session, scenes_dir = {}, server.build_asset.SCENES_DIR
 
     def request(method, path, body=None, headers=None):
         conn = http.client.HTTPConnection("127.0.0.1", httpd.server_port)
@@ -192,6 +192,37 @@ def test_http():
         assert request("DELETE", "/api/items?kind=object&id=Rigid/cup/00000")[0] == 200
         assert not (tmp / "objects/Rigid/cup/00000/spec.json").exists()
 
+        server.build_asset.SCENES_DIR = tmp / "scenes"
+        scene = "/api/items?kind=scene&id=real_scene9_kitchen"
+        reg = {"name": "厨房台面", "top_z_cm": 91.5, "length_cm": 120, "width_cm": 60, "offset_cm": 0}
+        reg |= {"measured_on": "2026-10-20", "charuco": False, "tasks": [], "notes": ""}
+        reg |= {"light_sources": "吸顶面板灯 4 盏", "color_temp_k": 4000}
+        assert request("PUT", "/api/items?kind=scene&id=Bad/../x", json.dumps({"registered": True}))[0] == 400
+        assert request("PUT", scene, json.dumps({"registered": True, "reg": reg}))[0] == 200
+        written = json.loads((tmp / "scenes/real_scene9_kitchen/registration.json").read_text(encoding="utf-8"))
+        tape = lambda m: {"value_m": m, "tool": "卷尺", "date": "2026-10-20"}  # noqa: E731
+        assert written.pop("updated_at") and written == {  # cm -> scene_spec.json measurements; a 0 offset is kept
+            "scene": "real_scene9_kitchen",
+            "name": "厨房台面",
+            "measurements": {
+                "table_top_z": tape(0.915),
+                "table_length": tape(1.2),
+                "table_width": tape(0.6),
+                "table_centre_x_from_robot_root": tape(0.0),
+            },
+            "lighting": {"sources": "吸顶面板灯 4 盏", "color_temp_k": 4000},
+            "updated_by": "张三",
+        }
+        status, body, _ = request("POST", "/api/photo?kind=scene&id=real_scene9_kitchen&name=front.webp", b"webp")
+        front = tmp / "scenes/real_scene9_kitchen/reference/front.webp"
+        assert status == 200 and json.loads(body)["path"] == str(front)
+        assert request("POST", "/api/photo?kind=scene&id=Rigid/cup/00000&name=a.jpg", b"jpg")[0] == 400
+        found = server.scan_scenes()["real_scene9_kitchen"]
+        assert found["registered"] and not found["built"] and len(found["photos"]) == 1
+        assert request("DELETE", f"/api/photo?path={found['photos'][0]}")[0] == 200
+        assert request("DELETE", scene)[0] == 200
+        assert not (tmp / "scenes/real_scene9_kitchen/registration.json").exists()
+
         def users(method, path="/api/users", body=None, cookie=None):
             headers = {"Cookie": cookie} if cookie else {}
             status, data, _ = request(method, path, json.dumps(body) if body else None, headers)
@@ -229,6 +260,7 @@ def test_http():
         assert [login("alice", "bad-pass")[0] for _ in range(5)] == [401] * 5
         assert login("alice", "password2")[0] == 429  # locked out after 5 failures, even with the right password
     finally:
+        server.build_asset.SCENES_DIR = scenes_dir
         httpd.shutdown()
 
 
