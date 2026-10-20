@@ -515,7 +515,6 @@ const SCENE_STAGES = [
 
 const MATERIALS = ['PP 塑料', 'PET 塑料', 'PS 塑料', '玻璃', '陶瓷', '不锈钢', '铝', '木', '纸', '硅胶', '布'];
 const OBJECT_TYPES = {Rigid: '刚体', Articulation: '关节物体', Clutter: '杂物', Dynamic: '动态装置', Fluid: '流体', Garment: '衣物', Geometry: '固定物体'};
-const SPLITS = {'': '未定', train: '训练', holdout: '保留（泛化评测）'};
 const METHODS = {'': '未定', script: '参数化脚本', photogrammetry: '摄影测量', generative: '3D 生成模型', library: '开源 / 官方物体库'};
 const CHECK_STATES = {'': '未测', pass: '通过', fail: '不通过', na: '不适用'};
 const PHYS = [
@@ -527,7 +526,14 @@ const PHYS = [
   ['render', '光照渲染', '3 种灯光预设下截图，无穿透、黑面、折射错误；人工复核', () => ''],
 ];
 // "开口直径 82，底部直径 64，高 135" -> [{name, real}] in mm; a unit right after a number is not part of the next name
-const parseDims = (text) => [...String(text || '').matchAll(/([^\d\s，,；;、:：=+]+)\s*[:：=]?\s*(\d+(?:\.\d+)?)/g)]
+const SEP = /\s*[×xX*]\s*/;
+const expandDims = (text) => String(text || '').replace(  // "(高 × 宽 × 厚)：46.4 × 54.4 × 21.4" -> "高 46.4，宽 54.4，厚 21.4"
+  /[^\d\s，,；;、:：=+（(]*[（(]([^）)]+)[）)]\s*[:：=]?\s*(\d+(?:\.\d+)?(?:\s*[×xX*]\s*\d+(?:\.\d+)?)+)/g,
+  (all, names, values) => {
+    const n = names.trim().split(SEP), v = values.split(SEP);
+    return n.length === v.length ? n.map((x, i) => `${x} ${v[i]}`).join('，') : all;
+  });
+const parseDims = (text) => [...expandDims(text).matchAll(/([^\d\s，,；;、:：=+]+)\s*[:：=]?\s*(\d+(?:\.\d+)?)/g)]
   .map((m) => ({name: m[1].replace(/^(mm|毫米)/i, ''), real: Number(m[2])})).filter((r) => r.name);
 const dimText = (d) => parseDims(d.dimensions).map((r) => `${r.name} ${r.real}`).join(' · ');
 const measured = (d) => num(d.real_mass) && parseDims(d.dimensions).length > 0;
@@ -537,11 +543,15 @@ function dimCheck(d) {  // each measured dimension against the built model's met
     return {name, real, sim, err, ok: err != null && err <= Math.max(2, 0.02 * real)};
   });
 }
+// a verdict picked in the page wins; otherwise preview/check.json: settle from check_object.py, the rest from the agent
+const autoPhys = (d, k) => d.auto.check?.checks?.[k] || (k === 'settle' ? d.auto.check?.settle : '') || '';
+const physState = (d, k) => d.checks?.[k] || (['pass', 'fail', 'na'].includes(autoPhys(d, k)) ? autoPhys(d, k) : '');
 const OBJ_STAGES = [
   ['measure', '实物测量', (d) => (!d.twin ? na('非实物孪生') : measured(d) ? ok(`${dimText(d)} mm，${d.real_mass} g`)
     : todo('量关键尺寸 ±1 mm（如开口直径、底部直径、高）、称重、拍多角度照片'))],
-  ['model', '建模入库', (d) => (d.auto.in_library ? ok(d.method ? METHODS[d.method] : '资产库中已有')
-    : todo(d.auto.generator ? `有生成脚本 ${d.auto.generator}，资产库中未找到` : '资产库中未找到 metadata.json'))],
+  ['model', '建模', (d) => (d.auto.in_library ? ok(d.method ? METHODS[d.method] : '资产库中已有')
+    : d.auto.check?.checked_at ? ok(`已建好，${d.auto.check.checked_at} 落地检查${d.auto.check.settle === 'pass' ? '通过' : '不通过'}`)
+    : todo(d.auto.generator ? `有生成脚本 ${d.auto.generator}，还没有建好的资产` : '交给 coding agent 按建模任务建模'))],
   ['dims', '尺寸 / 质量核对', (d) => {
     if (!d.twin) return na('非实物孪生');
     if (!measured(d)) return todo('先填实测尺寸和质量');
@@ -552,12 +562,13 @@ const OBJ_STAGES = [
     return over.length || dm > 5 ? bad(text) : done.length < c.length ? todo(text) : ok(text);
   }],
   ['physics', '物理检验', (d) => {
-    const v = PHYS.map(([k]) => d.checks?.[k] || '');
+    const v = PHYS.map(([k]) => physState(d, k));
     if (v.includes('fail')) return bad(`${v.filter((x) => x === 'fail').length} 项不通过`);
     const done = v.filter((x) => x === 'pass' || x === 'na').length;
     return done === PHYS.length ? ok('5 项通过') : todo(`${done}/${PHYS.length} 项完成`);
   }],
-  ['split', '训练 / 保留划分', (d) => (d.split ? ok(SPLITS[d.split]) : todo('按 7:3 划入训练 / 保留'))],
+  ['library', '入共享库', (d) => (d.auto.in_library ? ok('资产库中已有') : todo(d.auto.built
+    ? '经同意装进服务器共享资产库，再刷新平台的资产库镜像' : '建好之后'))],
 ];
 
 const DIMS = {custom: 'G1-D 自建', generalization: '泛化', memory: '记忆', precision: '精细', 'long-horizon': '长程', open: '开放'};
@@ -803,13 +814,12 @@ function viewObjects() {
       return `<article class="card mcard" data-open="object" data-id="${esc(d.id)}" tabindex="0" role="button" aria-label="打开物体 ${esc(d.id)}">${objMedia(d)}
         <div class="mcard-b"><div class="mcard-t"><b>${esc(objName(d))}</b>${d.twin ? '<span class="tag">孪生</span>' : ''}</div>
           <div class="small muted mono" style="margin-top:-4px">${esc(d.id)}</div>
-          <div class="small muted">${d.split ? `${esc(SPLITS[d.split])} · ` : ''}${measured(d) ? `实测 ${esc(dimText(d))}` : `仿真 ${mm(d.auto.size)} mm`}</div>${progress(rs)}</div></article>`;
+          <div class="small muted">${measured(d) ? `实测 ${esc(dimText(d))}` : `仿真 ${mm(d.auto.size)} mm`}</div>${progress(rs)}</div></article>`;
     }).join('')}</div>`
-    : `<div class="table-wrap"><table><thead><tr><th></th><th>物体</th><th>划分</th><th>任务配置（标签）</th><th class="num">仿真尺寸 mm</th><th class="num">质量 g</th><th>实测</th><th style="min-width:170px">流程</th></tr></thead><tbody>
+    : `<div class="table-wrap"><table><thead><tr><th></th><th>物体</th><th>任务配置（标签）</th><th class="num">仿真尺寸 mm</th><th class="num">质量 g</th><th>实测</th><th style="min-width:170px">流程</th></tr></thead><tbody>
       ${docs.map((d) => `<tr data-open="object" data-id="${esc(d.id)}" tabindex="0" class="${UI.drawer?.id === d.id ? 'sel' : ''}">
         <td>${objMedia(d, true)}</td>
         <td><div class="t-main">${esc(objName(d))} ${missingBadge(d)}</div><div class="t-sub mono">${esc(d.id)}</div></td>
-        <td class="small">${esc(SPLITS[d.split || ''])}</td>
         <td class="small">${(d.auto.tasks || []).map(esc).join('<br>') || '<span class="muted">—</span>'}<div class="t-sub mono">${esc((d.auto.labels || []).join(', '))}</div></td>
         <td class="num small">${mm(d.auto.size)}</td><td class="num small">${num(d.auto.mass) ? (d.auto.mass * 1000).toFixed(0) : '—'}</td>
         <td class="small">${measured(d) ? `${esc(dimText(d))}<div class="t-sub">${d.real_mass} g</div>` : '<span class="muted">—</span>'}</td>
@@ -868,7 +878,7 @@ function modelingBrief(d) {  // the task for a coding agent that builds this twi
     '验收：',
     `1. ${a.generator ? `在现有生成脚本 ${a.generator} 上修改` : `新建生成脚本 scripts/objects/make_${d.id.split('/')[1]}.py`}，资产生成到 Assets/Object/RoboDojo/${d.id}/（object.usdz、metadata.json、description.json），生成结果不入库。`,
     '2. metadata.json 顶层 measurements_mm 的键和上面实测尺寸的名称一字不差，值从生成的网格量；每项误差 < max(2 mm, 2%)，质量用实测值。平台按名称自动核对。',
-    `3. check_object.py 落地检查通过，渲染图写到 ${dir}/preview/，和实拍照片对比过外观。`,
+    `3. check_object.py --image-dir real2sim/objects 落地检查通过：渲染图和检查结果写到 ${dir}/preview/（sim.png、check.json），和实拍照片对比过外观。其余物理检验（collision 碰撞体、grasp 抓取、liquid 盛液、render 光照渲染）做了哪项，就在 check.json 里加 "checks": {项: "pass" | "fail" | "na"} 和 "notes": {项: 依据}，没做的不写。把 preview/ 同步到部署机的同一路径，平台据此自动推进「建模」和「物理检验」。`,
     `4. 提交生成脚本、${dir}/ 下的 spec.json 和照片、real2sim/ASSETS.md；装进服务器共享资产库前先征得同意。`,
   ].filter((line) => line !== null).join('\n');
 }
@@ -882,9 +892,9 @@ function drawerObject(d) {
     ? `<button class="hero" type="button" data-lb="${esc(key)}" data-i="0" aria-label="放大查看"><img src="${file(list[0])}" alt=""></button>`
     : `<div class="hero empty-hero">${ic('image', 'ic-lg')}${emptyText}</div>`);
   return {
-    title: objName(d), sub: `${d.id} · ${a.in_library ? '资产库已有' : '资产库未找到'}${a.generator ? ` · ${a.generator}` : ''}`,
+    title: objName(d), sub: `${d.id} · ${a.in_library ? '资产库已有' : a.built ? '已建好，未装共享库' : '还没建模'}${a.generator ? ` · ${a.generator}` : ''}`,
     actions: !(a.tasks || []).length ? `<button class="btn" type="button" data-id="${esc(d.id)}" onclick="removeDoc('object', this.dataset.id)">${ic('trash')}删除登记</button>` : '',
-    body: `${materialList()}${a.in_library ? '' : brief}${sec('实物 vs 仿真', `<div class="compare">
+    body: `${materialList()}${a.built ? '' : brief}${sec('实物 vs 仿真', `<div class="compare">
       <figure><figcaption>${ic('camera')}实物照片 <span class="muted small">${photos.length} 张</span><span class="sp"></span>
         <label class="btn upload" title="jpg / png / webp，单张 ≤ 25 MB">${ic('upload')}上传<input type="file" accept="image/jpeg,image/png,image/webp" multiple data-id="${esc(d.id)}" onchange="uploadPhotos(this)" aria-label="上传实物照片"></label></figcaption>
         ${hero(`obj-photos-${d.id}`, photos, '还没有实拍照片：上传多角度照片，保存到 real2sim/objects/&lt;id&gt;/reference/（随仓库，走 LFS）')}
@@ -897,7 +907,6 @@ function drawerObject(d) {
       ${row('名称', 'name', inp(d, 'name', 'text', `placeholder="${esc(a.name || '')}"`))}
       ${row('英文名', 'name_en', inp(d, 'name_en'))}
       ${row('实物孪生', 'twin', inp(d, 'twin', 'checkbox'), '有对应的实物，需要测量并核对尺寸；勾上后登记信息写入 spec.json')}
-      ${row('划分', 'split', sel(d, 'split', SPLITS))}
       ${row('建模方式', 'method', sel(d, 'method', METHODS))}</div>`)}
     ${sec('实物测量', `<div class="form">
       ${row('材质', 'material', inp(d, 'material', 'text', 'list="dl-materials" placeholder="如 PP 塑料、玻璃"'))}
@@ -915,10 +924,12 @@ function drawerObject(d) {
       ${row('变体数量', 'gen.count', inp(d, 'gen.count', 'number', 'min="0" step="1" style="flex:0 0 110px"'), '0 表示不做泛化')}
       <label>允许变化</label><div class="ctl">${Object.entries(GEN_ATTRS).map(([k, t]) => `<label class="check">${inp(d, `gen.${k}`, 'checkbox')}${t}</label>`).join('')}</div>
       ${row('泛化要求', 'gen.requirements', area(d, 'gen.requirements', `placeholder="${GEN_HINT}"`))}</div><p class="hint">${GEN_NOTE}</p>`) : ''}
-    ${a.in_library ? brief : ''}
+    ${a.built ? brief : ''}
     ${sec('物理检验', `<div class="table-wrap"><table class="plain"><tbody>${PHYS.map(([k, label, crit, cmd]) => `<tr><td style="width:110px"><label for="${fid(`checks.${k}`)}">${label}</label></td>
-      <td class="small">${crit}${cmd(d) ? `<div style="margin-top:6px">${code(cmd(d))}</div>` : ''}</td><td style="width:110px">${sel(d, `checks.${k}`, CHECK_STATES)}</td></tr>`).join('')}</tbody></table></div>`)}
-    ${sec('仿真资产', `<dl class="kv"><dt>资产目录</dt><dd class="mono small">${esc(rel(a.dir) || '—')} ${a.in_library ? st('ok', '已入库') : st('todo', '未找到')}</dd>
+      <td class="small">${crit}${autoPhys(d, k) ? `<div style="margin-top:4px">${st({pass: 'ok', fail: 'bad', na: 'na'}[autoPhys(d, k)] || 'todo', `${k === 'settle' ? '脚本' : 'agent'}：${CHECK_STATES[autoPhys(d, k)] || autoPhys(d, k)}`)}
+        <span class="muted">${k === 'settle' ? `倾斜 ${a.check.tilt_deg}°，速度 ${a.check.speed_m_s} m/s，` : esc(a.check.notes?.[k] ? `${a.check.notes[k]}，` : '')}${esc(a.check.checked_at || '')}${d.checks?.[k] ? '；以右侧人工结论为准' : ''}</span></div>` : ''}${cmd(d) ? `<div style="margin-top:6px">${code(cmd(d))}</div>` : ''}</td><td style="width:110px">${sel(d, `checks.${k}`, CHECK_STATES)}</td></tr>`).join('')}</tbody></table></div>`)}
+    ${sec('仿真资产', `<dl class="kv"><dt>资产目录</dt><dd class="mono small">${esc(rel(a.dir) || '—')} ${a.in_library ? st('ok', '已入库') : a.built ? st('todo', '已建好，未装共享库') : st('todo', '未找到')}</dd>
+      ${!a.in_library && a.check?.asset_dir ? `<dt>建好的资产</dt><dd class="mono small">${esc(a.check.asset_dir)}</dd>` : ''}
       <dt>生成脚本</dt><dd class="mono small">${esc(a.generator || '—')}</dd>
       <dt>仿真尺寸</dt><dd class="mono">${mm(a.size, 1)} mm</dd>
       <dt>仿真质量</dt><dd class="mono">${num(a.mass) ? `${(a.mass * 1000).toFixed(1)} g` : '—'}</dd>

@@ -18,7 +18,10 @@ parser = argparse.ArgumentParser(description="Drop rigid objects on a floor and 
 parser.add_argument("dirs", nargs="+", help="object dirs containing object.usdz and metadata.json")
 parser.add_argument("--seconds", type=float, default=3.0)
 parser.add_argument("--image", help="also render the settled objects to this PNG")
-parser.add_argument("--image-dir", help="also render each object alone, to <dir>/<type>/<category>/<index>/preview/")
+parser.add_argument(
+    "--image-dir",
+    help="also render each object alone and write its check result, to <dir>/<type>/<category>/<index>/preview/",
+)
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 args.headless = True
@@ -29,6 +32,7 @@ import json  # noqa: E402
 import os  # noqa: E402
 from pathlib import Path  # noqa: E402
 import sys  # noqa: E402
+import time  # noqa: E402
 import traceback  # noqa: E402
 
 import carb  # noqa: E402
@@ -89,7 +93,7 @@ def main():
             default_ori=(1.0, 0.0, 0.0, 0.0),
             scale=(1.0, 1.0, 1.0),
         )
-        objs.append((d, obj, half_h))
+        objs.append((d, obj, half_h, meta, size))
         if args.image_dir:
             cam = Camera(prim_path=f"/World/solo_camera_{k}", resolution=(640, 480))
             centre = np.array([0.0, k * spacing, half_h])
@@ -106,13 +110,13 @@ def main():
         # pose before sim.reset(): later USD xform edits do not reach the renderer with Fabric on
         set_camera_view((1.1, mid_y - 0.9, 0.5), (0.0, mid_y, 0.11), camera_prim_path=camera.prim_path)
     sim.reset()
-    for _, obj, _ in objs:
+    for _, obj, *_ in objs:
         obj.initialize()
     for _ in range(round(args.seconds / DT)):
         sim.step(render=False)
 
     failed = False
-    for d, obj, half_h in objs:
+    for d, obj, half_h, meta, size in objs:
         pos, quat = map(as_np, obj.get_world_pose())
         _, x, y, _ = quat
         up = 1 - 2 * (x * x + y * y)  # world-Z component of the object's Z axis
@@ -124,6 +128,22 @@ def main():
             f"{'OK  ' if ok else 'FAIL'} {d}: z={pos[2]:.4f} (expect {half_h:.4f}) "
             f"tilt={tilt:.2f} deg speed={speed:.4f} m/s"
         )
+        if args.image_dir:  # read by the Real2Sim platform next to sim.png: the built asset before it is in the library
+            report = {
+                "settle": "pass" if ok else "fail",
+                "z_m": round(float(pos[2]), 4),
+                "expect_z_m": round(half_h, 4),
+                "tilt_deg": round(float(tilt), 2),
+                "speed_m_s": round(float(speed), 4),
+                "asset_dir": str(d.resolve()),
+                "mass_kg": meta["physics"].get("mass"),
+                "size_m": size,
+                "measurements_mm": meta.get("measurements_mm") or {},
+                "checked_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            out = Path(args.image_dir) / d.parent.parent.name / d.parent.name / d.name / "preview" / "check.json"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
 
     cameras = [(camera, Path(args.image))] if camera is not None else []
     cameras += solo
