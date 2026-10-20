@@ -108,7 +108,12 @@ def test_http():
         return status, json.loads(body), (resp.getheader("Set-Cookie") or "").split(";")[0]
 
     try:
-        assert b"Real2Sim" in request("GET", "/")[1]  # the page itself is public, its data is not
+        status, page, resp = request("GET", "/")
+        assert b"Real2Sim" in page and resp.getheader("Cache-Control") == "no-cache"  # public page, revalidated
+        conn = http.client.HTTPConnection("127.0.0.1", httpd.server_port)
+        conn.request("POST", "/api/photo?id=Rigid/cup/00000&name=a.jpg", b"jpg")  # signed out: body left unread
+        resp = conn.getresponse()
+        assert (resp.status, resp.getheader("Connection")) == (401, "close")  # so the connection is not reused
         status, _, resp = request("GET", "/%23scenes")  # a reload that encoded the tab fragment
         assert (status, resp.getheader("Location")) == (302, "/#scenes")
         assert request("GET", "/%23a%0D%0ASet-Cookie:x")[0] == 401  # no header injection through the redirect
@@ -123,6 +128,20 @@ def test_http():
         video = run / "episode_0000000_cam_head_success.mp4"
         status, body, resp = request("GET", f"/file?path={video}", headers={"Range": "bytes=2-5"})
         assert (status, body, resp.getheader("Content-Range")) == (206, b"2345", "bytes 2-5/10")
+        status, _, resp = request("GET", f"/file?path={video}")
+        etag = resp.getheader("ETag")
+        assert status == 200 and etag and resp.getheader("Cache-Control") == server.FILE_CACHE
+        assert request("GET", f"/file?path={video}", headers={"If-None-Match": etag})[:2] == (304, b"")
+        conn = http.client.HTTPConnection("127.0.0.1", httpd.server_port)  # keep-alive: one socket, also after a 416
+        steps = [({"Range": "bytes=20-30"}, 416, b""), ({}, 200, b"0123456789")]
+        steps.append(({"If-None-Match": f'W/"x", {etag}'}, 304, b""))
+        socks = []
+        for headers, want_status, want_body in steps:
+            conn.request("GET", f"/file?path={video}", headers={**session, **headers})
+            resp = conn.getresponse()
+            assert (resp.status, resp.read()) == (want_status, want_body)
+            socks.append(conn.sock)
+        assert socks[0] is not None and all(s is socks[0] for s in socks)
         assert request("GET", f"/file?path={tmp / 'secret.txt'}")[0] == 404
         assert request("GET", "/file?path=/etc/hosts")[0] == 404
         assert request("PUT", "/api/items?kind=object&id=Rigid/../00001", b"{}")[0] == 400
