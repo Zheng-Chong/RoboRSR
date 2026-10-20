@@ -33,7 +33,7 @@
 
 ## 最近任务
 
-### 数采平台任务登记（2026-10-20，分支 `chongzheng/platform-task-register`，未部署）
+### 数采平台任务登记（2026-10-20，[PR #11](https://github.com/Zheng-Chong/RoboRSR/pull/11) 合并进 `main`，已部署）
 
 - **用户要求**：任务采集也加新建 / 登记按钮，主要能选泛化等级，并选定所用物体范围、干扰物、可用场景，以及其他泛化。
 - **页面**：「任务采集」新增「登记任务」四步向导，沿用场景和物体登记的向导组件：
@@ -44,6 +44,7 @@
 - **落盘**：服务端 `write_task_registration` 写 `real2sim/tasks/<任务>/registration.json`，场景附上加载它的 env 配置（取自 `build_asset.SCENES`），空字段省略（`compact` 现在也递归处理列表）。`scan_tasks` 把只有登记、还没实现的任务也列出来（`runnable: False`、`module: None`），流程里「任务配置」显示为待办，而不是不通过。
 - **抽屉**：登记过的任务顶部是给 coding agent 的实现任务（新任务指向 CLAUDE.md 的任务约定和 `scripts/datagen/SKILL.md`，已有任务只补布局和采集设置），下面是登记方案摘要和可直接编辑的文字字段；分级评测集表格改为只列登记的等级，显示登记的范围和目标数。「删除登记」：未实现的任务删记录，已实现的只清掉登记，保留负责人、目标和采集记录。
 - **验证**：`test_server.py`（登记 JSON、场景映射 env 配置、列表内空字段省略、未实现任务出现在扫描里、坏 id 400、删除）；`check.sh` 的 ruff、diff、任务清单；pytest 22 passed、1 skipped。浏览器里走完向导：缺指令、角色没有 label、角色没选物体、干扰物最少大于最多、没有训练场景、选了 L4 却没有保留场景都被拦住；提交后文件内容正确，列表显示「待实现」，抽屉文字字段写回文件，「已有任务」模式预填了量杯任务的 3 个角色。测试中发现最后一步的校验没在提交前跑，已修复。测试数据已删。
+- **部署**：`5090-2` 从 `4e9567b` 快进到 `73b2c89`，部署机 `HANDOFF.md` 的另一会话记录照旧先存补丁、快进后重新应用；重启后本机和公网未登录 `/api/info` 401，页面带「登记任务」。线上登记的 `real2sim/tasks/*/registration.json` 要拷回入库。
 
 ### 数采平台场景登记（2026-10-20，[PR #10](https://github.com/Zheng-Chong/RoboRSR/pull/10) 合并进 `main`，已部署）
 
@@ -194,7 +195,7 @@
   - 真机腕部相机的流名左右互换（部署端 `SWAP_WRISTS=True`）。
 - **可达性**：杯对杯 seed 1、壶倒杯 seed 0 都是够不到的老问题。G1 手臂在桌面高度的可达距离约 0.45 m，自有任务的物体应放在 y≈[-0.55, -0.25]。
 - **数采平台**：
-  - 线上登记的场景（`registration.json` 和照片）要像物体登记那样拷回入库；
+  - 线上登记的场景（`registration.json` 和照片）和任务（`real2sim/tasks/*/registration.json`）要像物体登记那样拷回入库；
   - 权限只有两级；HTTP 明文传密码；
   - `5090-2` 上的资产库是手动刷新的元数据镜像；学校纸杯、纸盘的 `metadata.json`/`description.json` 是 10-20 从隔离目录 `school-scene-20261020-114517` 的 `ovl/Rigid/` 手动放进镜像的（共享库里没有），平台因此显示为「已入库」；下次整体重刷镜像会被删掉，要么先装共享库，要么重刷后再放一次；
   - 看不到 `scripts/datagen` 的产出（`quality.json`、数据集登记表）；
@@ -215,7 +216,7 @@
 
 ## 最近历史
 
-- 2026-10-20：数采平台新增「登记任务」四步向导（新建或给已有任务登记泛化方案：物体角色和候选物体、干扰物、训练 / L4 保留场景、L0–L4 等级和范围、其他泛化），写 `real2sim/tasks/<任务>/registration.json`（分支 `chongzheng/platform-task-register`）。
+- 2026-10-20：数采平台新增「登记任务」四步向导（新建或给已有任务登记泛化方案：物体角色和候选物体、干扰物、训练 / L4 保留场景、L0–L4 等级和范围、其他泛化），写 `real2sim/tasks/<任务>/registration.json`（PR #11，已部署到 `5090-2`）。
 - 2026-10-20：数采平台新增「登记场景」三步向导（≥ 5 张照片 + 卷尺实测 + 站位、标定板、环境、灯光等），写 `real2sim/scenes/<场景>/registration.json`，抽屉生成建模任务文本（PR #10，已部署到 `5090-2`）。
 - 2026-10-20：按平台登记新建耳机充电盒 `airpods/00000`（`make_airpods.py`，PR #7），实测尺寸和质量，`5090-2` 落地检查通过；经用户同意装进共享库，平台镜像已补上。
 - 2026-10-20：物体流程在建好之后能自动推进了（用户反馈 airpods 建好后流程不动、物理检验不应全靠人工、「训练 / 保留划分」没用）。原因：平台只看资产库镜像，agent 在隔离目录建好、未装共享库时平台看不到；`check_object.py` 只打印结果；尺寸写成「（高 × 宽 × 厚）：a × b × c」时解析成乱码，和 `measurements_mm` 对不上。改动：`check_object.py --image-dir` 在 `preview/` 里和 `sim.png` 一起写 `check.json`（落地结果、质量、尺寸、`measurements_mm`、资产路径），agent 可补 `checks`/`notes`（碰撞、抓取、盛液、渲染）；平台扫描它，资产库没有时用它的质量和尺寸做核对，「建模」与「入共享库」拆开，物理检验取 `check.json`、人工结论优先；尺寸解析支持括号名 + × 分隔值；删掉物体的训练 / 保留划分（没有代码读它）。建模任务文本和 `scripts/objects/SKILL.md` 同步。验证：`check.sh`、`test_server.py`（新增 check.json 回退）、解析 4 种写法、本机浏览器用 airpods 的真实 metadata 造 `check.json` 看流程 3/5 和物理检验显示；`check_object.py` 只做了编译检查，没在 GPU 上跑。airpods 要在合并部署后重跑一次 `check_object.py --image-dir` 并同步 `preview/`，流程才会在线上推进。
