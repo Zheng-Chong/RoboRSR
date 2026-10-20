@@ -9,7 +9,8 @@ Stdlib only (any python3 >= 3.10, no Isaac). On start, and on "从项目同步" 
 Scan results go to each record's "auto"; what is entered in the page (measurements, check verdicts, QA) sits next to it
 and survives rescans. A registered real object (twin) is also written to real2sim/objects/<id>/spec.json, next to its
 photos, as the input for modeling it; the built asset reports its size per measured dimension (by name) in
-metadata.json "measurements_mm", which the page checks against the measured values. Records live in one SQLite file
+metadata.json "measurements_mm", which the page checks against the measured values. A registered scene is written the
+same way to real2sim/scenes/<scene>/registration.json, next to its reference/ photos. Records live in one SQLite file
 (--db), together with the accounts: everyone signs in, and every change is stamped with the signed-in account's name.
 Admins manage accounts in the page (成员管理); the first admin is created on the server with --add-user NAME --admin.
 
@@ -51,6 +52,7 @@ EXPECTED_CAMERAS = {"head", "left_wrist", "right_wrist"}  # same acceptance as s
 VIDEO_RE = re.compile(r"episode_(\d+)_cam_(.+)_(success|fail)\.mp4")
 SKIP_DIRS = {".git", "_stream", "Assets", "third_party", "XPolicyLab", "__pycache__"}
 OBJECTS_DIR = ROOT / "real2sim" / "objects"  # <id>/reference/: real-object photos (git LFS); <id>/preview/: renders
+SCENE_ID = re.compile(r"real_scene\d+_[a-z0-9_]+")  # directory under real2sim/scenes/, e.g. real_scene5_kitchen
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 SERVED_SUFFIXES = IMAGE_SUFFIXES | {".mp4", ".webm", ".md", ".json"}
 MAX_UPLOAD = 25 << 20
@@ -236,7 +238,8 @@ def scan_scenes():
             "built": bool(rooms) and (d / "usd" / "scene.usda").exists(),
             "scripts": sorted(p.name for p in d.glob("*.py")),
             "docs": sorted(str(p) for p in d.glob("*.md")),
-            "photos": sorted(str(p) for p in (d / "reference").glob("*.jpg")),
+            "photos": images(d / "reference"),
+            "registered": (d / "registration.json").is_file(),
             "previews": sorted(str(p) for p in (d / "preview").glob("*.jpg")),
             "top_z": table.get("top_z"),
             "size": [table.get("length"), table.get("width")],
@@ -378,6 +381,77 @@ def write_spec(doc):
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps({k: v for k, v in spec.items() if v not in (None, "", [], {})}, ensure_ascii=False, indent=2)
     path.write_text(text + "\n", encoding="utf-8")
+
+
+def compact(value):
+    """Drop empty fields, recursively; what is left is what was entered."""
+    if isinstance(value, dict):
+        pairs = ((k, compact(v)) for k, v in value.items())
+        value = {k: v for k, v in pairs if v is not None and v is not False and v not in ("", [], {})}
+    return value
+
+
+def write_registration(doc):
+    """A registered scene as real2sim/scenes/<scene>/registration.json, next to its photos: the input for modeling it.
+
+    Tape measurements use the scene_spec.json format and keys (scripts/scenes/acceptance.py), entered in cm."""
+    path = build_asset.SCENES_DIR / doc["id"] / "registration.json"
+    if not doc.get("registered"):
+        return path.unlink(missing_ok=True)
+    r = doc.get("reg") or {}
+    day = r.get("measured_on") or time.strftime("%Y-%m-%d", time.localtime(doc["_at"]))
+    tape = {
+        key: {"value_m": round(float(r[cm]) / 100, 4), "tool": "卷尺", "date": day}
+        for key, cm in (
+            ("table_top_z", "top_z_cm"),
+            ("table_length", "length_cm"),
+            ("table_width", "width_cm"),
+            ("table_edge_from_robot_root", "edge_cm"),
+            ("table_centre_x_from_robot_root", "offset_cm"),
+        )
+        if isinstance(r.get(cm), int | float)
+    }
+    reg = {
+        "scene": doc["id"],
+        "name": r.get("name"),
+        "name_en": r.get("name_en"),
+        "scene_type": r.get("scene_type"),
+        "location": r.get("location"),
+        "purpose": r.get("purpose"),  # twin | train | holdout: real-robot twin, training variant, L4 held out
+        "measurements": tape,
+        "table": {
+            "thickness_cm": r.get("thickness_cm"),
+            "support": r.get("support"),
+            "surface": r.get("surface"),
+            "edge_shape": r.get("edge_shape"),
+        },
+        "robot": {"yaw_deg": r.get("robot_yaw_deg"), "lift": r.get("lift"), "camera_frames": r.get("robot_frames")},
+        "charuco": r.get("charuco")
+        and {
+            "square_mm": r.get("square_mm"),
+            "board_from_left_cm": r.get("board_left_cm"),
+            "board_from_front_cm": r.get("board_front_cm"),
+        },
+        "surroundings": {
+            "floor": r.get("floor"),
+            "walls": r.get("walls"),
+            "back_clearance_cm": r.get("back_cm"),
+            "fixtures": r.get("fixtures"),
+        },
+        "lighting": {
+            "sources": r.get("light_sources"),
+            "color_temp_k": r.get("color_temp_k"),
+            "lux": r.get("lux"),
+            "daylight": r.get("daylight"),
+        },
+        "tasks": r.get("tasks"),
+        "requirements": r.get("requirements"),
+        "notes": r.get("notes"),
+        "updated_by": doc.get("_by"),
+        "updated_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(doc["_at"])),
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(compact(reg), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def scan_episodes(roots):
@@ -577,9 +651,12 @@ class Handler(BaseHTTPRequestHandler):
         query = {k: v[0] for k, v in parse_qs(url.query).items()}
         oid, name = query.get("id", ""), Path(query.get("name", "")).name
         size, suffix = int(self.headers.get("Content-Length", 0)), Path(name).suffix.lower()
-        if not OBJECT_ID.fullmatch(oid) or suffix not in IMAGE_SUFFIXES or not 0 < size <= MAX_UPLOAD:
+        scene = query.get("kind") == "scene"
+        if not (SCENE_ID if scene else OBJECT_ID).fullmatch(oid):
             return self.send_error(400)
-        folder = OBJECTS_DIR / oid / "reference"
+        if suffix not in IMAGE_SUFFIXES or not 0 < size <= MAX_UPLOAD:
+            return self.send_error(400)
+        folder = (build_asset.SCENES_DIR if scene else OBJECTS_DIR) / oid / "reference"
         folder.mkdir(parents=True, exist_ok=True)
         stem = re.sub(r"[^\w.-]", "_", Path(name).stem)[:60] or "photo"
         path, n = folder / f"{stem}{suffix}", 1
@@ -595,9 +672,13 @@ class Handler(BaseHTTPRequestHandler):
         fields = self.body()
         if not kind or fields is None or (kind == "object" and not OBJECT_ID.fullmatch(id_)):
             return self.send_error(400)
+        if kind == "scene" and fields.get("registered") and not SCENE_ID.fullmatch(id_):
+            return self.send_error(400)
         doc = self.store.update(kind, id_, fields, by=self.user["name"])
         if kind == "object":
             write_spec(doc)
+        elif kind == "scene" and SCENE_ID.fullmatch(id_):
+            write_registration(doc)
         self.send_json(doc)
 
     def do_DELETE(self):
@@ -607,7 +688,8 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/photo":
             path = Path(parse_qs(url.query).get("path", [""])[0]).resolve()
             photo = path.parent.name == "reference" and path.suffix.lower() in IMAGE_SUFFIXES
-            if not (photo and path.is_file() and path.is_relative_to(OBJECTS_DIR.resolve())):
+            owners = (OBJECTS_DIR.resolve(), build_asset.SCENES_DIR.resolve())
+            if not (photo and path.is_file() and any(path.is_relative_to(d) for d in owners)):
                 return self.send_error(400)
             path.unlink()
             return self.send_json({"ok": True})
@@ -617,6 +699,8 @@ class Handler(BaseHTTPRequestHandler):
         self.store.delete(kind, id_)
         if kind == "object" and OBJECT_ID.fullmatch(id_):
             (OBJECTS_DIR / id_ / "spec.json").unlink(missing_ok=True)
+        elif kind == "scene" and SCENE_ID.fullmatch(id_):
+            (build_asset.SCENES_DIR / id_ / "registration.json").unlink(missing_ok=True)
         self.send_json({"ok": True})
 
     def target(self):
