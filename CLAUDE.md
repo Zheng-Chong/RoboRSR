@@ -125,6 +125,10 @@ New code imports from `env.*`.
 - Inventory: `bash scripts/robodojo.sh tasks` or `python scripts/internal/task_inventory.py --format json --check`.
 - `task/RoboDojo/demos/` (e.g. `dlc`) is outside the benchmark inventory scan.
 
+## Object Assets (Real2Sim twins)
+
+To build or rebuild an object from a Real2Sim platform registration (`real2sim/objects/<id>/spec.json` + `reference/` photos), follow `scripts/objects/SKILL.md`. It covers which layer each file belongs to (registration, generator script, `Assets/`, server isolated dir, shared asset library), generator conventions, validation, and bookkeeping.
+
 ## Naming
 
 - **Config / scripts**: lowercase `snake_case` — `env_cfg/`, `utils/`, `scripts/`

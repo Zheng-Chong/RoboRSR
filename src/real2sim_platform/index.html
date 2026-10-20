@@ -773,7 +773,7 @@ function modelingBrief(d) {  // the task for a coding agent that builds this twi
   const a = d.auto, dir = `real2sim/objects/${d.id}`, photos = (a.photos || []).map(base);
   const fact = (k, v) => (v === undefined || v === null || v === '' ? null : `- ${k}：${v}`);
   return [
-    `为 RoboDojo 建一个实物孪生仿真资产 ${d.id}（${objName(d)}）。`,
+    `为 RoboDojo 建一个实物孪生仿真资产 ${d.id}（${objName(d)}），按仓库里 scripts/objects/SKILL.md 的流程做（各层放什么、生成脚本约定、服务器验证、登记）。`,
     '',
     `输入：${dir}/spec.json（平台登记信息）和 ${dir}/reference/ 下的 ${photos.length} 张实拍照片${photos.length ? `（${photos.join('、')}）` : ''}。这些文件在平台所在机器的 ${INFO.root}/${dir}/，本机没有就先把这个目录同步过来。`,
     '',
@@ -783,12 +783,11 @@ function modelingBrief(d) {  // the task for a coding agent that builds this twi
     d.dimensions ? `- 实测尺寸（mm）：${d.dimensions}` : '- 实测尺寸：未填，按照片估计，并在交付说明里标出是估计值',
     fact('外观与结构', d.features), fact('建模要求', d.requirements), fact('备注', d.notes),
     '',
-    '交付：',
-    `1. ${a.generator ? `在现有生成脚本 ${a.generator} 上修改` : `新建生成脚本 scripts/objects/make_${d.id.split('/')[1]}.py（写法参照 make_plastic_cups.py、make_water_cup.py）`}，输出到 Assets/Object/RoboDojo/${d.id}/：object.usdz、metadata.json、description.json。`,
-    '2. metadata.json：physics 写 mass（kg，用实测质量）、size，以及 static_friction / dynamic_friction（运行时只读这两个键，只写 friction 不生效）；另写顶层 measurements_mm，按上面每个实测尺寸的名称写模型的实际值（从生成的网格量），平台按名称自动核对。',
-    '3. 每个实测尺寸误差 < max(2 mm, 2%)；碰撞体用分片凸包，每个凸包 ≤ 64 个顶点、单个面 ≤ 32 个顶点（PhysX GPU 限制，超出就不能和颗粒碰撞）；容器保留空腔，开口不能被碰撞体封住。',
-    `4. 验证：PYTHONPATH=. python scripts/objects/check_object.py Assets/Object/RoboDojo/${d.id} --image-dir real2sim/objects（落地静置检查，渲染图写到 ${dir}/preview/），把渲染图和实拍照片对比外观。`,
-    '5. 在 real2sim/ASSETS.md 登记这个物体（尺寸、质量的匹配程度和依据）。',
+    '验收：',
+    `1. ${a.generator ? `在现有生成脚本 ${a.generator} 上修改` : `新建生成脚本 scripts/objects/make_${d.id.split('/')[1]}.py`}，资产生成到 Assets/Object/RoboDojo/${d.id}/（object.usdz、metadata.json、description.json），生成结果不入库。`,
+    '2. metadata.json 顶层 measurements_mm 的键和上面实测尺寸的名称一字不差，值从生成的网格量；每项误差 < max(2 mm, 2%)，质量用实测值。平台按名称自动核对。',
+    `3. check_object.py 落地检查通过，渲染图写到 ${dir}/preview/，和实拍照片对比过外观。`,
+    `4. 提交生成脚本、${dir}/ 下的 spec.json 和照片、real2sim/ASSETS.md；装进服务器共享资产库前先征得同意。`,
   ].filter((line) => line !== null).join('\n');
 }
 function drawerObject(d) {
