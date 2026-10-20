@@ -302,6 +302,14 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
 .wz-foot { position: sticky; bottom: -48px; z-index: 1; display: flex; align-items: center; gap: 12px; margin: 24px -22px -48px; padding: 14px 22px; border-top: 1px solid var(--border); background: rgba(255, 255, 255, .94); backdrop-filter: blur(6px); }
 .wz-foot .field-error { flex: 1; min-width: 0; text-align: center; }
 .wz-foot .btn { min-height: 40px; padding: 0 16px; }
+.nt-role, .nt-level { margin-top: 10px; padding: 14px; border: 1px dashed var(--border-strong); border-radius: var(--radius); }
+.nt-role:first-child, .nt-level:first-child { margin-top: 0; }
+.nt-level > .toggle { display: inline-block; margin-bottom: 10px; }
+.pair { display: flex; gap: 8px; }
+.pair input { flex: 1; min-width: 0; }
+.fld .chips:not(:empty) { margin-bottom: 6px; }
+.tag-x { display: inline-grid; place-items: center; margin-left: 4px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; opacity: .6; }
+.tag-x:hover { opacity: 1; }
 
 /* drawer */
 #scrim { position: fixed; inset: 0; z-index: 20; background: rgba(15, 23, 42, .38); opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -590,7 +598,8 @@ const experts = (eps) => eps.filter((e) => e.auto.policy === 'scripted_demo');
 const rate = (eps) => (eps.length ? eps.filter((e) => e.auto.success).length / eps.length : null);
 const qualified = (eps) => eps.filter((e) => e.qa === 'pass' && e.auto.success);
 const TASK_STAGES = [
-  ['config', '任务配置', (d) => (d.auto.runnable ? ok(`step_lim ${d.auto.step_lim ?? '继承'}`) : bad('缺配置或导出类'))],
+  ['config', '任务配置', (d) => (d.auto.runnable ? ok(`step_lim ${d.auto.step_lim ?? '继承'}`)
+    : !d.auto.module ? todo('已登记，交给 coding agent 按实现任务实现') : bad('缺配置或导出类'))],
   ['layout', '评测布局', (d) => (sum(Object.values(d.auto.layouts || {}))
     ? ok(Object.entries(d.auto.layouts).map(([c, n]) => `${c} ${n}`).join('，')) : todo('资产库里没有布局（scripts/g1d/build_asset.py）'))],
   ['expert', '专家可行性 ≥ 80%', (d) => {
@@ -598,7 +607,7 @@ const TASK_STAGES = [
     return !e.length ? todo('还没有 scripted_demo 回合') : (rate(e) >= 0.8 ? ok : bad)(`${pct(rate(e))}（${e.length} 回合）`);
   }],
   ['collect', '合格回合', (d) => {
-    const eps = EP_BY_TASK[d.id] || [], q = qualified(eps).length, target = d.target || 500;
+    const eps = EP_BY_TASK[d.id] || [], q = qualified(eps).length, target = d.target || d.reg?.target || 500;
     return (q >= target ? ok : todo)(`质检通过且成功 ${q}/${target}（已采 ${eps.length}）`);
   }],
   ['qa', '质检', (d) => {
@@ -1163,14 +1172,15 @@ function viewTasks() {
   const q = UI.taskQ.toLowerCase();
   const docs = live(S.task).filter((t) => (UI.taskDim === 'all' || t.auto.dimension === UI.taskDim) && (!q || t.id.toLowerCase().includes(q)))
     .sort((x, y) => x.id.localeCompare(y.id));
-  return `<div class="page">${pageHead('任务采集', '任务来自 task/RoboDojo（与 robodojo.sh tasks 一致）；合格回合 = 质检通过且仿真成功')}${assetsWarning()}
+  return `<div class="page">${pageHead('任务采集', '任务来自 task/RoboDojo（与 robodojo.sh tasks 一致）和平台登记；合格回合 = 质检通过且仿真成功',
+    `<button class="btn btn-primary" type="button" onclick="openNewTask(this)">${ic('plus')}登记任务</button>`)}${assetsWarning()}
   <div class="toolbar filters">${searchBox('task-q', UI.taskQ, 'UI.taskQ', '搜索任务')}
     <select aria-label="能力维度" onchange="UI.taskDim = this.value; render()">${opts({...DIMS, all: '全部维度'}, UI.taskDim)}</select><span class="muted small">${docs.length} 个任务</span></div>
   ${docs.length ? `<div class="table-wrap"><table><thead><tr><th>任务</th><th>评测布局</th><th class="num">回合</th><th class="num">仿真成功率</th><th class="num">专家成功率</th><th style="min-width:150px">合格回合</th><th style="min-width:170px">流程</th></tr></thead><tbody>
   ${docs.map((d) => {
-    const eps = EP_BY_TASK[d.id] || [], e = experts(eps), q2 = qualified(eps).length, target = d.target || 500, layouts = Object.entries(d.auto.layouts || {});
+    const eps = EP_BY_TASK[d.id] || [], e = experts(eps), q2 = qualified(eps).length, target = d.target || d.reg?.target || 500, layouts = Object.entries(d.auto.layouts || {});
     return `<tr data-open="task" data-id="${esc(d.id)}" tabindex="0" class="${UI.drawer?.id === d.id ? 'sel' : ''}">
-      <td><div class="t-main mono">${esc(d.id)}</div><div class="t-sub">${esc(DIMS[d.auto.dimension] || d.auto.dimension || '—')} · step_lim ${d.auto.step_lim ?? '继承'}${d.owner ? ` · ${esc(d.owner)}` : ''}</div></td>
+      <td><div class="t-main mono">${esc(d.id)}${d.registered ? ` <span class="tag">${d.auto.module ? '已登记' : '待实现'}</span>` : ''}</div><div class="t-sub">${d.reg?.name ? `${esc(d.reg.name)} · ` : ''}${esc(DIMS[d.auto.dimension] || d.auto.dimension || '—')} · step_lim ${d.auto.step_lim ?? '继承'}${d.owner || d.reg?.owner ? ` · ${esc(d.owner || d.reg.owner)}` : ''}</div></td>
       <td><div class="chips">${layouts.map(([c, n]) => `<span class="tag">${esc(c)} ${n}</span>`).join('') || '<span class="muted small">—</span>'}</div></td>
       <td class="num">${eps.length}</td><td class="num">${pct(rate(eps))}</td><td class="num ${e.length && rate(e) < 0.8 ? 'txt-bad' : ''}">${e.length ? pct(rate(e)) : '—'}</td>
       <td><div class="progress-row"><div class="bar" style="flex:1"><i class="ok" style="width:${Math.min(100, (q2 / target) * 100)}%"></i></div><span class="small mono">${q2}/${target}</span></div></td>
@@ -1187,13 +1197,16 @@ function drawerTask(d) {
     : [`bash scripts/robodojo.sh eval --policy-dir XPolicyLab/policy/<POLICY> --task ${d.id} --ckpt <CKPT> --policy-env <ENV> --eval-num 1`];
   const objects = Object.entries(a.objects || {});
   return {
-    title: d.id, sub: `${DIMS[a.dimension] || a.dimension} · ${a.module} · ${a.config}`,
-    body: `${sec('流程', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
+    title: d.reg?.name ? `${d.reg.name} · ${d.id}` : d.id,
+    sub: a.module ? `${DIMS[a.dimension] || a.dimension} · ${a.module} · ${a.config}` : `平台登记，还没实现 · real2sim/tasks/${d.id}/registration.json`,
+    actions: d.registered ? `<button class="btn" type="button" data-id="${esc(d.id)}" onclick="unregisterTask(this.dataset.id)">${ic('trash')}删除登记</button>` : '',
+    body: `${d.registered ? taskRegSection(d) : ''}${sec('流程', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
     ${sec('采集计划', `<div class="form">${row('负责人', 'owner', inp(d, 'owner'))}
       ${row('合格回合目标', 'target', inp(d, 'target', 'number', 'min="0" placeholder="500"'))}${row('备注', 'notes', area(d, 'notes'))}</div>`)}
     ${sec('分级泛化评测集', `<p class="hint" style="margin:0 0 10px">每一级只改变一个因素，其余与 L0 相同；布局预先生成为固定 JSON，并先用 scripted_demo 过滤，L0–L3 专家成功率目标 ≥ 80%。</p>
       <div class="table-wrap"><table class="plain"><thead><tr><th>级别</th><th>变化因素与范围</th><th class="num">目标</th><th>已生成</th></tr></thead><tbody>
-      ${LEVELS.map(([k, name, range, target]) => `<tr><td class="nowrap"><b class="mono">${k}</b> ${name}</td><td class="small">${range}</td><td class="num">${target}</td>
+      ${LEVELS.filter(([k]) => !d.reg?.levels || d.reg.levels[k]).map(([k, name, range, target]) => `<tr><td class="nowrap"><b class="mono">${k}</b> ${name}</td>
+        <td class="small">${d.reg?.levels ? esc(d.reg.levels[k].range) : range}</td><td class="num">${d.reg?.levels?.[k]?.target ?? target}</td>
         <td style="width:110px">${inp(d, `levels.${k}`, 'number', `min="0" style="width:90px" aria-label="${k} 已生成布局数"`)}</td></tr>`).join('')}</tbody></table></div>`)}
     ${sec('物体与标签', objects.length ? `<div class="chips">${objects.map(([oid, labels]) => `<a class="tag" href="#objects" data-go="object" data-id="${esc(oid)}">${esc(oid)}${labels.length ? ` · ${esc(labels.join(', '))}` : ''}</a>`).join('')}</div>`
       : '<div class="small muted">只解析 G1-D 自建任务用到的物体</div>')}
@@ -1208,6 +1221,235 @@ function drawerTask(d) {
       }).join('')}</tbody></table></div>` : '<div class="small muted">还没有回合</div>')}
     ${sec(`${ic('terminal')}采集命令`, code(cmds.join('\n')))}`,
   };
+}
+const TASK_WIZ = [
+  ['任务定义', '新建一个 G1-D 任务，或给已有任务登记泛化方案。指令和成功判据要写清楚：判据会变成 run_reward 里的检查。'],
+  ['物体与干扰物', '每个角色是任务里的一类物体（对应任务配置的 label），从物体资产里选它可用的物体；干扰物另选。位置留空由 coding agent 按可达范围定。'],
+  ['可用场景', '训练场景用于采集数据；L4 保留场景只在评测时出现，不进训练。'],
+  ['泛化等级', '每一级只改变一个因素，其余与 L0 相同。范围和目标布局数都可以改，也可以补充其他泛化维度。'],
+];
+const HANDS = {'': '未定', left: '左手', right: '右手', either: '任一手（随布局）', both: '双手'};
+const SCENE_USES = {'': '不用', train: '训练', holdout: 'L4 保留'};
+const EXTRA_PRESETS = ['桌高 ±5 cm', '机器人站位 ±3 cm', '物体初始姿态（倒放 / 侧放）', '语言指令改写', '控制延迟 / 动作噪声'];
+let NT = null;  // the task wizard's lists: {roles: [{label, candidates, count, xmin, xmax, ymin, ymax, yaw}], dis, holdout}
+const newRole = (label = '', candidates = []) => ({label, candidates, count: 1, xmin: null, xmax: null, ymin: null, ymax: null, yaw: null});
+const ntList = (key) => (key === 'dis' ? NT.dis.candidates : key === 'hold' ? NT.holdout : NT.roles[Number(key.slice(1))].candidates);
+const objLabel = (oid) => { const o = S.object.find((x) => x.id === oid); return o ? `${objName(o)} · ${oid}` : oid; };
+const objPicker = (key, ph = '输入物体 id 或名称，选中后加入') => `<div class="chips" id="nt-chips-${key}">${ntChips(key)}</div>
+  <input list="dl-task-objs" placeholder="${ph}" autocomplete="off" aria-label="添加物体" onchange="pickObj('${key}', this)">`;
+const ntChips = (key) => ntList(key).map((oid, i) => `<span class="tag">${esc(objLabel(oid))}<button type="button" class="tag-x" aria-label="移除 ${esc(oid)}" onclick="unpickObj('${key}', ${i})">${ic('close', 'ic-sm')}</button></span>`).join('');
+function pickObj(key, el) {
+  const v = el.value.trim(), o = S.object.find((x) => x.id === v) || S.object.find((x) => objName(x) === v);
+  if (!o) { if (v) toast(`没有物体 ${v}；先在「物体资产」登记`, true); return; }
+  const list = ntList(key);
+  if (!list.includes(o.id)) list.push(o.id);
+  el.value = '';
+  $(`#nt-chips-${key}`).innerHTML = ntChips(key);
+}
+function unpickObj(key, i) { ntList(key).splice(i, 1); $(`#nt-chips-${key}`).innerHTML = ntChips(key); }
+const ntNum = (v) => (v === '' ? null : Number(v));
+function renderRoles() {
+  const n = (i, k, ph, step = '0.01') => `<input type="number" step="${step}" value="${NT.roles[i][k] ?? ''}" placeholder="${ph}" aria-label="${ph}" oninput="NT.roles[${i}].${k} = ntNum(this.value)">`;
+  $('#nt-roles').innerHTML = NT.roles.map((r, i) => `<div class="nt-role"><div class="wz-grid">
+    ${wzFld(`nt-role-${i}`, `角色 ${i + 1}`, `<input id="nt-role-${i}" class="mono" value="${esc(r.label)}" placeholder="source_cup" autocomplete="off" oninput="NT.roles[${i}].label = this.value.trim()">`, {req: true, hint: '任务配置的 label，字母数字下划线'})}
+    ${wzFld(`nt-count-${i}`, '每回合数量', `<input id="nt-count-${i}" type="number" min="1" step="1" value="${r.count}" oninput="NT.roles[${i}].count = ntNum(this.value)">`)}
+    <div class="fld wide"><label>候选物体<em aria-hidden="true">*</em></label>${objPicker(`r${i}`)}<small>每回合从中选；评测保留的实例在第 4 步 L3 里选，不要放这里</small></div>
+    <div class="fld"><label>x 范围（m）</label><div class="pair">${n(i, 'xmin', '最小')}${n(i, 'xmax', '最大')}</div></div>
+    <div class="fld"><label>y 范围（m）</label><div class="pair">${n(i, 'ymin', '最小')}${n(i, 'ymax', '最大')}</div></div>
+    <div class="fld"><label>朝向随机 ±°</label>${n(i, 'yaw', '0 为固定', '1')}</div>
+    <div class="fld" style="justify-content:flex-end">${NT.roles.length > 1 ? `<button class="btn" type="button" onclick="NT.roles.splice(${i}, 1); renderRoles()">${ic('trash')}删除角色</button>` : ''}</div></div></div>`).join('');
+}
+function drawerNewTask() {
+  const fld = wzFld, group = wzGroup, pane = (n, body) => wzPane(TASK_WIZ, n, body);
+  const text = (id, ph = '', attrs = '') => `<input id="${id}" placeholder="${esc(ph)}" autocomplete="off" ${attrs}>`;
+  const note = (id, ph, rows = 2) => `<textarea id="${id}" rows="${rows}" placeholder="${esc(ph)}"></textarea>`;
+  const existing = live(S.task).filter((t) => t.auto.dimension === 'custom' && t.auto.module && !t.registered).map((t) => t.id).sort();
+  const scenes = live(S.scene);
+  return {
+    title: '登记任务', sub: '登记后生成给 coding agent 的实现任务；实现后同步，流程自动推进',
+    body: `<datalist id="dl-task-objs">${live(S.object).map((o) => `<option value="${esc(o.id)}" label="${esc(objName(o))}">`).join('')}</datalist>${wzNav(TASK_WIZ)}
+    ${pane(0, `${group('任务', `<div class="wz-grid">
+      ${fld('nt-mode', '登记方式', `<select id="nt-mode" onchange="taskModeChanged()">${opts({new: '新建任务', existing: '给已有任务登记泛化方案'}, 'new')}</select>`)}
+      ${fld('nt-existing', '已有任务', `<select id="nt-existing" onchange="taskModeChanged()" disabled>${opts({'': '选择任务', ...Object.fromEntries(existing.map((t) => [t, t]))}, '')}</select>`, {hint: '只列出还没登记过的 G1-D 任务'})}
+      ${fld('nt-name', '中文名称', text('nt-name', '量杯对倒红豆'), {req: true})}
+      ${fld('nt-name-en', '英文名称', text('nt-name-en', 'Pour Beans Measuring Cups', 'oninput="suggestTaskId()"'), {req: true})}
+      ${fld('nt-slug', '任务名后缀', text('nt-slug', 'pour_beans_measuring_cups', 'class="mono" autocapitalize="off" spellcheck="false" oninput="this.dataset.edited = 1; suggestTaskId()"'), {hint: '小写字母、数字、下划线'})}
+      <div class="fld"><label>任务 ID</label><code id="nt-id" class="wz-id">填写英文名称后生成</code></div>
+      ${fld('nt-instruction', '语言指令', note('nt-instruction', 'Pour all red beans from the tall measuring cup into the short measuring cup.'), {wide: true, req: true, hint: '评测时原样发给策略，用英文'})}
+      ${fld('nt-success', '成功判据', note('nt-success', '最后 1 秒内所有豆子都在矮杯杯腔内，两只杯子倾角 < 30°'), {wide: true, req: true, hint: '可量化的条件，会写进 run_reward'})}
+      ${fld('nt-hand', '用手', `<select id="nt-hand">${opts(HANDS, '')}</select>`)}
+      ${fld('nt-horizon', '预计时长', wzUnit('nt-horizon', 's', 'step="1"'), {hint: '30 Hz，step_lim 按它留余量'})}
+      ${fld('nt-target', '合格回合目标', '<input id="nt-target" type="number" min="0" step="10" value="500">')}
+      ${fld('nt-owner', '负责人', text('nt-owner', ME?.name || ''))}</div>`)}`)}
+    ${pane(1, `${group('物体角色', `<div id="nt-roles"></div>
+      <button class="btn" type="button" style="margin-top:10px" onclick="NT.roles.push(newRole()); renderRoles()">${ic('plus')}添加角色</button>`)}
+    ${group('干扰物 <span class="opt">可选</span>', `<div class="wz-grid">
+      <div class="fld"><label>每回合数量</label><div class="pair"><input id="nt-dis-min" type="number" min="0" step="1" placeholder="最少" aria-label="干扰物最少"><input id="nt-dis-max" type="number" min="0" step="1" placeholder="最多" aria-label="干扰物最多"></div></div>
+      <div class="fld"><label>来源</label><label class="check"><input id="nt-dis-lib" type="checkbox">也从 Clutter 杂物库随机取</label></div>
+      <div class="fld wide"><label>指定干扰物</label>${objPicker('dis')}</div></div>`)}`)}
+    ${pane(2, group('场景', scenes.length ? `<div class="table-wrap"><table class="plain"><thead><tr><th>场景</th><th>env 配置</th><th style="width:130px">用途</th></tr></thead><tbody>
+      ${scenes.map((s) => `<tr><td><b>${esc(sceneName(s))}</b><div class="t-sub mono">${esc(s.id)}</div></td>
+        <td class="small mono">${esc((s.auto.configs || []).join('、') || '还没建模')}</td>
+        <td><select data-scene-use="${esc(s.id)}" aria-label="${esc(s.id)} 用途">${opts(SCENE_USES, '')}</select></td></tr>`).join('')}</tbody></table></div>
+      <small class="muted">还没建模的场景也能选，coding agent 会在场景建好后再生成它的布局。</small>` : empty('scan', '还没有场景', '先在「场景重建」登记')))}
+    ${pane(3, `${group('等级', LEVELS.map(([k, name, range, target]) => `<div class="nt-level">
+      <label class="toggle"><input type="checkbox" data-level="${k}" ${k === 'L0' ? 'checked' : ''}><span>${ic('check')}<b class="mono">${k}</b> ${name}</span></label>
+      <div class="wz-grid"><div class="fld wide"><label for="nt-range-${k}">变化因素与范围</label><textarea id="nt-range-${k}" rows="2">${esc(range)}</textarea></div>
+      <div class="fld"><label for="nt-ltarget-${k}">目标布局数</label><input id="nt-ltarget-${k}" type="number" min="0" step="5" value="${target}"></div></div>
+      ${k === 'L3' ? `<div class="fld" style="margin-top:10px"><label>保留实例（不进训练）</label>${objPicker('hold', '没见过的尺寸、颜色、材质的物体')}</div>` : ''}</div>`).join(''))}
+    ${group('其他泛化 <span class="opt">可选</span>', `<textarea id="nt-extra" rows="3" placeholder="上面五级没覆盖的维度和范围"></textarea>
+      <div class="presets">${EXTRA_PRESETS.map((t) => `<button type="button" onclick="addExtra(this)">${ic('plus', 'ic-sm')}${esc(t)}</button>`).join('')}</div>`)}
+    ${group('实现要求', `<div class="wz-grid">
+      ${fld('nt-expert', '脚本专家思路', note('nt-expert', '如：左手侧抓高杯杯身，抬起后移到矮杯上方倾倒，右手扶住矮杯'), {wide: true})}
+      ${fld('nt-req', '其他要求', note('nt-req', ''), {wide: true})}
+      ${fld('nt-notes', '备注', note('nt-notes', ''), {wide: true})}</div>`)}`)}
+    ${wzFoot('createTask', '登记并生成实现任务')}`,
+  };
+}
+function openNewTask(btn) {
+  NT = {roles: [newRole()], dis: {candidates: []}, holdout: []};
+  WZ = {steps: TASK_WIZ, check: taskWizError};
+  WIZ_AT = 0;
+  openDrawer('new-task', 'new', btn);
+  renderRoles();
+  wizGo(0);
+}
+const taskId = () => ($('#nt-mode').value === 'existing' ? $('#nt-existing').value : `g1d_${$('#nt-slug').value.trim()}`);
+function suggestTaskId() {
+  const slug = $('#nt-slug');
+  if (!slug.dataset.edited) slug.value = $('#nt-name-en').value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  $('#nt-id').textContent = taskId().replace(/^g1d_$/, '') || '填写英文名称后生成';
+}
+function taskModeChanged() {
+  const existing = $('#nt-mode').value === 'existing', t = S.task.find((x) => x.id === $('#nt-existing').value);
+  $('#nt-existing').disabled = !existing;
+  $('#nt-slug').disabled = existing;
+  if (existing && t) {  // start from the task config's objects, grouped by label
+    const byLabel = {};
+    Object.entries(t.auto.objects || {}).forEach(([oid, labels]) => labels.forEach((l) => (byLabel[l] ||= []).push(oid)));
+    NT.roles = Object.keys(byLabel).length ? Object.entries(byLabel).map(([l, oids]) => newRole(l, oids)) : [newRole()];
+    if (!$('#nt-name-en').value) $('#nt-name-en').value = t.id.replace(/^g1d_/, '').replace(/_/g, ' ');
+    renderRoles();
+  }
+  $('#nt-id').textContent = existing ? (t?.id || '选择任务') : (taskId().replace(/^g1d_$/, '') || '填写英文名称后生成');
+}
+function addExtra(btn) { const el = $('#nt-extra'), t = btn.textContent.trim(); el.value = el.value.trim() ? `${el.value.trim()}；${t}` : t; el.focus(); }
+function taskWizError() {  // [message, field selector] blocking the current step, or ['']
+  if (WIZ_AT === 0) {
+    const existing = $('#nt-mode').value === 'existing', slug = $('#nt-slug').value.trim();
+    if (existing && !$('#nt-existing').value) return ['选择要登记的已有任务', '#nt-existing'];
+    if (!$('#nt-name').value.trim()) return ['填写中文名称', '#nt-name'];
+    if (!$('#nt-name-en').value.trim()) return ['填写英文名称', '#nt-name-en'];
+    if (!existing && !/^[a-z0-9_]+$/.test(slug)) return ['任务名后缀只能含小写字母、数字和下划线', '#nt-slug'];
+    if (!existing && S.task.some((t) => t.id === taskId())) return [`已有任务 ${taskId()}；要给它登记泛化方案，登记方式选「已有任务」`, '#nt-slug'];
+    if (!$('#nt-instruction').value.trim()) return ['填写语言指令', '#nt-instruction'];
+    if (!$('#nt-success').value.trim()) return ['写下成功判据，否则无法实现 run_reward', '#nt-success'];
+  }
+  if (WIZ_AT === 1) {
+    const labels = NT.roles.map((r) => r.label);
+    const i = NT.roles.findIndex((r) => !/^\w+$/.test(r.label) || labels.indexOf(r.label) !== labels.lastIndexOf(r.label));
+    if (i >= 0) return ['每个角色要有唯一的 label（字母、数字、下划线）', `#nt-role-${i}`];
+    const j = NT.roles.findIndex((r) => !r.candidates.length);
+    if (j >= 0) return [`角色 ${NT.roles[j].label} 还没选候选物体`, `#nt-chips-r${j} + input`];
+    const k = NT.roles.findIndex((r) => !(r.count >= 1));
+    if (k >= 0) return ['每回合数量至少为 1', `#nt-count-${k}`];
+    const lo = ntNum($('#nt-dis-min').value), hi = ntNum($('#nt-dis-max').value);
+    if (lo != null && hi != null && lo > hi) return ['干扰物最少数量不能大于最多数量', '#nt-dis-min'];
+  }
+  if (WIZ_AT === 2 && ![...$$('[data-scene-use]')].some((s) => s.value === 'train')) return ['至少选一个训练场景', '[data-scene-use]'];
+  if (WIZ_AT === 3) {
+    const levels = [...$$('[data-level]:checked')].map((c) => c.dataset.level);
+    if (!levels.length) return ['至少选一个泛化等级', '[data-level]'];
+    if (levels.includes('L4') && ![...$$('[data-scene-use]')].some((s) => s.value === 'holdout')) return ['选了 L4，要在第 3 步把至少一个场景设为「L4 保留」', '[data-level="L4"]'];
+  }
+  return [''];
+}
+async function createTask(btn) {
+  const err = $('#no-err'), id = taskId(), value = (sel) => $(sel).value.trim();
+  const [blocked, field] = taskWizError();  // the last step is not checked by wizGo
+  if (blocked) { err.textContent = blocked; $(field)?.focus(); return; }
+  const range = (lo, hi) => (lo != null && hi != null ? [lo, hi] : null);
+  const lo = ntNum($('#nt-dis-min').value), hi = ntNum($('#nt-dis-max').value);
+  const reg = {
+    existing: $('#nt-mode').value === 'existing', name: value('#nt-name'), name_en: value('#nt-name-en'), instruction: value('#nt-instruction'),
+    success: value('#nt-success'), hand: value('#nt-hand'), horizon_s: ntNum($('#nt-horizon').value), target: ntNum($('#nt-target').value), owner: value('#nt-owner'),
+    roles: NT.roles.map((r) => ({label: r.label, candidates: r.candidates, count: r.count, xlim: range(r.xmin, r.xmax), ylim: range(r.ymin, r.ymax), yaw_deg: r.yaw})),
+    distractors: {count: lo == null && hi == null ? null : [lo ?? 0, hi ?? lo], candidates: NT.dis.candidates, clutter_library: $('#nt-dis-lib').checked},
+    scenes: Object.fromEntries([...$$('[data-scene-use]')].filter((s) => s.value).map((s) => [s.dataset.sceneUse, s.value])),
+    levels: Object.fromEntries([...$$('[data-level]:checked')].map((c) => [c.dataset.level, {target: ntNum($(`#nt-ltarget-${c.dataset.level}`).value), range: value(`#nt-range-${c.dataset.level}`)}])),
+    holdout_objects: NT.holdout, extra: value('#nt-extra'), expert: value('#nt-expert'), requirements: value('#nt-req'), notes: value('#nt-notes'),
+  };
+  btn.disabled = true;
+  btn.lastChild.textContent = '登记中…';
+  try {
+    await api(`/api/items?kind=task&id=${encodeURIComponent(id)}`, {method: 'PUT', body: JSON.stringify({registered: true, reg})});
+    await sync(true);
+    openDrawer('task', id);
+    toast(`已登记 ${id}；实现任务在抽屉顶部`);
+  } catch (e) {
+    err.textContent = `登记失败：${e.message}`;
+    btn.disabled = false;
+    btn.lastChild.textContent = '重试登记';
+  }
+}
+function taskBrief(d) {  // the task for a coding agent that implements this registration; skipped fields are left out
+  const r = d.reg || {}, dir = `real2sim/tasks/${d.id}`, fact = (k, v) => (v === undefined || v === null || v === '' ? null : `- ${k}：${v}`);
+  const lim = (v) => (v ? `[${v.join(', ')}]` : null);
+  const sceneLine = (use) => live(S.scene).filter((s) => r.scenes?.[s.id] === use)
+    .map((s) => `${s.id}（${(s.auto.configs || []).join('、') || '还没建模'}）`).join('、');
+  const roles = (r.roles || []).map((x) => `  - ${x.label} × ${x.count}：${x.candidates.join('、')}${[lim(x.xlim) && `x ${lim(x.xlim)}`, lim(x.ylim) && `y ${lim(x.ylim)}`,
+    x.yaw_deg ? `朝向 ±${x.yaw_deg}°` : null].filter(Boolean).map((t, i) => (i ? '，' : '；') + t).join('')}`);
+  const dis = r.distractors || {}, levels = Object.entries(r.levels || {});
+  return [
+    r.existing
+      ? `为已有的 G1-D 任务 ${d.id}（${r.name}）按平台登记的方案补齐泛化评测布局和采集设置，按仓库 CLAUDE.md 的任务约定和 scripts/datagen/SKILL.md 做。先 git fetch，从最新的 origin/main 开独立 worktree 和短分支。`
+      : `为 RoboDojo 实现一个新的 G1-D 任务 ${d.id}（${r.name}），按仓库 CLAUDE.md 的任务约定（任务文件结构、YAML 配置、PR 检查表）和 scripts/datagen/SKILL.md 做。先 git fetch，从最新的 origin/main 开独立 worktree 和短分支。`,
+    '',
+    `输入：${dir}/registration.json（平台登记信息），在平台所在机器的 ${INFO.root}/${dir}/，本机没有就先同步过来。`,
+    '',
+    '登记信息：',
+    fact('名称', [r.name, r.name_en].filter(Boolean).join('，')), fact('语言指令', r.instruction), fact('成功判据', r.success),
+    fact('用手', HANDS[r.hand || ''] === '未定' ? '' : HANDS[r.hand]), fact('预计时长', r.horizon_s ? `${r.horizon_s} s` : ''), fact('合格回合目标', r.target),
+    '- 物体角色（桌面坐标，m）：', ...roles,
+    dis.count || dis.candidates?.length || dis.clutter_library ? `- 干扰物：每回合 ${dis.count ? dis.count.join('–') : '若干'} 个${dis.candidates?.length ? `，从 ${dis.candidates.join('、')} 中取` : ''}${dis.clutter_library ? '，也从 Clutter 杂物库随机取' : ''}` : '- 干扰物：无',
+    fact('训练场景', sceneLine('train')), fact('L4 保留场景', sceneLine('holdout')),
+    '- 泛化等级：', ...levels.map(([k, v]) => `  - ${k}（目标 ${v.target ?? '—'} 个布局）：${v.range}`),
+    fact('L3 保留实例', (r.holdout_objects || []).join('、')), fact('其他泛化', r.extra),
+    fact('脚本专家思路', r.expert), fact('其他要求', r.requirements), fact('备注', r.notes),
+    '',
+    '验收：',
+    r.existing
+      ? `1. 配置和任务代码沿用 task/RoboDojo/config/${d.id}.yml、task/RoboDojo/tasks/${d.id}.py；物体角色和登记不一致时，先对齐 YAML 的 label 和代码，再改候选物体。`
+      : `1. 新建 task/RoboDojo/config/${d.id}.yml 和 task/RoboDojo/tasks/${d.id}.py（导出类名与模块名一致，继承 TaskEnv）。Rigid 每个角色一组：category 列候选物体，select_mode.label 用角色名，和代码里的 label 一字不差；干扰物用 Clutter。run_reward 用 self.reward_manager.check 按上面的成功判据实现，不能恒为真；step_lim 按预计时长 × 30 Hz 留余量。`,
+    '2. 候选物体、干扰物和保留实例必须已在共享资产库；缺的先按 scripts/objects/SKILL.md 建（平台登记的在 real2sim/objects/）。保留实例不进训练布局。',
+    `3. 在 scripts/g1d/scripted_demo.py 加（或沿用）这个任务的脚本专家，在 scripts/g1d/build_asset.py 里为每个训练场景的 env 配置生成布局；选中的每个泛化等级按上面的范围生成一套固定布局，先用 scripted_demo 过滤，L0–L3 专家成功率 ≥ 80%。L4 只用保留场景；还没建模的场景等它建好再生成。`,
+    '4. 在 5090-2 的隔离目录（/data/robodojo-runs/）每个训练场景跑一次 scripted_demo seed 0：_result.json 的 eval_time ≥ 1、三路相机视频齐全；通过后再按 scripts/datagen/SKILL.md 批量采集。',
+    `5. 跑 python scripts/internal/task_inventory.py --format json --check 和 bash scripts/check.sh；提交配置、任务代码、专家、build_asset.py 改动和 ${dir}/registration.json。改共享资产库前先征得同意。`,
+  ].filter((line) => line !== null).join('\n');
+}
+function taskRegSection(d) {
+  const r = d.reg || {}, t = (f, label) => row(label, `reg.${f}`, area(d, `reg.${f}`));
+  const scenes = (use) => live(S.scene).filter((s) => r.scenes?.[s.id] === use).map((s) => link('scene', s.id, sceneName(s))).join('、') || '—';
+  const levels = Object.entries(r.levels || {});
+  return `${sec(`${ic('terminal')}${r.existing ? '泛化方案' : '实现任务'}（给 coding agent）`, `<p class="hint" style="margin:0 0 8px">登记信息已写入
+      <a target="_blank" rel="noopener" href="${file(`${INFO.root}/real2sim/tasks/${d.id}/registration.json`)}">real2sim/tasks/${esc(d.id)}/registration.json</a>。把下面这段交给 coding agent；实现后同步，流程自动推进。</p>${code(taskBrief(d))}`)}
+    ${sec('登记的方案', `<dl class="kv"><dt>物体角色</dt><dd>${(r.roles || []).map((x) => `<div><b class="mono">${esc(x.label)}</b> × ${x.count}：${x.candidates.map((o) => link('object', o, objLabel(o))).join('、')}</div>`).join('') || '—'}</dd>
+      <dt>干扰物</dt><dd>${r.distractors?.count ? `${r.distractors.count.join('–')} 个` : '—'}${(r.distractors?.candidates || []).length ? `：${r.distractors.candidates.map((o) => link('object', o, objLabel(o))).join('、')}` : ''}${r.distractors?.clutter_library ? '（含 Clutter 库）' : ''}</dd>
+      <dt>训练场景</dt><dd>${scenes('train')}</dd><dt>L4 保留场景</dt><dd>${scenes('holdout')}</dd>
+      <dt>泛化等级</dt><dd>${levels.map(([k, v]) => `<div><b class="mono">${k}</b> · 目标 ${v.target ?? '—'}：<span class="small">${esc(v.range)}</span></div>`).join('') || '—'}</dd>
+      <dt>L3 保留实例</dt><dd>${(r.holdout_objects || []).map((o) => link('object', o, objLabel(o))).join('、') || '—'}</dd></dl>
+      <p class="hint">物体、场景和等级要改就删除登记后重新登记；下面的文字字段可以直接改，改动会写回 registration.json。</p>
+      <div class="form">${t('instruction', '语言指令')}${t('success', '成功判据')}${t('extra', '其他泛化')}${t('expert', '脚本专家思路')}${t('requirements', '其他要求')}${t('notes', '备注')}</div>`)}`;
+}
+async function unregisterTask(id) {
+  const d = S.task.find((x) => x.id === id);
+  if (!confirm(`删除 ${id} 的平台登记？${d?.auto.module ? '任务本身和采集记录保留。' : ''}`)) return;
+  if (!d?.auto.module) {
+    await api(`/api/items?kind=task&id=${encodeURIComponent(id)}`, {method: 'DELETE'});
+    await sync(true);
+    closeDrawer();
+  } else await save('task', id, {registered: false, reg: null});
+  toast('已删除登记');
 }
 
 // ---------- QA ----------
@@ -1796,10 +2038,10 @@ function renderDrawer() {
   $('#scrim').classList.toggle('on', Boolean(x));
   if (!x) { dr.classList.remove('on'); dr.dataset.k = ''; return; }
   const key = `${x.kind}|${x.id}`;
-  const wizard = x.kind === 'new-object' || x.kind === 'new-scene';
+  const wizard = x.kind.startsWith('new-');
   if ((wizard || x.kind === 'account') && dr.dataset.k === key) return;  // keep typed input
   const d = S[x.kind]?.find((y) => y.id === x.id);
-  const view = x.kind === 'new-object' ? drawerNewObject() : x.kind === 'new-scene' ? drawerNewScene() : x.kind === 'account' ? drawerAccount()
+  const view = x.kind === 'new-object' ? drawerNewObject() : x.kind === 'new-scene' ? drawerNewScene() : x.kind === 'new-task' ? drawerNewTask() : x.kind === 'account' ? drawerAccount()
     : d ? {scene: drawerScene, object: drawerObject, task: drawerTask}[x.kind](d) : {title: '记录不存在', body: ''};
   const scroll = dr.dataset.k === key ? $('#drawer .dr-b')?.scrollTop : 0;
   dr.innerHTML = `<div class="dr-h"><div style="min-width:0;flex:1"><h2 id="drawer-title">${esc(view.title)}</h2>${view.sub ? `<p>${esc(view.sub)}</p>` : ''}</div>

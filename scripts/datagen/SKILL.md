@@ -11,6 +11,7 @@ description: 在 RoboDojo 里用脚本专家批量生成 G1-D 仿真示教数据
 
 | 层 | 位置 | 入库 |
 | :-- | :-- | :-- |
+| 任务登记 | `real2sim/tasks/<任务>/registration.json`：数采平台「登记任务」写的指令、成功判据、物体角色和候选物体、干扰物、训练 / L4 保留场景、泛化等级和范围；任务抽屉里有给 coding agent 的实现任务文本 | 是 |
 | 流水线代码、任务插件 | `scripts/datagen/`、`scripts/datagen/plugins/<任务>.py`；专家动作在 `scripts/g1d/scripted_demo.py` | 是 |
 | 数据集登记 | `scripts/datagen/registry.json` | 是 |
 | 候选布局、训练分片 | GPU 服务器运行目录的 `Assets/Eval_Layout/RoboDojo/<配置>/<seed>/` | 否 |
