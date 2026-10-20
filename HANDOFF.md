@@ -22,7 +22,7 @@
 - 探测（运行目录 `5090-2:/data/robodojo-runs/office-beans-random-20261019`，`output/office_beans/exp{1,2,3}`，汇总脚本在本机 `.agent/remote-runs/office-beans-random/`）：exp1 中心位置极端偏航——接杯手多向内 25° 以上碰倒杯子、向外 44° 抓不起，右手倒常剩/撒 1–5 颗；exp2 修复后全随机偏航 18/24（左 11/12，右 7/12，无翻杯、无残留）；exp3 大范围 64 回合 26/64，失败主要是杯离机器人太远（y > −0.29）、矮杯太靠外（|x| > 0.19）时掉杯，或高杯太近（y < −0.46）够不到；选定范围内 16/23。
 - 正式批次（代码 `a1b6db5`，运行目录内关键文件哈希与提交一致）：400 个布局（左右手各 200），8 GPU，176 回合合格 104（左 53 / 右 51），8 进程退出码 0；协调脚本按手计数，左右各取最早 50 条硬链接到 `collection_v3/selected/` 再导出。数据集 `5090-2:/data/robodojo-runs/office-beans-random-20261019/output/office_beans/collection_v3/lerobot`（517 MB，LeRobot v3.0，100 条 / 39827 帧 / 约 22.1 min）。
 - 验证：导出器回读 100 / 39827；原始审计每条末 30 帧重算，67200 颗全转移、残留 0、散落 0；左 50 / 右 50；四个位置坐标 20 分箱全覆盖、两杯偏航（模 90°）18 档全覆盖；末 1 s 最大杯倾角 29.88°（阈值 30°）；LeRobot 官方读取器 600 张首末帧、时间戳通过。随附 `layout_coverage.png`、`initial_layouts.csv`、`final_validation.json`、`sha256.json`。本机样例在 `output/office_beans_random/`（不入库）。
-- 未做：尚未上传 ModelScope（待用户确认）。旧量杯批次的 `final-audit-office-beans.py` 仍在等待，未处理。
+- ModelScope：用户确认后上传为单独的私有数据集 `ChongZheng/g1d_office_pour_beans_random_hand_yaw_100`（与上一批分开）。沿用服务器 `ms-venv` 与已保存登录，`ms_upload.py` / `ms_verify.py` 改为由 `MS_DATA`、`MS_NAME`、`MS_MESSAGE` 指定目录与仓库（默认仍为上一批）。核对：远端 17 个数据文件路径、大小、SHA-256 全部一致；`private=True`，未登录访问 404；SDK 默认许可证 Apache-2.0；上传缓存已删除。旧量杯批次的 `final-audit-office-beans.py` 仍在等待，未处理。
 
 ### 已完成：新量杯重采 100 条办公室全量倒豆 LeRobot 数据（2026-10-19）
 
