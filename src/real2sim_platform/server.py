@@ -353,6 +353,7 @@ def write_spec(doc):
     spec = {
         "id": doc["id"],
         "name": doc.get("name") or doc["auto"].get("name"),
+        "name_en": doc.get("name_en"),
         "tasks": doc["auto"].get("tasks"),  # from the task configs
         "material": doc.get("material"),
         "color": doc.get("color"),
@@ -362,6 +363,8 @@ def write_spec(doc):
         "features": doc.get("features"),
         "requirements": doc.get("requirements"),
         "notes": doc.get("notes"),
+        # variants to build next to the twin: {"count", "color"/"material"/"size"/"shape": may vary, "requirements"}
+        "generalization": {k: v for k, v in (doc.get("gen") or {}).items() if v not in (None, "", False, 0)},
         "updated_by": doc.get("_by"),
         "updated_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(doc["_at"])),
     }

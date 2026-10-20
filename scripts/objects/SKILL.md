@@ -58,7 +58,7 @@ rsync -az --exclude preview/ <部署机>:<仓库>/real2sim/objects/<id>/ real2si
 
 | 字段 | 含义 |
 | :-- | :-- |
-| `id`、`name` | 资产 id、名称 |
+| `id`、`name`、`name_en` | 资产 id、中文名、英文名 |
 | `tasks` | 任务配置里已经用到这件物体的任务；没有就是新物体 |
 | `material`、`color` | 材质、颜色（自由文本） |
 | `mass_g` | 实测质量，g |
@@ -67,6 +67,7 @@ rsync -az --exclude preview/ <部署机>:<仓库>/real2sim/objects/<id>/ real2si
 | `features` | 外观与结构（透明度、把手、刻度、纹理、壁厚等） |
 | `requirements` | 建模要求（如中空能装豆子、把手可抓、刻度不用建模） |
 | `notes` | 备注，常有补充的实测值 |
+| `generalization` | 要另建的泛化变体：`count` 数量，`color`/`material`/`size`/`shape` 为 true 的属性可以变（其余与本体一致），`requirements` 泛化要求；变体放同类别后续空号，不实测，在 `ASSETS.md` 标为泛化变体 |
 | `updated_by`、`updated_at` | 最后修改人和时间，写进脚本 docstring 作为测量来源 |
 
 - 没有 `spec.json`：物体还没登记成实物孪生。让用户先在平台登记，不要自己编测量值。
