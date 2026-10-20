@@ -54,6 +54,9 @@ OBJECTS_DIR = ROOT / "real2sim" / "objects"  # <id>/reference/: real-object phot
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 SERVED_SUFFIXES = IMAGE_SUFFIXES | {".mp4", ".webm", ".md", ".json"}
 MAX_UPLOAD = 25 << 20
+# images and videos: fresh for a minute, then shown from cache at once while the ETag is rechecked in the background,
+# so a re-rendered preview appears on the next visit; private, because they are only served to signed-in users
+FILE_CACHE = "private, max-age=60, stale-while-revalidate=604800"
 USERNAME = re.compile(r"[\w.-]{1,32}")
 PBKDF2_ROUNDS = 200_000
 COOKIE, SESSION_DAYS = "r2s_session", 14
@@ -433,21 +436,25 @@ class Handler(BaseHTTPRequestHandler):
     store, scan_args, roots, info = None, (), [], {}
     failures = {}  # username -> recent failed login times
     PUBLIC = {"/", "/api/login"}  # the page itself carries no data; it shows the sign-in form until /api/me answers
+    protocol_version = "HTTP/1.1"  # keep-alive: a page of images or a video reuses connections through the tunnel
+    timeout = 60  # idle keep-alive connections end after a minute
 
     def parse_request(self):
         if not super().parse_request():
             return False
+        # a rejected request's body is never read, so these replies close the connection
         # some browsers reload "/#scenes" as "/%23scenes": send them back to the page with the tab in the fragment
         if tab := re.fullmatch(r"/#([\w-]*)", unquote(urlparse(self.path).path)):
             self.send_response(302)
             self.send_header("Location", f"/#{tab[1]}")
             self.send_header("Content-Length", "0")
+            self.send_header("Connection", "close")
             self.end_headers()
             return False
         self.user = self.store.session_user(self.cookie())
         if self.user or urlparse(self.path).path in self.PUBLIC:
             return True
-        self.send_json({"error": "请先登录"}, 401)
+        self.send_json({"error": "请先登录"}, 401, close=True)
         return False
 
     def cookie(self):
@@ -519,7 +526,7 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         query = {k: v[0] for k, v in parse_qs(url.query).items()}
         if url.path == "/":
-            self.send_file(HERE / "index.html")
+            self.send_file(HERE / "index.html", cache="no-cache")  # revalidated every load, so a deploy shows at once
         elif url.path == "/api/me":
             self.send_json(self.user)
         elif url.path == "/api/users":
@@ -609,7 +616,7 @@ class Handler(BaseHTTPRequestHandler):
             return query["kind"], query["id"]
         return None, None
 
-    def send_json(self, obj, status=200, cookie=None):
+    def send_json(self, obj, status=200, cookie=None, close=False):
         body = json.dumps(obj, ensure_ascii=False).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -617,12 +624,21 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         if cookie:  # no Secure flag: the platform is served over plain HTTP
             self.send_header("Set-Cookie", f"{cookie}; Path=/; HttpOnly; SameSite=Lax")
+        if close:
+            self.send_header("Connection", "close")
         self.end_headers()
         self.wfile.write(body)
 
-    def send_file(self, path):
-        """Serve a file with HTTP Range support, which <video> needs for seeking."""
-        size = path.stat().st_size
+    def send_file(self, path, cache=FILE_CACHE):
+        """Serve a file with HTTP Range support, which <video> needs for seeking, and an ETag to revalidate caches."""
+        st = path.stat()
+        size, etag = st.st_size, f'"{st.st_mtime_ns:x}-{st.st_size:x}"'
+        if etag in [tag.strip() for tag in self.headers.get("If-None-Match", "").split(",")]:
+            self.send_response(304)
+            self.send_header("ETag", etag)
+            self.send_header("Cache-Control", cache)
+            self.end_headers()
+            return
         start, end = 0, size - 1
         m = re.fullmatch(r"bytes=(\d*)-(\d*)", self.headers.get("Range", ""))
         if m and (m[1] or m[2]):
@@ -631,6 +647,7 @@ class Handler(BaseHTTPRequestHandler):
             if start > end:
                 self.send_response(416)
                 self.send_header("Content-Range", f"bytes */{size}")
+                self.send_header("Content-Length", "0")
                 self.end_headers()
                 return
             self.send_response(206)
@@ -641,6 +658,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", kind or "application/octet-stream")
         self.send_header("Content-Length", str(end - start + 1))
         self.send_header("Accept-Ranges", "bytes")
+        self.send_header("ETag", etag)
+        self.send_header("Last-Modified", self.date_time_string(st.st_mtime))
+        self.send_header("Cache-Control", cache)
         self.end_headers()
         try:
             with path.open("rb") as f:
@@ -650,7 +670,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.wfile.write(chunk)
                     left -= len(chunk)
         except (BrokenPipeError, ConnectionResetError):
-            pass  # the browser dropped a video range request while seeking
+            self.close_connection = True  # the browser dropped a video range request while seeking
 
 
 def manage_users(parser, store, args):

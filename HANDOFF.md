@@ -177,7 +177,7 @@
 ## 最近历史
 
 - 2026-10-20：新增物体建模 skill `scripts/objects/SKILL.md`（按平台登记建实物孪生刚体资产：各层放什么、生成脚本和 `metadata.json`/`measurements_mm` 约定、`5090-2` 隔离目录验证、登记与提交），`CLAUDE.md`、README 和平台「建模任务」文本指向它。用只读子 agent 按它规划重建 `plastic_mug/00000` 做了两轮演练，按发现的问题修正（现有 `metadata()` 还不写 `measurements_mm`、外径要排除把手、一个脚本生成整族物体、老脚本参数是类别目录等）；里面的服务器说明并入了另一会话「服务器切到 5090-2」对这份文件的改动。没有在 GPU 上按它实际建过物体。
-
+- 2026-10-20：数采平台图片和视频可以被浏览器缓存了（用户反馈每次打开都要重新加载，很慢）。原因：`/file` 不带 `Cache-Control`、`ETag`、`Last-Modified`，浏览器每次都整张重下；经隧道实测约 400 KB/s，物体页 63 张渲染图约 9.8 MB。现在 `/file` 带 `ETag`（mtime + 大小）和 `Last-Modified`，`Cache-Control: private, max-age=60, stale-while-revalidate=604800`，`If-None-Match` 命中回 304；页面本身 `no-cache`，部署后立即生效。服务端改为 HTTP/1.1 长连接（空闲 60 s 断开；在读请求体之前就拒绝的回复带 `Connection: close`，416 带 `Content-Length: 0`，视频拖动断开时关连接）。验证：`test_server.py`（新增 ETag/304、页面 no-cache、同一连接连续 416/200/304、未登录上传关连接）、ruff 0.11.7；浏览器里第二次打开物体页，68 个文件全部来自缓存，传输 0 字节（第一次 9.8 MB）。未做：缩略图（服务器系统 Python 没有 Pillow，标准库解不了图片），首次打开仍要下原图。
 - 2026-10-20：接入学校实验室绿幕桌（`real_scene4` / `g1d_school`）和纸杯、纸盘资产，来自同事的 MuJoCo 孪生（PR #2）。
 - 2026-10-20：采集、评估流水线规范化合并进 `main`（PR #1）：数据契约、通用采集流水线、场景工具、Agent 文档和 CI。
 - 2026-10-20：随机朝向那批 100 条数据私有上传 ModelScope（`4562fb4`）。
