@@ -488,16 +488,23 @@ const STATE_IC = {ok: 'check', bad: 'x', todo: 'circle', na: 'minus'};
 const evalStages = (stages, d) => stages.map(([k, label, fn]) => ({k, label, ...fn(d)}));
 const allOk = (stages, d) => evalStages(stages, d).every((r) => r.s === 'ok' || r.s === 'na');
 
+const MIN_SCENE_PHOTOS = 5;
+const sceneTopZ = (d) => (num(d.measured_top_z) ? Number(d.measured_top_z) : num(d.reg?.top_z_cm) ? d.reg.top_z_cm / 100 : null);
 const SCENE_STAGES = [
-  ['photos', '照片采集', (d) => (d.auto.photos?.length ? ok(`${d.auto.photos.length} 张参考照片`) : todo('reference/ 下没有照片'))],
+  ['photos', `照片 ≥ ${MIN_SCENE_PHOTOS} 张`, (d) => {
+    const n = d.auto.photos?.length || 0;
+    return n >= MIN_SCENE_PHOTOS ? ok(`${n} 张参考照片`) : todo(`reference/ 下 ${n} 张，至少 ${MIN_SCENE_PHOTOS} 张不同角度`);
+  }],
   ['fit', '相机拟合', (d) => (!d.auto.fit_views ? todo('没有 fit_photo.json 或 cameras_scene.json')
     : ok(d.auto.fit_max_px == null ? `${d.auto.fit_views} 个 SfM 相机` : `${d.auto.fit_views} 个视角，最大残差 ${d.auto.fit_max_px} px`))],
   ['build', 'USD 构建', (d) => (d.auto.built ? ok(d.auto.rooms.join('、')) : todo('缺 usd/scene.usda 或 Room 入口'))],
   ['check', '离线检查', (d) => (!d.auto.checks_total ? todo('没有 check_report.json')
     : d.auto.checks_failed.length ? bad(`${d.auto.checks_failed.length}/${d.auto.checks_total} 项未通过`) : ok(`${d.auto.checks_total} 项全部通过`))],
   ['measure', '尺寸实测 < 1 cm', (d) => {
-    if (!num(d.measured_top_z)) return todo('卷尺实测桌高、桌沿相对机器人的位置');
-    const dz = Math.abs(d.measured_top_z - d.auto.top_z) * 100;
+    const top = sceneTopZ(d);
+    if (top == null) return todo('卷尺实测桌高、桌沿相对机器人的位置');
+    if (!num(d.auto.top_z)) return todo(`实测桌高 ${top} m，模型还没建`);
+    const dz = Math.abs(top - d.auto.top_z) * 100;
     const edge = num(d.edge_err_cm) ? Math.abs(d.edge_err_cm) : null;
     const text = `桌高差 ${dz.toFixed(1)} cm，${edge == null ? '桌沿未实测' : `桌沿差 ${edge} cm`}`;
     if (dz >= 1 || edge >= 1) return bad(text);
@@ -748,28 +755,121 @@ function viewOverview() {
 }
 
 // ---------- scenes ----------
-const sceneDims = (a) => (num(a.top_z) ? `桌面 ${a.size.map((v) => v ?? '?').join(' × ')} m · 高 ${a.top_z} m` : '没有 build_params.json');
+const sceneDims = (d) => {
+  const a = d.auto, r = d.reg || {};
+  if (num(a.top_z)) return `桌面 ${a.size.map((v) => v ?? '?').join(' × ')} m · 高 ${a.top_z} m`;
+  return num(r.top_z_cm) ? `实测桌面 ${r.length_cm ?? '?'} × ${r.width_cm ?? '?'} cm · 高 ${r.top_z_cm} cm · 还没建模` : '没有 build_params.json';
+};
+const sceneName = (d) => d.reg?.name || d.id;
+const SCENE_WIZ = [
+  ['名称与照片', `围着桌子拍至少 ${MIN_SCENE_PHOTOS} 张不同角度的照片，定好场景目录名。`],
+  ['桌面与站位', '卷尺量到 0.5 cm。桌面三项必填，是建模的尺度依据；机器人站位在机器人停在工作位置时量。'],
+  ['环境与灯光', '记下要建模的周围环境和灯光，用于渲染外观对齐；不知道的留空。'],
+];
+const SCENE_TYPES = ['办公桌', '吧台 / 高台面', '实验台', '厨房台面', '课桌', '餐桌'];
+const PURPOSES = {twin: '真机孪生（L0，对应真机评测）', train: '训练用泛化场景', holdout: 'L4 保留场景（不进训练）'};
+const SUPPORTS = ['四条腿', '四条腿 + 横档 / 抽屉', '柜体，下方封闭', '靠墙固定台面', '框架 / 工作站'];
+const DAYLIGHT = {'': '未记录', none: '没有窗户', blocked: '有窗，已遮挡', yes: '有自然光，随时段变化'};
+const SCENE_PHOTO_HINT = '正前方（机器人站位）、左前、右前、左侧、右侧、斜上俯视；每张都拍到整个桌面和四条边，不变焦、关自动微距、分辨率一致；有 ChArUco 标定板就平放在桌上一起拍';
+const sceneDatalists = () => `<datalist id="dl-scene-types">${SCENE_TYPES.map((t) => `<option value="${esc(t)}">`).join('')}</datalist>
+  <datalist id="dl-supports">${SUPPORTS.map((t) => `<option value="${esc(t)}">`).join('')}</datalist>`;
+const g1dTasks = () => live(S.task).filter((t) => t.auto.dimension === 'custom').map((t) => t.id).sort();
 function viewScenes() {
   const cardsHtml = S.scene.map((d) => {
     const a = d.auto, rs = evalStages(SCENE_STAGES, d), cover = (a.previews || []).find((p) => /compar/.test(p)) || a.previews?.[0] || a.photos?.[0];
     return `<article class="card mcard" data-open="scene" data-id="${esc(d.id)}" tabindex="0" role="button" aria-label="打开场景 ${esc(d.id)}">
       <div class="media r169">${cover ? `<img loading="lazy" decoding="async" src="${file(cover)}" alt="">` : ic('image', 'ic-lg')}
         <div class="pills">${(a.configs || []).map((c) => `<span class="pill">${esc(c)}</span>`).join('')}</div></div>
-      <div class="mcard-b"><div class="mcard-t"><b class="mono">${esc(d.id)}</b>${missingBadge(d)}</div>
-        <div class="small muted">${esc(sceneDims(a))} · 照片 ${a.photos?.length || 0} · 预览 ${a.previews?.length || 0}</div>${progress(rs)}${stageChips(rs)}</div></article>`;
+      <div class="mcard-b"><div class="mcard-t"><b>${esc(sceneName(d))}</b>${d.registered ? '<span class="tag">已登记</span>' : ''}${missingBadge(d)}</div>
+        ${d.reg?.name ? `<div class="small muted mono" style="margin-top:-4px">${esc(d.id)}</div>` : ''}
+        <div class="small muted">${esc(sceneDims(d))} · 照片 ${a.photos?.length || 0} · 预览 ${a.previews?.length || 0}</div>${progress(rs)}${stageChips(rs)}</div></article>`;
   }).join('');
-  return `<div class="page">${pageHead('场景重建', `real2sim/scenes/ 下 ${S.scene.length} 个场景 · 目标 7 个（3 个孪生 + 2 个训练用泛化 + 2 个 L4 保留）`)}
-    ${S.scene.length ? `<div class="grid scene-grid">${cardsHtml}</div>` : `<div class="card">${empty('scan', '还没有场景', '在 real2sim/scenes/ 下建场景目录后点「同步项目数据」')}</div>`}</div>`;
+  return `<div class="page">${pageHead('场景重建', `real2sim/scenes/ 下 ${S.scene.length} 个场景 · 目标 7 个（3 个孪生 + 2 个训练用泛化 + 2 个 L4 保留）。新场景先登记：至少 ${MIN_SCENE_PHOTOS} 张照片加卷尺实测`,
+    `<button class="btn btn-primary" type="button" onclick="openNewScene(this)">${ic('plus')}登记场景</button>`)}
+    ${S.scene.length ? `<div class="grid scene-grid">${cardsHtml}</div>` : `<div class="card">${empty('scan', '还没有场景', '点「登记场景」新建，或在 real2sim/scenes/ 下建场景目录后点「同步项目数据」')}</div>`}</div>`;
+}
+const cmText = (v, suffix = ' cm') => (num(v) ? `${v}${suffix}` : null);
+function sceneBrief(d) {  // the task for a coding agent that builds this scene twin; skipped fields are left out
+  const r = d.reg || {}, a = d.auto, dir = `real2sim/scenes/${d.id}`, photos = (a.photos || []).map(base), slug = d.id.replace(/^real_scene\d+_/, '');
+  const fact = (k, ...parts) => (parts.some((p) => p !== null && p !== undefined && p !== '') ? `- ${k}：${parts.filter((p) => p !== null && p !== undefined && p !== '').join('，')}` : null);
+  return [
+    `为 RoboDojo 建一个真实工位的数字孪生场景 ${d.id}（${sceneName(d)}），按仓库里 real2sim/scenes/SKILL.md 的流程做（现场采集规范、建模、叠图检查、接入和登记）。先 git fetch，从最新的 origin/main 开独立 worktree 和短分支再读它：本地 main 可能落后。`,
+    '',
+    `输入：${dir}/registration.json（平台登记信息，卷尺实测已按 scene_spec.json 的格式写好）和 ${dir}/reference/ 下的 ${photos.length} 张照片${photos.length ? `（${photos.join('、')}）` : ''}。这些文件在平台所在机器的 ${INFO.root}/${dir}/，本机没有就先把这个目录同步过来。`,
+    '',
+    '登记信息：',
+    fact('名称', sceneName(d), r.name_en), fact('类型 / 地点', r.scene_type, r.location), fact('用途', PURPOSES[r.purpose]),
+    fact('桌面（卷尺）', cmText(r.top_z_cm) && `离地 ${r.top_z_cm} cm`, cmText(r.length_cm) && `长 ${r.length_cm} cm`, cmText(r.width_cm) && `宽 ${r.width_cm} cm`,
+      cmText(r.thickness_cm) && `厚 ${r.thickness_cm} cm`, r.measured_on && `${r.measured_on} 测`),
+    fact('桌子', r.support, r.surface, r.edge_shape && `桌沿 ${r.edge_shape}`),
+    num(r.edge_cm) || num(r.offset_cm) ? fact('机器人站位（卷尺）', cmText(r.edge_cm) && `桌沿到机器人根节点（两驱动轮轮心连线中点）${r.edge_cm} cm`,
+      cmText(r.offset_cm) && `桌面中线相对根节点横向 ${r.offset_cm} cm（右为正）`, cmText(r.robot_yaw_deg, '°') && `机器人相对桌沿偏 ${r.robot_yaw_deg}°`, r.lift && `升降柱 ${r.lift}`)
+      : '- 机器人站位：未实测，按照片和机器人可达范围（桌面物体放在 y≈[-0.55, -0.25]）估计，并在 scene_spec.json 的 scale_basis 里写明',
+    r.charuco ? fact('ChArUco 标定板', cmText(r.square_mm, ' mm') && `格子边长实测 ${r.square_mm} mm`, cmText(r.board_left_cm) && `左上外角距桌左沿 ${r.board_left_cm} cm`,
+      cmText(r.board_front_cm) && `距前沿 ${r.board_front_cm} cm`) : '- 照片里没有 ChArUco 标定板：尺度只能靠卷尺实测，在 scale_basis 里写明',
+    fact('周围环境', r.floor && `地面 ${r.floor}`, r.walls && `墙面 / 背景 ${r.walls}`, cmText(r.back_cm) && `桌后沿到墙 ${r.back_cm} cm`),
+    fact('要建模的固定物', r.fixtures),
+    fact('灯光', r.light_sources, cmText(r.color_temp_k, ' K'), cmText(r.lux, ' lux'), r.daylight && DAYLIGHT[r.daylight]),
+    fact('机器人相机画面', r.robot_frames ? '已用头部左眼和腕部相机拍了画面并记下关节角，可用于叠图' : null),
+    fact('计划任务', (r.tasks || []).join('、')), fact('建模要求', r.requirements), fact('备注', r.notes),
+    '',
+    '验收：',
+    `1. 从最接近的已有场景复制目录开始（real_scene3_lab 是照片拟合的最新写法），在 ${dir}/ 下写 fit_photo.py、build_scene.py、check_scene.py、preview.py 和 PLAN.md；${r.charuco ? '先用 scripts/scenes/charuco.py solve 求出每张照片的相机位姿，作为强先验。' : '没有标定板，相机位姿从照片里的桌角和桌沿拟合。'}`,
+    '2. 卷尺实测是硬约束：把 registration.json 的 measurements 原样抄进新建的 scene_spec.json，拟合时把桌高、长、宽固定成实测值；建好后 python scripts/scenes/acceptance.py 里每项误差 < 1 cm。',
+    '3. 灯光按登记的光源和色温建模，房间要有天花板；lighting.status 写 recorded（和头部相机画面比对过才算 matched）。碰撞体每个凸包 ≤ 64 个顶点、单面 ≤ 32 个顶点。',
+    `4. 在 scripts/g1d/build_asset.py 的 SCENES 里加一行，新增 env_cfg/g1d_${slug}.yml 和 env_cfg/robot/g1d_${slug}.yml；在 5090-2 的隔离目录跑 build_asset.py 和一次 scripted_demo，检查四路相机画面。和照片对比的渲染图放到 ${dir}/preview/（jpg），平台据此显示。装进共享资产库前先征得同意。`,
+    `5. 提交场景目录（含 registration.json、照片、scene_spec.json）、build_asset.py 和 env 配置，更新 real2sim/ASSETS.md 的场景行。`,
+  ].filter((line) => line !== null).join('\n');
+}
+function sceneRegForm(d) {  // the registration, editable after the wizard; each change rewrites registration.json
+  const r = (f, label, type = 'text', attrs = '', hint = '') => row(label, `reg.${f}`, inp(d, `reg.${f}`, type, attrs), hint);
+  const t = (f, label, hint = '') => row(label, `reg.${f}`, area(d, `reg.${f}`, hint ? `placeholder="${esc(hint)}"` : ''));
+  const cm = 'step="0.1" min="0"';
+  return `${sceneDatalists()}<div class="form">
+    ${r('name', '名称')}${r('name_en', '英文名')}${r('scene_type', '类型', 'text', 'list="dl-scene-types"')}${r('location', '地点')}
+    ${row('用途', 'reg.purpose', sel(d, 'reg.purpose', {'': '未定', ...PURPOSES}))}
+    ${r('top_z_cm', '桌面离地 (cm)', 'number', cm)}${r('length_cm', '桌面长 (cm)', 'number', cm)}${r('width_cm', '桌面宽 (cm)', 'number', cm)}
+    ${r('thickness_cm', '桌面厚度 (cm)', 'number', cm)}${r('measured_on', '测量日期', 'date')}
+    ${r('edge_cm', '桌沿到根节点 (cm)', 'number', cm, '两驱动轮轮心连线中点到桌沿的垂直距离')}
+    ${r('offset_cm', '横向偏移 (cm)', 'number', 'step="0.1"', '桌面中线相对根节点，桌面中心在机器人右侧为正')}
+    ${r('robot_yaw_deg', '机器人偏角 (°)', 'number', 'step="0.5"')}${r('lift', '升降柱读数')}
+    ${r('charuco', 'ChArUco 标定板', 'checkbox')}${r('square_mm', '格子边长 (mm)', 'number', 'step="0.01" min="0"')}
+    ${r('board_left_cm', '板距桌左沿 (cm)', 'number', cm)}${r('board_front_cm', '板距桌前沿 (cm)', 'number', cm)}
+    ${r('support', '桌子支撑', 'text', 'list="dl-supports"')}${t('surface', '桌面外观', '材质、颜色、纹理、反光')}${r('edge_shape', '桌沿形状')}
+    ${r('floor', '地面')}${r('walls', '墙面 / 背景')}${r('back_cm', '后沿到墙 (cm)', 'number', cm)}${t('fixtures', '固定物', '显示器、隔板、柜子、插线板等：位置和大致尺寸')}
+    ${t('light_sources', '光源', '类型、数量、相对桌子的位置')}${r('color_temp_k', '色温 (K)', 'number', 'step="100" min="0"')}${r('lux', '桌面照度 (lux)', 'number', 'step="10" min="0"')}
+    ${row('自然光', 'reg.daylight', sel(d, 'reg.daylight', DAYLIGHT))}${r('robot_frames', '机器人相机画面', 'checkbox', '', '头部左眼和腕部相机画面 + 关节角已拍')}
+    ${t('requirements', '建模要求')}${t('notes', '备注')}</div>
+    <p class="hint">计划任务：${esc((d.reg?.tasks || []).join('、') || '未选')}。照片在 ${esc(rel(d.auto.path))}/reference/，可在下方上传或删除。</p>`;
+}
+function scenePhotos(d) {
+  const photos = d.auto.photos || [], key = `scene-photos-${d.id}`;
+  GAL[key] = photos;
+  return `<div class="toolbar" style="margin-bottom:8px"><span class="small ${photos.length < MIN_SCENE_PHOTOS ? 'txt-bad' : 'muted'}">${photos.length} 张 / 至少 ${MIN_SCENE_PHOTOS} 张</span><span class="sp"></span>
+    <label class="btn upload" title="jpg / png / webp，单张 ≤ 25 MB">${ic('upload')}上传<input type="file" accept="image/jpeg,image/png,image/webp" multiple data-kind="scene" data-id="${esc(d.id)}" onchange="uploadPhotos(this)" aria-label="上传场景照片"></label></div>
+    <div class="strip">${photos.map((p, i) => `<div class="item"><button class="gthumb" type="button" data-lb="${esc(key)}" data-i="${i}" aria-label="查看 ${esc(base(p))}"><img loading="lazy" src="${file(p)}" alt=""></button>
+    <button class="del" type="button" data-path="${esc(p)}" onclick="deletePhoto(this.dataset.path)" aria-label="删除 ${esc(base(p))}">${ic('trash', 'ic-sm')}</button></div>`).join('')}</div>`;
 }
 function drawerScene(d) {
   const a = d.auto, dir = rel(a.path), rs = evalStages(SCENE_STAGES, d);
+  if (d.registered && !a.built) {
+    return {
+      title: sceneName(d), sub: `${dir} · ${sceneDims(d)}`,
+      actions: `<button class="btn" type="button" data-id="${esc(d.id)}" onclick="removeDoc('scene', this.dataset.id)">${ic('trash')}删除登记</button>`,
+      body: `${sec(`${ic('terminal')}建模任务（给 coding agent）`, `<p class="hint" style="margin:0 0 8px">登记信息已写入
+        <a target="_blank" rel="noopener" href="${file(`${a.path}/registration.json`)}">${esc(dir)}/registration.json</a>，和照片在同一目录。把下面这段交给 coding agent；建好后同步，验收进度自动更新。</p>${code(sceneBrief(d))}`)}
+      ${sec(`${ic('camera')}参考照片`, scenePhotos(d))}
+      ${sec('验收进度', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
+      ${sec('登记信息', sceneRegForm(d))}`,
+    };
+  }
   const steps = ['fit_photo.py', 'build_scene.py', 'check_scene.py', 'preview.py'].filter((s) => (a.scripts || []).includes(s));
   const cmd = `cd ${dir}\nuv run --no-project --python 3.11 --with usd-core --with trimesh --with numpy --with shapely \\\n`
     + '    --with opencv-python-headless --with scipy --with mapbox-earcut --with manifold3d \\\n'
     + `    sh -c "${steps.map((s) => `python ${s}`).join(' && ')}"\n\n`
     + '# 装入 Assets/Room/ 并为各场景配置生成 G1-D 布局（改共享库前先在隔离目录验证、征得同意并备份）\npython scripts/g1d/build_asset.py';
   return {
-    title: d.id, sub: `${dir} · ${sceneDims(a)} · env 配置 ${(a.configs || []).join('、') || '—'}`,
+    title: sceneName(d), sub: `${dir} · ${sceneDims(d)} · env 配置 ${(a.configs || []).join('、') || '—'}`,
     body: `${sec('验收进度', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
     ${a.checks_failed?.length ? `<div class="callout bad" style="margin-top:12px">${ic('alert')}<div><b>未通过的离线检查</b><br>${a.checks_failed.map(esc).join('<br>')}</div></div>` : ''}
     ${sec('验收录入', `<div class="form">
@@ -781,6 +881,7 @@ function drawerScene(d) {
       ${row('Isaac 渲染', 'isaac', inp(d, 'isaac', 'checkbox'), '与真机头部相机画面对比过')}
       ${row('共享资产库', 'shared', inp(d, 'shared', 'checkbox'), '已装入服务器共享 Assets/Room/')}
       ${row('备注', 'notes', area(d, 'notes'))}</div>`)}
+    ${d.registered ? sec('登记信息', sceneRegForm(d)) : ''}
     ${sec(`${ic('camera')}参考照片`, gallery(`scene-photos-${d.id}`, a.photos), ` <span class="muted small">${a.photos?.length || 0} 张</span>`)}
     ${sec(`${ic('image')}预览与对比`, gallery(`scene-previews-${d.id}`, a.previews), ` <span class="muted small">${a.previews?.length || 0} 张</span>`)}
     ${sec(`${ic('file')}文档`, `<div class="toolbar">${(a.docs || []).map((p) => `<a class="btn" target="_blank" rel="noopener" href="${file(p)}">${ic('file')}${esc(base(p))}</a>`).join('') || '<span class="small muted">无</span>'}</div>`)}
@@ -946,18 +1047,30 @@ const WIZ = [
   ['泛化', '在这个物体之外再建几个变体，用于训练多样性或保留评测。可以只给数量和要求，参数交给 coding agent 设计。'],
 ];
 const GEN_PRESETS = ['尺寸和形状不变，只换颜色', '颜色不变，整体尺寸缩放 ±20%', '换成不同材质（玻璃、陶瓷、不锈钢），外形不变', '参数由 coding agent 设计，彼此差异明显'];
+// registration wizards (objects, scenes): steps are [title, intro]; one wizard is open at a time
+const wzFld = (id, label, control, opts = {}) => `<div class="fld${opts.wide ? ' wide' : ''}"><label for="${id}">${label}${opts.req ? '<em aria-hidden="true">*</em>' : ''}</label>${control}${opts.hint ? `<small>${opts.hint}</small>` : ''}</div>`;
+const wzUnit = (id, u, attrs = '') => `<div class="unit"><input id="${id}" type="number" step="any" min="0" ${attrs}><span>${u}</span></div>`;
+const wzGroup = (title, body) => `<section class="wz-group"><h4>${title}</h4>${body}</section>`;
+const wzPane = (steps, n, body) => `<div class="wiz-pane" data-step="${n}"${n ? ' hidden' : ''}>
+    <header class="wz-head"><span>第 ${n + 1} 步 · 共 ${steps.length} 步</span><h3>${steps[n][0]}</h3><p>${steps[n][1]}</p></header>${body}</div>`;
+const wzNav = (steps) => `<nav aria-label="登记步骤"><ol class="wz-steps">${steps.map(([t], n) => `<li><button type="button" data-wiz="${n}" onclick="wizGo(${n})">
+      <span class="wz-dot"><span>${n + 1}</span>${ic('check')}</span><span class="wz-t">${t}</span></button></li>`).join('<li class="wz-line" aria-hidden="true"></li>')}</ol></nav>`;
+const wzFoot = (onDone, label) => `<div class="wz-foot"><button id="wiz-back" class="btn" type="button" onclick="wizGo(WIZ_AT - 1)">${ic('chev-l')}上一步</button>
+      <p id="no-err" class="field-error" role="alert"></p>
+      <button id="wiz-next" class="btn btn-primary" type="button" onclick="wizGo(WIZ_AT + 1)">下一步${ic('arrow-r')}</button>
+      <button id="wiz-done" class="btn btn-primary" type="button" onclick="${onDone}(this)">${ic('check')}${label}</button></div>`;
+const photoDrop = (hint) => `<label class="drop" ondragover="event.preventDefault(); this.classList.add('over')" ondragleave="this.classList.remove('over')"
+        ondrop="event.preventDefault(); this.classList.remove('over'); addPhotos(event.dataTransfer.files)">
+        <span class="drop-ic">${ic('camera')}</span><b>拖入照片，或点击选择</b><small>${hint}</small>
+        <input type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="addPhotos(this.files); this.value = ''" aria-label="选择实拍照片"></label>
+      <div id="no-previews" class="wz-thumbs"></div>`;
 function drawerNewObject() {
   const types = [...new Set(['Rigid', ...Object.keys(IDX).map((g) => g.split('/')[0])])];
-  const fld = (id, label, control, opts = {}) => `<div class="fld${opts.wide ? ' wide' : ''}"><label for="${id}">${label}${opts.req ? '<em aria-hidden="true">*</em>' : ''}</label>${control}${opts.hint ? `<small>${opts.hint}</small>` : ''}</div>`;
-  const unit = (id, u, attrs = '') => `<div class="unit"><input id="${id}" type="number" step="any" min="0" ${attrs}><span>${u}</span></div>`;
-  const pane = (n, body) => `<div class="wiz-pane" data-step="${n}"${n ? ' hidden' : ''}>
-    <header class="wz-head"><span>第 ${n + 1} 步 · 共 ${WIZ.length} 步</span><h3>${WIZ[n][0]}</h3><p>${WIZ[n][1]}</p></header>${body}</div>`;
-  const group = (title, body) => `<section class="wz-group"><h4>${title}</h4>${body}</section>`;
+  const fld = wzFld, unit = wzUnit, group = wzGroup, pane = (n, body) => wzPane(WIZ, n, body);
   return {
     title: '登记物体', sub: '登记后生成给 coding agent 的建模任务，建好的资产同步时自动关联',
     body: `${materialList()}<datalist id="dl-cats"></datalist>
-    <nav aria-label="登记步骤"><ol class="wz-steps">${WIZ.map(([t], n) => `<li><button type="button" data-wiz="${n}" onclick="wizGo(${n})">
-      <span class="wz-dot"><span>${n + 1}</span>${ic('check')}</span><span class="wz-t">${t}</span></button></li>`).join('<li class="wz-line" aria-hidden="true"></li>')}</ol></nav>
+    ${wzNav(WIZ)}
     ${pane(0, `${group('物体', `<div class="wz-grid">
       ${fld('no-name', '中文名称', '<input id="no-name" placeholder="500 ml 量杯" autocomplete="off">', {req: true})}
       ${fld('no-name-en', '英文名称', '<input id="no-name-en" placeholder="Measuring Cup" autocomplete="off" oninput="suggestCategory()">', {req: true})}
@@ -965,11 +1078,7 @@ function drawerNewObject() {
       ${fld('no-cat', '类别', '<input id="no-cat" class="mono" list="dl-cats" placeholder="measuring_cup" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="this.dataset.edited = 1; suggestIndex()">', {hint: '由英文名生成，可改成已有类别'})}
       ${fld('no-idx', '编号', '<input id="no-idx" class="mono" type="number" min="0" value="0" oninput="suggestIndex(false)">', {hint: '自动取下一个空号'})}
       <div class="fld"><label>资产 ID</label><code id="no-id" class="wz-id">填写英文名称后生成</code></div></div>`)}
-    ${group('多角度照片 <span class="opt">可选</span>', `<label class="drop" ondragover="event.preventDefault(); this.classList.add('over')" ondragleave="this.classList.remove('over')"
-        ondrop="event.preventDefault(); this.classList.remove('over'); addPhotos(event.dataTransfer.files)">
-        <span class="drop-ic">${ic('camera')}</span><b>拖入照片，或点击选择</b><small>正面、侧面、俯视、开口、底部各一张 · jpg / png / webp · 单张 ≤ 25 MB</small>
-        <input type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="addPhotos(this.files); this.value = ''" aria-label="选择实拍照片"></label>
-      <div id="no-previews" class="wz-thumbs"></div>`)}`)}
+    ${group('多角度照片 <span class="opt">可选</span>', photoDrop('正面、侧面、俯视、开口、底部各一张 · jpg / png / webp · 单张 ≤ 25 MB'))}`)}
     ${pane(1, `${group('物理量', `<div class="wz-grid">
       ${fld('no-mass', '质量', unit('no-mass', 'g'))}
       ${fld('no-friction', '静摩擦系数', '<input id="no-friction" type="number" step="0.01" min="0" placeholder="可不填">', {hint: '斜面滑动法'})}
@@ -987,10 +1096,65 @@ function drawerNewObject() {
     ${group('泛化要求', `<textarea id="no-gen-req" rows="3" placeholder="${GEN_HINT}" aria-label="泛化要求"></textarea>
       <div class="presets">${GEN_PRESETS.map((t) => `<button type="button" onclick="genPreset(this)">${ic('plus', 'ic-sm')}${esc(t)}</button>`).join('')}</div>
       <p class="hint">${GEN_NOTE}</p>`)}`)}
-    <div class="wz-foot"><button id="wiz-back" class="btn" type="button" onclick="wizGo(WIZ_AT - 1)">${ic('chev-l')}上一步</button>
-      <p id="no-err" class="field-error" role="alert"></p>
-      <button id="wiz-next" class="btn btn-primary" type="button" onclick="wizGo(WIZ_AT + 1)">下一步${ic('arrow-r')}</button>
-      <button id="wiz-done" class="btn btn-primary" type="button" onclick="createObject(this)">${ic('check')}登记并生成建模任务</button></div>`,
+    ${wzFoot('createObject', '登记并生成建模任务')}`,
+  };
+}
+function drawerNewScene() {
+  const fld = wzFld, unit = wzUnit, group = wzGroup, pane = (n, body) => wzPane(SCENE_WIZ, n, body);
+  const text = (id, ph = '', attrs = '') => `<input id="${id}" placeholder="${esc(ph)}" autocomplete="off" ${attrs}>`;
+  const note = (id, ph, rows = 2) => `<textarea id="${id}" rows="${rows}" placeholder="${esc(ph)}"></textarea>`;
+  const tasks = g1dTasks();
+  return {
+    title: '登记场景', sub: '登记后生成给 coding agent 的建模任务；建好的场景同步时自动关联',
+    body: `${sceneDatalists()}${wzNav(SCENE_WIZ)}
+    ${pane(0, `${group('场景', `<div class="wz-grid">
+      ${fld('ns-name', '中文名称', text('ns-name', '三楼厨房台面'), {req: true})}
+      ${fld('ns-name-en', '英文名称', text('ns-name-en', 'Kitchen Counter', 'oninput="suggestSceneSlug()"'), {req: true})}
+      ${fld('ns-slug', '目录名后缀', text('ns-slug', 'kitchen', 'class="mono" autocapitalize="off" spellcheck="false" oninput="this.dataset.edited = 1; suggestSceneId()"'), {hint: '小写字母、数字、下划线；也用作 env 配置名 g1d_&lt;后缀&gt;'})}
+      <div class="fld"><label>场景目录</label><code id="ns-id" class="wz-id">填写英文名称后生成</code></div>
+      ${fld('ns-type', '类型', text('ns-type', '厨房台面', 'list="dl-scene-types"'))}
+      ${fld('ns-location', '地点', text('ns-location', '楼栋、房间号'))}
+      ${fld('ns-purpose', '用途', `<select id="ns-purpose">${opts({'': '未定', ...PURPOSES}, 'twin')}</select>`, {wide: true, hint: '月度目标 7 个场景：3 个孪生 + 2 个训练用泛化 + 2 个 L4 保留'})}</div>`)}
+    ${group(`多角度照片 <span class="opt">至少 ${MIN_SCENE_PHOTOS} 张</span>`, `${photoDrop(`${SCENE_PHOTO_HINT} · jpg / png / webp · 单张 ≤ 25 MB`)}
+      <p id="ns-photo-count" class="small txt-bad" style="margin:10px 0 0">已选 0 张 / 至少 ${MIN_SCENE_PHOTOS} 张</p>`)}`)}
+    ${pane(1, `${group('桌面（卷尺）', `<div class="wz-grid">
+      ${fld('ns-top', '桌面离地高度', unit('ns-top', 'cm', 'step="0.1"'), {req: true})}
+      ${fld('ns-thick', '桌面厚度', unit('ns-thick', 'cm', 'step="0.1"'))}
+      ${fld('ns-len', '桌面长（左右方向）', unit('ns-len', 'cm', 'step="0.1"'), {req: true})}
+      ${fld('ns-wid', '桌面宽（前后方向）', unit('ns-wid', 'cm', 'step="0.1"'), {req: true})}
+      ${fld('ns-date', '测量日期', `<input id="ns-date" type="date" value="${new Date().toLocaleDateString('sv')}">`)}
+      ${fld('ns-support', '桌子支撑', text('ns-support', '四条腿', 'list="dl-supports"'), {hint: '决定桌下是否要建柜体，会挡住地面'})}
+      ${fld('ns-surface', '桌面外观', text('ns-surface', '浅色木纹，哑光'), {hint: '材质、颜色、纹理、反光'})}
+      ${fld('ns-edge-shape', '桌沿形状', text('ns-edge-shape', '直角 / 圆角 R5 / 倒角'))}</div>`)}
+    ${group('机器人站位 <span class="opt">机器人在现场时量</span>', `<div class="wz-grid">
+      ${fld('ns-edge', '桌沿到机器人根节点', unit('ns-edge', 'cm', 'step="0.1"'), {hint: '两驱动轮轮心连线的中点到桌沿的垂直距离'})}
+      ${fld('ns-offset', '横向偏移', '<div class="unit"><input id="ns-offset" type="number" step="0.1"><span>cm</span></div>', {hint: '桌面中线相对根节点，桌面中心在机器人右侧为正'})}
+      ${fld('ns-yaw', '机器人相对桌沿偏角', '<div class="unit"><input id="ns-yaw" type="number" step="0.5"><span>°</span></div>', {hint: '正对桌沿为 0'})}
+      ${fld('ns-lift', '升降柱读数', text('ns-lift', '如 0 或 120 mm'))}</div>`)}
+    ${group('ChArUco 标定板 <span class="opt">有就填</span>', `<label class="check" style="margin-bottom:12px"><input id="ns-charuco" type="checkbox">照片里有平放在桌面上的标定板（scripts/scenes/charuco.py board 打印）</label>
+      <div class="wz-grid">
+      ${fld('ns-square', '格子边长（卡尺实测）', unit('ns-square', 'mm', 'step="0.01"'), {hint: '打印机会缩放，不要用设计值'})}
+      <div></div>
+      ${fld('ns-board-left', '板左上外角距桌左沿', unit('ns-board-left', 'cm', 'step="0.1"'))}
+      ${fld('ns-board-front', '板左上外角距桌前沿', unit('ns-board-front', 'cm', 'step="0.1"'))}</div>`)}`)}
+    ${pane(2, `${group('周围环境', `<div class="wz-grid">
+      ${fld('ns-floor', '地面', text('ns-floor', '灰色地毯 / 浅色瓷砖'))}
+      ${fld('ns-walls', '墙面 / 背景', text('ns-walls', '白墙，左侧玻璃隔断'))}
+      ${fld('ns-back', '桌后沿到墙', unit('ns-back', 'cm', 'step="1"'), {hint: '没有墙就留空'})}
+      <div></div>
+      ${fld('ns-fixtures', '要建模的固定物', note('ns-fixtures', '显示器、隔板、柜子、插线板等不会挪走、会进机器人画面的东西：位置和大致尺寸'), {wide: true})}</div>`)}
+    ${group('灯光', `<div class="wz-grid">
+      ${fld('ns-lights', '光源', note('ns-lights', '类型、数量、相对桌子的位置，如：吸顶面板灯 4 盏，桌面正上方 2.6 m，2×2 排布'), {wide: true})}
+      ${fld('ns-cct', '色温', unit('ns-cct', 'K', 'step="100"'), {hint: '手机测光 App 即可'})}
+      ${fld('ns-lux', '桌面照度', unit('ns-lux', 'lux', 'step="10"'))}
+      ${fld('ns-daylight', '自然光', `<select id="ns-daylight">${opts(DAYLIGHT, '')}</select>`)}
+      <div class="fld"><label>机器人相机画面</label><label class="check"><input id="ns-frames" type="checkbox">已用头部左眼和 2 个以上臂姿的腕部相机拍了画面，并记下关节角</label></div></div>`)}
+    ${group('任务与要求', `${tasks.length ? `<div class="toggles">${tasks.map((t) => `<label class="toggle"><input type="checkbox" data-scene-task="${esc(t)}"><span>${ic('check')}${esc(t)}</span></label>`).join('')}</div>
+      <small class="muted">计划在这个场景跑的 G1-D 任务，用于生成布局和检查可达范围。</small>` : ''}
+      <div class="wz-grid" style="margin-top:12px">
+      ${fld('ns-req', '建模要求', note('ns-req', '如：桌面纹理按照片做贴图、背景墙要建、桌下柜门不用建'), {wide: true})}
+      ${fld('ns-notes', '备注', note('ns-notes', ''), {wide: true})}</div>`)}`)}
+    ${wzFoot('createScene', '登记并生成建模任务')}`,
   };
 }
 
@@ -1302,10 +1466,12 @@ async function removeDoc(kind, id) {
   closeDrawer();
   toast('已删除');
 }
-let NEW_PHOTOS = [], WIZ_AT = 0;  // the registration wizard: photos picked so far, current step
+let NEW_PHOTOS = [], WIZ_AT = 0, WZ = null;  // the open registration wizard: photos picked so far, current step, {steps, check}
 async function openNewObject(btn) {
   try { IDX = await api('/api/object-indices'); } catch (err) { return toast(`读取编号失败：${err.message}`, true); }
   NEW_PHOTOS = [];
+  WZ = {steps: WIZ, check: wizError};
+  WIZ_AT = 0;
   openDrawer('new-object', 'new', btn);
   suggestIndex();
   wizGo(0);
@@ -1322,20 +1488,80 @@ function wizError() {  // [message, field selector] blocking the current step, o
   return [''];
 }
 function wizGo(n) {
-  n = Math.max(0, Math.min(WIZ.length - 1, n));
+  const last = WZ.steps.length - 1;
+  n = Math.max(0, Math.min(last, n));
   const from = WIZ_AT;
   let [e, bad] = [''];
   if (n < WIZ_AT) WIZ_AT = n;
-  else while (WIZ_AT < n && !([e, bad] = wizError())[0]) WIZ_AT++;  // forward: every step passed on the way must be complete
+  else while (WIZ_AT < n && !([e, bad] = WZ.check())[0]) WIZ_AT++;  // forward: every step passed on the way must be complete
   $('#no-err').textContent = e;
   $$('.wiz-pane [aria-invalid]').forEach((x) => x.removeAttribute('aria-invalid'));
   $$('.wiz-pane').forEach((p) => { p.hidden = Number(p.dataset.step) !== WIZ_AT; });
   $$('[data-wiz]').forEach((b) => { const k = Number(b.dataset.wiz); b.className = k === WIZ_AT ? 'on' : k < WIZ_AT ? 'done' : ''; b.setAttribute('aria-current', k === WIZ_AT ? 'step' : 'false'); });
   $('#wiz-back').style.visibility = WIZ_AT ? '' : 'hidden';
-  $('#wiz-next').hidden = WIZ_AT === WIZ.length - 1;
-  $('#wiz-done').hidden = WIZ_AT !== WIZ.length - 1;
+  $('#wiz-next').hidden = WIZ_AT === last;
+  $('#wiz-done').hidden = WIZ_AT !== last;
   if (bad) { $(bad).setAttribute('aria-invalid', 'true'); $(bad).setAttribute('aria-describedby', 'no-err'); $(bad).focus(); }  // the field to fix
   else if (WIZ_AT !== from) { $('#drawer .dr-b').scrollTop = 0; $(`.wiz-pane[data-step="${WIZ_AT}"] input, .wiz-pane[data-step="${WIZ_AT}"] textarea`)?.focus({preventScroll: true}); }
+}
+function openNewScene(btn) {
+  NEW_PHOTOS = [];
+  WZ = {steps: SCENE_WIZ, check: sceneWizError};
+  WIZ_AT = 0;
+  openDrawer('new-scene', 'new', btn);
+  wizGo(0);
+}
+const nextSceneNo = () => Math.max(0, ...S.scene.map((d) => Number(/^real_scene(\d+)_/.exec(d.id)?.[1] || 0))) + 1;
+const newSceneId = () => `real_scene${nextSceneNo()}_${$('#ns-slug').value.trim()}`;
+function suggestSceneSlug() {  // "Kitchen Counter" -> kitchen_counter, until the suffix is typed by hand
+  const slug = $('#ns-slug');
+  if (!slug.dataset.edited) slug.value = $('#ns-name-en').value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  suggestSceneId();
+}
+function suggestSceneId() {
+  $('#ns-id').textContent = $('#ns-slug').value.trim() ? newSceneId() : '填写英文名称后生成';
+}
+function sceneWizError() {  // [message, field selector] blocking the current step, or ['']
+  const positive = (sel) => Number($(sel).value) > 0;
+  if (WIZ_AT === 0) {
+    return !$('#ns-name').value.trim() ? ['填写中文名称', '#ns-name'] : !$('#ns-name-en').value.trim() ? ['填写英文名称', '#ns-name-en']
+      : !/^[a-z0-9_]+$/.test($('#ns-slug').value.trim()) ? ['目录名后缀只能含小写字母、数字和下划线，如 kitchen_counter', '#ns-slug']
+      : S.scene.some((d) => d.id.replace(/^real_scene\d+_/, '') === $('#ns-slug').value.trim()) ? ['已有同名后缀的场景，换一个', '#ns-slug']
+      : NEW_PHOTOS.length < MIN_SCENE_PHOTOS ? [`至少 ${MIN_SCENE_PHOTOS} 张不同角度的照片，现在 ${NEW_PHOTOS.length} 张`, '.wiz-pane[data-step="0"] .drop input'] : [''];
+  }
+  if (WIZ_AT === 1) {
+    const missing = [['#ns-top', '桌面离地高度'], ['#ns-len', '桌面长'], ['#ns-wid', '桌面宽']].find(([sel]) => !positive(sel));
+    if (missing) return [`卷尺实测${missing[1]}（cm），是建模的尺度依据`, missing[0]];
+    if ($('#ns-charuco').checked && !positive('#ns-square')) return ['有标定板时填卡尺实测的格子边长', '#ns-square'];
+  }
+  return [''];
+}
+async function createScene(btn) {
+  const err = $('#no-err'), id = newSceneId();
+  const value = (sel) => $(sel).value.trim(), number = (sel) => ($(sel).value === '' ? null : Number($(sel).value));
+  const reg = {
+    name: value('#ns-name'), name_en: value('#ns-name-en'), scene_type: value('#ns-type'), location: value('#ns-location'), purpose: value('#ns-purpose'),
+    top_z_cm: number('#ns-top'), length_cm: number('#ns-len'), width_cm: number('#ns-wid'), thickness_cm: number('#ns-thick'), measured_on: value('#ns-date'),
+    support: value('#ns-support'), surface: value('#ns-surface'), edge_shape: value('#ns-edge-shape'),
+    edge_cm: number('#ns-edge'), offset_cm: number('#ns-offset'), robot_yaw_deg: number('#ns-yaw'), lift: value('#ns-lift'),
+    charuco: $('#ns-charuco').checked, square_mm: number('#ns-square'), board_left_cm: number('#ns-board-left'), board_front_cm: number('#ns-board-front'),
+    floor: value('#ns-floor'), walls: value('#ns-walls'), back_cm: number('#ns-back'), fixtures: value('#ns-fixtures'),
+    light_sources: value('#ns-lights'), color_temp_k: number('#ns-cct'), lux: number('#ns-lux'), daylight: value('#ns-daylight'), robot_frames: $('#ns-frames').checked,
+    tasks: [...$$('[data-scene-task]:checked')].map((c) => c.dataset.sceneTask), requirements: value('#ns-req'), notes: value('#ns-notes'),
+  };
+  btn.disabled = true;
+  btn.lastChild.textContent = `登记中，上传 ${NEW_PHOTOS.length} 张照片…`;
+  try {
+    await api(`/api/items?kind=scene&id=${encodeURIComponent(id)}`, {method: 'PUT', body: JSON.stringify({registered: true, reg})});
+    const n = await uploadFiles(id, NEW_PHOTOS, 'scene');
+    await sync(true);
+    openDrawer('scene', id);
+    toast(`已登记 ${id}，上传 ${n} 张照片；建模任务在抽屉顶部`);
+  } catch (e) {
+    err.textContent = `登记失败：${e.message}`;
+    btn.disabled = false;
+    btn.lastChild.textContent = '重试登记';
+  }
 }
 function suggestCategory() {  // "Measuring Cup" -> measuring_cup, until the category is typed by hand
   const cat = $('#no-cat');
@@ -1368,6 +1594,11 @@ function removeNewPhoto(i) { NEW_PHOTOS.splice(i, 1); previewPhotos(); }
 function previewPhotos() {
   $('#no-previews').innerHTML = NEW_PHOTOS.map((f, i) => `<figure class="wz-thumb"><img src="${URL.createObjectURL(f)}" alt="${esc(f.name)}"><figcaption>${esc(f.name)}</figcaption>
     <button type="button" onclick="removeNewPhoto(${i})" aria-label="移除 ${esc(f.name)}">${ic('close', 'ic-sm')}</button></figure>`).join('');
+  const count = $('#ns-photo-count');
+  if (count) {
+    count.textContent = `已选 ${NEW_PHOTOS.length} 张 / 至少 ${MIN_SCENE_PHOTOS} 张`;
+    count.classList.toggle('txt-bad', NEW_PHOTOS.length < MIN_SCENE_PHOTOS);
+  }
 }
 async function createObject(btn) {
   const err = $('#no-err');
@@ -1393,11 +1624,11 @@ async function createObject(btn) {
     btn.lastChild.textContent = '重试登记';
   }
 }
-async function uploadFiles(id, files) {
+async function uploadFiles(id, files, kind = 'object') {
   let n = 0;
   for (const f of files) {
     if (f.size > 25 * 1024 * 1024) { toast(`${f.name} 超过 25 MB，已跳过`, true); continue; }
-    const r = await fetch(`/api/photo?id=${encodeURIComponent(id)}&name=${encodeURIComponent(f.name)}`, {method: 'POST', body: f});
+    const r = await fetch(`/api/photo?kind=${kind}&id=${encodeURIComponent(id)}&name=${encodeURIComponent(f.name)}`, {method: 'POST', body: f});
     if (!r.ok) throw new Error(`${f.name}：${r.status}`);
     n++;
   }
@@ -1408,7 +1639,7 @@ async function uploadPhotos(input) {
   if (!files.length) return;
   toast(`正在上传 ${files.length} 张照片…`);
   try {
-    const n = await uploadFiles(input.dataset.id, files);
+    const n = await uploadFiles(input.dataset.id, files, input.dataset.kind);
     await sync(true);
     toast(`已上传 ${n} 张照片`);
   } catch (err) { toast(`上传失败：${err.message}`, true); }
@@ -1565,14 +1796,15 @@ function renderDrawer() {
   $('#scrim').classList.toggle('on', Boolean(x));
   if (!x) { dr.classList.remove('on'); dr.dataset.k = ''; return; }
   const key = `${x.kind}|${x.id}`;
-  if ((x.kind === 'new-object' || x.kind === 'account') && dr.dataset.k === key) return;  // keep typed input
+  const wizard = x.kind === 'new-object' || x.kind === 'new-scene';
+  if ((wizard || x.kind === 'account') && dr.dataset.k === key) return;  // keep typed input
   const d = S[x.kind]?.find((y) => y.id === x.id);
-  const view = x.kind === 'new-object' ? drawerNewObject() : x.kind === 'account' ? drawerAccount()
+  const view = x.kind === 'new-object' ? drawerNewObject() : x.kind === 'new-scene' ? drawerNewScene() : x.kind === 'account' ? drawerAccount()
     : d ? {scene: drawerScene, object: drawerObject, task: drawerTask}[x.kind](d) : {title: '记录不存在', body: ''};
   const scroll = dr.dataset.k === key ? $('#drawer .dr-b')?.scrollTop : 0;
   dr.innerHTML = `<div class="dr-h"><div style="min-width:0;flex:1"><h2 id="drawer-title">${esc(view.title)}</h2>${view.sub ? `<p>${esc(view.sub)}</p>` : ''}</div>
     ${view.actions || ''}<button class="btn btn-icon dr-close" type="button" aria-label="关闭（Esc）" onclick="closeDrawer()">${ic('close')}</button></div>
-    <div class="dr-b"${d && x.kind !== 'new-object' ? ` data-kind="${x.kind}" data-id="${esc(d.id)}"` : ''}>${view.body}
+    <div class="dr-b"${d && !wizard ? ` data-kind="${x.kind}" data-id="${esc(d.id)}"` : ''}>${view.body}
     ${d?._by || d?._at ? `<p class="hint" style="margin-top:24px">最近修改：${esc(d._by || '匿名')} · ${fmtTime(d._at)}</p>` : ''}</div>`;
   dr.dataset.k = key;
   dr.classList.add('on');

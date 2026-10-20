@@ -11,19 +11,25 @@ description: 给真实工位建或更新 RoboDojo 数字孪生场景：现场拍
 
 | 层 | 位置 | 入库 |
 | :-- | :-- | :-- |
-| 场景源文件 | `real2sim/scenes/<场景>/`：`reference/` 照片、`fit_photo.py`、`build_scene.py`、`check_scene.py`、`preview.py`、`usd/`、`PLAN.md`、`scene_spec.json` | 是（二进制走 LFS） |
+| 场景源文件 | `real2sim/scenes/<场景>/`：`registration.json`（平台登记）、`reference/` 照片、`fit_photo.py`、`build_scene.py`、`check_scene.py`、`preview.py`、`usd/`、`PLAN.md`、`scene_spec.json` | 是（二进制走 LFS） |
 | 共享工具 | `scripts/scenes/`：`charuco.py`（标定板）、`overlay.py`（叠图）、`acceptance.py`（验收汇总） | 是 |
 | 接入 | `scripts/g1d/build_asset.py` 的 `SCENES`、`env_cfg/g1d_<场景>.yml`、`env_cfg/robot/g1d_<场景>.yml` | 是 |
 | 安装结果 | `Assets/Room/<room>/`、`Assets/Eval_Layout/RoboDojo/<配置>/` | 否，由 `build_asset.py` 生成 |
 
 `scene_spec.json` 只记录人工输入：照片、重建方法、尺度依据、卷尺实测、叠图结果、灯光记录。模型的数值由 `acceptance.py` 从 `usd/build_params.json` 和机器人站位配置里读出来，不要手抄进 spec。
 
+## 平台登记
+
+新场景先在数采平台「场景重建 → 登记场景」登记，三步：① 名称、目录名（`real_scene<N>_<后缀>`，N 自动取下一个）、类型、地点、用途（孪生 / 训练泛化 / L4 保留），至少 5 张不同角度的照片；② 卷尺实测桌面离地高、长、宽（必填，cm），可选桌面厚度、机器人站位（桌沿到根节点、横向偏移、偏角、升降柱读数）、ChArUco 标定板（格子实测边长、板角到桌左沿和前沿的距离）、桌子支撑和桌面外观；③ 周围环境（地面、墙面、后沿到墙、要建模的固定物）、灯光（光源、色温、照度、自然光）、是否已拍机器人相机画面、计划任务、建模要求。
+
+登记写到 `real2sim/scenes/<场景>/registration.json`，照片在同目录的 `reference/`。卷尺值已换成米，按 `scene_spec.json` 的 `measurements` 格式写好，建模时原样抄进 `scene_spec.json`。场景抽屉里会生成给 coding agent 的「建模任务」文本；抽屉里改登记字段会重写 `registration.json`。
+
 ## 现场采集规范
 
-一次带齐，免得返工。
+一次带齐，免得返工。平台登记的字段就是下面这些内容。
 
 1. **标定板**：先 `python scripts/scenes/charuco.py board --out board.png`，按 100% 比例打印在 A4 上，再用卡尺量一个格子的边长（打印机会缩放）。把板平放在桌面上，记下板的左上外角离桌面左沿、前沿各多远。
-2. **手机照片**：围着桌子拍 4–8 张，每张都要拍到整块标定板和桌面的四条边；拍摄时关掉自动微距，不要变焦，所有照片分辨率保持一致。之后用 `charuco.py solve photos/*.jpg --square-mm <实测> --out cameras.json` 得到每张照片的相机位姿，单位是米。尺度不再依赖“桌高 0.75 m”这类假设。
+2. **手机照片**：围着桌子拍 5–8 张（平台要求至少 5 张：正前方即机器人站位、左前、右前、左侧、右侧、斜上俯视），每张都要拍到整块标定板和桌面的四条边；拍摄时关掉自动微距，不要变焦，所有照片分辨率保持一致。之后用 `charuco.py solve photos/*.jpg --square-mm <实测> --out cameras.json` 得到每张照片的相机位姿，单位是米。尺度不再依赖“桌高 0.75 m”这类假设。
 3. **卷尺**（写进 `scene_spec.json` 的 `measurements`，格式 `{"value_m": ..., "tool": "卷尺", "date": "..."}`）：
    - `table_top_z`、`table_length`、`table_width`：桌面离地高度、长、宽；
    - `table_edge_from_robot_root`：两个驱动轮轮心连线的中点（即仿真里的机器人根节点 `AGV_link`）到桌沿的垂直距离；
