@@ -1,0 +1,17 @@
+{
+  "scene": "real_scene4_school",
+  "env_cfg": "g1d_school",
+  "photos": ["reference/bundle_*.png"],
+  "reconstruction": "colleague's MuJoCo twin g1d_food_sorting (sys01, copied to 5090-2:/root/g1d_sim_assets_20261020): tabletop corners fitted from real wrist/head camera frames in the initial torso frame (bundle/environment_manifest.json); build_scene.py moves them to the chassis frame with the recorded torso yaw and fits a rectangle (PLAN.md)",
+  "scale_basis": "fitted: robot camera calibration and URDF kinematics of the source twin (camera candidate not qualified); tabletop height from the nominal CAD floor at zero lift; no tape measure",
+  "measurements": {
+    "table_top_z": null,
+    "table_length": null,
+    "table_width": null,
+    "table_edge_from_robot_root": null,
+    "table_centre_x_from_robot_root": null
+  },
+  "overlay": [],
+  "lighting": {"status": "estimated", "note": "not recorded; ceiling panels copied from real_scene3 (6500 K, 24000), room walls and floor neutral grey"},
+  "notes": "reference/ holds renders of the source twin, not photos; real camera frames are on sys01 (outputs/g1d-real2sim). Table legs, walls and floor colour not observed. Torso yaw at episode start taken as raw motor 12 = torso_Joint (3.8 deg)."
+}

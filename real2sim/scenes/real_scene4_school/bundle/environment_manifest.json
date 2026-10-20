@@ -1,0 +1,263 @@
+{
+  "schema": "g1d.environment_geometry.v1",
+  "status": "offline_source_q_recorded_yaw_and_decomposed_cad_validated_dynamic_unverified",
+  "camera": {
+    "path": "/home/sys01/Documents/Codex/2026-10-13/real2sim-real2sim/outputs/g1d-real2sim/experiments/astra_direct/physical_reconstruction/table_joint_fit/camera_candidate.json",
+    "sha256": "97013767e7f410a7cd21251f8afcb41d8303e56a7b40e3d6a5cbd6fb98a43400",
+    "qualified": false
+  },
+  "annotation": {
+    "path": "/home/sys01/Documents/Codex/2026-10-13/real2sim-real2sim/outputs/g1d-real2sim/experiments/astra_direct/physical_reconstruction/table_joint_fit/table_wrist_annotations.json",
+    "sha256": "58afa743f6b263789080b7638bf503e9598cc073678c48af14840e85b663ad40"
+  },
+  "table": {
+    "polygon_pixels": [
+      [
+        65.00000000000006,
+        383.0
+      ],
+      [
+        199.0,
+        167.00000000000006
+      ],
+      [
+        574.0,
+        189.99999999999997
+      ],
+      [
+        759.3162680767537,
+        457.99583383407446
+      ]
+    ],
+    "polygon_root_m": [
+      [
+        0.1872867189887424,
+        0.4449442759815417,
+        -0.08194389569089727
+      ],
+      [
+        0.7631388569892158,
+        0.3637021053866125,
+        -0.08194389569089727
+      ],
+      [
+        0.6774142123414446,
+        -0.6901811780283255,
+        -0.08194389569089727
+      ],
+      [
+        0.07016953239095579,
+        -0.6205451855974853,
+        -0.08194389569089727
+      ]
+    ],
+    "triangles": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        0,
+        2,
+        3
+      ]
+    ],
+    "table_top_z_m": -0.08194389569089726,
+    "thickness_m": 0.015747444449816496,
+    "thickness_source": "joint top/bottom-edge and source-q CAD constrained estimate; not measured",
+    "right_edge": "right front corner extrapolated by intersection of observed straight front and rear-right edges; not directly visible",
+    "cutouts": "no positive visual evidence; do not invent notch",
+    "pieces": [
+      {
+        "mesh_path": "/home/sys01/Documents/Codex/2026-10-13/real2sim-real2sim/outputs/g1d-real2sim/experiments/astra_direct/physical_reconstruction/table_joint_fit/table_prism_00.obj",
+        "sha256": "1fcc3ace14a483b82a3be0ea223c1318e405869fcd70c2c81f36aae66bed7e10",
+        "geom_attributes": {
+          "rgba": ".70 .61 .45 1",
+          "friction": "0.5 0.005 0.0001",
+          "solref": "0.003 1.0",
+          "solimp": "0.995 0.999 0.001 0.5 2.0",
+          "condim": "4",
+          "name": "joint_table_00",
+          "type": "mesh",
+          "mesh": "joint_table_00",
+          "pos": "0 0 0",
+          "quat": "1 0 0 0"
+        }
+      },
+      {
+        "mesh_path": "/home/sys01/Documents/Codex/2026-10-13/real2sim-real2sim/outputs/g1d-real2sim/experiments/astra_direct/physical_reconstruction/table_joint_fit/table_prism_01.obj",
+        "sha256": "1d9b8bc7d49b491b8beba9e240980fbce85a16e1b430882554689c88f910873b",
+        "geom_attributes": {
+          "rgba": ".70 .61 .45 1",
+          "friction": "0.5 0.005 0.0001",
+          "solref": "0.003 1.0",
+          "solimp": "0.995 0.999 0.001 0.5 2.0",
+          "condim": "4",
+          "name": "joint_table_01",
+          "type": "mesh",
+          "mesh": "joint_table_01",
+          "pos": "0 0 0",
+          "quat": "1 0 0 0"
+        }
+      }
+    ],
+    "visual_collision": "same triangle prism mesh geoms; all original table contact attributes preserved"
+  },
+  "floor": {
+    "nominal_z_torso_m": -0.8447860872219017,
+    "geometry_path": "/home/sys01/Documents/Codex/2026-10-13/real2sim-real2sim/outputs/g1d-real2sim/runs/real2sim/native_corrected_20261014/calibration/robot_camera_initialization/source_robot_geometry/robot_geometry.xml",
+    "geometry_sha256": "df6b6dc60ff89099f4f1fb8c206428db87930fb41e41d8d4bcb983cf6cab7dab",
+    "support_meshes": [
+      {
+        "body": "AGV_link",
+        "geom_id": 0,
+        "mesh": "AGV_link",
+        "minimum_z_torso_m": -0.8110090117033762,
+        "lowest_point_torso_m": [
+          0.026495453175010363,
+          -0.2516043989896465,
+          -0.8110090117033762
+        ],
+        "lowest_point_base_m": [
+          0.07986688317501037,
+          -0.2514366809896465,
+          -0.07750001170337628
+        ]
+      },
+      {
+        "body": "AGV_link",
+        "geom_id": 1,
+        "mesh": "AGV_link",
+        "minimum_z_torso_m": -0.8110090117033762,
+        "lowest_point_torso_m": [
+          0.026495453175010363,
+          -0.2516043989896465,
+          -0.8110090117033762
+        ],
+        "lowest_point_base_m": [
+          0.07986688317501037,
+          -0.2514366809896465,
+          -0.07750001170337628
+        ]
+      },
+      {
+        "body": "Left_Wheel_Link",
+        "geom_id": 2,
+        "mesh": "Left_Wheel_Link",
+        "minimum_z_torso_m": -0.8447860872219017,
+        "lowest_point_torso_m": [
+          -0.057162728683575,
+          0.2004338674075283,
+          -0.8447860872219017
+        ],
+        "lowest_point_base_m": [
+          -0.003791298683574994,
+          0.20060158540752832,
+          -0.11127708722190179
+        ]
+      },
+      {
+        "body": "Left_Wheel_Link",
+        "geom_id": 3,
+        "mesh": "Left_Wheel_Link",
+        "minimum_z_torso_m": -0.8447860872219017,
+        "lowest_point_torso_m": [
+          -0.057162728683575,
+          0.2004338674075283,
+          -0.8447860872219017
+        ],
+        "lowest_point_base_m": [
+          -0.003791298683574994,
+          0.20060158540752832,
+          -0.11127708722190179
+        ]
+      },
+      {
+        "body": "RIght_Wheel_Link",
+        "geom_id": 4,
+        "mesh": "RIght_Wheel_Link",
+        "minimum_z_torso_m": -0.8447860872219017,
+        "lowest_point_torso_m": [
+          -0.04913007131642501,
+          -0.20076930340752833,
+          -0.8447860872219017
+        ],
+        "lowest_point_base_m": [
+          0.004241358683574994,
+          -0.20060158540752832,
+          -0.11127708722190179
+        ]
+      },
+      {
+        "body": "RIght_Wheel_Link",
+        "geom_id": 5,
+        "mesh": "RIght_Wheel_Link",
+        "minimum_z_torso_m": -0.8447860872219017,
+        "lowest_point_torso_m": [
+          -0.04913007131642501,
+          -0.20076930340752833,
+          -0.8447860872219017
+        ],
+        "lowest_point_base_m": [
+          0.004241358683574994,
+          -0.20060158540752832,
+          -0.11127708722190179
+        ]
+      }
+    ],
+    "T_base_torso": [
+      [
+        1.0,
+        0.0,
+        0.0,
+        0.053371430000000004
+      ],
+      [
+        0.0,
+        1.0,
+        0.0,
+        0.000167718
+      ],
+      [
+        0.0,
+        0.0,
+        1.0,
+        0.733509
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "joint_reference": "zero URDF body joints; q0 lift/waist to URDF mapping unresolved",
+    "recorded_torso_height_m": 0.06651383638381958,
+    "limitation": "Not a measured q0 floor. Recorded lift height cannot yet be mapped to two URDF slides; use only explicit nominal candidate.",
+    "geom_attributes": {
+      "name": "nominal_cad_floor",
+      "type": "plane",
+      "size": "0 0 0.1",
+      "pos": "0 0 -0.844786087222",
+      "rgba": ".4 .4 .4 1",
+      "friction": "0.5 0.005 0.0001"
+    }
+  },
+  "reference_motion": {
+    "joint": "torso_Joint",
+    "source_state_path": [
+      "raw",
+      "states",
+      "body",
+      "qpos",
+      12
+    ],
+    "reference": "episode_initial",
+    "source": "native recorder raw LowState motor-state array",
+    "official_index_reference": "https://github.com/unitreerobotics/unitree_sdk2/blob/main/example/g1/g1d/g1d_arm_example.cpp",
+    "video_validation": "/home/sys01/Documents/Codex/2026-10-13/real2sim-real2sim/outputs/g1d-real2sim/experiments/astra_direct/physical_reconstruction/table_joint_fit/recorded_yaw_validation.json"
+  },
+  "source_head_annotation": "/home/sys01/Documents/Codex/2026-10-13/real2sim-real2sim/outputs/g1d-real2sim/experiments/astra_direct/physical_reconstruction/environment_geometry/table_annotation.json",
+  "validation_path": "/home/sys01/Documents/Codex/2026-10-13/real2sim-real2sim/outputs/g1d-real2sim/experiments/astra_direct/physical_reconstruction/table_joint_fit/exact_collision_validation.json"
+}

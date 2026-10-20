@@ -1,0 +1,104 @@
+#usda 1.0
+(
+    defaultPrim = "Table"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "Table"
+{
+    def Mesh "Top" (
+        prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+    )
+    {
+        float3[] extent = [(-0.53226435, -0.29802245, 0.74709475), (0.53226435, 0.29802245, 0.7628422)]
+        int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+        int[] faceVertexIndices = [0, 2, 3, 1, 4, 5, 7, 6, 0, 1, 5, 4, 2, 6, 7, 3, 0, 4, 6, 2, 1, 3, 7, 5]
+        rel material:binding = </Table/Looks/m0>
+        uniform token physics:approximation = "convexHull"
+        point3f[] points = [(-0.53226435, -0.29802245, 0.74709475), (0.53226435, -0.29802245, 0.74709475), (-0.53226435, 0.29802245, 0.74709475), (0.53226435, 0.29802245, 0.74709475), (-0.53226435, -0.29802245, 0.7628422), (0.53226435, -0.29802245, 0.7628422), (-0.53226435, 0.29802245, 0.7628422), (0.53226435, 0.29802245, 0.7628422)]
+        uniform token subdivisionScheme = "none"
+    }
+
+    def "Looks"
+    {
+        def Material "m0"
+        {
+            token outputs:surface.connect = </Table/Looks/m0/Shader.outputs:surface>
+
+            def Shader "Shader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.4563, 0.3371, 0.1726)
+                float inputs:roughness = 0.55
+                token outputs:surface
+            }
+        }
+
+        def Material "m1"
+        {
+            token outputs:surface.connect = </Table/Looks/m1/Shader.outputs:surface>
+
+            def Shader "Shader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.2, 0.2, 0.2)
+                float inputs:roughness = 0.6
+                token outputs:surface
+            }
+        }
+    }
+
+    def Mesh "Leg_nn" (
+        prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+    )
+    {
+        float3[] extent = [(-0.5022644, -0.26802245, 0), (-0.46226436, -0.22802244, 0.74709475)]
+        int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+        int[] faceVertexIndices = [0, 2, 3, 1, 4, 5, 7, 6, 0, 1, 5, 4, 2, 6, 7, 3, 0, 4, 6, 2, 1, 3, 7, 5]
+        rel material:binding = </Table/Looks/m1>
+        uniform token physics:approximation = "convexHull"
+        point3f[] points = [(-0.5022644, -0.26802245, 0), (-0.46226436, -0.26802245, 0), (-0.5022644, -0.22802244, 0), (-0.46226436, -0.22802244, 0), (-0.5022644, -0.26802245, 0.74709475), (-0.46226436, -0.26802245, 0.74709475), (-0.5022644, -0.22802244, 0.74709475), (-0.46226436, -0.22802244, 0.74709475)]
+        uniform token subdivisionScheme = "none"
+    }
+
+    def Mesh "Leg_np" (
+        prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+    )
+    {
+        float3[] extent = [(-0.5022644, 0.22802244, 0), (-0.46226436, 0.26802245, 0.74709475)]
+        int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+        int[] faceVertexIndices = [0, 2, 3, 1, 4, 5, 7, 6, 0, 1, 5, 4, 2, 6, 7, 3, 0, 4, 6, 2, 1, 3, 7, 5]
+        rel material:binding = </Table/Looks/m1>
+        uniform token physics:approximation = "convexHull"
+        point3f[] points = [(-0.5022644, 0.22802244, 0), (-0.46226436, 0.22802244, 0), (-0.5022644, 0.26802245, 0), (-0.46226436, 0.26802245, 0), (-0.5022644, 0.22802244, 0.74709475), (-0.46226436, 0.22802244, 0.74709475), (-0.5022644, 0.26802245, 0.74709475), (-0.46226436, 0.26802245, 0.74709475)]
+        uniform token subdivisionScheme = "none"
+    }
+
+    def Mesh "Leg_pn" (
+        prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+    )
+    {
+        float3[] extent = [(0.46226436, -0.26802245, 0), (0.5022644, -0.22802244, 0.74709475)]
+        int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+        int[] faceVertexIndices = [0, 2, 3, 1, 4, 5, 7, 6, 0, 1, 5, 4, 2, 6, 7, 3, 0, 4, 6, 2, 1, 3, 7, 5]
+        rel material:binding = </Table/Looks/m1>
+        uniform token physics:approximation = "convexHull"
+        point3f[] points = [(0.46226436, -0.26802245, 0), (0.5022644, -0.26802245, 0), (0.46226436, -0.22802244, 0), (0.5022644, -0.22802244, 0), (0.46226436, -0.26802245, 0.74709475), (0.5022644, -0.26802245, 0.74709475), (0.46226436, -0.22802244, 0.74709475), (0.5022644, -0.22802244, 0.74709475)]
+        uniform token subdivisionScheme = "none"
+    }
+
+    def Mesh "Leg_pp" (
+        prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+    )
+    {
+        float3[] extent = [(0.46226436, 0.22802244, 0), (0.5022644, 0.26802245, 0.74709475)]
+        int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+        int[] faceVertexIndices = [0, 2, 3, 1, 4, 5, 7, 6, 0, 1, 5, 4, 2, 6, 7, 3, 0, 4, 6, 2, 1, 3, 7, 5]
+        rel material:binding = </Table/Looks/m1>
+        uniform token physics:approximation = "convexHull"
+        point3f[] points = [(0.46226436, 0.22802244, 0), (0.5022644, 0.22802244, 0), (0.46226436, 0.26802245, 0), (0.5022644, 0.26802245, 0), (0.46226436, 0.22802244, 0.74709475), (0.5022644, 0.22802244, 0.74709475), (0.46226436, 0.26802245, 0.74709475), (0.5022644, 0.26802245, 0.74709475)]
+        uniform token subdivisionScheme = "none"
+    }
+}
