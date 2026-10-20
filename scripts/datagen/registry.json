@@ -2,7 +2,7 @@
   "about": "Every generated dataset: what it is, how it was made, where it lives. One entry per release or abandoned batch; status released | superseded | incomplete. Update it in the same commit as the HANDOFF entry. location.host is an SSH alias from the maintainers' ~/.ssh/config.",
   "datasets": [
     {
-      "name": "g1d_office_pour_all_red_beans_random_hand_yaw_100",
+      "name": "g1d_office_pour_beans_random_hand_yaw_100",
       "status": "released",
       "created": "2026-10-19",
       "task": "g1d_pour_beans_measuring_cups",
@@ -17,7 +17,7 @@
       "code": "a1b6db5 (random pouring hand, cup yaw via scripted_demo.flat_turn, cavity-based pour loop)",
       "layouts": "400 layouts, hand balanced 200 / 200, 6-D Latin hypercube: tall cup |x| 0.05-0.22 m, short cup |x| 0.05-0.18 m, y -0.46..-0.28 m, both yaws 0-90 deg; in that run's Assets, not marked split=train",
       "location": {"host": "5090-2", "run": "/data/robodojo-runs/office-beans-random-20261019", "path": "output/office_beans/collection_v3/lerobot"},
-      "published": "not yet (ModelScope upload awaits the user's go-ahead)",
+      "published": "ModelScope dataset ChongZheng/g1d_office_pour_beans_random_hand_yaw_100 (private), 17 data files checked against local sha256",
       "validation": "exporter read-back 100 / 39827; recount of all 67200 beans over each episode's last 30 frames, none left or spilled; 20-bin coverage of the four position coordinates and 18 yaw bins; max final-second cup tilt 29.88 deg; LeRobot reader decoded 600 first/last frames"
     },
     {

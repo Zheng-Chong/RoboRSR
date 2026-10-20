@@ -1,7 +1,7 @@
 # Project Handoff
 
 更新时间：2026-10-19
-当前分支：`main`。本次改动在短分支 `chongzheng/datagen-real2sim-pipeline`（独立 worktree），尚未合并。
+当前分支：`main`。流水线规范化的改动已通过 [PR #1](https://github.com/Zheng-Chong/RoboRSR/pull/1) 合并（2026-10-20），短分支 `chongzheng/datagen-real2sim-pipeline` 已删除。
 当前目标：把 G1-D 的三条流水线规范化：Real2Sim 采集（物体、场景）、仿真数据生成，以及本仓库内的仿真评估。训练在仓库外。
 
 本文件只记录当前状态。逐次实验的细节（相机拟合、抓取调参、倒豆参数扫描、各次服务器验证）见 `git show 4fb9290:HANDOFF.md`。数采平台的运维细节（端口、账号、隧道、重启方法）已移到本机 `.agent/ops.local.md`，不入库，因为仓库是公开的。
@@ -23,7 +23,7 @@
   - 壶倒杯：5.6 mm 的豆子会堵住 13 mm 的壶嘴。
 - **数据**：所有数据集登记在 `scripts/datagen/registry.json`。目前有 2 份办公室量杯全量倒豆数据，各 100 条，LeRobot v3.0，都是按旧的 legacy 格式导出的：
   - 固定朝向的一份，已上传 ModelScope 私有仓库；
-  - 随机左右手、随机朝向、大范围位置的一份，还没上传。
+  - 随机左右手、随机朝向、大范围位置的一份，也已上传 ModelScope 私有仓库（单独的仓库）。
 - **数采平台** `src/real2sim_platform/`：部署在 `5090-2`，经阿里云反向隧道对外访问。
 - **服务器**：
   - `21196`（4090）：共享资产库 `/data2/zhongzheng/Project/RoboDojo_assets/Assets`；环境用 `source /data2/zhongzheng/Project/robodojo_env.sh`；隔离目录放在 `/data2/tmp/robodojo/agent-remote-runs/`。
@@ -31,7 +31,7 @@
 
 ## 最近任务
 
-### 采集、评估流水线规范化（2026-10-19，分支 `chongzheng/datagen-real2sim-pipeline`）
+### 采集、评估流水线规范化（2026-10-19，PR #1，2026-10-20 合并进 `main`）
 
 - **起因**：用户要把"基于 Coding Agent 的 Real2Sim 采集 + 数据生成 + 仿真评估"做规范。在建议清单里，用户选了四项：数据契约、通用采集流水线、Agent 文档和 CI、场景标准化。
 - **数据契约**（`scripts/datagen/CONTRACT.md`）：
@@ -82,7 +82,7 @@
     - 采集探针（候选布局 7）：录制正常，但这一回合撒了 1 颗（671/672），没通过严格验收。同一个布局在 100 条那一轮里 392 帧就合格了；`a1b6db5` 改了倒豆循环的计数，会把杯角的豆子也倒完，这次倒了 452 帧。
   - **验证中发现并已修复**：`pour` 参数和函数内部的 `pour()` 重名；官方转换器在软链接目录下把根目录解析错了；只设 `CUDA_VISIBLE_DEVICES=1` 时渲染和计算不在同一张卡上，取相机数据失败（改成 `--device cuda:1 --device_id 1`）。
 - **并行会话**：
-  - `a1b6db5`（随机左右手和杯子朝向，见下一节）已经合并进本分支。合并时只有 `HANDOFF.md` 冲突，已手工合并。
+  - 另一会话期间在 `main` 上的三个提交（`a1b6db5`、`353730a`、`4562fb4`，见下一节）都已合进来，每次都只有 `HANDOFF.md` 冲突，手工合并。
   - 物体建模 SKILL：`scripts/objects/SKILL.md`，以及 `CLAUDE.md`、`README.md`、平台 `index.html`、`export_office_beans.py` 的线程参数，仍在主工作区里，还没提交。
 
 ### 已完成：随机倒豆手 + 随机偏航 + 大范围位置的 100 条办公室数据（2026-10-19，`a1b6db5` 和 `353730a`，另一个会话）
@@ -107,7 +107,9 @@
   - 覆盖：四个位置坐标按 20 档分箱全部覆盖，两只杯子的偏航（模 90°）18 档全部覆盖。
   - 最后 1 秒杯子的最大倾角 29.88°（阈值 30°）。
   - LeRobot 官方读取器解码了 600 张首尾帧，时间戳也通过。
-- **未做**：还没上传 ModelScope，等用户确认。
+- **ModelScope**（`4562fb4`）：经用户确认，上传为单独的私有数据集 `ChongZheng/g1d_office_pour_beans_random_hand_yaw_100`，和上一批分开。
+  - 沿用服务器上的 `ms-venv` 和已保存的登录。服务器上的 `ms_upload.py`、`ms_verify.py` 改成由 `MS_DATA`、`MS_NAME`、`MS_MESSAGE` 三个环境变量指定目录和仓库，默认仍指向上一批；仓库里通用的上传脚本是 `scripts/datagen/upload.py`。
+  - 核对结果：远端 17 个数据文件的路径、大小、SHA-256 全部一致；`private=True`，未登录访问返回 404；SDK 默认许可证 Apache-2.0；上传缓存已删除。
 
 ### 办公室量杯全量倒豆 100 条（2026-10-19，已发布）
 
@@ -119,7 +121,7 @@
 
 ## 剩余事项与风险
 
-- **合并**：本分支已经包含 `a1b6db5`。主工作区里物体 SKILL 会话没提交的改动（`CLAUDE.md`、`README.md` 等）模拟合并过，不冲突。那个会话往 `HANDOFF.md` 加的新记录，合并时要压缩后放进本文件的结构里。
+- **主工作区里未提交的改动**：物体 SKILL 会话的改动（`CLAUDE.md`、`README.md`、`export_office_beans.py`、平台 `index.html`、`scripts/objects/SKILL.md`）还在主工作区，没有提交。和新 `main` 模拟合并过，不冲突。它们提交时，往 `HANDOFF.md` 加的记录要压缩后放进本文件的结构里。
 - **采集配置下的严格判据有方差**：同一组动作回放，2 条里有 1 条最后差 1 颗豆子。评估策略时，严格成功率要在同一布局上重复多次才有意义。
 - **XPolicyLab 注册**：`XPolicyLab/utils/robot/_robot_info.json` 里还没有 `g1d*`，用 XPolicyLab 的 `train.sh` 会拿不到动作维度。要给 XPolicyLab 提 PR（子模块不在本仓库里改）。
 - **legacy 数据集**：和新契约在头部图像键、指令两处不同；用它训练的策略，评估前要先对齐。
@@ -144,14 +146,15 @@
 
 ## 下一会话
 
-1. 先看 `git log`、本文件和 `scripts/datagen/CONTRACT.md`。本分支（已包含 `a1b6db5`）review 通过后，合并进 `main`。
+1. 先看 `git log`、本文件和 `scripts/datagen/CONTRACT.md`。主工作区里还有物体建模 SKILL 会话没提交的改动（见"最近任务"里的"并行会话"）；拉取新的 `main` 前，先让那个会话提交，或者先 stash。
 2. 下一批数据用新流水线采集。先跑单回合探针，确认 `joint_names`、夹爪 state 和图像都正常，再按 `scripts/datagen/SKILL.md` 批量采集、导出、审计、回放，最后登记。
 3. 去现场按 `real2sim/scenes/SKILL.md` 采集（ChArUco 标定板照片、卷尺、灯光、机器人相机画面），回来跑 `overlay.py` 和 `acceptance.py`。
 4. 给 XPolicyLab 提 PR，注册 `g1d*` 的动作维度；然后用一个 LeRobot 策略在 `--env-cfg g1d_beans_collect` 下走通"外部训练 → 本仓库评估"的整条链。
 
 ## 最近历史
 
-- 2026-10-19：采集、评估流水线规范化（本分支）：数据契约、通用采集流水线、场景工具、Agent 文档和 CI。
+- 2026-10-20：采集、评估流水线规范化合并进 `main`（PR #1）：数据契约、通用采集流水线、场景工具、Agent 文档和 CI。
+- 2026-10-20：随机朝向那批 100 条数据私有上传 ModelScope（`4562fb4`）。
 - 2026-10-19：随机倒豆手、杯子偏航和大范围杯位（`a1b6db5`），修复量杯在倒豆循环里的豆子计数；按这套设置采完 100 条，左右手各 50（`353730a`）。
 - 2026-10-19：100 条量杯数据上传 ModelScope 私有仓库；平台的物体登记简化（取消角色字段，尺寸改为自由文本）。
 - 2026-10-19：用实测量杯重采 100 条；夹持点从杯口下 32 mm 改为 45 mm（高杯在夹爪里会转动）。
