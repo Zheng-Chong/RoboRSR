@@ -201,6 +201,7 @@ CUDA_VISIBLE_DEVICES=<卡> PYTHONPATH=. python scripts/objects/check_object.py o
 - `measurements_mm` 的名称和 `dimensions_mm` 不一致，平台就核对不了；外径量进了把手，会判成超差。
 - 原点不在包围盒中心：落地检查 z 偏差、布局摆放错位。
 - 凸包顶点超限：颗粒（红豆）穿过碰撞体。
+- 凸包的点离某个平面不到 0.7 mm（PhysX 烹饪的平面容差）：烹饪时被合并，平底不再平，物体落地后歪着（`airpods` 曾歪 2.4°、下沉 0.7 mm）。凸包的点要么正好在平面上，要么离开 ≥ 1.5 mm（见 `make_airpods.py` 的 `hull_points`）。
 - 只写了 `friction`：摩擦不生效。
 - 质量超过 0.5 kg：运行时被截断。
 - 把要入库的东西放进 `Assets/`：`init_assets.sh` 发现目录不完整时会把整个 `Assets/` 挪走。
