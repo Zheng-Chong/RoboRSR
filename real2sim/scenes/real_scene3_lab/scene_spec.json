@@ -1,0 +1,17 @@
+{
+  "scene": "real_scene3_lab",
+  "env_cfg": "g1d_lab",
+  "photos": ["reference/p*.jpg"],
+  "reconstruction": "four photos with hand-picked corners and edges, fitted jointly (fit_photo.py), build_scene.py, check_scene.py, preview.py (PLAN.md)",
+  "scale_basis": "estimated: tabletop height prior 0.75 +- 0.015 m; the fitted length and width are within 2 % of the standard 1.4 x 0.7 m",
+  "measurements": {
+    "table_top_z": null,
+    "table_length": null,
+    "table_width": null,
+    "table_edge_from_robot_root": null,
+    "table_centre_x_from_robot_root": null
+  },
+  "overlay": [],
+  "lighting": {"status": "estimated", "note": "colour temperature and brightness ratio matched to phone photo p3 (6500 K, 24000); not compared with the head camera"},
+  "notes": "Assumes the robot stands on the open side without the panel; if it stands at the panel, turn the Room 180 deg."
+}

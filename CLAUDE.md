@@ -8,6 +8,21 @@ Contributors maintain **Tasks** (scene + reward logic), shared **env** / **env_c
 
 Human-facing docs: https://robodojo-benchmark.com/doc/
 
+## This Fork: G1-D Real2Sim Pipelines
+
+This fork adds the Unitree G1-D and a Real2Sim workflow; the rest of this file is the upstream benchmark guide and still applies to the eval infrastructure. Models are trained outside this repo: here we turn real objects and workstations into sim twins, generate demonstration data, and evaluate checkpoints in simulation. Read the stage's skill before working on it.
+
+| Stage | Code | Skill |
+| :-- | :-- | :-- |
+| Object twins | `scripts/objects/` (generators, `check_object.py`), platform `src/real2sim_platform/` | `scripts/objects/SKILL.md` |
+| Scene twins | `real2sim/scenes/<scene>/`, `scripts/scenes/` (ChArUco, overlay, acceptance) | `real2sim/scenes/SKILL.md` |
+| Data generation and release | `scripts/datagen/` (collect, run_batch, export, audit, replay, upload, plugins) | `scripts/datagen/SKILL.md` |
+| Sim evaluation of external checkpoints | `bash scripts/robodojo.sh eval --env-cfg <dataset env config> ...` | `scripts/datagen/SKILL.md` |
+
+- The data contract between this repo and training (formats, state and action semantics, physics profile, real-robot mapping) is `scripts/datagen/CONTRACT.md`; every dataset is listed in `scripts/datagen/registry.json`.
+- One agent session = one `git worktree` and short branch: several sessions share the main checkout, and a shared index has already put one session's files into another's commit.
+- Run `bash scripts/check.sh` before committing (CI runs it too). GPU checks go to an isolated run dir on a server; the shared asset library changes only with approval.
+
 ## Session Handoff (required)
 
 `HANDOFF.md` at the repo root carries context across sessions.

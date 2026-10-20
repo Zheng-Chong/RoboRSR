@@ -1,0 +1,17 @@
+{
+  "scene": "real_scene2_counter",
+  "env_cfg": "g1d_counter",
+  "photos": ["reference/photo*.jpg"],
+  "reconstruction": "two photos fitted jointly (fit_photo.py), build_scene.py, check_scene.py, preview.py (PLAN.md)",
+  "scale_basis": "estimated: only the microwave, assumed 0.485 m wide and 0.29 m high",
+  "measurements": {
+    "table_top_z": null,
+    "table_length": null,
+    "table_width": null,
+    "table_edge_from_robot_root": null,
+    "table_centre_x_from_robot_root": null
+  },
+  "overlay": [],
+  "lighting": {"status": "estimated", "note": "not compared with the head camera"},
+  "notes": "Floor cabinet: the chassis cannot go under it, so the robot stands 7 cm further back (root y = -0.80), lift column raised 0.0765 m each. 6-7 of its convex hulls are not GPU-compatible, so beans fall through them; cam_third is blocked by a board."
+}

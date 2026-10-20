@@ -1,0 +1,21 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  cpu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # XPolicyLab only: the trajectory format test reads our HDF5 with its loader. LFS files are not needed.
+      - run: git submodule update --init --depth 1 XPolicyLab
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff==0.11.7 pytest numpy scipy h5py opencv-python-headless pyyaml
+      - run: bash scripts/check.sh "${{ github.event.pull_request.base.sha || github.event.before }}"

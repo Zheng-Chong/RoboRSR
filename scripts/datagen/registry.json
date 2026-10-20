@@ -1,0 +1,60 @@
+{
+  "about": "Every generated dataset: what it is, how it was made, where it lives. One entry per release or abandoned batch; status released | superseded | incomplete. Update it in the same commit as the HANDOFF entry. location.host is an SSH alias from the maintainers' ~/.ssh/config.",
+  "datasets": [
+    {
+      "name": "g1d_office_pour_beans_random_hand_yaw_100",
+      "status": "released",
+      "created": "2026-10-19",
+      "task": "g1d_pour_beans_measuring_cups",
+      "scene": "real_scene1 (office)",
+      "env_cfg": "g1d_beans_collect (physics 1/600 s, actions 30 Hz)",
+      "episodes": 100,
+      "frames": 39827,
+      "fps": 30,
+      "format": "legacy, as g1d_office_pour_all_red_beans_measuring_cups_100: LeRobot v3.0 from scripts/g1d/export_office_beans.py, image keys cam_head / cam_left_wrist / cam_right_wrist, gripper state measured, custom task string",
+      "acceptance": "all_beans_retained_v2 (672 beans); 104 of 176 attempts (left hand 53, right 51); the earliest 50 per hand selected",
+      "assets": "as the measured-cup dataset: measuring cups measured 2026-10-19, 5.6 mm PBD beans of 0.1 g",
+      "code": "a1b6db5 (random pouring hand, cup yaw via scripted_demo.flat_turn, cavity-based pour loop)",
+      "layouts": "400 layouts, hand balanced 200 / 200, 6-D Latin hypercube: tall cup |x| 0.05-0.22 m, short cup |x| 0.05-0.18 m, y -0.46..-0.28 m, both yaws 0-90 deg; in that run's Assets, not marked split=train",
+      "location": {"host": "5090-2", "run": "/data/robodojo-runs/office-beans-random-20261019", "path": "output/office_beans/collection_v3/lerobot"},
+      "published": "ModelScope dataset ChongZheng/g1d_office_pour_beans_random_hand_yaw_100 (private), 17 data files checked against local sha256",
+      "validation": "exporter read-back 100 / 39827; recount of all 67200 beans over each episode's last 30 frames, none left or spilled; 20-bin coverage of the four position coordinates and 18 yaw bins; max final-second cup tilt 29.88 deg; LeRobot reader decoded 600 first/last frames"
+    },
+    {
+      "name": "g1d_office_pour_all_red_beans_measuring_cups_100",
+      "status": "released",
+      "created": "2026-10-19",
+      "task": "g1d_pour_beans_measuring_cups",
+      "scene": "real_scene1 (office)",
+      "env_cfg": "g1d_beans_collect (physics 1/600 s, actions 30 Hz)",
+      "episodes": 100,
+      "frames": 40279,
+      "fps": 30,
+      "format": "legacy: LeRobot v3.0 from scripts/g1d/export_office_beans.py, not the XPolicyLab converter. Image keys observation.images.cam_head / cam_left_wrist / cam_right_wrist (converter: cam_high for the head), robot_type unitree_g1d_dex1, joint names as motor names, H.264. State and action as in CONTRACT.md (left arm 7, left gripper, right arm 7, right gripper; gripper state measured). Task string 'Pour all red beans from the tall measuring cup into the short measuring cup.' differs from the eval instruction.",
+      "acceptance": "all_beans_retained_v2: all 672 beans in the short cup, none left or spilled, both cups within 30 deg of upright for 30 frames; 108 of 118 attempts",
+      "assets": "measuring cups measured 2026-10-19 (140 / 170 mm, 40 / 60 g); red beans as 5.6 mm PBD spheres of 0.1 g",
+      "code": "git archive 269898c with scripts/g1d/scripted_demo.py from a83d4f4 (C2C_RIM_DOWN measuring cup 0.045)",
+      "layouts": "candidates g1d/9 (400, 4-D Latin hypercube, random seed 20261019) sharded into g1d/100-107 of the run's own Assets copy; not marked split=train (made before split.json); the office eval layouts g1d/0-2 come from build_asset.py and were not used",
+      "location": {"host": "5090-2", "run": "/data/robodojo-runs/office-beans-measured-20261019", "path": "output/office_beans/collection_v2/lerobot"},
+      "published": "ModelScope dataset ChongZheng/g1d_office_pour_all_red_beans_measuring_cups_100 (private), 16 data files checked against local sha256",
+      "validation": "exporter read-back 100 / 40279 frames; independent recount of every bean over each episode's last 30 frames; LeRobot 0.4.4 loader decoded first and last frame of every episode (final_validation.json, sha256.json in the dataset)"
+    },
+    {
+      "name": "g1d_office_pour_all_red_beans_old_cups",
+      "status": "superseded",
+      "created": "2026-10-19",
+      "task": "g1d_pour_beans_measuring_cups",
+      "scene": "real_scene1 (office)",
+      "env_cfg": "g1d_beans_collect (physics 1/600 s, actions 30 Hz)",
+      "episodes": 106,
+      "format": "legacy raw episodes (trajectory.npz, MP4, quality.json), 106 accepted; the LeRobot export stopped at 8 of 100",
+      "acceptance": "all_beans_retained_v2 with 1840 4 mm beans; 106 of 141 attempts",
+      "assets": "measuring cups from photos before measurement (135 / 158 mm), 4 mm red beans",
+      "code": "4271c05 and d45c1d8",
+      "layouts": "g1d/9 candidates, seeds 100-107 in that run's Assets",
+      "location": {"host": "5090-2", "run": "/data/robodojo-runs/office-beans-100-20261019", "path": "output/office_beans"},
+      "published": "no",
+      "notes": "Replaced by g1d_office_pour_all_red_beans_measuring_cups_100. Its final-audit process waits for an export that will not finish and has to be stopped by hand."
+    }
+  ]
+}

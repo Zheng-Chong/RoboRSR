@@ -31,6 +31,16 @@ class SeedManager:
     ):
         self.eval_seed = self.config.get("seed", 0)
         layout_dir = Path(ASSETS_PATH, "Eval_Layout", BENCHMARK, self.config_name, str(self.eval_seed))
+        split = layout_dir / "split.json"
+        if (
+            split.exists()
+            and load_json(str(split)).get("split") == "train"
+            and not self.config.get("allow_train_layouts")
+        ):
+            raise ValueError(
+                f"{layout_dir} holds training layouts ({split}): evaluate on held-out layouts, "
+                "or pass --allow_train_layouts for data collection and replay"
+            )
         pattern = re.compile(rf"{re.escape(self.task_name)}_\d+\.json")
         matching_files = sorted(
             [p for p in layout_dir.iterdir() if pattern.fullmatch(p.name)],
@@ -43,6 +53,11 @@ class SeedManager:
             self.seed_info[idx] = {"scene_layout": file_path}
 
         all_layout_ids = list(range(len(matching_files)))
+        selected = set(int(s) for s in (self.config.get("layout_ids") or []))
+        if selected:
+            if not selected <= set(all_layout_ids):
+                raise ValueError(f"layout_ids {sorted(selected - set(all_layout_ids))} not in {layout_dir}")
+            all_layout_ids = [s for s in all_layout_ids if s in selected]
         excluded = set(int(s) for s in (completed_layout_ids or [])) | set(int(s) for s in (abandoned_layout_ids or []))
         if excluded:
             self.seed_list: List[int] = [s for s in all_layout_ids if s not in excluded]
