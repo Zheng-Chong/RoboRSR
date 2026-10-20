@@ -1,0 +1,8 @@
+{
+  "id": "Rigid/plastic_mug/00000",
+  "mass_g": 89,
+  "dimensions_mm": "总长（含把手） 119，外径 84，高 100",
+  "notes": "2026-10-19 实测：直筒高 100 mm、内径 80 mm、壁厚 2 mm、89 g；把手高 70 mm、外伸 35 mm、厚 5 mm。长 119 = 外径 84 + 把手 35。由 Claude 写入。",
+  "updated_by": "Claude",
+  "updated_at": "2026-10-19 17:26:09"
+}

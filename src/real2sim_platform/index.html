@@ -854,7 +854,7 @@ function modelingBrief(d) {  // the task for a coding agent that builds this twi
   const a = d.auto, dir = `real2sim/objects/${d.id}`, photos = (a.photos || []).map(base);
   const fact = (k, v) => (v === undefined || v === null || v === '' ? null : `- ${k}：${v}`);
   return [
-    `为 RoboDojo 建一个实物孪生仿真资产 ${d.id}（${objName(d)}），按仓库里 scripts/objects/SKILL.md 的流程做（各层放什么、生成脚本约定、服务器验证、登记）。`,
+    `为 RoboDojo 建一个实物孪生仿真资产 ${d.id}（${objName(d)}），按仓库里 scripts/objects/SKILL.md 的流程做（各层放什么、生成脚本约定、服务器验证、登记）。先 git fetch，从最新的 origin/main 开独立 worktree 和短分支再读它：本地 main 可能落后，旧检出里没有这个文件。`,
     '',
     `输入：${dir}/spec.json（平台登记信息）和 ${dir}/reference/ 下的 ${photos.length} 张实拍照片${photos.length ? `（${photos.join('、')}）` : ''}。这些文件在平台所在机器的 ${INFO.root}/${dir}/，本机没有就先把这个目录同步过来。`,
     '',
