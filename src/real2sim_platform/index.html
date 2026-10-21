@@ -305,6 +305,9 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
 .nt-role, .nt-level { margin-top: 10px; padding: 14px; border: 1px dashed var(--border-strong); border-radius: var(--radius); }
 .nt-role:first-child, .nt-level:first-child { margin-top: 0; }
 .nt-level > .toggle { display: inline-block; margin-bottom: 10px; }
+.nt-level.off { border-style: dotted; opacity: .7; }
+.nt-level-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.nt-level:not(.off) .nt-level-h { margin-bottom: 10px; }
 .pair { display: flex; gap: 8px; }
 .pair input { flex: 1; min-width: 0; }
 .fld .chips:not(:empty) { margin-bottom: 6px; }
@@ -1253,7 +1256,7 @@ const TASK_WIZ = [
   ['任务定义', '新建一个 G1-D 任务，或给已有任务登记泛化方案。任务定义和成功判据要写清楚：语言指令由 coding agent 从定义总结并转写，判据会变成 run_reward 里的检查。'],
   ['物体与干扰物', '每个角色是任务里的一类物体（对应任务配置的 label），从物体资产里选它可用的物体；干扰物另选。位置、朝向的随机在第 4 步 L1 里设。'],
   ['可用场景', '训练场景用于采集数据；L4 保留场景只在评测时出现，不进训练。'],
-  ['泛化等级', '每一级只改变一个因素，其余与 L0 相同。范围和目标布局数都可以改，也可以补充其他泛化维度。'],
+  ['泛化等级', '等级按前面的选择自动开启：位置随机开 L1，外观随机开 L2，多个候选物体、干扰物或保留实例开 L3，保留场景开 L4。这里只调整各级的范围和目标布局数。'],
 ];
 const HANDS = {'': '未定', left: '左手', right: '右手', either: '任一手（随布局）', both: '双手'};
 const INST_LANGS = {zh: '中文', en: '英文'};
@@ -1264,6 +1267,30 @@ const langText = (ins) => (ins?.languages || []).map((l) => INST_LANGS[l] || l).
 const instText = (ins) => `${langText(ins)}${ins.languages.length > 1 ? '各' : ''} ${ins.count} 条`;
 let NT = null;  // the task wizard's lists: {roles: [{label, candidates, count}], dis, holdout, scenes: {train, holdout}}
 const RANDOMIZE = {position: '位置', yaw: '朝向'};
+const APPEARANCE = {light: '灯光（亮度、色温、灯的位置）', texture: '桌面 / 地面 / 背景纹理', camera: '相机位姿扰动'};
+function levelReasons() {  // {level: why it is on, or null}; levels follow from the earlier steps
+  const picked = (sel) => [...$$(`${sel}:checked`)];
+  const random = picked('[data-random]').map((c) => RANDOMIZE[c.dataset.random]);
+  const appear = picked('[data-appear]').map((c) => APPEARANCE[c.dataset.appear].replace(/（.*/, ''));
+  const multi = NT.roles.filter((r) => r.candidates.length > 1).map((r) => r.label);
+  const dis = NT.dis.candidates.length || $('#nt-dis-lib')?.checked || Number($('#nt-dis-max')?.value) > 0;
+  const objects = [multi.length && `${multi.join('、')} 有多个候选物体`, dis && '有干扰物', NT.holdout.length && `${NT.holdout.length} 个保留实例`].filter(Boolean);
+  return {
+    L0: '始终开启',
+    L1: random.length ? `随机${random.join('、')}` : null,
+    L2: appear.length ? `随机${appear.join('、')}` : null,
+    L3: objects.length ? objects.join('，') : null,
+    L4: NT.scenes.holdout.length ? `${NT.scenes.holdout.length} 个保留场景` : null,
+  };
+}
+const LEVEL_OFF = {L1: '没勾位置或朝向', L2: '第 3 步没勾外观随机', L3: '每个角色只有 1 个候选物体，没有干扰物和保留实例', L4: '第 3 步没选保留场景'};
+function renderLevels() {
+  const why = levelReasons();
+  $('#nt-levels').innerHTML = LEVELS.map(([k, name]) => `<div class="nt-level${why[k] ? '' : ' off'}">
+    <div class="nt-level-h">${st(why[k] ? 'ok' : 'na', why[k] ? '开启' : '不开启')}<b class="mono">${k}</b> ${name}<span class="small muted">${esc(why[k] || LEVEL_OFF[k])}</span></div>
+    ${why[k] ? `<div class="wz-grid"><div class="fld wide"><label for="nt-range-${k}">变化因素与范围</label><textarea id="nt-range-${k}" rows="2" oninput="NT.levels.${k}.range = this.value">${esc(NT.levels[k].range)}</textarea></div>
+      <div class="fld"><label for="nt-ltarget-${k}">目标布局数</label><input id="nt-ltarget-${k}" type="number" min="0" step="5" value="${NT.levels[k].target}" oninput="NT.levels.${k}.target = ntNum(this.value)"></div></div>` : ''}</div>`).join('');
+}
 const newRole = (label = '', candidates = []) => ({label, candidates, count: 1});
 const ntList = (key) => ({dis: NT.dis.candidates, hold: NT.holdout, 'sc-train': NT.scenes.train, 'sc-holdout': NT.scenes.holdout})[key]
   || NT.roles[Number(key.slice(1))].candidates;
@@ -1401,19 +1428,19 @@ function drawerNewTask() {
       <div class="fld wide"><label class="check"><input id="nt-dis-lib" type="checkbox" onchange="$('#nt-clutter').hidden = !this.checked">也从杂物库随机取</label>
         <small>杂物库是共享资产库的 Object/RoboDojo/Clutter/（${CLUTTER_N()}），由其中的 clutter.yml 索引；任务配置的 Clutter 段引用它，生成布局时按数量和区域随机摆放。</small>
         <div id="nt-clutter" hidden>${Object.keys(CLUTTER).length ? `<div class="toggles clutter-cats">${Object.entries(CLUTTER).map(([c, n]) => `<label class="toggle"><input type="checkbox" data-clutter="${esc(c)}"><span>${ic('check')}${esc(c)} <small class="muted">${n}</small></span></label>`).join('')}</div>
-          <small>只取选中的类别；一个都不选就是整个杂物库。杂物没有渲染图，只显示类别名。</small>` : '<small class="txt-bad">资产库镜像里没有杂物库，无法列出类别；不选就是整个杂物库。</small>'}</div></div></div>`)}`)}
+          <small>只取选中的类别；一个都不选就是整个杂物库。杂物没有渲染图，只显示类别名。</small>` : '<small class="txt-bad">资产库镜像里没有杂物库，无法列出类别；不选就是整个杂物库。</small>'}</div></div></div>`)}
+    ${group('评测保留实例 <span class="opt">可选，选了就开启 L3</span>', `${objPicker('hold', '没见过的尺寸、颜色、材质的物体')}
+      <small class="muted">只在 L3 评测集里出现，不进训练布局。</small>`)}`)}
     ${pane(2, `${group('训练场景', `${picker('sc-train', '搜索场景名称、类型、id 或 env 配置')}
       <div class="presets"><button type="button" onclick="addBuiltScenes()">${ic('plus', 'ic-sm')}加入全部已建模场景</button></div>
       <small class="muted">采集训练数据用；还没建模的场景也能选，coding agent 等它建好再生成布局。</small>`)}
     ${group('L4 保留场景 <span class="opt">选了 L4 才需要</span>', `${picker('sc-holdout', '搜索场景名称、类型、id 或 env 配置')}
-      <small class="muted">只在评测时出现，不进训练；选进这里会自动从训练场景里移走。</small>`)}`)}
-    ${pane(3, `${group('等级', LEVELS.map(([k, name, range, target]) => `<div class="nt-level">
-      <label class="toggle"><input type="checkbox" data-level="${k}" ${k === 'L0' ? 'checked' : ''}><span>${ic('check')}<b class="mono">${k}</b> ${name}</span></label>
-      <div class="wz-grid"><div class="fld wide"><label for="nt-range-${k}">变化因素与范围</label><textarea id="nt-range-${k}" rows="2">${esc(range)}</textarea></div>
-      <div class="fld"><label for="nt-ltarget-${k}">目标布局数</label><input id="nt-ltarget-${k}" type="number" min="0" step="5" value="${target}"></div></div>
-      ${k === 'L1' ? `<div class="fld" style="margin-top:10px"><label>随机的维度</label><div class="toggles">${Object.entries(RANDOMIZE).map(([r, txt]) => `<label class="toggle"><input type="checkbox" data-random="${r}" checked><span>${ic('check')}${txt}</span></label>`).join('')}</div>
-        <small>训练布局也按这些维度随机；具体范围由 coding agent 按可达范围和物体尺寸设定。都不勾就是全部固定摆放。</small></div>` : ''}
-      ${k === 'L3' ? `<div class="fld" style="margin-top:10px"><label>保留实例（不进训练）</label>${objPicker('hold', '没见过的尺寸、颜色、材质的物体')}</div>` : ''}</div>`).join(''))}
+      <small class="muted">只在评测时出现，不进训练；选了就开启 L4。选进这里会自动从训练场景里移走。</small>`)}
+    ${group('外观随机 <span class="opt">可选，勾了就开启 L2</span>', `<div class="toggles">${Object.entries(APPEARANCE).map(([k, txt]) => `<label class="toggle"><input type="checkbox" data-appear="${k}"><span>${ic('check')}${txt}</span></label>`).join('')}</div>
+      <small class="muted">训练布局和 L2 评测集都按这些随机；具体范围由 coding agent 设定。</small>`)}`)}
+    ${pane(3, `${group('位置随机 <span class="opt">勾了就开启 L1</span>', `<div class="toggles">${Object.entries(RANDOMIZE).map(([r, txt]) => `<label class="toggle"><input type="checkbox" data-random="${r}" checked onchange="renderLevels()"><span>${ic('check')}${txt}</span></label>`).join('')}</div>
+      <small class="muted">训练布局和 L1 评测集都按这些随机；具体范围由 coding agent 按可达范围和物体尺寸设定。都不勾就是全部固定摆放。</small>`)}
+    ${group('泛化等级 <span class="opt">按前面的选择自动开启</span>', '<div id="nt-levels"></div>')}
     ${group('其他泛化 <span class="opt">可选</span>', `<textarea id="nt-extra" rows="3" placeholder="上面五级没覆盖的维度和范围"></textarea>
       <div class="presets">${EXTRA_PRESETS.map((t) => `<button type="button" onclick="addExtra(this)">${ic('plus', 'ic-sm')}${esc(t)}</button>`).join('')}</div>`)}
     ${group('实现要求', `<div class="wz-grid">
@@ -1425,8 +1452,9 @@ function drawerNewTask() {
 }
 async function openNewTask(btn) {
   try { CLUTTER = await api('/api/clutter'); } catch { CLUTTER = {}; }
-  NT = {roles: [newRole()], dis: {candidates: []}, holdout: [], scenes: {train: [], holdout: []}};
-  WZ = {steps: TASK_WIZ, check: taskWizError};
+  NT = {roles: [newRole()], dis: {candidates: []}, holdout: [], scenes: {train: [], holdout: []},
+    levels: Object.fromEntries(LEVELS.map(([k, , range, target]) => [k, {range, target}]))};
+  WZ = {steps: TASK_WIZ, check: taskWizError, idCheck: taskIdError, onStep: (n) => n === 3 && renderLevels()};
   WIZ_AT = 0;
   openDrawer('new-task', 'new', btn);
   renderRoles();
@@ -1452,14 +1480,18 @@ function taskModeChanged() {
   $('#nt-id').textContent = existing ? (t?.id || '选择任务') : (taskId().replace(/^g1d_$/, '') || '填写英文名称后生成');
 }
 function addExtra(btn) { const el = $('#nt-extra'), t = btn.textContent.trim(); el.value = el.value.trim() ? `${el.value.trim()}；${t}` : t; el.focus(); }
+function taskIdError() {  // [message, field] when the task id is unusable, or ['']
+  const existing = $('#nt-mode').value === 'existing';
+  if (existing) return $('#nt-existing').value ? [''] : ['选择要登记的已有任务', '#nt-existing'];
+  if (!/^[a-z0-9_]+$/.test($('#nt-slug').value.trim())) return ['任务名后缀只能含小写字母、数字和下划线', '#nt-slug'];
+  return S.task.some((t) => t.id === taskId()) ? [`已有任务 ${taskId()}；要给它登记泛化方案，登记方式选「已有任务」`, '#nt-slug'] : [''];
+}
 function taskWizError() {  // [message, field selector] blocking the current step, or ['']
   if (WIZ_AT === 0) {
-    const existing = $('#nt-mode').value === 'existing', slug = $('#nt-slug').value.trim();
-    if (existing && !$('#nt-existing').value) return ['选择要登记的已有任务', '#nt-existing'];
     if (!$('#nt-name').value.trim()) return ['填写中文名称', '#nt-name'];
     if (!$('#nt-name-en').value.trim()) return ['填写英文名称', '#nt-name-en'];
-    if (!existing && !/^[a-z0-9_]+$/.test(slug)) return ['任务名后缀只能含小写字母、数字和下划线', '#nt-slug'];
-    if (!existing && S.task.some((t) => t.id === taskId())) return [`已有任务 ${taskId()}；要给它登记泛化方案，登记方式选「已有任务」`, '#nt-slug'];
+    const id = taskIdError();
+    if (id[0]) return id;
     if (!$('#nt-definition').value.trim()) return ['用中文写下任务定义，coding agent 据此总结语言指令', '#nt-definition'];
     const n = Number($('#nt-inst-n').value);
     if (!Number.isInteger(n) || n < 1 || n > 50) return ['指令转写数量为 1–50 的整数', '#nt-inst-n'];
@@ -1471,24 +1503,18 @@ function taskWizError() {  // [message, field selector] blocking the current ste
     const i = NT.roles.findIndex((r) => !/^\w+$/.test(r.label) || labels.indexOf(r.label) !== labels.lastIndexOf(r.label));
     if (i >= 0) return ['每个角色要有唯一的 label（字母、数字、下划线）', `#nt-role-${i}`];
     const j = NT.roles.findIndex((r) => !r.candidates.length);
-    if (j >= 0) return [`角色 ${NT.roles[j].label} 还没选候选物体`, `#nt-chips-r${j} + input`];
+    if (j >= 0) return [`角色 ${NT.roles[j].label} 还没选候选物体`, `#nt-chips-r${j} + .opick input`];
     const k = NT.roles.findIndex((r) => !(r.count >= 1));
     if (k >= 0) return ['每回合数量至少为 1', `#nt-count-${k}`];
     const lo = ntNum($('#nt-dis-min').value), hi = ntNum($('#nt-dis-max').value);
     if (lo != null && hi != null && lo > hi) return ['干扰物最少数量不能大于最多数量', '#nt-dis-min'];
   }
   if (WIZ_AT === 2 && !NT.scenes.train.length) return ['至少选一个训练场景', '#nt-chips-sc-train + .opick input'];
-  if (WIZ_AT === 3) {
-    const levels = [...$$('[data-level]:checked')].map((c) => c.dataset.level);
-    if (!levels.length) return ['至少选一个泛化等级', '[data-level]'];
-    if (levels.includes('L4') && !NT.scenes.holdout.length) return ['选了 L4，要在第 3 步至少选一个 L4 保留场景', '[data-level="L4"]'];
-  }
   return [''];
 }
 async function createTask(btn) {
   const err = $('#no-err'), id = taskId(), value = (sel) => $(sel).value.trim();
-  const [blocked, field] = taskWizError();  // the last step is not checked by wizGo
-  if (blocked) { err.textContent = blocked; $(field)?.focus(); return; }
+  if (wizBlocked()) return;
   const lo = ntNum($('#nt-dis-min').value), hi = ntNum($('#nt-dis-max').value);
   const reg = {
     existing: $('#nt-mode').value === 'existing', name: value('#nt-name'), name_en: value('#nt-name-en'), definition: value('#nt-definition'),
@@ -1499,7 +1525,8 @@ async function createTask(btn) {
       clutter_categories: $('#nt-dis-lib').checked ? [...$$('[data-clutter]:checked')].map((c) => c.dataset.clutter) : []},
     scenes: Object.fromEntries([...NT.scenes.train.map((id) => [id, 'train']), ...NT.scenes.holdout.map((id) => [id, 'holdout'])]),
     randomize: [...$$('[data-random]:checked')].map((c) => c.dataset.random),
-    levels: Object.fromEntries([...$$('[data-level]:checked')].map((c) => [c.dataset.level, {target: ntNum($(`#nt-ltarget-${c.dataset.level}`).value), range: value(`#nt-range-${c.dataset.level}`)}])),
+    levels: Object.fromEntries(Object.entries(levelReasons()).filter(([, why]) => why).map(([k]) => [k, NT.levels[k]])),
+    appearance: [...$$('[data-appear]:checked')].map((c) => c.dataset.appear),
     holdout_objects: NT.holdout, extra: value('#nt-extra'), expert: value('#nt-expert'), requirements: value('#nt-req'), notes: value('#nt-notes'),
   };
   btn.disabled = true;
@@ -1535,6 +1562,7 @@ function taskBrief(d) {  // the task for a coding agent that implements this reg
     '- 物体角色：', ...roles,
     r.randomize?.length ? `- 位置随机：训练布局和 L1 评测集每回合随机${r.randomize.map((k) => RANDOMIZE[k] || k).join('、')}，范围由你定：位置在机器人可达范围内（桌面物体 y≈[-0.55, -0.25]）、物体之间不重叠且留出抓取空间；朝向按抓取方式定，抓不到的角度不要采。L0 孪生布局固定摆放。范围写进任务配置和交付说明。`
       : '- 位置随机：不随机，所有布局固定摆放。',
+    r.appearance?.length ? `- 外观随机：训练布局和 L2 评测集随机${r.appearance.map((k) => APPEARANCE[k] || k).join('、')}，范围由你定（灯光放在 Room 里，色温和亮度围绕场景登记的实测值变化）。` : null,
     dis.count || dis.candidates?.length || dis.clutter_library ? `- 干扰物：每回合 ${dis.count ? dis.count.join('–') : '若干'} 个${dis.candidates?.length ? `，从 ${dis.candidates.join('、')} 中取` : ''}${dis.clutter_library ? '，也从 Clutter 杂物库随机取' : ''}` : '- 干扰物：无',
     fact('训练场景', sceneLine('train')), fact('L4 保留场景', sceneLine('holdout')),
     '- 泛化等级：', ...levels.map(([k, v]) => `  - ${k}（目标 ${v.target ?? '—'} 个布局）：${v.range}`),
@@ -1573,6 +1601,7 @@ function taskRegSection(d) {
     ${sec('登记的方案', `<dl class="kv"><dt>物体角色</dt><dd>${(r.roles || []).map((x) => `<div><b class="mono">${esc(x.label)}</b> × ${x.count}：${x.candidates.map((o) => link('object', o, objLabel(o))).join('、')}</div>`).join('') || '—'}</dd>
       <dt>干扰物</dt><dd>${r.distractors?.count ? `${r.distractors.count.join('–')} 个` : '—'}${(r.distractors?.candidates || []).length ? `：${r.distractors.candidates.map((o) => link('object', o, objLabel(o))).join('、')}` : ''}${r.distractors?.clutter_library ? '（含 Clutter 库）' : ''}</dd>
       <dt>位置随机</dt><dd>${r.randomize?.length ? r.randomize.map((k) => RANDOMIZE[k] || k).join('、') : '不随机'}</dd>
+      <dt>外观随机</dt><dd>${r.appearance?.length ? r.appearance.map((k) => APPEARANCE[k] || k).join('、') : '不随机'}</dd>
       <dt>训练场景</dt><dd>${scenes('train')}</dd><dt>L4 保留场景</dt><dd>${scenes('holdout')}</dd>
       <dt>泛化等级</dt><dd>${levels.map(([k, v]) => `<div><b class="mono">${k}</b> · 目标 ${v.target ?? '—'}：<span class="small">${esc(v.range)}</span></div>`).join('') || '—'}</dd>
       <dt>L3 保留实例</dt><dd>${(r.holdout_objects || []).map((o) => link('object', o, objLabel(o))).join('、') || '—'}</dd></dl>
@@ -1850,43 +1879,59 @@ let NEW_PHOTOS = [], WIZ_AT = 0, WZ = null;  // the open registration wizard: ph
 async function openNewObject(btn) {
   try { IDX = await api('/api/object-indices'); } catch (err) { return toast(`读取编号失败：${err.message}`, true); }
   NEW_PHOTOS = [];
-  WZ = {steps: WIZ, check: wizError};
+  WZ = {steps: WIZ, check: wizError, idCheck: objIdError};
   WIZ_AT = 0;
   openDrawer('new-object', 'new', btn);
   suggestIndex();
   wizGo(0);
 }
-function wizError() {  // [message, field selector] blocking the current step, or ['']
+function objIdError() {  // [message, field] when the asset id is unusable, or ['']
   const type = $('#no-type').value, cat = $('#no-cat').value.trim(), idx = $('#no-idx').value.trim();
   const taken = IDX[`${type}/${cat}`] || [], next = taken.length ? Math.max(...taken) + 1 : 0;
+  return !/^\w[\w-]*$/.test(cat) ? ['类别只能含字母、数字、下划线和连字符，如 measuring_cup', '#no-cat']
+    : !/^\d+$/.test(idx) ? ['编号为非负整数', '#no-idx'] : taken.includes(Number(idx)) ? [`这个编号已被资产库或已登记的物体占用，下一个空闲编号是 ${next}`, '#no-idx'] : [''];
+}
+function wizError() {  // [message, field selector] blocking the current step, or ['']
   if (WIZ_AT === 0) {
-    return !$('#no-name').value.trim() ? ['填写中文名称', '#no-name'] : !$('#no-name-en').value.trim() ? ['填写英文名称', '#no-name-en']
-      : !/^\w[\w-]*$/.test(cat) ? ['类别只能含字母、数字、下划线和连字符，如 measuring_cup', '#no-cat']
-      : !/^\d+$/.test(idx) ? ['编号为非负整数', '#no-idx'] : taken.includes(Number(idx)) ? [`这个编号已被资产库或已登记的物体占用，下一个空闲编号是 ${next}`, '#no-idx'] : [''];
+    return !$('#no-name').value.trim() ? ['填写中文名称', '#no-name'] : !$('#no-name-en').value.trim() ? ['填写英文名称', '#no-name-en'] : objIdError();
   }
   if (WIZ_AT === 1 && !NEW_PHOTOS.length && !$('#no-dims').value.trim()) return ['没有照片时至少填实测尺寸，否则无从建模', '#no-dims'];
   return [''];
+}
+function wizBlocked() {  // a bad id stops every submit, admins too; [message, field] goes to the footer
+  const [e, field] = WZ.idCheck();
+  if (e) { $('#no-err').textContent = e; $(field)?.focus(); }
+  return Boolean(e);
 }
 function wizGo(n) {
   const last = WZ.steps.length - 1;
   n = Math.max(0, Math.min(last, n));
   const from = WIZ_AT;
-  let [e, bad] = [''];
+  let [e, bad] = [''], skipped = [];
   if (n < WIZ_AT) WIZ_AT = n;
-  else while (WIZ_AT < n && !([e, bad] = WZ.check())[0]) WIZ_AT++;  // forward: every step passed on the way must be complete
-  $('#no-err').textContent = e;
+  else {  // forward: every step passed on the way must be complete; admins may leave fields empty
+    while (WIZ_AT < n) {
+      [e, bad] = WZ.check();
+      if (e && !ME?.admin) break;
+      if (e) skipped.push(e);
+      [e, bad] = [''];
+      WIZ_AT++;
+    }
+  }
+  $('#no-err').textContent = e || (skipped.length ? `管理员已跳过：${skipped.join('；')}` : '');
   $$('.wiz-pane [aria-invalid]').forEach((x) => x.removeAttribute('aria-invalid'));
   $$('.wiz-pane').forEach((p) => { p.hidden = Number(p.dataset.step) !== WIZ_AT; });
   $$('[data-wiz]').forEach((b) => { const k = Number(b.dataset.wiz); b.className = k === WIZ_AT ? 'on' : k < WIZ_AT ? 'done' : ''; b.setAttribute('aria-current', k === WIZ_AT ? 'step' : 'false'); });
   $('#wiz-back').style.visibility = WIZ_AT ? '' : 'hidden';
   $('#wiz-next').hidden = WIZ_AT === last;
   $('#wiz-done').hidden = WIZ_AT !== last;
+  if (WIZ_AT !== from) WZ.onStep?.(WIZ_AT);
   if (bad) { $(bad).setAttribute('aria-invalid', 'true'); $(bad).setAttribute('aria-describedby', 'no-err'); $(bad).focus(); }  // the field to fix
   else if (WIZ_AT !== from) { $('#drawer .dr-b').scrollTop = 0; $(`.wiz-pane[data-step="${WIZ_AT}"] input, .wiz-pane[data-step="${WIZ_AT}"] textarea`)?.focus({preventScroll: true}); }
 }
 function openNewScene(btn) {
   NEW_PHOTOS = [];
-  WZ = {steps: SCENE_WIZ, check: sceneWizError};
+  WZ = {steps: SCENE_WIZ, check: sceneWizError, idCheck: sceneIdError};
   WIZ_AT = 0;
   openDrawer('new-scene', 'new', btn);
   wizGo(0);
@@ -1901,13 +1946,16 @@ function suggestSceneSlug() {  // "Kitchen Counter" -> kitchen_counter, until th
 function suggestSceneId() {
   $('#ns-id').textContent = $('#ns-slug').value.trim() ? newSceneId() : '填写英文名称后生成';
 }
+function sceneIdError() {  // [message, field] when the scene directory name is unusable, or ['']
+  const slug = $('#ns-slug').value.trim();
+  return !/^[a-z0-9_]+$/.test(slug) ? ['目录名后缀只能含小写字母、数字和下划线，如 kitchen_counter', '#ns-slug']
+    : S.scene.some((d) => d.id.replace(/^real_scene\d+_/, '') === slug) ? ['已有同名后缀的场景，换一个', '#ns-slug'] : [''];
+}
 function sceneWizError() {  // [message, field selector] blocking the current step, or ['']
   const positive = (sel) => Number($(sel).value) > 0;
   if (WIZ_AT === 0) {
     return !$('#ns-name').value.trim() ? ['填写中文名称', '#ns-name'] : !$('#ns-name-en').value.trim() ? ['填写英文名称', '#ns-name-en']
-      : !/^[a-z0-9_]+$/.test($('#ns-slug').value.trim()) ? ['目录名后缀只能含小写字母、数字和下划线，如 kitchen_counter', '#ns-slug']
-      : S.scene.some((d) => d.id.replace(/^real_scene\d+_/, '') === $('#ns-slug').value.trim()) ? ['已有同名后缀的场景，换一个', '#ns-slug']
-      : NEW_PHOTOS.length < MIN_SCENE_PHOTOS ? [`至少 ${MIN_SCENE_PHOTOS} 张不同角度的照片，现在 ${NEW_PHOTOS.length} 张`, '.wiz-pane[data-step="0"] .drop input'] : [''];
+      : sceneIdError()[0] ? sceneIdError() : NEW_PHOTOS.length < MIN_SCENE_PHOTOS ? [`至少 ${MIN_SCENE_PHOTOS} 张不同角度的照片，现在 ${NEW_PHOTOS.length} 张`, '.wiz-pane[data-step="0"] .drop input'] : [''];
   }
   if (WIZ_AT === 1) {
     const missing = [['#ns-top', '桌面离地高度'], ['#ns-len', '桌面长'], ['#ns-wid', '桌面宽']].find(([sel]) => !positive(sel));
@@ -1917,6 +1965,7 @@ function sceneWizError() {  // [message, field selector] blocking the current st
   return [''];
 }
 async function createScene(btn) {
+  if (wizBlocked()) return;
   const err = $('#no-err'), id = newSceneId();
   const value = (sel) => $(sel).value.trim(), number = (sel) => ($(sel).value === '' ? null : Number($(sel).value));
   const reg = {
@@ -1981,6 +2030,7 @@ function previewPhotos() {
   }
 }
 async function createObject(btn) {
+  if (wizBlocked()) return;
   const err = $('#no-err');
   const id = `${$('#no-type').value}/${$('#no-cat').value.trim()}/${$('#no-idx').value.trim().padStart(5, '0')}`;
   const value = (sel) => $(sel).value.trim(), number = (sel) => ($(sel).value === '' ? null : Number($(sel).value));
