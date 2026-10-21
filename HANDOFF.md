@@ -45,7 +45,12 @@
   - 本机：`scripts/check.sh` 通过（22 passed，1 skipped）；新场景脚本单独跑过 ruff 0.11.7；`test_scenes.py` 加了 `g1d_shenzhen_lab` 的期望站位。
   - `5090-2` 隔离目录 `/data/robodojo-runs/shenzhen-lab-20261021-125246`（GPU 3）：资产 = 学校场景运行目录的 `Assets` + 平台镜像的 `arx_x5` 布局和物体元数据；`unitree_ros` 里唯一需要的 URDF 在本机下载后放进 `.cache/unitree_ros`（5090-2 上不了 GitHub）。`build_asset.py --assets Assets` 退出 0，`g1d_shenzhen_lab` 739 个布局。`scripted_demo --env_cfg_type g1d_shenzhen_lab --task_name g1d_pour_beans_measuring_cups --seed 0`：success_rate 1.0、eval_time 1，四路相机正常；`cam_third` 换到 4916 / 4913 位姿又各跑一次（也都 1.0），运行目录的相机配置已还原。
   - 对比图在场景目录 `preview/`（不入库）：`compare_photo.jpg`（几何叠线）、`compare_isaac.jpg`（照片 vs Isaac）、`robot_cameras_isaac.jpg`（四路相机）；已拷到 `5090-2:/root/RoboDojo/real2sim/scenes/real_scene5_shenzhen_lab/preview/` 给平台显示。
-- **没做**：没装共享库（要先征得同意）；站位卷尺和叠图（要真机头部、腕部画面和关节角）；灯光没和头部相机比。
+- **共享库**（用户同意后，2026-10-21 13:5x，按 README「改服务器共享资产库」五步）：新目录 `Room/real_scene5`（8 个文件）和 `Eval_Layout/RoboDojo/g1d_shenzhen_lab`（574 个布局，0/1/2 三组），没有覆盖任何东西，所以没做备份。
+  - 来源是上面隔离目录里验证过的产物，经本机中转拷到共享库临时目录再改名到位；Room 和提交的文件 sha256 一致；拷入后 582 个文件和验证产物的 sha256 逐个一致；目录权限对齐为组可写（同 `real_scene3`）。
+  - **去掉了 `g1d_pour_beans_measuring_cups_*`（165 个）**：共享库没有 `measuring_cup`，其他配置也没有这个任务的布局。
+  - 生成输入核对：同一次运行生成的 `g1d_lab` 和共享库的 `g1d_lab` 比，拾取、叠块逐字节相同；倒水、杯对杯只有豆子参数不同，因为**共享库里 `g1d`、`g1d_counter`、`g1d_lab` 的这两个任务布局还是旧的 4 mm 豆子参数**，当前代码是 5.6 mm。`g1d_shenzhen_lab` 按当前代码生成，所以和旧配置在这两个任务上不一致（见「剩余事项」）。
+  - 平台：`5090-2` 的元数据镜像补了同样的 574 个布局 json（整体重刷镜像时会从共享库带上）。
+- **没做**：站位卷尺和叠图（要真机头部、腕部画面和关节角）；灯光没和头部相机比。
 
 ### 数采平台任务登记（2026-10-20，[PR #11](https://github.com/Zheng-Chong/RoboRSR/pull/11) 合并进 `main`，已部署）
 
@@ -201,7 +206,8 @@
 - **legacy 数据集**：和新契约在头部图像键、指令两处不同；用它训练的策略，评估前要先对齐。
 - **新流水线还没跑过整批**：collection_v3 是用旧采集器采的，下一批数据应该改用 `scripts/datagen/run_batch.py`。
 - **学校场景**：桌面高度和底盘偏航都依赖假设（零升降、12 号电机即躯干偏航），要用卷尺和叠图核对；从 sys01 拷真机头部和腕部画面（`outputs/g1d-real2sim`）做叠图。杯盘要在数采平台登记实测后，按 `scripts/objects/SKILL.md` 重建。
-- **深圳实验室**：分支待合并；装共享库要用户同意（按 README 五步）；站位卷尺（桌沿到根节点、横向偏移）和三视角叠图后，`acceptance.py` 才能通过。
+- **共享库的倒豆布局过期**：`g1d`、`g1d_counter`、`g1d_lab` 的倒水、杯对杯布局是旧豆子参数（4 mm，`particle_mass` 6e-5），和当前 `build_asset.py`（5.6 mm）不一致；`g1d_shenzhen_lab` 已是新参数。要统一，就在隔离目录重跑 `build_asset.py`，经同意后替换（先备份）。
+- **深圳实验室**：分支待合并；已装共享库；站位卷尺（桌沿到根节点、横向偏移）和三视角叠图后，`acceptance.py` 才能通过。
 - **场景**：除深圳实验室外没有卷尺实测，都没有叠图；`real_scene1` 和 09-21 那次真机运行时的摆放不一样，那批画面不能用来叠图。下次去现场按 `real2sim/scenes/SKILL.md` 一次采齐。
 - **真机对齐**：
   - 动力学没做系统辨识；末端位姿动作还不支持（需要 G1-D 的 cuRobo 配置，并且左右臂各用一个 planner）；
@@ -223,7 +229,7 @@
 
 ## 下一会话
 
-0. 深圳实验室：合并 `chongzheng/scene-shenzhen-lab`；用户同意后把 `Room/real_scene5` 和 `Eval_Layout/RoboDojo/g1d_shenzhen_lab` 装进共享库；去现场量站位、拍头部 / 腕部画面做叠图（`overlay.py --env-cfg g1d_shenzhen_lab`）。
+0. 深圳实验室：合并 `chongzheng/scene-shenzhen-lab`（共享库已装好）；去现场量站位、拍头部 / 腕部画面做叠图（`overlay.py --env-cfg g1d_shenzhen_lab`）。
 1. 先看 `git log`、本文件和 `scripts/datagen/CONTRACT.md`。主工作区里还有物体建模 SKILL 会话没提交的改动（见"最近任务"里的"并行会话"）；拉取新的 `main` 前，先让那个会话提交，或者先 stash。
 2. 下一批数据用新流水线采集。先跑单回合探针，确认 `joint_names`、夹爪 state 和图像都正常，再按 `scripts/datagen/SKILL.md` 批量采集、导出、审计、回放，最后登记。
 3. 去现场按 `real2sim/scenes/SKILL.md` 采集（ChArUco 标定板照片、卷尺、灯光、机器人相机画面），在平台「登记场景」录入，回来跑 `overlay.py` 和 `acceptance.py`。
@@ -232,7 +238,7 @@
 
 ## 最近历史
 
-- 2026-10-21：按平台登记新建深圳实验室场景 `real_scene5_shenzhen_lab`（env 配置 `g1d_shenzhen_lab`），卷尺定尺度，5090-2 上 `build_asset.py` 和脚本演示通过；修 `build_asset.py` 相对 `--assets` 时的软链接问题。分支 `chongzheng/scene-shenzhen-lab`。
+- 2026-10-21：按平台登记新建深圳实验室场景 `real_scene5_shenzhen_lab`（env 配置 `g1d_shenzhen_lab`），卷尺定尺度，5090-2 上 `build_asset.py` 和脚本演示通过，经用户同意装进共享库（不含量杯任务布局）；修 `build_asset.py` 相对 `--assets` 时的软链接问题。分支 `chongzheng/scene-shenzhen-lab`。
 - 2026-10-21：登记任务的位置随机移到第 4 步 L1（用户：位置泛化应属于泛化等级），第 2 步只选物体；L1 下勾「位置 / 朝向」，训练布局和 L1 评测集都按它们随机，范围仍由 coding agent 定，都不勾即固定摆放。`registration.json` 的随机字段从每个角色的 `randomize` 移到任务级 `randomize`。第 3 步场景不再每个场景一个下拉框（场景多了不好选），改为「训练场景」「L4 保留场景」两个搜索选择框：和物体选择共用组件（`PICK` 按键名区分物体和场景），带缩略图和悬停预览（桌面尺寸、env 配置、照片数），同一场景只能在一边，选进另一边自动移走；「加入全部已建模场景」一键加入。验证：`test_server.py`、ruff；本机浏览器：加入全部已建模场景、搜索、悬停预览、回车把实验室移到 L4 保留、L1 取消朝向后提交，登记和实现任务文本正确。PR #16 合并（`f717246`）并部署。
 - 2026-10-21：登记任务的物体角色不再手填 x/y 范围和朝向角度（用户：不要人为定这么细），改为「每回合随机」两个勾选项：位置、朝向（默认都勾）。`registration.json` 的角色字段由 `xlim/ylim/yaw_deg` 换成 `randomize: ["position", "yaw"]`；实现任务文本让 coding agent 按可达范围（桌面物体 y≈[-0.55, -0.25]）、物体不重叠且留抓取空间、按抓取方式定朝向来设范围，L0 孪生仍固定摆放，范围写进任务配置和交付说明。线上没有登记过任务，不用迁移。验证：`test_server.py`、ruff；本机浏览器里勾选、取消、提交，看了实现任务文本和抽屉摘要。PR #15 合并（`e1b347c`）并部署。
 - 2026-10-21：登记任务里的物体选择改为带预览的搜索列表（用户反馈：选的时候看不出是哪个）：输入名称、类别或 id 过滤，每行有缩略图，鼠标悬停（或方向键）在旁边浮出大图卡片（名称、id、尺寸、质量、入库状态；图取渲染图，没有就取实拍），回车或点击加入；已选标签带缩略图，悬停也能预览。干扰物的杂物库说明清楚了：它是共享资产库 `Object/RoboDojo/Clutter/`（95 类 193 个，`clutter.yml` 索引），任务配置的 `Clutter` 段引用它；勾选后列出各类别和数量，可只选部分类别（不选即全库），写进 `distractors.clutter_categories`。新接口 `GET /api/clutter` 从资产库镜像统计类别。杂物没有渲染图，只显示类别名。验证：`test_server.py`（`/api/clutter`）、ruff；本机用部署机的元数据镜像和主工作区的渲染图在浏览器里试了搜索、悬停预览、方向键 + 回车、标签预览、杂物类别写入登记。PR #14 合并（`99cf0b6`）并部署到 `5090-2`，线上镜像统计出杂物库 95 类 193 个。
