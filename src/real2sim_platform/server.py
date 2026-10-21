@@ -356,6 +356,14 @@ def scan_objects(assets, tasks, keep):
     return found
 
 
+def clutter_categories(assets):
+    """{category: instances} of the Clutter library (Object/RoboDojo/Clutter/, indexed by its clutter.yml), the pool a
+    task config's Clutter section draws distractors from."""
+    root = assets / "Object" / "RoboDojo" / "Clutter"
+    counts = Counter(p.parent.parent.name for p in root.glob("*/*/metadata.json"))
+    return dict(sorted(counts.items()))
+
+
 def object_indices(assets, store):
     """{"Rigid/cup": [0, 1, ...]}: indices taken per <type>/<category> in the library, real2sim/objects or the store."""
     roots = (assets / "Object" / "RoboDojo", OBJECTS_DIR)
@@ -498,6 +506,7 @@ def write_task_registration(doc, names=None):
         "target_episodes": r.get("target"),
         "owner": doc.get("owner") and {"username": doc["owner"], "name": (names or {}).get(doc["owner"], doc["owner"])},
         "objects": r.get("roles"),  # [{label, candidates, count, xlim, ylim, yaw_deg}]; table frame, m
+        # {count, candidates, clutter_library, clutter_categories: [] = the whole Clutter library}
         "distractors": r.get("distractors"),
         "scenes": scenes,
         "levels": r.get("levels"),  # {"L1": {"target": 50, "range": "..."}}, only the chosen levels
@@ -678,6 +687,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json([{"username": u["username"], "name": u["name"]} for u in self.store.users()])
         elif url.path == "/api/info":
             self.send_json(self.info)
+        elif url.path == "/api/clutter":
+            self.send_json(clutter_categories(self.scan_args[0]))
         elif url.path == "/api/object-indices":
             self.send_json(object_indices(self.scan_args[0], self.store))
         elif url.path == "/api/items" and query.get("kind") in KINDS:

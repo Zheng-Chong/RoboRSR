@@ -310,6 +310,22 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
 .fld .chips:not(:empty) { margin-bottom: 6px; }
 .tag-x { display: inline-grid; place-items: center; margin-left: 4px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; opacity: .6; }
 .tag-x:hover { opacity: 1; }
+.obj-chip img { width: 18px; height: 18px; margin-right: 5px; border-radius: 4px; object-fit: cover; vertical-align: -4px; }
+.opick { position: relative; }
+.opick > input { width: 100%; }
+.opick-list { position: absolute; z-index: 5; top: calc(100% + 4px); left: 0; right: 0; max-height: 300px; overflow: auto; padding: 4px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow-3); }
+.opick-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.opick-item.on { background: var(--primary-soft); }
+.opick-item .thumb { flex: 0 0 auto; }
+.opick-t { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.opick-t b, .opick-t small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opick-t small { color: var(--muted); font-size: 11px; }
+.opick-empty { padding: 10px; }
+#obj-preview { position: fixed; z-index: 40; width: 260px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-3); pointer-events: none; }
+#obj-preview .op-img { display: grid; place-items: center; gap: 6px; aspect-ratio: 4 / 3; background: var(--surface-2); }
+#obj-preview .op-img img { width: 100%; height: 100%; object-fit: contain; }
+#obj-preview .op-b { display: grid; gap: 3px; padding: 10px 12px; }
+.clutter-cats { max-height: 180px; overflow: auto; margin-top: 8px; }
 
 /* drawer */
 #scrim { position: fixed; inset: 0; z-index: 20; background: rgba(15, 23, 42, .38); opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -452,6 +468,7 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
   </div>
 </div>
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="obj-preview" hidden></div>
 <script>
 'use strict';
 const $ = (s) => document.querySelector(s);
@@ -1240,6 +1257,8 @@ const TASK_WIZ = [
 ];
 const HANDS = {'': '未定', left: '左手', right: '右手', either: '任一手（随布局）', both: '双手'};
 const INST_LANGS = {zh: '中文', en: '英文'};
+let CLUTTER = {};  // {category: instances} of the Clutter library, loaded when the task wizard opens
+const CLUTTER_N = () => (Object.keys(CLUTTER).length ? `${Object.keys(CLUTTER).length} 类、${sum(Object.values(CLUTTER))} 个` : '镜像里没有');
 const SCENE_USES = {'': '不用', train: '训练', holdout: 'L4 保留'};
 const EXTRA_PRESETS = ['桌高 ±5 cm', '机器人站位 ±3 cm', '物体初始姿态（倒放 / 侧放）', '控制延迟 / 动作噪声'];
 const langText = (ins) => (ins?.languages || []).map((l) => INST_LANGS[l] || l).join('、');
@@ -1248,18 +1267,78 @@ let NT = null;  // the task wizard's lists: {roles: [{label, candidates, count, 
 const newRole = (label = '', candidates = []) => ({label, candidates, count: 1, xmin: null, xmax: null, ymin: null, ymax: null, yaw: null});
 const ntList = (key) => (key === 'dis' ? NT.dis.candidates : key === 'hold' ? NT.holdout : NT.roles[Number(key.slice(1))].candidates);
 const objLabel = (oid) => { const o = S.object.find((x) => x.id === oid); return o ? `${objName(o)} · ${oid}` : oid; };
-const objPicker = (key, ph = '输入物体 id 或名称，选中后加入') => `<div class="chips" id="nt-chips-${key}">${ntChips(key)}</div>
-  <input list="dl-task-objs" placeholder="${ph}" autocomplete="off" aria-label="添加物体" onchange="pickObj('${key}', this)">`;
-const ntChips = (key) => ntList(key).map((oid, i) => `<span class="tag">${esc(objLabel(oid))}<button type="button" class="tag-x" aria-label="移除 ${esc(oid)}" onclick="unpickObj('${key}', ${i})">${ic('close', 'ic-sm')}</button></span>`).join('');
-function pickObj(key, el) {
-  const v = el.value.trim(), o = S.object.find((x) => x.id === v) || S.object.find((x) => objName(x) === v);
-  if (!o) { if (v) toast(`没有物体 ${v}；先在「物体资产」登记`, true); return; }
+// object picker: a search list with thumbnails; hovering a row or a picked chip shows a larger preview card
+const objImage = (o) => o?.auto.renders?.[0] || o?.auto.photos?.[0];
+const objPicker = (key, ph = '搜索物体名称、类别或 id') => `<div class="chips" id="nt-chips-${key}">${ntChips(key)}</div>
+  <div class="opick"><input type="search" placeholder="${ph}" autocomplete="off" aria-label="添加物体" aria-controls="opick-${key}" aria-expanded="false"
+    oninput="opickOpen('${key}', this)" onfocus="opickOpen('${key}', this)" onblur="setTimeout(() => opickClose('${key}'), 150)" onkeydown="opickKey(event, '${key}', this)">
+  <div class="opick-list" id="opick-${key}" role="listbox" hidden></div></div>`;
+const ntChips = (key) => ntList(key).map((oid, i) => {
+  const o = S.object.find((x) => x.id === oid), img = objImage(o);
+  return `<span class="tag obj-chip" onmouseenter="objPreview(this, '${esc(oid)}')" onmouseleave="objPreview()">${img ? `<img src="${file(img)}" alt="">` : ''}${esc(objLabel(oid))}
+    <button type="button" class="tag-x" aria-label="移除 ${esc(oid)}" onclick="objPreview(); unpickObj('${key}', ${i})">${ic('close', 'ic-sm')}</button></span>`;
+}).join('');
+function opickMatches(q) {
+  q = q.trim().toLowerCase();
+  return live(S.object).filter((o) => !q || `${o.id} ${objName(o)} ${o.name_en || ''} ${o.auto.category}`.toLowerCase().includes(q))
+    .sort((x, y) => Number(ownObj(y)) - Number(ownObj(x)) || x.id.localeCompare(y.id)).slice(0, 40);
+}
+function opickOpen(key, el) {
+  const list = $(`#opick-${key}`), picked = ntList(key), rows = opickMatches(el.value);
+  list.innerHTML = rows.length ? rows.map((o, i) => `<div class="opick-item${i ? '' : ' on'}" role="option" data-oid="${esc(o.id)}" aria-selected="${picked.includes(o.id)}"
+      onmousedown="event.preventDefault(); pickObjId('${key}', this.dataset.oid)" onmouseenter="opickHover(this)">
+      <span class="thumb">${objImage(o) ? `<img loading="lazy" src="${file(objImage(o))}" alt="">` : ic('cube')}</span>
+      <span class="opick-t"><b>${esc(objName(o))}</b><small class="mono">${esc(o.id)}</small></span>${picked.includes(o.id) ? `<span class="st ok">${ic('check')}已选</span>` : ''}</div>`).join('')
+    : '<div class="opick-empty small muted">没有匹配的物体；新物体先在「物体资产」登记</div>';
+  list.hidden = false;
+  el.setAttribute('aria-expanded', 'true');
+  objPreview(list.querySelector('.opick-item.on'), rows[0]?.id);
+}
+function opickClose(key) {
+  const list = $(`#opick-${key}`);
+  if (!list) return;
+  list.hidden = true;
+  list.previousElementSibling?.setAttribute('aria-expanded', 'false');
+  objPreview();
+}
+function opickHover(item) {
+  item.parentElement.querySelectorAll('.opick-item.on').forEach((x) => x.classList.remove('on'));
+  item.classList.add('on');
+  objPreview(item, item.dataset.oid);
+}
+function opickKey(ev, key, el) {
+  const list = $(`#opick-${key}`), items = [...list.querySelectorAll('.opick-item')], at = items.findIndex((x) => x.classList.contains('on'));
+  if (ev.key === 'Escape') { opickClose(key); return; }
+  if (!items.length || !['ArrowDown', 'ArrowUp', 'Enter'].includes(ev.key)) return;
+  ev.preventDefault();
+  if (ev.key === 'Enter') { pickObjId(key, items[Math.max(at, 0)].dataset.oid); return; }
+  const next = items[(at + (ev.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length];
+  opickHover(next);
+  next.scrollIntoView({block: 'nearest'});
+}
+function pickObjId(key, oid) {
   const list = ntList(key);
-  if (!list.includes(o.id)) list.push(o.id);
-  el.value = '';
+  if (!list.includes(oid)) list.push(oid);
   $(`#nt-chips-${key}`).innerHTML = ntChips(key);
+  const input = $(`#opick-${key}`).previousElementSibling;
+  input.value = '';
+  opickOpen(key, input);
 }
 function unpickObj(key, i) { ntList(key).splice(i, 1); $(`#nt-chips-${key}`).innerHTML = ntChips(key); }
+function objPreview(anchor, oid) {  // a card beside `anchor`, or hidden without arguments
+  const card = $('#obj-preview'), o = oid && S.object.find((x) => x.id === oid);
+  if (!anchor || !o) { card.hidden = true; return; }
+  const img = objImage(o), a = o.auto;
+  card.innerHTML = `<div class="op-img">${img ? `<img src="${file(img)}" alt="">` : `${ic('cube', 'ic-lg')}<span class="small muted">没有渲染图和实拍照片</span>`}</div>
+    <div class="op-b"><b>${esc(objName(o))}</b><div class="mono small muted">${esc(o.id)}</div>
+    <div class="small">${measured(o) ? `实测 ${esc(dimText(o))} mm · ${o.real_mass} g` : `仿真 ${mm(a.size)} mm${num(a.mass) ? ` · ${(a.mass * 1000).toFixed(0)} g` : ''}`}</div>
+    <div class="small muted">${a.in_library ? '资产库已有' : a.built ? '已建好，未装共享库' : '还没建模'}${a.renders?.length ? '' : a.photos?.length ? ' · 图为实拍' : ''}</div></div>`;
+  card.hidden = false;
+  const r = anchor.getBoundingClientRect(), w = card.offsetWidth, h = card.offsetHeight;
+  const left = r.left - w - 12 >= 8 ? r.left - w - 12 : Math.min(r.right + 12, innerWidth - w - 8);
+  card.style.left = `${left}px`;
+  card.style.top = `${Math.max(8, Math.min(r.top, innerHeight - h - 8))}px`;
+}
 const ntNum = (v) => (v === '' ? null : Number(v));
 function renderRoles() {
   const n = (i, k, ph, step = '0.01') => `<input type="number" step="${step}" value="${NT.roles[i][k] ?? ''}" placeholder="${ph}" aria-label="${ph}" oninput="NT.roles[${i}].${k} = ntNum(this.value)">`;
@@ -1280,7 +1359,7 @@ function drawerNewTask() {
   const scenes = live(S.scene);
   return {
     title: '登记任务', sub: '登记后生成给 coding agent 的实现任务；实现后同步，流程自动推进',
-    body: `<datalist id="dl-task-objs">${live(S.object).map((o) => `<option value="${esc(o.id)}" label="${esc(objName(o))}">`).join('')}</datalist>${wzNav(TASK_WIZ)}
+    body: `${wzNav(TASK_WIZ)}
     ${pane(0, `${group('任务', `<div class="wz-grid">
       ${fld('nt-mode', '登记方式', `<select id="nt-mode" onchange="taskModeChanged()">${opts({new: '新建任务', existing: '给已有任务登记泛化方案'}, 'new')}</select>`)}
       ${fld('nt-existing', '已有任务', `<select id="nt-existing" onchange="taskModeChanged()" disabled>${opts({'': '选择任务', ...Object.fromEntries(existing.map((t) => [t, t]))}, '')}</select>`, {hint: '只列出还没登记过的 G1-D 任务'})}
@@ -1300,8 +1379,11 @@ function drawerNewTask() {
       <button class="btn" type="button" style="margin-top:10px" onclick="NT.roles.push(newRole()); renderRoles()">${ic('plus')}添加角色</button>`)}
     ${group('干扰物 <span class="opt">可选</span>', `<div class="wz-grid">
       <div class="fld"><label>每回合数量</label><div class="pair"><input id="nt-dis-min" type="number" min="0" step="1" placeholder="最少" aria-label="干扰物最少"><input id="nt-dis-max" type="number" min="0" step="1" placeholder="最多" aria-label="干扰物最多"></div></div>
-      <div class="fld"><label>来源</label><label class="check"><input id="nt-dis-lib" type="checkbox">也从 Clutter 杂物库随机取</label></div>
-      <div class="fld wide"><label>指定干扰物</label>${objPicker('dis')}</div></div>`)}`)}
+      <div class="fld wide"><label>指定干扰物</label>${objPicker('dis')}<small>从物体资产里挑的固定干扰物</small></div>
+      <div class="fld wide"><label class="check"><input id="nt-dis-lib" type="checkbox" onchange="$('#nt-clutter').hidden = !this.checked">也从杂物库随机取</label>
+        <small>杂物库是共享资产库的 Object/RoboDojo/Clutter/（${CLUTTER_N()}），由其中的 clutter.yml 索引；任务配置的 Clutter 段引用它，生成布局时按数量和区域随机摆放。</small>
+        <div id="nt-clutter" hidden>${Object.keys(CLUTTER).length ? `<div class="toggles clutter-cats">${Object.entries(CLUTTER).map(([c, n]) => `<label class="toggle"><input type="checkbox" data-clutter="${esc(c)}"><span>${ic('check')}${esc(c)} <small class="muted">${n}</small></span></label>`).join('')}</div>
+          <small>只取选中的类别；一个都不选就是整个杂物库。杂物没有渲染图，只显示类别名。</small>` : '<small class="txt-bad">资产库镜像里没有杂物库，无法列出类别；不选就是整个杂物库。</small>'}</div></div></div>`)}`)}
     ${pane(2, group('场景', scenes.length ? `<div class="table-wrap"><table class="plain"><thead><tr><th>场景</th><th>env 配置</th><th style="width:130px">用途</th></tr></thead><tbody>
       ${scenes.map((s) => `<tr><td><b>${esc(sceneName(s))}</b><div class="t-sub mono">${esc(s.id)}</div></td>
         <td class="small mono">${esc((s.auto.configs || []).join('、') || '还没建模')}</td>
@@ -1321,7 +1403,8 @@ function drawerNewTask() {
     ${wzFoot('createTask', '登记并生成实现任务')}`,
   };
 }
-function openNewTask(btn) {
+async function openNewTask(btn) {
+  try { CLUTTER = await api('/api/clutter'); } catch { CLUTTER = {}; }
   NT = {roles: [newRole()], dis: {candidates: []}, holdout: []};
   WZ = {steps: TASK_WIZ, check: taskWizError};
   WIZ_AT = 0;
@@ -1368,7 +1451,7 @@ function taskWizError() {  // [message, field selector] blocking the current ste
     const i = NT.roles.findIndex((r) => !/^\w+$/.test(r.label) || labels.indexOf(r.label) !== labels.lastIndexOf(r.label));
     if (i >= 0) return ['每个角色要有唯一的 label（字母、数字、下划线）', `#nt-role-${i}`];
     const j = NT.roles.findIndex((r) => !r.candidates.length);
-    if (j >= 0) return [`角色 ${NT.roles[j].label} 还没选候选物体`, `#nt-chips-r${j} + input`];
+    if (j >= 0) return [`角色 ${NT.roles[j].label} 还没选候选物体`, `#nt-chips-r${j} + .opick input`];
     const k = NT.roles.findIndex((r) => !(r.count >= 1));
     if (k >= 0) return ['每回合数量至少为 1', `#nt-count-${k}`];
     const lo = ntNum($('#nt-dis-min').value), hi = ntNum($('#nt-dis-max').value);
@@ -1393,7 +1476,8 @@ async function createTask(btn) {
     instructions: {count: ntNum($('#nt-inst-n').value), languages: [...$$('[data-lang]:checked')].map((c) => c.dataset.lang)},
     success: value('#nt-success'), hand: value('#nt-hand'), horizon_s: ntNum($('#nt-horizon').value), target: ntNum($('#nt-target').value),
     roles: NT.roles.map((r) => ({label: r.label, candidates: r.candidates, count: r.count, xlim: range(r.xmin, r.xmax), ylim: range(r.ymin, r.ymax), yaw_deg: r.yaw})),
-    distractors: {count: lo == null && hi == null ? null : [lo ?? 0, hi ?? lo], candidates: NT.dis.candidates, clutter_library: $('#nt-dis-lib').checked},
+    distractors: {count: lo == null && hi == null ? null : [lo ?? 0, hi ?? lo], candidates: NT.dis.candidates, clutter_library: $('#nt-dis-lib').checked,
+      clutter_categories: $('#nt-dis-lib').checked ? [...$$('[data-clutter]:checked')].map((c) => c.dataset.clutter) : []},
     scenes: Object.fromEntries([...$$('[data-scene-use]')].filter((s) => s.value).map((s) => [s.dataset.sceneUse, s.value])),
     levels: Object.fromEntries([...$$('[data-level]:checked')].map((c) => [c.dataset.level, {target: ntNum($(`#nt-ltarget-${c.dataset.level}`).value), range: value(`#nt-range-${c.dataset.level}`)}])),
     holdout_objects: NT.holdout, extra: value('#nt-extra'), expert: value('#nt-expert'), requirements: value('#nt-req'), notes: value('#nt-notes'),
@@ -1431,7 +1515,7 @@ function taskBrief(d) {  // the task for a coding agent that implements this reg
     fact('语言指令', r.instructions && `由你从任务定义总结，${instText(r.instructions)}`), fact('成功判据', r.success),
     fact('用手', HANDS[r.hand || ''] === '未定' ? '' : HANDS[r.hand]), fact('预计时长', r.horizon_s ? `${r.horizon_s} s` : ''), fact('合格回合目标', r.target),
     '- 物体角色（桌面坐标，m）：', ...roles,
-    dis.count || dis.candidates?.length || dis.clutter_library ? `- 干扰物：每回合 ${dis.count ? dis.count.join('–') : '若干'} 个${dis.candidates?.length ? `，从 ${dis.candidates.join('、')} 中取` : ''}${dis.clutter_library ? '，也从 Clutter 杂物库随机取' : ''}` : '- 干扰物：无',
+    dis.count || dis.candidates?.length || dis.clutter_library ? `- 干扰物：每回合 ${dis.count ? dis.count.join('–') : '若干'} 个${dis.candidates?.length ? `，从 ${dis.candidates.join('、')} 中取` : ''}${dis.clutter_library ? `，也从杂物库随机取（任务配置的 Clutter 段，yaml_path: Clutter/clutter.yml；${dis.clutter_categories?.length ? `只取类别 ${dis.clutter_categories.join('、')}，按这些类别另写一份 clutter 索引或在采样时过滤` : '整个杂物库'}）` : ''}` : '- 干扰物：无',
     fact('训练场景', sceneLine('train')), fact('L4 保留场景', sceneLine('holdout')),
     '- 泛化等级：', ...levels.map(([k, v]) => `  - ${k}（目标 ${v.target ?? '—'} 个布局）：${v.range}`),
     fact('L3 保留实例', (r.holdout_objects || []).join('、')), fact('其他泛化', r.extra),
@@ -1467,7 +1551,7 @@ function taskRegSection(d) {
       <a target="_blank" rel="noopener" href="${file(`${INFO.root}/real2sim/tasks/${d.id}/registration.json`)}">real2sim/tasks/${esc(d.id)}/registration.json</a>。把下面这段交给 coding agent；实现后同步，流程自动推进。</p>${code(taskBrief(d))}`)}
     ${sec('语言指令', instructionList(d))}
     ${sec('登记的方案', `<dl class="kv"><dt>物体角色</dt><dd>${(r.roles || []).map((x) => `<div><b class="mono">${esc(x.label)}</b> × ${x.count}：${x.candidates.map((o) => link('object', o, objLabel(o))).join('、')}</div>`).join('') || '—'}</dd>
-      <dt>干扰物</dt><dd>${r.distractors?.count ? `${r.distractors.count.join('–')} 个` : '—'}${(r.distractors?.candidates || []).length ? `：${r.distractors.candidates.map((o) => link('object', o, objLabel(o))).join('、')}` : ''}${r.distractors?.clutter_library ? '（含 Clutter 库）' : ''}</dd>
+      <dt>干扰物</dt><dd>${r.distractors?.count ? `${r.distractors.count.join('–')} 个` : '—'}${(r.distractors?.candidates || []).length ? `：${r.distractors.candidates.map((o) => link('object', o, objLabel(o))).join('、')}` : ''}${r.distractors?.clutter_library ? `（含杂物库：${r.distractors.clutter_categories?.length ? esc(r.distractors.clutter_categories.join('、')) : '全部类别'}）` : ''}</dd>
       <dt>训练场景</dt><dd>${scenes('train')}</dd><dt>L4 保留场景</dt><dd>${scenes('holdout')}</dd>
       <dt>泛化等级</dt><dd>${levels.map(([k, v]) => `<div><b class="mono">${k}</b> · 目标 ${v.target ?? '—'}：<span class="small">${esc(v.range)}</span></div>`).join('') || '—'}</dd>
       <dt>L3 保留实例</dt><dd>${(r.holdout_objects || []).map((o) => link('object', o, objLabel(o))).join('、') || '—'}</dd></dl>
