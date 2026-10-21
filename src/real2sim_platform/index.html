@@ -214,7 +214,7 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
 .media.r43 { aspect-ratio: 4 / 3; }
 .media > img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .media .inset { position: absolute; right: 8px; bottom: 8px; width: 34%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border: 2px solid #fff; border-radius: 6px; box-shadow: var(--shadow-2); }
-.media .pills { position: absolute; top: 8px; left: 8px; display: flex; gap: 4px; }
+.media .pills { position: absolute; top: 8px; right: 8px; left: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
 .pill { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; border-radius: 6px; background: rgba(15, 23, 42, .72); color: #fff; font: 500 11px var(--mono); }
 .m3d { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: #EEF2F7; }
 .m3d:fullscreen { border: 0; border-radius: 0; }
@@ -224,6 +224,10 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
 .m3d-bar { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
 .m3d-bar .btn { min-height: 28px; padding: 3px 9px; font-size: 12px; background: rgba(255, 255, 255, .9); }
 .m3d-hint { position: absolute; left: 8px; bottom: 8px; padding: 2px 7px; border-radius: 6px; background: rgba(15, 23, 42, .6); color: #fff; font-size: 11px; pointer-events: none; }
+.vcard { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); text-align: left; cursor: pointer; }
+.vcard:hover { border-color: var(--primary-line); }
+.vcard > span:last-child { display: grid; min-width: 0; }
+.vcard b { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .mcard-b { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px 12px; }
 .mcard-t { display: flex; align-items: baseline; gap: 8px; }
 .mcard-t b { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
@@ -1308,12 +1312,17 @@ async function createEval(btn) {
 const mm = (size, digits = 0) => (Array.isArray(size) ? size.map((v) => (v * 1000).toFixed(digits)).join(' × ') : '—');
 const ownObj = (d) => Boolean(d.auto.generator || d.twin);
 const objName = (d) => d.name || d.auto.name || d.auto.category;
+// generalization variants (metadata.json "variant_of") sit on their base object's card
+const baseOf = (d) => (d.auto.variant_of && d.auto.variant_of !== d.id ? S.object.find((x) => x.id === d.auto.variant_of) : null);
+const variantsOf = (id) => S.object.filter((x) => x.auto.variant_of === id && x.id !== id);
 function objMedia(d, thumb = false) {
   const a = d.auto, render = a.renders?.[0], photo = a.photos?.[0], main = render || photo;
   if (thumb) return `<span class="thumb">${main ? `<img loading="lazy" decoding="async" src="${file(main)}" alt="">` : ic('cube')}</span>`;
+  const nv = variantsOf(d.id).length, runtime = runtimeText(d.gen);
   return `<div class="media r43">${main ? `<img loading="lazy" decoding="async" src="${file(main)}" alt="">` : ic('cube', 'ic-lg')}
     ${render && photo ? `<img class="inset" loading="lazy" decoding="async" src="${file(photo)}" alt="实拍">` : ''}
-    <div class="pills">${a.photos?.length ? `<span class="pill" title="实拍照片">${ic('camera', 'ic-sm')}${a.photos.length}</span>` : ''}${render ? `<span class="pill" title="仿真渲染">${ic('cube', 'ic-sm')}渲染</span>` : ''}</div></div>`;
+    <div class="pills">${a.photos?.length ? `<span class="pill" title="实拍照片">${ic('camera', 'ic-sm')}${a.photos.length}</span>` : ''}${render ? `<span class="pill" title="仿真渲染">${ic('cube', 'ic-sm')}渲染</span>` : ''}
+      ${nv ? `<span class="pill" title="泛化变体资产">+${nv} 变体</span>` : ''}${runtime ? `<span class="pill" title="仿真里按布局随机，不建新资产">随机 ${esc(runtime)}</span>` : ''}</div></div>`;
 }
 function objList() {
   const f = UI.obj, q = f.q.toLowerCase();
@@ -1325,7 +1334,7 @@ function objList() {
 function viewObjects() {
   const f = UI.obj, docs = objList(), objs = live(S.object);
   const body = !docs.length ? `<div class="card">${empty('box', '没有符合条件的物体', '调整筛选条件，或点「登记物体」新建')}</div>`
-    : f.view === 'cards' ? `<div class="grid cards">${docs.map((d) => {
+    : f.view === 'cards' ? `<div class="grid cards">${docs.filter((d) => !baseOf(d)).map((d) => {
       const rs = evalStages(OBJ_STAGES, d);
       return `<article class="card mcard" data-open="object" data-id="${esc(d.id)}" tabindex="0" role="button" aria-label="打开物体 ${esc(d.id)}">${objMedia(d)}
         <div class="mcard-b"><div class="mcard-t"><b>${esc(objName(d))}</b>${d.twin ? '<span class="tag">孪生</span>' : ''}</div>
@@ -1335,7 +1344,7 @@ function viewObjects() {
     : `<div class="table-wrap"><table><thead><tr><th></th><th>物体</th><th>任务配置（标签）</th><th class="num">仿真尺寸 mm</th><th class="num">质量 g</th><th>实测</th><th style="min-width:170px">流程</th></tr></thead><tbody>
       ${docs.map((d) => `<tr data-open="object" data-id="${esc(d.id)}" tabindex="0" class="${UI.drawer?.id === d.id ? 'sel' : ''}">
         <td>${objMedia(d, true)}</td>
-        <td><div class="t-main">${esc(objName(d))} ${missingBadge(d)}</div><div class="t-sub mono">${esc(d.id)}</div></td>
+        <td><div class="t-main">${esc(objName(d))} ${missingBadge(d)}</div><div class="t-sub mono">${esc(d.id)}${baseOf(d) ? ` · 变体，本体 ${esc(d.auto.variant_of)}` : ''}</div></td>
         <td class="small">${(d.auto.tasks || []).map(esc).join('<br>') || '<span class="muted">—</span>'}<div class="t-sub mono">${esc((d.auto.labels || []).join(', '))}</div></td>
         <td class="num small">${mm(d.auto.size)}</td><td class="num small">${num(d.auto.mass) ? (d.auto.mass * 1000).toFixed(0) : '—'}</td>
         <td class="small">${measured(d) ? `${esc(dimText(d))}<div class="t-sub">${d.real_mass} g</div>` : '<span class="muted">—</span>'}</td>
@@ -1362,17 +1371,25 @@ function photoStrip(d) {
 const DIM_HINT = '每项写「名称 数值」，单位 mm，按物体形状自己定名称，如：开口直径 82，底部直径 64，高 135';
 const GEN_ATTRS = {color: '颜色', material: '材质', size: '尺寸', shape: '形状'};
 const GEN_HINT = '如：尺寸和形状保持不变，只改颜色，做红、蓝、绿各一个；或只写要求，具体参数由 coding agent 设计';
-const GEN_NOTE = '泛化变体是同一类别下的新编号，不是实物孪生、没有实测；用于训练多样性或保留评测（L3 物体泛化）。没勾的属性与本体保持一致。';
+const GEN_NOTE = '颜色和整体尺寸优先用运行时随机：仿真按布局给物体换色、等比缩放，不建新资产。形状、材质等要另建变体资产：同一类别下的新编号，不是实物孪生、没有实测，在平台上收进本体的卡片。都用于训练多样性或保留评测（L3 物体泛化）。';
 const materialList = () => `<datalist id="dl-materials">${MATERIALS.map((m) => `<option value="${esc(m)}">`).join('')}</datalist>`;
-function genBrief(d) {  // brief lines for the variants asked in step 3 of the registration
-  const g = d.gen || {}, vary = Object.keys(GEN_ATTRS).filter((k) => g[k]);
-  if (!g.count && !g.requirements) return [];
+const runtimeText = (g = {}) => [g.rt_color && '颜色', num(g.rt_scale) && Number(g.rt_scale) > 0 && `尺寸 ±${g.rt_scale}%`].filter(Boolean).join(' · ');
+function genBrief(d) {  // brief lines for the generalization asked in step 3 of the registration
+  const g = d.gen || {}, vary = Object.keys(GEN_ATTRS).filter((k) => g[k]), runtime = runtimeText(g);
+  if (!g.count && !g.requirements && !runtime) return [];
   const [group, index] = [d.id.replace(/\/\d+$/, ''), Number(d.id.split('/').pop())];
+  const scale = Number(g.rt_scale) / 100;
   return [
-    `泛化：在本体之外再建${g.count ? ` ${g.count} 个` : '若干'}变体，放在 ${group}/ 下、编号从 ${String(index + 1).padStart(5, '0')} 起取没被占用的号，和本体共用同一个生成脚本（参数化出来）。`,
-    `- 允许变化：${vary.length ? vary.map((k) => GEN_ATTRS[k]).join('、') : '未指定，按泛化要求定'}；${vary.length ? `其余（${Object.keys(GEN_ATTRS).filter((k) => !g[k]).map((k) => GEN_ATTRS[k]).join('、') || '无'}）与本体一致。` : ''}`,
-    g.requirements ? `- 泛化要求：${g.requirements}` : '- 泛化要求：未写，变体参数由你设计，彼此要有明显区别且仍在机器人可抓取范围内。',
-    '- 每个变体的参数列进交付说明，在 real2sim/ASSETS.md 标成泛化变体（无实测）；变体不写 measurements_mm 核对，但 check_object.py 落地检查要过。',
+    ...(runtime ? [
+      `运行时随机（不建新资产）：${runtime}。仿真按布局随机，机制见 scripts/g1d/build_asset.py 的 RANDOMIZE：用到这个物体的任务在那里给它的 label 打开 {${[g.rt_color && '"color": True', scale > 0 && `"scale": (${(1 - scale).toFixed(2)}, ${(1 + scale).toFixed(2)})`].filter(Boolean).join(', ')}}，这会改那个任务的布局，先问用户。`,
+      `- ${g.rt_color ? '换色默认覆盖整个物体；只该换主体（保留标签、透明件）时，在 metadata.json 的 visual.color_parts 写主体网格的名字（如 ["model"]）。' : ''}${scale > 0 ? '缩放是等比的；放大后仍要能被 Dex1-1 夹住（开口 ≤ 80 mm）。' : ''}`,
+    ] : []),
+    ...(g.count || g.requirements ? [
+      `另建变体资产：在本体之外再建${g.count ? ` ${g.count} 个` : '若干'}变体，放在 ${group}/ 下、编号从 ${String(index + 1).padStart(5, '0')} 起取没被占用的号，和本体共用同一个生成脚本（参数化出来）。每个变体的 metadata.json 写 "variant_of": "${d.id}"，平台据此把它收进本体的卡片。`,
+      `- 允许变化：${vary.length ? vary.map((k) => GEN_ATTRS[k]).join('、') : '未指定，按泛化要求定'}；${vary.length ? `其余（${Object.keys(GEN_ATTRS).filter((k) => !g[k]).map((k) => GEN_ATTRS[k]).join('、') || '无'}）与本体一致。` : ''}`,
+      g.requirements ? `- 泛化要求：${g.requirements}` : '- 泛化要求：未写，变体参数由你设计，彼此要有明显区别且仍在机器人可抓取范围内。',
+      '- 每个变体的参数列进交付说明，在 real2sim/ASSETS.md 标成泛化变体（无实测）；变体不写 measurements_mm 核对，但 check_object.py 落地检查要过。',
+    ] : []),
     '',
   ];
 }
@@ -1400,6 +1417,7 @@ function modelingBrief(d) {  // the task for a coding agent that builds this twi
 }
 function drawerObject(d) {
   const a = d.auto, c = dimCheck(d), rs = evalStages(OBJ_STAGES, d), photos = a.photos || [], renders = a.renders || [];
+  const variants = variantsOf(d.id), parent = baseOf(d);
   const brief = d.twin ? sec(`${ic('terminal')}建模任务（给 coding agent）`, `<p class="hint" style="margin:0 0 8px">登记信息已写入
     <a target="_blank" rel="noopener" href="${file(`${INFO.root}/real2sim/objects/${d.id}/spec.json`)}">real2sim/objects/${esc(d.id)}/spec.json</a>，和实拍照片在同一目录。把下面这段交给 coding agent；建好后同步，平台按 metadata.json 的 measurements_mm 自动核对尺寸。</p>
     ${code(modelingBrief(d))}`) : '';
@@ -1410,7 +1428,8 @@ function drawerObject(d) {
   return {
     title: objName(d), sub: `${d.id} · ${a.in_library ? '资产库已有' : a.built ? '已建好，未装共享库' : '还没建模'}${a.generator ? ` · ${a.generator}` : ''}`,
     actions: !(a.tasks || []).length ? `<button class="btn" type="button" data-id="${esc(d.id)}" onclick="removeDoc('object', this.dataset.id)">${ic('trash')}删除登记</button>` : '',
-    body: `${materialList()}${a.built ? '' : brief}${sec('实物 vs 仿真', `<div class="compare">
+    body: `${materialList()}${parent ? `<div class="callout">${ic('grid')}<div>这是 ${link('object', parent.id)}（${esc(objName(parent))}）的泛化变体，在物体页收在它的卡片里。</div></div>` : ''}
+    ${a.built ? '' : brief}${sec('实物 vs 仿真', `<div class="compare">
       <figure><figcaption>${ic('camera')}实物照片 <span class="muted small">${photos.length} 张</span><span class="sp"></span>
         <label class="btn upload" title="jpg / png / webp，单张 ≤ 25 MB">${ic('upload')}上传<input type="file" accept="image/jpeg,image/png,image/webp" multiple data-id="${esc(d.id)}" onchange="uploadPhotos(this)" aria-label="上传实物照片"></label></figcaption>
         ${hero(`obj-photos-${d.id}`, photos, '还没有实拍照片：上传多角度照片，保存到 real2sim/objects/&lt;id&gt;/reference/（随仓库，走 LFS）')}
@@ -1436,8 +1455,12 @@ function drawerObject(d) {
         ${c.map((x) => `<tr><td>${esc(x.name)}</td><td class="num">${x.real}</td><td class="num">${x.sim == null ? '—' : x.sim.toFixed(1)}</td>
           <td class="num">${x.err == null ? '—' : x.err.toFixed(1)}</td><td>${x.sim == null ? st('todo', '待核对') : st(x.ok ? 'ok' : 'bad', x.ok ? '合格' : '超差')}</td></tr>`).join('')}</tbody></table>` : ''}
       <p class="hint">尺寸文本里的每个「名称 数值」会和建好的模型 metadata.json 里同名的 measurements_mm 自动比对；仿真包围盒 ${mm(a.size, 1)} mm 可作参考。判据：每个尺寸误差 &lt; 2 mm 或 2%；质量差 ≤ 5 g。</p>`)}
-    ${d.twin ? sec('泛化变体', `<div class="form">
-      ${row('变体数量', 'gen.count', inp(d, 'gen.count', 'number', 'min="0" step="1" style="flex:0 0 110px"'), '0 表示不做泛化')}
+    ${variants.length ? sec(`${ic('grid')}泛化变体`, `<div class="gallery" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr))">${variants.map((v) => `<button class="vcard" type="button" data-open="object" data-id="${esc(v.id)}" aria-label="打开变体 ${esc(v.id)}">
+      ${objMedia(v, true)}<span><b>${esc(objName(v))}</b><span class="mono small muted">${esc(v.id)}</span></span></button>`).join('')}</div>`, ` <span class="muted small">${variants.length} 个 · metadata.json variant_of</span>`) : ''}
+    ${d.twin ? sec('泛化', `<div class="form">
+      ${row('运行时换色', 'gen.rt_color', inp(d, 'gen.rt_color', 'checkbox'), '仿真按布局随机换色，不建新资产')}
+      ${row('运行时缩放 ±%', 'gen.rt_scale', inp(d, 'gen.rt_scale', 'number', 'min="0" max="50" step="1" style="flex:0 0 110px"'), '整体等比缩放的范围，0 表示不缩放')}
+      ${row('变体资产数量', 'gen.count', inp(d, 'gen.count', 'number', 'min="0" step="1" style="flex:0 0 110px"'), '形状、材质等要另建资产时填，0 表示不建')}
       <label>允许变化</label><div class="ctl">${Object.entries(GEN_ATTRS).map(([k, t]) => `<label class="check">${inp(d, `gen.${k}`, 'checkbox')}${t}</label>`).join('')}</div>
       ${row('泛化要求', 'gen.requirements', area(d, 'gen.requirements', `placeholder="${GEN_HINT}"`))}</div><p class="hint">${GEN_NOTE}</p>`) : ''}
     ${a.built ? brief : ''}
@@ -1459,9 +1482,9 @@ function drawerObject(d) {
 const WIZ = [
   ['名称与照片', '起个名字，定好资产编号。照片可选：拍了更好建模，没拍就在下一步把尺寸量全。'],
   ['实物测量', '卡尺量到 1 mm，秤称到 1 g。量不到的留空，coding agent 会按照片估计并标出。'],
-  ['泛化', '在这个物体之外再建几个变体，用于训练多样性或保留评测。可以只给数量和要求，参数交给 coding agent 设计。'],
+  ['泛化', '颜色和整体尺寸在仿真里按布局随机，不用建新资产；形状、材质等不同才另建变体资产。都可以不选。'],
 ];
-const GEN_PRESETS = ['尺寸和形状不变，只换颜色', '颜色不变，整体尺寸缩放 ±20%', '换成不同材质（玻璃、陶瓷、不锈钢），外形不变', '参数由 coding agent 设计，彼此差异明显'];
+const GEN_PRESETS = ['换成不同材质（玻璃、陶瓷、不锈钢），外形不变', '加或去掉把手，其余不变', '高矮胖瘦比例不同（不等比）', '参数由 coding agent 设计，彼此差异明显'];
 // registration wizards (objects, scenes): steps are [title, intro]; one wizard is open at a time
 const wzFld = (id, label, control, opts = {}) => `<div class="fld${opts.wide ? ' wide' : ''}"><label for="${id}">${label}${opts.req ? '<em aria-hidden="true">*</em>' : ''}</label>${control}${opts.hint ? `<small>${opts.hint}</small>` : ''}</div>`;
 const wzUnit = (id, u, attrs = '') => `<div class="unit"><input id="${id}" type="number" step="any" min="0" ${attrs}><span>${u}</span></div>`;
@@ -1503,7 +1526,9 @@ function drawerNewObject() {
       ${fld('no-color', '颜色', '<input id="no-color" placeholder="半透明乳白" autocomplete="off">')}
       ${fld('no-features', '外观与结构', '<textarea id="no-features" rows="2" placeholder="透明度、把手、刻度、纹理、壁厚等"></textarea>', {wide: true})}
       ${fld('no-req', '建模要求', '<textarea id="no-req" rows="2" placeholder="中空能装豆子、把手可抓、刻度不用建模"></textarea>', {wide: true})}</div>`)}`)}
-    ${pane(2, `${group('数量', `<div class="num-step"><button type="button" aria-label="减少一个" onclick="genCount(-1)">${ic('minus')}</button>
+    ${pane(2, `${group('运行时随机 <span class="opt">不建新资产</span>', `<div class="toggles"><label class="toggle"><input id="no-rt-color" type="checkbox"><span>${ic('check')}颜色随机</span></label></div>
+      <div class="wz-grid" style="margin-top:10px">${fld('no-rt-scale', '整体尺寸缩放', '<div class="unit"><span>±</span><input id="no-rt-scale" type="number" min="0" max="50" step="1" placeholder="0"><span>%</span></div>', {hint: '等比缩放，0 或不填表示不缩放'})}</div>`)}
+    ${group('另建变体资产 · 数量', `<div class="num-step"><button type="button" aria-label="减少一个" onclick="genCount(-1)">${ic('minus')}</button>
         <input id="no-gen-count" type="number" min="0" step="1" value="0" aria-label="变体数量"><button type="button" aria-label="增加一个" onclick="genCount(1)">${ic('plus')}</button>
         <span class="muted small">个变体 · 0 表示不做泛化</span></div>`)}
     ${group('允许变化的属性', `<div class="toggles">${Object.entries(GEN_ATTRS).map(([k, t]) => `<label class="toggle"><input type="checkbox" data-gen="${k}"><span>${ic('check')}${t}</span></label>`).join('')}</div>
@@ -2437,7 +2462,7 @@ async function createObject(btn) {
   const err = $('#no-err');
   const id = `${$('#no-type').value}/${$('#no-cat').value.trim()}/${$('#no-idx').value.trim().padStart(5, '0')}`;
   const value = (sel) => $(sel).value.trim(), number = (sel) => ($(sel).value === '' ? null : Number($(sel).value));
-  const gen = {count: number('#no-gen-count') || 0, requirements: value('#no-gen-req')};
+  const gen = {count: number('#no-gen-count') || 0, requirements: value('#no-gen-req'), rt_color: $('#no-rt-color').checked, rt_scale: number('#no-rt-scale') || 0};
   $$('[data-gen]').forEach((c) => { gen[c.dataset.gen] = c.checked; });
   const doc = {
     twin: true, name: value('#no-name'), name_en: value('#no-name-en'), material: value('#no-material'), color: value('#no-color'),

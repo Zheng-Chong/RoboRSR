@@ -1,5 +1,6 @@
 import random
 
+from isaacsim.core.api.materials import PreviewSurface
 from isaacsim.core.api.materials.physics_material import PhysicsMaterial
 from isaacsim.core.prims import SingleGeometryPrim, SingleRigidPrim
 from isaacsim.core.simulation_manager import SimulationManager
@@ -9,7 +10,7 @@ from isaacsim.core.utils.string import find_unique_string_name
 import numpy as np
 from omegaconf import DictConfig
 import omni.usd
-from pxr import Gf, Sdf, Usd, UsdGeom
+from pxr import Gf, Sdf, Usd, UsdGeom, UsdShade
 import torch
 
 from env.scene_manager.layout_manager import LayoutManager
@@ -98,6 +99,19 @@ class RigidObject(SingleRigidPrim, SingleGeometryPrim):
         self._default_angular_velocity = [0.0, 0.0, 0.0]
 
         self._setup_physics()
+        if self.visual_config.get("color") is not None:
+            self._apply_color(self.visual_config["color"], self.visual_config.get("color_parts"))
+
+    def _apply_color(self, color, parts=None):
+        """Bind a plain colour (linear RGB, 0-1) over the asset's own looks, set per layout (scripts/g1d/build_asset.py
+        RANDOMIZE): on the meshes named in `parts` (e.g. a cup body, keeping its label and see-through parts) or on the
+        whole object."""
+        path = find_unique_string_name(self._prim_path + "/Looks/layout_color", lambda x: not is_prim_path_valid(x))
+        look = PreviewSurface(path, color=np.asarray(color[:3], dtype=np.float32), roughness=0.5, metallic=0.0)
+        root = get_prim_at_path(self._prim_path)
+        targets = [p for p in Usd.PrimRange(root) if p.IsA(UsdGeom.Mesh) and p.GetName() in parts] if parts else [root]
+        for prim in targets:
+            UsdShade.MaterialBindingAPI.Apply(prim).Bind(look.material, UsdShade.Tokens.strongerThanDescendants)
 
     def _get_object_transform(self, device=None):
         """
@@ -170,6 +184,7 @@ class RigidObject(SingleRigidPrim, SingleGeometryPrim):
         else:
             pos = pos_world
         ori = ori_world
+        points_local = points_local * np.asarray(self.scale, dtype=np.float32)  # the layout's scale, as rendered
         bbox = np.concatenate([points_local.min(axis=0), points_local.max(axis=0)])
         return pos, ori, bbox
 
