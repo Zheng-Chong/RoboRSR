@@ -39,6 +39,7 @@
 - **做法**：相机沿用 `fit_photo.json`，在照片上手标落地点（桌脚、椅脚、柜底边），反投影到地面；p1、p4 都拍到的铁皮柜做三角化。尺寸取常见规格，再用照片核对。`build_scene.py` 新增 `FURNITURE`（15 件：北排 3 张工位桌 + 4 把网椅，西侧 2 张工位桌 + 2 把网椅，活动柜带纸箱，两门文件柜，木面边桌，圆咖啡桌）和六种参数化模型，放在 `background.usda` 的 `/Background/Furniture/`。这样 Room 入口、`render_scenes.py` 的取景（只对准 Background、Lights 以外的部分）和平台的「隐藏房间」都不用改。碰撞体都是盒体或 ≤ 50 点的凸包。墙面贴图把家具的投影区域膨胀 21 px 后抠掉，按行中值补色；操作台那块原来用 Telea 修补，也改成按行补色。
 - **照片之间的矛盾**（写进了 `PLAN.md`）：p2 的相机在画面边缘外推不准，按它算西墙转了约 13°，远处高度也偏低约 5 cm，所以西侧家具按与墙平行摆放。北排最右那张桌子按 p3 摆在 y≈3.05，p4 却要求 y≈2.45，相差 0.6 m；p4 左缘这一块用 `HAND_MASK` 手标多边形抠掉。圆桌只在 p4 出现，高度按 0.75 m 假设。
 - **验证**：`check_scene.py` 24/24。新增 5 项：碰撞体 ≤ 64 点、家具落地、不进墙、离 G1-D 根节点 1 m 以上且离操作台 0.3 m 以上、家具之间不重叠；原来的站位等检查改成只看操作台。`preview.py` 的叠图用绿色画家具边线：p1、p3、p4 误差约 10 px，p2 约 20 px。本机 `check.sh` 29 passed 1 skipped；`export_glb.py` 输出 205 个网格、2.9 MB。`5090-2` 隔离目录 `/data/robodojo-runs/lab-furniture-20261022-003901/`（GPU 4）只载场景跑 `render_scenes.py`：退出码 0，没有报错，家具正常渲染、有投影。**没有带机器人跑 `scripted_demo`**。
+- **平台**：`fbdb323` 已推到 `main`。部署机 `/root/RoboDojo` 只替换了这个场景的 `preview/scene.glb` 和 `preview/render/sim.jpg`，旧文件备份在 `.cache/lab-preview-before-furniture-20261022-004331/`。部署机的检出仍停在 `4f8cccf`：上面有别的会话没提交的 `HANDOFF.md`、`airpods` 的 `spec.json`，以及未跟踪的 `real2sim/scenes/g1d_green_table/`，所以没有快进；下次部署时一起快进。
 - **没做**：共享资产库里的 `Assets/Room/real_scene3/` 还是 10-16 的版本（没有立体家具），按规定要用户同意才能更新。桌上的显示器、笔记本、机器人、三脚架、杯子仍压平在墙上。家具没有卷尺实测。
 
 ### G1-D 桌面版 / 移动版（2026-10-21，[PR #17](https://github.com/Zheng-Chong/RoboRSR/pull/17) 合并进 `main`）
