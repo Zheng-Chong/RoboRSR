@@ -1,7 +1,7 @@
 # Project Handoff
 
 更新时间：2026-10-21
-当前分支：`chongzheng/scene-shenzhen-lab`（worktree `../RoboDojo-scene-shenzhen-lab`，从 `origin/main` `10a4e06` 开出）：新场景 `real_scene5_shenzhen_lab`，未合并。此前：流水线规范化（[PR #1](https://github.com/Zheng-Chong/RoboRSR/pull/1)）和学校场景接入（[PR #2](https://github.com/Zheng-Chong/RoboRSR/pull/2)）都已于 2026-10-20 合并，两个短分支已删除。
+当前分支：`chongzheng/scene-shenzhen-lab`（worktree `../RoboDojo-scene-shenzhen-lab`，从 `origin/main` `10a4e06` 开出，已合入 `origin/main` `df9b4d6`）：新场景 `real_scene5_shenzhen_lab`，PR 待合并。此前：流水线规范化（[PR #1](https://github.com/Zheng-Chong/RoboRSR/pull/1)）和学校场景接入（[PR #2](https://github.com/Zheng-Chong/RoboRSR/pull/2)）都已于 2026-10-20 合并，两个短分支已删除。
 当前目标：把 G1-D 的三条流水线规范化：Real2Sim 采集（物体、场景）、仿真数据生成，以及本仓库内的仿真评估。训练在仓库外。
 
 本文件只记录当前状态。逐次实验的细节（相机拟合、抓取调参、倒豆参数扫描、各次服务器验证）见 `git show 4fb9290:HANDOFF.md`。数采平台的运维细节（端口、账号、隧道、重启方法）已移到本机 `.agent/ops.local.md`，不入库，因为仓库是公开的。
@@ -229,6 +229,7 @@
 
 ## 下一会话
 
+0. 实现平台登记的 `g1d_pour_beans_any_cups`：在平台任务抽屉复制「实现任务」文本交给 coding agent（输入 `real2sim/tasks/g1d_pour_beans_any_cups/registration.json`）。
 0. 深圳实验室：合并 `chongzheng/scene-shenzhen-lab`（共享库已装好）；去现场量站位、拍头部 / 腕部画面做叠图（`overlay.py --env-cfg g1d_shenzhen_lab`）。
 1. 先看 `git log`、本文件和 `scripts/datagen/CONTRACT.md`。主工作区里还有物体建模 SKILL 会话没提交的改动（见"最近任务"里的"并行会话"）；拉取新的 `main` 前，先让那个会话提交，或者先 stash。
 2. 下一批数据用新流水线采集。先跑单回合探针，确认 `joint_names`、夹爪 state 和图像都正常，再按 `scripts/datagen/SKILL.md` 批量采集、导出、审计、回放，最后登记。
@@ -239,6 +240,10 @@
 ## 最近历史
 
 - 2026-10-21：按平台登记新建深圳实验室场景 `real_scene5_shenzhen_lab`（env 配置 `g1d_shenzhen_lab`），卷尺定尺度，5090-2 上 `build_asset.py` 和脚本演示通过，经用户同意装进共享库（不含量杯任务布局）；修 `build_asset.py` 相对 `--assets` 时的软链接问题。分支 `chongzheng/scene-shenzhen-lab`。
+- 2026-10-21：登记任务的评测保留物体改为跟着角色走（用户：每个角色都要有候选和保留，干扰物也要有）：第 2 步每个角色分「训练候选」「评测保留」两个选择框，干扰物分「训练用」「评测保留」，去掉单独的「评测保留实例」栏；已是训练候选的物体不能再选为保留，反之亦然（保留的必须是训练里没见过的）。L3 只在选了保留物体时开启（多候选、干扰物只算训练多样性）。「目标布局数」改名「评测布局数」并注明只用于评测、训练数据量看合格回合目标。`registration.json`：角色和 `distractors` 各加 `holdout`，去掉 `holdout_objects`。顺带修复 PR #15 把 PR #14 的两处改回旧版的问题：实现任务文本里的杂物类别、抽屉里的「含杂物库：类别」（登记文件的 `clutter_categories` 一直正确）。验证：`test_server.py`、ruff；本机浏览器：两栏选择、双向互斥提示、L3 依据、评测布局数、实现任务文本和抽屉摘要。PR #21 合并（`d5db8aa`）并部署。
+- 2026-10-21：PR #19 合并（`2944698`）并部署；部署前删掉了部署机上和 `main` 内容一致的未跟踪 `real2sim/tasks/g1d_pour_beans_any_cups/registration.json`（sha256 核对过）。线上第一个场景登记 `real_scene5_shenzhen_lab`（深圳实验室，B5-2L，种政 10-21 12:08 登记：6 张照片、卷尺桌面 75 × 120 × 60 cm、厚 2 cm、四条腿白色圆角桌、储物柜 75×120×45 cm 金属、顶部条形面光源）拷回入库，照片走 LFS。还没建模，没量机器人站位，也没有标定板；部署 PR #21 时已核对一致、挪开后快进并放回真实照片，部署机上现在是跟踪文件。
+- 2026-10-21：登记任务的泛化等级不再手动勾选，按前面的选择自动开启（用户：干扰物、换物体、选场景本身就是泛化，最后一步重复）：L0 始终开；L1 = 第 4 步勾了位置或朝向；L2 = 第 3 步新加的「外观随机」（灯光、纹理、相机扰动）勾了任一项；L3 = 某角色候选物体多于 1 个、有干扰物或选了保留实例（保留实例挪到第 2 步）；L4 = 选了保留场景。第 4 步只显示各级开没开和依据，开启的级可改范围和目标布局数。`registration.json` 新增 `appearance`。另外三个登记向导对管理员不再强制「填完才能下一步」：跳过的项在底栏列出；提交前仍检查 ID（物体类别和编号、场景目录名、任务 ID），对管理员也生效；普通成员不变。验证：`test_server.py`、ruff；本机浏览器：管理员空表跳到最后一步、空后缀提交被拦、等级随选择开关、取消位置和朝向后 L1 关闭、L4 目标改 80 写进登记；场景向导管理员可跳；普通成员三个向导都被拦在第 1 步。
+- 2026-10-21：按用户口述在线上平台代登记任务 `g1d_pour_beans_any_cups`（任意杯子倒红豆）：源杯 / 目标杯各从 8 个杯子资产里选（measuring_cup 0/1、plastic_cup 0、plastic_mug 0、paper_cup 0/1、water_cup 0、cup 7；不能同一实例），红豆 100–300 颗随机，倒完两只杯子直立放回桌面、两臂回初始姿态且夹爪张开。agent 补的部分：成功判据阈值（目标杯 ≥ 95%、杯子倾角 < 10°、关节误差 < 0.05 rad）、35 s、训练场景为 4 个已建模场景、L0 + L1（位置和朝向随机）、中英文各 5 条指令。直接在 `5090-2` 用 `server.Store` + `write_task_registration` 写入（署名「种政（agent 代登记）」，负责人 chongzheng），`registration.json` 拷回入库。还没实现；两只量杯和 plastic_mug 不在共享库，实现时要先补。部署机上这个文件是未跟踪的，下次快进部署前先删掉它（内容和入库的一致）。
 - 2026-10-21：登记任务的位置随机移到第 4 步 L1（用户：位置泛化应属于泛化等级），第 2 步只选物体；L1 下勾「位置 / 朝向」，训练布局和 L1 评测集都按它们随机，范围仍由 coding agent 定，都不勾即固定摆放。`registration.json` 的随机字段从每个角色的 `randomize` 移到任务级 `randomize`。第 3 步场景不再每个场景一个下拉框（场景多了不好选），改为「训练场景」「L4 保留场景」两个搜索选择框：和物体选择共用组件（`PICK` 按键名区分物体和场景），带缩略图和悬停预览（桌面尺寸、env 配置、照片数），同一场景只能在一边，选进另一边自动移走；「加入全部已建模场景」一键加入。验证：`test_server.py`、ruff；本机浏览器：加入全部已建模场景、搜索、悬停预览、回车把实验室移到 L4 保留、L1 取消朝向后提交，登记和实现任务文本正确。PR #16 合并（`f717246`）并部署。
 - 2026-10-21：登记任务的物体角色不再手填 x/y 范围和朝向角度（用户：不要人为定这么细），改为「每回合随机」两个勾选项：位置、朝向（默认都勾）。`registration.json` 的角色字段由 `xlim/ylim/yaw_deg` 换成 `randomize: ["position", "yaw"]`；实现任务文本让 coding agent 按可达范围（桌面物体 y≈[-0.55, -0.25]）、物体不重叠且留抓取空间、按抓取方式定朝向来设范围，L0 孪生仍固定摆放，范围写进任务配置和交付说明。线上没有登记过任务，不用迁移。验证：`test_server.py`、ruff；本机浏览器里勾选、取消、提交，看了实现任务文本和抽屉摘要。PR #15 合并（`e1b347c`）并部署。
 - 2026-10-21：登记任务里的物体选择改为带预览的搜索列表（用户反馈：选的时候看不出是哪个）：输入名称、类别或 id 过滤，每行有缩略图，鼠标悬停（或方向键）在旁边浮出大图卡片（名称、id、尺寸、质量、入库状态；图取渲染图，没有就取实拍），回车或点击加入；已选标签带缩略图，悬停也能预览。干扰物的杂物库说明清楚了：它是共享资产库 `Object/RoboDojo/Clutter/`（95 类 193 个，`clutter.yml` 索引），任务配置的 `Clutter` 段引用它；勾选后列出各类别和数量，可只选部分类别（不选即全库），写进 `distractors.clutter_categories`。新接口 `GET /api/clutter` 从资产库镜像统计类别。杂物没有渲染图，只显示类别名。验证：`test_server.py`（`/api/clutter`）、ruff；本机用部署机的元数据镜像和主工作区的渲染图在浏览器里试了搜索、悬停预览、方向键 + 回车、标签预览、杂物类别写入登记。PR #14 合并（`99cf0b6`）并部署到 `5090-2`，线上镜像统计出杂物库 95 类 193 个。

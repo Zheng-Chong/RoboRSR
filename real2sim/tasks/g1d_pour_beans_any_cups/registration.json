@@ -1,0 +1,106 @@
+{
+  "task": "g1d_pour_beans_any_cups",
+  "name": "任意杯子倒红豆",
+  "name_en": "Pour Beans Any Cups",
+  "definition": "桌上有两只杯子，源杯里装着红豆。机器人用一只手拿起源杯，把红豆全部倒进目标杯；倒完后把源杯放回桌面。结束时两只杯子都直立放在桌面上，两只手臂回到初始姿态、夹爪张开。源杯和目标杯每回合从物体资产里的杯子中各选一只（两者不同），红豆数量每回合在 100–300 颗之间随机。",
+  "instructions": {
+    "count": 5,
+    "languages": [
+      "zh",
+      "en"
+    ]
+  },
+  "success": "最后 1 秒内同时满足：(1) 至少 95% 的红豆在目标杯杯腔内（按本回合实际豆数算），源杯里不超过 5%；(2) 两只杯子都直立（倾角 < 10°）、静止地立在桌面上，没有被夹爪拿着；(3) 两只手臂的关节角都回到初始姿态（每个关节误差 < 0.05 rad），夹爪张开。",
+  "hand": "either",
+  "horizon_s": 35,
+  "target_episodes": 500,
+  "owner": {
+    "username": "chongzheng",
+    "name": "种政"
+  },
+  "objects": [
+    {
+      "label": "source_cup",
+      "candidates": [
+        "Rigid/measuring_cup/00000",
+        "Rigid/measuring_cup/00001",
+        "Rigid/plastic_cup/00000",
+        "Rigid/plastic_mug/00000",
+        "Rigid/paper_cup/00000",
+        "Rigid/paper_cup/00001",
+        "Rigid/water_cup/00000",
+        "Rigid/cup/00007"
+      ],
+      "count": 1
+    },
+    {
+      "label": "target_cup",
+      "candidates": [
+        "Rigid/measuring_cup/00000",
+        "Rigid/measuring_cup/00001",
+        "Rigid/plastic_cup/00000",
+        "Rigid/plastic_mug/00000",
+        "Rigid/paper_cup/00000",
+        "Rigid/paper_cup/00001",
+        "Rigid/water_cup/00000",
+        "Rigid/cup/00007"
+      ],
+      "count": 1
+    },
+    {
+      "label": "beans",
+      "candidates": [
+        "Fluid/wuliangye/00000"
+      ],
+      "count": 1
+    }
+  ],
+  "randomize": [
+    "position",
+    "yaw"
+  ],
+  "scenes": {
+    "train": [
+      {
+        "scene": "real_scene1_office",
+        "env_cfg": [
+          "g1d"
+        ]
+      },
+      {
+        "scene": "real_scene2_counter",
+        "env_cfg": [
+          "g1d_counter"
+        ]
+      },
+      {
+        "scene": "real_scene3_lab",
+        "env_cfg": [
+          "g1d_lab"
+        ]
+      },
+      {
+        "scene": "real_scene4_school",
+        "env_cfg": [
+          "g1d_school"
+        ]
+      }
+    ]
+  },
+  "levels": {
+    "L0": {
+      "target": 25,
+      "range": "无变化，与真机评测一一对应：真实工位、真实物体、打印摆放垫上的位置"
+    },
+    "L1": {
+      "target": 50,
+      "range": "物体位置和朝向：可达范围内 y ≈ [-0.55, -0.25]，旋转 ±30°"
+    }
+  },
+  "extra_generalization": "红豆数量 100–300 颗（每回合随机，记录在布局里）",
+  "expert": "倒豆手随布局取离源杯近的一侧：侧抓源杯杯身（夹持高度按每只杯子的几何算），抬起移到目标杯上方倾倒，按杯腔内剩余豆数判断倒完，回正后放回桌面（原位附近、不碰目标杯）并松开，退出后两臂沿关节空间回到初始姿态。沿用 scripted_demo 里杯对杯倒豆的动作和 measuring_cup_shape.in_cavity 一类的杯腔判断，扩展到不同尺寸、形状的杯子。",
+  "requirements": "1. 红豆数量每回合在 100–300 颗之间随机，实际数量写进布局和 additional_info，成功判据按实际数量算。2. 源杯必须装得下本回合的豆子，目标杯也要装得下；杯口太小、装不下或倒不进的组合在生成布局时剔除，并在交付说明里列出被剔除的组合。3. 源杯和目标杯不能是同一个实例。4. 夹持点、倾倒高度和角度按每只杯子的尺寸算，不要写死某一只杯子的参数。5. 采集仍用颗粒任务的物理配置（不要在 1/300 s 下评估）。",
+  "notes": "由 coding agent 按用户口述代为登记（2026-10-21）：源杯和目标杯可以是物体资产里任意杯子，红豆 100–300 颗随机，倒完两只杯子放回桌面、手臂恢复初始状态。成功判据阈值、时长、场景和泛化等级是 agent 按现有倒豆任务经验填的，可在平台上修改。",
+  "updated_by": "种政（agent 代登记）",
+  "updated_at": "2026-10-21 13:07:29"
+}
