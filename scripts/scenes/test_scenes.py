@@ -57,9 +57,10 @@ class SpecTests(unittest.TestCase):
             "g1d_counter": (0.2, -0.35),
             "g1d_lab": (0.13, 0.0),
             "g1d_school": (0.19, 0.0828),
+            "g1d_shenzhen_lab": (0.13, 0.0),
         }
         specs = sorted((ROOT / "real2sim/scenes").glob("*/scene_spec.json"))
-        self.assertEqual(len(specs), 4)
+        self.assertEqual(len(specs), 5)
         for path in specs:
             spec = json.loads(path.read_text())
             report = acceptance.evaluate(spec)

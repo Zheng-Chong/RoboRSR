@@ -1,0 +1,77 @@
+{
+ "frame": "Z-up, meters; origin on the floor under the tabletop centre; +X along the table; +Y to the wall",
+ "table": {
+  "top_z": 0.75,
+  "length": 1.2,
+  "width": 0.6,
+  "front_y": -0.3,
+  "thick": 0.02
+ },
+ "legs": {
+  "x": 0.472,
+  "y": 0.005,
+  "foot_front": -0.243,
+  "foot_back": 0.251,
+  "upper": [
+   0.055,
+   0.045
+  ],
+  "lower": [
+   0.065,
+   0.055
+  ],
+  "split_z": 0.45,
+  "foot": [
+   0.06,
+   0.035
+  ]
+ },
+ "cabinet": {
+  "x0": 1.227,
+  "w": 0.75,
+  "h": 1.2,
+  "d": 0.45,
+  "y1": 0.3
+ },
+ "room": {
+  "x0": -2.5,
+  "x1": 2.5,
+  "y0": -3.0,
+  "y1": 0.3,
+  "height": 2.8
+ },
+ "lights": {
+  "strips": [
+   [
+    0.0,
+    -0.2
+   ],
+   [
+    0.0,
+    -1.0
+   ],
+   [
+    -1.6,
+    -0.6
+   ],
+   [
+    1.6,
+    -0.6
+   ]
+  ],
+  "strip_size": [
+   1.2,
+   0.15
+  ],
+  "intensity": 54000.0,
+  "color_temperature": 6000.0,
+  "dome": 150.0
+ },
+ "layers": {
+  "scene": "scene.usda",
+  "background": "background.usda",
+  "table": "table.usda",
+  "cabinet": "cabinet.usda",
+  "lights": "lights.usda"
+ }
+}

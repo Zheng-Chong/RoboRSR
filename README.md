@@ -76,6 +76,7 @@ python scripts/g1d/build_asset.py
 | `g1d_counter` | `real_scene2` 吧台（落地柜） | 0.833 m | 根节点 y=-0.80（底盘伸不进柜下），升降柱各 0.0765 |
 | `g1d_lab` | `real_scene3` 实验室培训桌 | 0.749 m | 根节点 y=-0.73，升降柱各 0.0345 |
 | `g1d_school` | `real_scene4` 学校实验室绿幕桌 | 0.763 m | 根节点 y=-0.79、左偏 1.63°，升降柱 0（桌面相对躯干的高差按拟合值保留） |
+| `g1d_shenzhen_lab` | `real_scene5` 深圳实验室办公桌（卷尺实测） | 0.75 m | 根节点 y=-0.73（站位未实测），升降柱各 0.035 |
 
 布局写在 `Assets/Eval_Layout/RoboDojo/<配置>/`，评测结果也按配置分目录。
 
@@ -176,6 +177,7 @@ real2sim/                               自建资产（随仓库，二进制走 
   scenes/real_scene2_counter/           台面孪生场景 → Room/real_scene2
   scenes/real_scene3_lab/               实验室孪生场景 → Room/real_scene3
   scenes/real_scene4_school/            学校实验室绿幕桌孪生场景 → Room/real_scene4
+  scenes/real_scene5_shenzhen_lab/      深圳实验室办公桌孪生场景 → Room/real_scene5
   scene3_pour_pack/                     倒水场景包（场景、物体、运动学与规划脚本）
 Assets/                                 下载的官方资产 + 生成的 G1-D 资产（不入库，见快速开始）
 HANDOFF.md                              跨会话交接记录（当前状态、决策、验证、遗留问题）
