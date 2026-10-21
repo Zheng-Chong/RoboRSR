@@ -604,6 +604,12 @@ const qualified = (eps) => eps.filter((e) => e.qa === 'pass' && e.auto.success);
 const TASK_STAGES = [
   ['config', '任务配置', (d) => (d.auto.runnable ? ok(`step_lim ${d.auto.step_lim ?? '继承'}`)
     : !d.auto.module ? todo('已登记，交给 coding agent 按实现任务实现') : bad('缺配置或导出类'))],
+  ['instructions', '语言指令', (d) => {
+    const want = d.reg?.instructions, got = d.auto.instructions || {};
+    if (!want) return na('没在平台登记');
+    const short = want.languages.filter((l) => !(Array.isArray(got[l]) && got[l].length >= want.count));
+    return short.length ? todo(`${short.map((l) => INST_LANGS[l] || l).join('、')}不足 ${want.count} 条（instructions.json）`) : ok(instText(want));
+  }],
   ['layout', '评测布局', (d) => (sum(Object.values(d.auto.layouts || {}))
     ? ok(Object.entries(d.auto.layouts).map(([c, n]) => `${c} ${n}`).join('，')) : todo('资产库里没有布局（scripts/g1d/build_asset.py）'))],
   ['expert', '专家可行性 ≥ 80%', (d) => {
@@ -1227,14 +1233,17 @@ function drawerTask(d) {
   };
 }
 const TASK_WIZ = [
-  ['任务定义', '新建一个 G1-D 任务，或给已有任务登记泛化方案。指令和成功判据要写清楚：判据会变成 run_reward 里的检查。'],
+  ['任务定义', '新建一个 G1-D 任务，或给已有任务登记泛化方案。任务定义和成功判据要写清楚：语言指令由 coding agent 从定义总结并转写，判据会变成 run_reward 里的检查。'],
   ['物体与干扰物', '每个角色是任务里的一类物体（对应任务配置的 label），从物体资产里选它可用的物体；干扰物另选。位置留空由 coding agent 按可达范围定。'],
   ['可用场景', '训练场景用于采集数据；L4 保留场景只在评测时出现，不进训练。'],
   ['泛化等级', '每一级只改变一个因素，其余与 L0 相同。范围和目标布局数都可以改，也可以补充其他泛化维度。'],
 ];
 const HANDS = {'': '未定', left: '左手', right: '右手', either: '任一手（随布局）', both: '双手'};
+const INST_LANGS = {zh: '中文', en: '英文'};
 const SCENE_USES = {'': '不用', train: '训练', holdout: 'L4 保留'};
-const EXTRA_PRESETS = ['桌高 ±5 cm', '机器人站位 ±3 cm', '物体初始姿态（倒放 / 侧放）', '语言指令改写', '控制延迟 / 动作噪声'];
+const EXTRA_PRESETS = ['桌高 ±5 cm', '机器人站位 ±3 cm', '物体初始姿态（倒放 / 侧放）', '控制延迟 / 动作噪声'];
+const langText = (ins) => (ins?.languages || []).map((l) => INST_LANGS[l] || l).join('、');
+const instText = (ins) => `${langText(ins)}${ins.languages.length > 1 ? '各' : ''} ${ins.count} 条`;
 let NT = null;  // the task wizard's lists: {roles: [{label, candidates, count, xmin, xmax, ymin, ymax, yaw}], dis, holdout}
 const newRole = (label = '', candidates = []) => ({label, candidates, count: 1, xmin: null, xmax: null, ymin: null, ymax: null, yaw: null});
 const ntList = (key) => (key === 'dis' ? NT.dis.candidates : key === 'hold' ? NT.holdout : NT.roles[Number(key.slice(1))].candidates);
@@ -1279,7 +1288,9 @@ function drawerNewTask() {
       ${fld('nt-name-en', '英文名称', text('nt-name-en', 'Pour Beans Measuring Cups', 'oninput="suggestTaskId()"'), {req: true})}
       ${fld('nt-slug', '任务名后缀', text('nt-slug', 'pour_beans_measuring_cups', 'class="mono" autocapitalize="off" spellcheck="false" oninput="this.dataset.edited = 1; suggestTaskId()"'), {hint: '小写字母、数字、下划线'})}
       <div class="fld"><label>任务 ID</label><code id="nt-id" class="wz-id">填写英文名称后生成</code></div>
-      ${fld('nt-instruction', '语言指令', note('nt-instruction', 'Pour all red beans from the tall measuring cup into the short measuring cup.'), {wide: true, req: true, hint: '评测时原样发给策略，用英文'})}
+      ${fld('nt-definition', '任务定义', note('nt-definition', '机器人用左手拿起高量杯，把里面的红豆全部倒进右边的矮量杯，倒完把高量杯放回桌面', 3), {wide: true, req: true, hint: '用中文写清楚做什么、对哪些物体、结束时是什么状态；语言指令由 coding agent 据此总结并转写'})}
+      <div class="fld"><label for="nt-inst-n">指令转写数量<em aria-hidden="true">*</em></label><input id="nt-inst-n" type="number" min="1" max="50" step="1" value="5"><small>每种语言各 N 条，意思相同、说法不同</small></div>
+      <div class="fld"><label>指令语言<em aria-hidden="true">*</em></label><div class="toggles">${Object.entries(INST_LANGS).map(([k, t]) => `<label class="toggle"><input type="checkbox" data-lang="${k}" checked><span>${ic('check')}${t}</span></label>`).join('')}</div></div>
       ${fld('nt-success', '成功判据', note('nt-success', '最后 1 秒内所有豆子都在矮杯杯腔内，两只杯子倾角 < 30°'), {wide: true, req: true, hint: '可量化的条件，会写进 run_reward'})}
       ${fld('nt-hand', '用手', `<select id="nt-hand">${opts(HANDS, '')}</select>`)}
       ${fld('nt-horizon', '预计时长', wzUnit('nt-horizon', 's', 'step="1"'), {hint: '30 Hz，step_lim 按它留余量'})}
@@ -1346,7 +1357,10 @@ function taskWizError() {  // [message, field selector] blocking the current ste
     if (!$('#nt-name-en').value.trim()) return ['填写英文名称', '#nt-name-en'];
     if (!existing && !/^[a-z0-9_]+$/.test(slug)) return ['任务名后缀只能含小写字母、数字和下划线', '#nt-slug'];
     if (!existing && S.task.some((t) => t.id === taskId())) return [`已有任务 ${taskId()}；要给它登记泛化方案，登记方式选「已有任务」`, '#nt-slug'];
-    if (!$('#nt-instruction').value.trim()) return ['填写语言指令', '#nt-instruction'];
+    if (!$('#nt-definition').value.trim()) return ['用中文写下任务定义，coding agent 据此总结语言指令', '#nt-definition'];
+    const n = Number($('#nt-inst-n').value);
+    if (!Number.isInteger(n) || n < 1 || n > 50) return ['指令转写数量为 1–50 的整数', '#nt-inst-n'];
+    if (!$$('[data-lang]:checked').length) return ['至少选一种指令语言', '[data-lang]'];
     if (!$('#nt-success').value.trim()) return ['写下成功判据，否则无法实现 run_reward', '#nt-success'];
   }
   if (WIZ_AT === 1) {
@@ -1375,7 +1389,8 @@ async function createTask(btn) {
   const range = (lo, hi) => (lo != null && hi != null ? [lo, hi] : null);
   const lo = ntNum($('#nt-dis-min').value), hi = ntNum($('#nt-dis-max').value);
   const reg = {
-    existing: $('#nt-mode').value === 'existing', name: value('#nt-name'), name_en: value('#nt-name-en'), instruction: value('#nt-instruction'),
+    existing: $('#nt-mode').value === 'existing', name: value('#nt-name'), name_en: value('#nt-name-en'), definition: value('#nt-definition'),
+    instructions: {count: ntNum($('#nt-inst-n').value), languages: [...$$('[data-lang]:checked')].map((c) => c.dataset.lang)},
     success: value('#nt-success'), hand: value('#nt-hand'), horizon_s: ntNum($('#nt-horizon').value), target: ntNum($('#nt-target').value),
     roles: NT.roles.map((r) => ({label: r.label, candidates: r.candidates, count: r.count, xlim: range(r.xmin, r.xmax), ylim: range(r.ymin, r.ymax), yaw_deg: r.yaw})),
     distractors: {count: lo == null && hi == null ? null : [lo ?? 0, hi ?? lo], candidates: NT.dis.candidates, clutter_library: $('#nt-dis-lib').checked},
@@ -1412,7 +1427,8 @@ function taskBrief(d) {  // the task for a coding agent that implements this reg
     `输入：${dir}/registration.json（平台登记信息），在平台所在机器的 ${INFO.root}/${dir}/，本机没有就先同步过来。`,
     '',
     '登记信息：',
-    fact('名称', [r.name, r.name_en].filter(Boolean).join('，')), fact('语言指令', r.instruction), fact('成功判据', r.success),
+    fact('名称', [r.name, r.name_en].filter(Boolean).join('，')), fact('任务定义', r.definition),
+    fact('语言指令', r.instructions && `由你从任务定义总结，${instText(r.instructions)}`), fact('成功判据', r.success),
     fact('用手', HANDS[r.hand || ''] === '未定' ? '' : HANDS[r.hand]), fact('预计时长', r.horizon_s ? `${r.horizon_s} s` : ''), fact('合格回合目标', r.target),
     '- 物体角色（桌面坐标，m）：', ...roles,
     dis.count || dis.candidates?.length || dis.clutter_library ? `- 干扰物：每回合 ${dis.count ? dis.count.join('–') : '若干'} 个${dis.candidates?.length ? `，从 ${dis.candidates.join('、')} 中取` : ''}${dis.clutter_library ? '，也从 Clutter 杂物库随机取' : ''}` : '- 干扰物：无',
@@ -1425,11 +1441,23 @@ function taskBrief(d) {  // the task for a coding agent that implements this reg
     r.existing
       ? `1. 配置和任务代码沿用 task/RoboDojo/config/${d.id}.yml、task/RoboDojo/tasks/${d.id}.py；物体角色和登记不一致时，先对齐 YAML 的 label 和代码，再改候选物体。`
       : `1. 新建 task/RoboDojo/config/${d.id}.yml 和 task/RoboDojo/tasks/${d.id}.py（导出类名与模块名一致，继承 TaskEnv）。Rigid 每个角色一组：category 列候选物体，select_mode.label 用角色名，和代码里的 label 一字不差；干扰物用 Clutter。run_reward 用 self.reward_manager.check 按上面的成功判据实现，不能恒为真；step_lim 按预计时长 × 30 Hz 留余量。`,
-    '2. 候选物体、干扰物和保留实例必须已在共享资产库；缺的先按 scripts/objects/SKILL.md 建（平台登记的在 real2sim/objects/）。保留实例不进训练布局。',
-    `3. 在 scripts/g1d/scripted_demo.py 加（或沿用）这个任务的脚本专家，在 scripts/g1d/build_asset.py 里为每个训练场景的 env 配置生成布局；选中的每个泛化等级按上面的范围生成一套固定布局，先用 scripted_demo 过滤，L0–L3 专家成功率 ≥ 80%。L4 只用保留场景；还没建模的场景等它建好再生成。`,
-    '4. 在 5090-2 的隔离目录（/data/robodojo-runs/）每个训练场景跑一次 scripted_demo seed 0：_result.json 的 eval_time ≥ 1、三路相机视频齐全；通过后再按 scripts/datagen/SKILL.md 批量采集。',
-    `5. 跑 python scripts/internal/task_inventory.py --format json --check 和 bash scripts/check.sh；提交配置、任务代码、专家、build_asset.py 改动和 ${dir}/registration.json。改共享资产库前先征得同意。`,
+    `2. 语言指令：从任务定义总结出${langText(r.instructions)}指令，每种语言 ${r.instructions?.count ?? 'N'} 条转写。意思和任务定义一致，换说法和句式，不加定义里没有的信息（物体颜色、位置等只有定义里写了才能用）；英文自然口语、祈使句。第一条是最直接的规范说法。写进 ${dir}/instructions.json，格式 {"zh": [...], "en": [...]}（只放选了的语言），任务的 gen_instruction 返回这些句子（desc_manager 每回合随机选一句）。用户审过 instructions.json 再批量采集。`,
+    '3. 候选物体、干扰物和保留实例必须已在共享资产库；缺的先按 scripts/objects/SKILL.md 建（平台登记的在 real2sim/objects/）。保留实例不进训练布局。',
+    `4. 在 scripts/g1d/scripted_demo.py 加（或沿用）这个任务的脚本专家，在 scripts/g1d/build_asset.py 里为每个训练场景的 env 配置生成布局；选中的每个泛化等级按上面的范围生成一套固定布局，先用 scripted_demo 过滤，L0–L3 专家成功率 ≥ 80%。L4 只用保留场景；还没建模的场景等它建好再生成。`,
+    '5. 在 5090-2 的隔离目录（/data/robodojo-runs/）每个训练场景跑一次 scripted_demo seed 0：_result.json 的 eval_time ≥ 1、三路相机视频齐全；通过后再按 scripts/datagen/SKILL.md 批量采集。',
+    `6. 跑 python scripts/internal/task_inventory.py --format json --check 和 bash scripts/check.sh；提交配置、任务代码、专家、build_asset.py 改动、${dir}/registration.json 和 instructions.json。改共享资产库前先征得同意。`,
   ].filter((line) => line !== null).join('\n');
+}
+function instructionList(d) {  // what was asked for, and what the coding agent wrote to instructions.json
+  const want = d.reg?.instructions, got = d.auto.instructions || {};
+  const head = want ? `<p class="hint" style="margin:0 0 8px">要求：${esc(instText(want))}，由 coding agent 从任务定义总结，写进 real2sim/tasks/${esc(d.id)}/instructions.json。</p>` : '';
+  const langs = want?.languages || Object.keys(got);
+  if (!Object.keys(got).length) return `${head}<div class="small muted">还没写；coding agent 写好并同步后显示在这里，审过再批量采集。</div>`;
+  return head + langs.map((l) => {
+    const list = Array.isArray(got[l]) ? got[l] : [], short = want && list.length < want.count;
+    return `<div style="margin-top:8px"><b>${esc(INST_LANGS[l] || l)}</b> <span class="small ${short ? 'txt-bad' : 'muted'}">${list.length}${want ? ` / ${want.count}` : ''} 条</span>
+      <ol class="small" style="margin:4px 0 0; padding-left:20px">${list.map((s) => `<li>${esc(s)}</li>`).join('')}</ol></div>`;
+  }).join('');
 }
 function taskRegSection(d) {
   const r = d.reg || {}, t = (f, label) => row(label, `reg.${f}`, area(d, `reg.${f}`));
@@ -1437,13 +1465,14 @@ function taskRegSection(d) {
   const levels = Object.entries(r.levels || {});
   return `${sec(`${ic('terminal')}${r.existing ? '泛化方案' : '实现任务'}（给 coding agent）`, `<p class="hint" style="margin:0 0 8px">登记信息已写入
       <a target="_blank" rel="noopener" href="${file(`${INFO.root}/real2sim/tasks/${d.id}/registration.json`)}">real2sim/tasks/${esc(d.id)}/registration.json</a>。把下面这段交给 coding agent；实现后同步，流程自动推进。</p>${code(taskBrief(d))}`)}
+    ${sec('语言指令', instructionList(d))}
     ${sec('登记的方案', `<dl class="kv"><dt>物体角色</dt><dd>${(r.roles || []).map((x) => `<div><b class="mono">${esc(x.label)}</b> × ${x.count}：${x.candidates.map((o) => link('object', o, objLabel(o))).join('、')}</div>`).join('') || '—'}</dd>
       <dt>干扰物</dt><dd>${r.distractors?.count ? `${r.distractors.count.join('–')} 个` : '—'}${(r.distractors?.candidates || []).length ? `：${r.distractors.candidates.map((o) => link('object', o, objLabel(o))).join('、')}` : ''}${r.distractors?.clutter_library ? '（含 Clutter 库）' : ''}</dd>
       <dt>训练场景</dt><dd>${scenes('train')}</dd><dt>L4 保留场景</dt><dd>${scenes('holdout')}</dd>
       <dt>泛化等级</dt><dd>${levels.map(([k, v]) => `<div><b class="mono">${k}</b> · 目标 ${v.target ?? '—'}：<span class="small">${esc(v.range)}</span></div>`).join('') || '—'}</dd>
       <dt>L3 保留实例</dt><dd>${(r.holdout_objects || []).map((o) => link('object', o, objLabel(o))).join('、') || '—'}</dd></dl>
       <p class="hint">物体、场景和等级要改就删除登记后重新登记；下面的文字字段可以直接改，改动会写回 registration.json。</p>
-      <div class="form">${t('instruction', '语言指令')}${t('success', '成功判据')}${t('extra', '其他泛化')}${t('expert', '脚本专家思路')}${t('requirements', '其他要求')}${t('notes', '备注')}</div>`)}`;
+      <div class="form">${t('definition', '任务定义')}${t('success', '成功判据')}${t('extra', '其他泛化')}${t('expert', '脚本专家思路')}${t('requirements', '其他要求')}${t('notes', '备注')}</div>`)}`;
 }
 async function unregisterTask(id) {
   const d = S.task.find((x) => x.id === id);

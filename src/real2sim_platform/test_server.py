@@ -226,7 +226,8 @@ def test_http():
         server.TASKS_DIR = tmp / "tasks"
         task = "/api/items?kind=task&id=g1d_wipe_table"
         roles = [{"label": "sponge", "candidates": ["Rigid/sponge/00000"], "count": 1, "xlim": None, "yaw_deg": 0}]
-        reg = {"name": "擦桌子", "instruction": "Wipe the table.", "success": "污渍清除", "roles": roles}
+        reg = {"name": "擦桌子", "definition": "用海绵把桌上的污渍擦掉", "success": "污渍清除", "roles": roles}
+        reg["instructions"] = {"count": 5, "languages": ["zh", "en"]}
         reg |= {"scenes": {"real_scene3_lab": "train", "real_scene1_office": "holdout", "real_scene2_counter": ""}}
         reg |= {"levels": {"L0": {"target": 25, "range": "孪生"}}, "distractors": {"count": None, "candidates": []}}
         assert request("PUT", "/api/items?kind=task&id=../x", json.dumps({"registered": True}))[0] == 400
@@ -240,8 +241,14 @@ def test_http():
             "holdout": [{"scene": "real_scene1_office", "env_cfg": ["g1d"]}],
         }
         assert "distractors" not in written and written["levels"] == {"L0": {"target": 25, "range": "孪生"}}
+        assert written["instructions"] == {"count": 5, "languages": ["zh", "en"]} and "instruction" not in written
+        assert server.scan_tasks(tmp)["g1d_wipe_table"]["instructions"] is None  # not written by the agent yet
+        transcribed = {"zh": ["把桌子擦干净"], "en": ["Wipe the table clean."]}
+        (tmp / "tasks/g1d_wipe_table/instructions.json").write_text(json.dumps(transcribed, ensure_ascii=False))
         listed = server.scan_tasks(tmp)["g1d_wipe_table"]  # registered, not implemented: listed, not runnable
         assert listed["registered"] and not listed["runnable"] and listed["module"] is None
+        assert listed["instructions"] == transcribed
+        (tmp / "tasks/g1d_wipe_table/instructions.json").unlink()
         assert not server.scan_tasks(tmp)["g1d_stack_blocks"]["registered"]
         assert request("DELETE", task)[0] == 200 and "g1d_wipe_table" not in server.scan_tasks(tmp)
 
