@@ -1,0 +1,362 @@
+#usda 1.0
+(
+    defaultPrim = "Background"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "Background"
+{
+    def Mesh "Floor" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        float3[] extent = [(-2.5, -3, 0), (2.5, 0.3, 0)]
+        int[] faceVertexCounts = [3, 3]
+        int[] faceVertexIndices = [0, 1, 2, 0, 2, 3]
+        rel material:binding = </Background/Looks/carpet>
+        normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, -0, 1), (0, -0, 1), (0, -0, 1)] (
+            interpolation = "faceVarying"
+        )
+        point3f[] points = [(-2.5, -3, 0), (2.5, -3, 0), (2.5, 0.3, 0), (-2.5, 0.3, 0)]
+        texCoord2f[] primvars:st = [(-11.166667, -5), (5.5, -5), (5.5, 6), (-11.166667, -5), (5.5, 6), (-11.166667, 6)] (
+            interpolation = "faceVarying"
+        )
+        uniform token subdivisionScheme = "none"
+    }
+
+    def "Looks"
+    {
+        def Material "carpet"
+        {
+            token outputs:surface.connect = </Background/Looks/carpet/Shader.outputs:surface>
+
+            def Shader "Shader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor.connect = </Background/Looks/carpet/Texture.outputs:rgb>
+                float inputs:metallic = 0
+                float inputs:roughness = 0.95
+                token outputs:surface
+            }
+
+            def Shader "stReader"
+            {
+                uniform token info:id = "UsdPrimvarReader_float2"
+                token inputs:varname = "st"
+                float2 outputs:result
+            }
+
+            def Shader "Texture"
+            {
+                uniform token info:id = "UsdUVTexture"
+                asset inputs:file = @./textures/carpet.png@
+                token inputs:sourceColorSpace = "sRGB"
+                float2 inputs:st.connect = </Background/Looks/carpet/stReader.outputs:result>
+                token inputs:wrapS = "mirror"
+                token inputs:wrapT = "mirror"
+                float3 outputs:rgb
+            }
+        }
+
+        def Material "ceiling"
+        {
+            token outputs:surface.connect = </Background/Looks/ceiling/Shader.outputs:surface>
+
+            def Shader "Shader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.7912979, 0.7912979, 0.7912979)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.9
+                token outputs:surface
+            }
+        }
+
+        def Material "wall"
+        {
+            token outputs:surface.connect = </Background/Looks/wall/Shader.outputs:surface>
+
+            def Shader "Shader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.61049557, 0.58407843, 0.5394795)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.9
+                token outputs:surface
+            }
+        }
+
+        def Material "skirting"
+        {
+            token outputs:surface.connect = </Background/Looks/skirting/Shader.outputs:surface>
+
+            def Shader "Shader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.004391442, 0.0047769533, 0.004391442)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.25
+                token outputs:surface
+            }
+        }
+    }
+
+    def Mesh "Ceiling" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        float3[] extent = [(-2.5, -3, 2.8), (2.5, 0.3, 2.8)]
+        int[] faceVertexCounts = [3, 3]
+        int[] faceVertexIndices = [0, 1, 2, 0, 2, 3]
+        rel material:binding = </Background/Looks/ceiling>
+        normal3f[] normals = [(0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1)] (
+            interpolation = "faceVarying"
+        )
+        point3f[] points = [(-2.5, -3, 2.8), (-2.5, 0.3, 2.8), (2.5, 0.3, 2.8), (2.5, -3, 2.8)]
+        uniform token subdivisionScheme = "none"
+    }
+
+    def "Colliders"
+    {
+        def Mesh "floor" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI", "MaterialBindingAPI"]
+        )
+        {
+            float3[] extent = [(-3.5, -4, -0.1), (3.5, 1.3, 0)]
+            int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+            int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+            rel material:binding:physics = </Background/PhysicsMaterials/carpet> (
+                bindMaterialAs = "weakerThanDescendants"
+            )
+            normal3f[] normals = [(-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0)] (
+                interpolation = "faceVarying"
+            )
+            uniform token physics:approximation = "convexHull"
+            point3f[] points = [(-3.5, -4, -0.1), (-3.5, -4, 0), (-3.5, 1.3, -0.1), (-3.5, 1.3, 0), (3.5, -4, -0.1), (3.5, -4, 0), (3.5, 1.3, -0.1), (3.5, 1.3, 0)]
+            uniform token purpose = "guide"
+            uniform token subdivisionScheme = "none"
+        }
+
+        def Mesh "wall_back" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI", "MaterialBindingAPI"]
+        )
+        {
+            float3[] extent = [(-2.5, 0.3, 0), (2.5, 0.4, 2.8)]
+            int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+            int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+            rel material:binding:physics = </Background/PhysicsMaterials/default> (
+                bindMaterialAs = "weakerThanDescendants"
+            )
+            normal3f[] normals = [(-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0)] (
+                interpolation = "faceVarying"
+            )
+            uniform token physics:approximation = "convexHull"
+            point3f[] points = [(-2.5, 0.3, 0), (-2.5, 0.3, 2.8), (-2.5, 0.4, 0), (-2.5, 0.4, 2.8), (2.5, 0.3, 0), (2.5, 0.3, 2.8), (2.5, 0.4, 0), (2.5, 0.4, 2.8)]
+            uniform token purpose = "guide"
+            uniform token subdivisionScheme = "none"
+        }
+
+        def Mesh "wall_front" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI", "MaterialBindingAPI"]
+        )
+        {
+            float3[] extent = [(-2.5, -3.1, 0), (2.5, -3, 2.8)]
+            int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+            int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+            rel material:binding:physics = </Background/PhysicsMaterials/default> (
+                bindMaterialAs = "weakerThanDescendants"
+            )
+            normal3f[] normals = [(-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0)] (
+                interpolation = "faceVarying"
+            )
+            uniform token physics:approximation = "convexHull"
+            point3f[] points = [(-2.5, -3.1, 0), (-2.5, -3.1, 2.8), (-2.5, -3, 0), (-2.5, -3, 2.8), (2.5, -3.1, 0), (2.5, -3.1, 2.8), (2.5, -3, 0), (2.5, -3, 2.8)]
+            uniform token purpose = "guide"
+            uniform token subdivisionScheme = "none"
+        }
+
+        def Mesh "wall_left" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI", "MaterialBindingAPI"]
+        )
+        {
+            float3[] extent = [(-2.6, -3, 0), (-2.5, 0.3, 2.8)]
+            int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+            int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+            rel material:binding:physics = </Background/PhysicsMaterials/default> (
+                bindMaterialAs = "weakerThanDescendants"
+            )
+            normal3f[] normals = [(-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0)] (
+                interpolation = "faceVarying"
+            )
+            uniform token physics:approximation = "convexHull"
+            point3f[] points = [(-2.6, -3, 0), (-2.6, -3, 2.8), (-2.6, 0.3, 0), (-2.6, 0.3, 2.8), (-2.5, -3, 0), (-2.5, -3, 2.8), (-2.5, 0.3, 0), (-2.5, 0.3, 2.8)]
+            uniform token purpose = "guide"
+            uniform token subdivisionScheme = "none"
+        }
+
+        def Mesh "wall_right" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI", "MaterialBindingAPI"]
+        )
+        {
+            float3[] extent = [(2.5, -3, 0), (2.6, 0.3, 2.8)]
+            int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+            int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+            rel material:binding:physics = </Background/PhysicsMaterials/default> (
+                bindMaterialAs = "weakerThanDescendants"
+            )
+            normal3f[] normals = [(-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0)] (
+                interpolation = "faceVarying"
+            )
+            uniform token physics:approximation = "convexHull"
+            point3f[] points = [(2.5, -3, 0), (2.5, -3, 2.8), (2.5, 0.3, 0), (2.5, 0.3, 2.8), (2.6, -3, 0), (2.6, -3, 2.8), (2.6, 0.3, 0), (2.6, 0.3, 2.8)]
+            uniform token purpose = "guide"
+            uniform token subdivisionScheme = "none"
+        }
+    }
+
+    def "PhysicsMaterials"
+    {
+        def Material "carpet" (
+            prepend apiSchemas = ["PhysicsMaterialAPI"]
+        )
+        {
+            float physics:dynamicFriction = 0.8
+            float physics:restitution = 0
+            float physics:staticFriction = 0.9
+        }
+
+        def Material "default" (
+            prepend apiSchemas = ["PhysicsMaterialAPI"]
+        )
+        {
+            float physics:dynamicFriction = 0.45
+            float physics:restitution = 0
+            float physics:staticFriction = 0.5
+        }
+    }
+
+    def "Walls"
+    {
+        def Mesh "back" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            float3[] extent = [(-2.5, 0.3, 0), (2.5, 0.3, 2.8)]
+            int[] faceVertexCounts = [3, 3]
+            int[] faceVertexIndices = [0, 1, 2, 0, 2, 3]
+            rel material:binding = </Background/Looks/wall>
+            normal3f[] normals = [(0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-2.5, 0.3, 0), (2.5, 0.3, 0), (2.5, 0.3, 2.8), (-2.5, 0.3, 2.8)]
+            uniform token subdivisionScheme = "none"
+        }
+
+        def Mesh "skirting_back" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            float3[] extent = [(-2.5, 0.29, 0), (2.5, 0.3, 0.08)]
+            int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+            int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+            rel material:binding = </Background/Looks/skirting>
+            normal3f[] normals = [(-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-2.5, 0.29, 0), (-2.5, 0.29, 0.08), (-2.5, 0.3, 0), (-2.5, 0.3, 0.08), (2.5, 0.29, 0), (2.5, 0.29, 0.08), (2.5, 0.3, 0), (2.5, 0.3, 0.08)]
+            uniform token subdivisionScheme = "none"
+        }
+
+        def Mesh "front" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            float3[] extent = [(-2.5, -3, 0), (2.5, -3, 2.8)]
+            int[] faceVertexCounts = [3, 3]
+            int[] faceVertexIndices = [0, 1, 2, 0, 2, 3]
+            rel material:binding = </Background/Looks/wall>
+            normal3f[] normals = [(0, 1, -0), (0, 1, -0), (0, 1, -0), (0, 1, -0), (0, 1, -0), (0, 1, -0)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(2.5, -3, 0), (-2.5, -3, 0), (-2.5, -3, 2.8), (2.5, -3, 2.8)]
+            uniform token subdivisionScheme = "none"
+        }
+
+        def Mesh "skirting_front" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            float3[] extent = [(-2.5, -3, 0), (2.5, -2.99, 0.08)]
+            int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+            int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+            rel material:binding = </Background/Looks/skirting>
+            normal3f[] normals = [(-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-2.5, -3, 0), (-2.5, -3, 0.08), (-2.5, -2.99, 0), (-2.5, -2.99, 0.08), (2.5, -3, 0), (2.5, -3, 0.08), (2.5, -2.99, 0), (2.5, -2.99, 0.08)]
+            uniform token subdivisionScheme = "none"
+        }
+
+        def Mesh "left" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            float3[] extent = [(-2.5, -3, 0), (-2.5, 0.3, 2.8)]
+            int[] faceVertexCounts = [3, 3]
+            int[] faceVertexIndices = [0, 1, 2, 0, 2, 3]
+            rel material:binding = </Background/Looks/wall>
+            normal3f[] normals = [(1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, -0), (1, 0, -0), (1, 0, -0)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-2.5, -3, 0), (-2.5, 0.3, 0), (-2.5, 0.3, 2.8), (-2.5, -3, 2.8)]
+            uniform token subdivisionScheme = "none"
+        }
+
+        def Mesh "skirting_left" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            float3[] extent = [(-2.5, -3, 0), (-2.49, 0.3, 0.08)]
+            int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+            int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+            rel material:binding = </Background/Looks/skirting>
+            normal3f[] normals = [(-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(-2.5, -3, 0), (-2.5, -3, 0.08), (-2.5, 0.3, 0), (-2.5, 0.3, 0.08), (-2.49, -3, 0), (-2.49, -3, 0.08), (-2.49, 0.3, 0), (-2.49, 0.3, 0.08)]
+            uniform token subdivisionScheme = "none"
+        }
+
+        def Mesh "right" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            float3[] extent = [(2.5, -3, 0), (2.5, 0.3, 2.8)]
+            int[] faceVertexCounts = [3, 3]
+            int[] faceVertexIndices = [0, 1, 2, 0, 2, 3]
+            rel material:binding = </Background/Looks/wall>
+            normal3f[] normals = [(-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(2.5, 0.3, 0), (2.5, -3, 0), (2.5, -3, 2.8), (2.5, 0.3, 2.8)]
+            uniform token subdivisionScheme = "none"
+        }
+
+        def Mesh "skirting_right" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            float3[] extent = [(2.49, -3, 0), (2.5, 0.3, 0.08)]
+            int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+            int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+            rel material:binding = </Background/Looks/skirting>
+            normal3f[] normals = [(-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 1, 0), (0, 1, 0), (0, 1, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0)] (
+                interpolation = "faceVarying"
+            )
+            point3f[] points = [(2.49, -3, 0), (2.49, -3, 0.08), (2.49, 0.3, 0), (2.49, 0.3, 0.08), (2.5, -3, 0), (2.5, -3, 0.08), (2.5, 0.3, 0), (2.5, 0.3, 0.08)]
+            uniform token subdivisionScheme = "none"
+        }
+    }
+}

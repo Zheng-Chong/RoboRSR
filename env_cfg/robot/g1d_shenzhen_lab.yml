@@ -1,0 +1,13 @@
+robots:
+  - {
+    robot_type: arm,
+    robot_name: g1d,
+    coupled: True,
+    need_planner: False,
+    default_root_pos: [0.0, -0.73, 0.1115],
+    default_root_rot: [0.707, 0, 0, 0.707],
+    # Stand not measured: table edge 0.13 m ahead of the root as in g1d / g1d_lab, root on the table centre line, so
+    # the tabletop objects sit at y in [-0.55, -0.25]. real_scene5 tabletop 0.75 m (tape) is 0.07 m above the office
+    # table: raise the lift column by as much.
+    init_joint_pos: {LZ_mt_Joint: 0.035, LZ_it_Joint: 0.035}
+  }

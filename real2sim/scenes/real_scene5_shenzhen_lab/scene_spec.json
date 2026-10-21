@@ -1,0 +1,32 @@
+{
+  "scene": "real_scene5_shenzhen_lab",
+  "env_cfg": "g1d_shenzhen_lab",
+  "photos": [
+    "reference/IMG_49*.jpeg"
+  ],
+  "reconstruction": "five phone photos (IMG_4913/4914/4916/4917/4918; 4915 repeats 4914) with hand-picked table edges, leg columns, feet and cabinet corners; camera poses, shared focal length, leg and cabinet positions fitted with the tabletop fixed to the tape (fit_photo.py), build_scene.py, check_scene.py, preview.py (PLAN.md)",
+  "scale_basis": "tape measure (registration.json, 2026-10-21): tabletop height 0.75 m, length 1.20 m, width 0.60 m, thickness 2 cm, cabinet 75 x 120 x 45 cm, back clearance 0 cm; all fixed in the fit, no ChArUco board measured (the board lying on the table has no recorded square size or position). The fitted focal length 773.6 px agrees with the EXIF 26 mm equivalent (769 px). Robot stand NOT measured: table edge 0.13 m ahead of the root and root on the table centre line as in g1d / g1d_lab, chosen so the tabletop objects sit at y in [-0.55, -0.25] (env_cfg/robot/g1d_shenzhen_lab.yml)",
+  "measurements": {
+    "table_top_z": {
+      "value_m": 0.75,
+      "tool": "卷尺",
+      "date": "2026-10-21"
+    },
+    "table_length": {
+      "value_m": 1.2,
+      "tool": "卷尺",
+      "date": "2026-10-21"
+    },
+    "table_width": {
+      "value_m": 0.6,
+      "tool": "卷尺",
+      "date": "2026-10-21"
+    }
+  },
+  "overlay": [],
+  "lighting": {
+    "status": "recorded",
+    "note": "registered: ceiling strip lights, area lights, colour matched to the photos (no colour temperature, illuminance or positions recorded). Modelled as four 1.2 x 0.15 m RectLights at the 2.8 m ceiling, 6000 K, intensity 54000, dome 150; colours in the materials (sRGB from IMG_4916). Matched to the photo under Isaac RTX with cam_third at the fitted IMG_4916 pose (wall / desk / carpet sRGB 218,212,208 / 238,236,235 / 97,97,102 vs photo 206,203,196 / 228,228,220 / 96,100,108, PLAN.md). Not compared with the head camera"
+  },
+  "notes": "Table support registered as four legs; the photos show a lift desk with two T legs (column + foot bar), modelled as photographed. Floor registered as grey striped tiles: carpet tiles in the photos, modelled with a carpet patch rectified from IMG_4913. The wall jog right of the cabinet and the floor clutter are not modelled."
+}
