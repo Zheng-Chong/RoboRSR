@@ -19,6 +19,10 @@
         "arm_dim": [7, 7],
         "ee_dim": [1, 1]
     },
+    "g1d_shenzhen_lab": {
+        "arm_dim": [7, 7],
+        "ee_dim": [1, 1]
+    },
     "g1d_mobile": {
         "arm_dim": [7, 7],
         "ee_dim": [1, 1]

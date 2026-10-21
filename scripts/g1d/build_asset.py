@@ -8,7 +8,8 @@ Writes:
     Assets/Robots/g1d/                     g1d_dex1.urdf (tabletop, robot g1d), g1d_mobile_dex1.urdf (mobile chassis,
                                            robot g1d_mobile), meshes/, physics_contract.json (self-collision filters),
                                            {left,right}_robot_config.yml
-    Assets/Room/real_scene{1,2,3,4}/        the real scenes in SCENES (office, counter, lab, school): <room>.usd + usd/
+    Assets/Room/real_scene{1,...,5}/      the real scenes in SCENES (office, counter, lab, school, ShenZhen lab):
+                                           <room>.usd + usd/
     Assets/Eval_Layout/RoboDojo/<config>/  per scene config in SCENES, layouts for the G1-D tasks in G1D_TASKS (bottle
                                            swapped for our pitcher of red beans or two cups, set in the real scene);
                                            g1d/ also gets the arx_x5 layouts minus the camera stand (it would sit
@@ -49,6 +50,8 @@ SCENES = {  # env config: (scene dir, Room category, Room position, object (x, y
     # school green-screen table: robot 0.19 m behind the edge (root y=-0.79), 0.083 m left of the table centre, lift at
     # zero (the torso keeps its fitted height over this table, see env_cfg/robot/g1d_school.yml)
     "g1d_school": ("real_scene4_school", "real_scene4", [0.0828, -0.302, 0.0], (0.0, -0.06)),
+    # ShenZhen lab desk (tape-measured 1.2 x 0.6 x 0.75 m): front edge at y=-0.60 like the office, stand not measured
+    "g1d_shenzhen_lab": ("real_scene5_shenzhen_lab", "real_scene5", [0.0, -0.30, 0.0], (0.0, 0.0)),
 }
 # ponytail: lights live in the per-env Room, so N parallel envs get N suns; move them to /World if num_envs > 1 matters.
 # Red (adzuki) beans: Water_Opaque.mdl (glossy) with a dark maroon base colour (linear RGB).
@@ -214,7 +217,7 @@ def seat_wrist_camera(g1d, v4, out):
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         (tmp / "base").mkdir()
-        (tmp / "base/meshes").symlink_to(out / "meshes")
+        (tmp / "base/meshes").symlink_to((out / "meshes").resolve())  # also when --assets is relative
         ET.ElementTree(g1d).write(tmp / "base/g1d_dex1.urdf", encoding="utf-8", xml_declaration=True)
         build(tmp / "base/g1d_dex1.urdf", v4 / BASE_MESH, profiles / "profile.json", tmp / "camera")
         smooth_tail(tmp / "camera", tmp / "tail", profiles / "tail_profile.json")

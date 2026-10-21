@@ -1,0 +1,196 @@
+{
+ "checks": [
+  {
+   "name": "stage metadata background.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "defaultPrim": "/Background"
+   }
+  },
+  {
+   "name": "stage metadata cabinet.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "defaultPrim": "/Cabinet"
+   }
+  },
+  {
+   "name": "stage metadata lights.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "defaultPrim": "/Lights"
+   }
+  },
+  {
+   "name": "stage metadata scene.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "defaultPrim": "/World"
+   }
+  },
+  {
+   "name": "stage metadata table.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "defaultPrim": "/Table"
+   }
+  },
+  {
+   "name": "dependencies resolve (Room entry real_scene5.usd)",
+   "ok": true,
+   "detail": {
+    "unresolved": []
+   }
+  },
+  {
+   "name": "relocated copy resolves",
+   "ok": true,
+   "detail": {
+    "unresolved": []
+   }
+  },
+  {
+   "name": "every render mesh has a bound material",
+   "ok": true,
+   "detail": {
+    "render_meshes": 37,
+    "unbound": []
+   }
+  },
+  {
+   "name": "render triangle budget (< 100k)",
+   "ok": true,
+   "detail": {
+    "triangles": 480
+   }
+  },
+  {
+   "name": "colliders are guide purpose (not rendered)",
+   "ok": true,
+   "detail": {
+    "colliders": 16,
+    "rendered": []
+   }
+  },
+  {
+   "name": "scene is static (no RigidBodyAPI)",
+   "ok": true,
+   "detail": {
+    "rigid": []
+   }
+  },
+  {
+   "name": "colliders: convex hulls <= 64 vertices, faces <= 32 vertices",
+   "ok": true,
+   "detail": {
+    "over": {},
+    "approximations": [
+     "convexHull"
+    ]
+   }
+  },
+  {
+   "name": "tabletop collider matches the tape (< 1 cm)",
+   "ok": true,
+   "detail": {
+    "table_top_z": 0.0,
+    "table_length": 0.0,
+    "table_width": 0.0
+   }
+  },
+  {
+   "name": "visible tabletop coincides with the collider",
+   "ok": true,
+   "detail": {
+    "z": 0.75
+   }
+  },
+  {
+   "name": "nothing of the table sticks out above the tabletop",
+   "ok": true,
+   "detail": {
+    "above": []
+   }
+  },
+  {
+   "name": "two feet stand on the floor",
+   "ok": true,
+   "detail": {
+    "Legs_pos_foot": 0.0,
+    "Legs_neg_foot": 0.0
+   }
+  },
+  {
+   "name": "table back edge touches the wall (registered 0 cm)",
+   "ok": true,
+   "detail": {
+    "back": 0.3,
+    "wall": 0.3
+   }
+  },
+  {
+   "name": "cabinet stands on the floor against the wall, clear of the table",
+   "ok": true,
+   "detail": {
+    "x": [
+     1.227,
+     1.977
+    ],
+    "size": [
+     0.75,
+     0.45,
+     1.2
+    ]
+   }
+  },
+  {
+   "name": "G1-D stance (root 0.13 m behind the edge) clears the legs and feet",
+   "ok": true,
+   "detail": {
+    "root": [
+     0.0,
+     -0.43
+    ],
+    "hits": []
+   }
+  },
+  {
+   "name": "textures have no unfilled (black) areas (< 1%)",
+   "ok": true,
+   "detail": {
+    "carpet.png": 0.0
+   }
+  },
+  {
+   "name": "lights present",
+   "ok": true,
+   "detail": {
+    "lights": [
+     "/World/Lights/CeilingStrip_0",
+     "/World/Lights/CeilingStrip_1",
+     "/World/Lights/CeilingStrip_2",
+     "/World/Lights/CeilingStrip_3",
+     "/World/Lights/AmbientDome"
+    ]
+   }
+  },
+  {
+   "name": "room has a ceiling",
+   "ok": true,
+   "detail": {}
+  }
+ ],
+ "not_covered": [
+  "PhysX settling / stability (needs Isaac Sim)",
+  "IK reach and grasping",
+  "RTX rendering, exposure and colour match against the photos",
+  "robot stand (not measured), light positions and brightness (not recorded), friction (estimates)"
+ ],
+ "passed": 22,
+ "total": 22
+}
