@@ -64,6 +64,46 @@ WALL_PHOTO = {"south": "p1.jpg", "north": "p3.jpg", "west": "p2.jpg", "east": "p
 # they rendered the carpet ~1.5x too bright against the tabletop
 CARPET = dict(patch=(-0.45, 0.15, -1.2, -0.6), photo="p4.jpg", gain=0.67)
 
+# Room furniture, placed from floor contacts and corners back-projected through the fitted phone cameras (PLAN.md);
+# sizes are catalogue sizes checked against the photos. facing: world direction (deg from +X) of the front: the
+# user side of desks, where a sitter looks for chairs, drawers and doors. Off by 5-15 cm, more in p2.
+FURNITURE = [
+    # desk row along the +Y wall (p3, the +X end in p4)
+    dict(kind="desk", x=-0.64, y=3.15, facing=-90, length=1.65),
+    dict(kind="desk", x=1.06, y=3.10, facing=-90, length=1.65),
+    dict(kind="desk", x=2.57, y=3.30, facing=-90, length=1.3),
+    dict(kind="chair", x=-0.64, y=2.29, facing=90),
+    dict(kind="chair", x=0.66, y=2.46, facing=90),
+    dict(kind="chair", x=1.26, y=2.12, facing=90),
+    dict(kind="chair", x=2.20, y=1.78, facing=135),
+    # desk pair along the -X wall (p2 only)
+    dict(kind="desk", x=-2.50, y=-0.57, facing=0, length=1.3),
+    dict(kind="desk", x=-2.50, y=0.75, facing=0, length=1.26),
+    dict(kind="chair", x=-1.95, y=-0.55, facing=180),
+    dict(kind="chair", x=-1.85, y=0.68, facing=180),
+    dict(kind="pedestal", x=-2.225, y=1.60, facing=0),  # p2, p3; half under the desk, the box clear of it
+    dict(kind="cabinet", x=1.775, y=-2.165, facing=90),  # p1, p4
+    dict(kind="side_table", x=0.09, y=-2.07, facing=90),  # p1, against the glass
+    dict(kind="round_table", x=2.05, y=0.07, facing=0),  # p4 only; height assumed 0.75
+]
+# Modelled furniture that a fitted camera projects elsewhere than its photo shows, cut out of that backdrop by hand
+# (image px): in p4 the +X end of the +Y desk row and two chairs, placed from p3, land up to 120 px off.
+HAND_MASK = {
+    "p4.jpg": [
+        (0, 40),
+        (150, 40),
+        (160, 85),
+        (205, 60),
+        (240, 62),
+        (250, 190),
+        (285, 250),
+        (245, 265),
+        (150, 290),
+        (85, 350),
+        (0, 350),
+    ]
+}
+
 LIGHTS = dict(
     panels=[(-1.2, -1.2), (1.2, -1.2), (-1.2, 1.2), (1.2, 1.2)],
     panel_size=(1.2, 0.6),
@@ -87,6 +127,15 @@ MATERIALS = {
     "wall_north": ((1.0, 1.0, 1.0), 0.8, 0.0, 1.0, "wall_north.png"),
     "wall_west": ((1.0, 1.0, 1.0), 0.8, 0.0, 1.0, "wall_west.png"),
     "wall_east": ((1.0, 1.0, 1.0), 0.8, 0.0, 1.0, "wall_east.png"),
+    "desk_white": ((0.72, 0.72, 0.70), 0.4, 0.0, 1.0, None),
+    "frame_white": ((0.55, 0.55, 0.53), 0.4, 0.3, 1.0, None),
+    "chair_black": ((0.02, 0.02, 0.022), 0.7, 0.0, 1.0, None),
+    "pedestal": ((0.66, 0.63, 0.55), 0.45, 0.0, 1.0, None),
+    "cabinet": ((0.62, 0.62, 0.60), 0.4, 0.2, 1.0, None),
+    "seam": ((0.05, 0.05, 0.05), 0.6, 0.0, 1.0, None),
+    "cardboard": ((0.45, 0.27, 0.12), 0.8, 0.0, 1.0, None),
+    "wood": ((0.60, 0.48, 0.32), 0.5, 0.0, 1.0, None),
+    "frame_gray": ((0.18, 0.18, 0.19), 0.45, 0.4, 1.0, None),
 }
 WRAP = {"carpet.png": "mirror"}  # the patch is not seamless; mirroring hides the seams
 PHYS = {
@@ -127,6 +176,18 @@ def strut(a, b, w, h):
     """Box of width w (x) and height h (z) from a to b, ends cut vertically (V-foot arms)."""
     pts = [np.add(p, (dx, 0, dz)) for p in (a, b) for dx in (-w / 2, w / 2) for dz in (-h / 2, h / 2)]
     return trimesh.convex.convex_hull(np.array(pts))
+
+
+def rod(a, b, w):
+    """Square rod of side w from a to b, ends square to its axis."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    m = trimesh.creation.box(extents=[w, w, np.linalg.norm(b - a)])
+    m.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], b - a))
+    return m.apply_translation((a + b) / 2)
+
+
+def cyl(r, z0, z1, x=0.0, y=0.0):
+    return trimesh.creation.cylinder(radius=r, height=z1 - z0, sections=24).apply_translation([x, y, (z0 + z1) / 2])
 
 
 # ----------------------------------------------------------------------------- USD helpers
@@ -338,9 +399,40 @@ def wall_point(name, u, z):
     return (u, c, z) if axis == 0 else (c, u, z)
 
 
+def furniture_silhouette(photo, shape):
+    """Pixels covered by the modelled furniture in a photo: its triangles projected through the fitted camera."""
+    rvec, tvec, _ = camera(photo)
+    rmat = cv2.Rodrigues(rvec)[0]
+    mask = np.zeros(shape[:2], np.uint8)
+    for _, parts, _ in furniture_parts():
+        for _, m, _ in parts:
+            if ((m.vertices @ rmat.T + tvec)[:, 2] < 0.1).any():  # behind or beside the camera
+                continue
+            for tri in photo_px(photo, m.vertices)[m.faces]:
+                cv2.fillConvexPoly(mask, np.round(tri).astype(np.int32), 255)
+    if photo in HAND_MASK:
+        cv2.fillPoly(mask, [np.int32(HAND_MASK[photo])], 255)
+    return cv2.dilate(mask, np.ones((21, 21), np.uint8))  # placement is off by 5-20 px
+
+
+def fill_rows(tex, hole, valid):
+    """Fill `hole` with the median colour of the rest of its row (the walls are banded horizontally)."""
+    keep = valid & ~hole
+    prof = np.full((tex.shape[0], 3), np.nan, np.float32)
+    for r in np.flatnonzero(keep.sum(1) >= 0.05 * tex.shape[1]):
+        prof[r] = np.median(tex[r][keep[r]], axis=0)
+    rows, ok = np.arange(len(prof)), ~np.isnan(prof[:, 0])
+    for c in range(3):
+        prof[:, c] = np.interp(rows, rows[ok], prof[ok, c])
+    out = tex.copy()
+    out[hole] = prof[np.nonzero(hole)[0]].astype(np.uint8)
+    return out
+
+
 def wall_texture(name, img, px_per_m=160):
-    """Photo backdrop: the facing photo rectified onto the wall plane. The table's silhouette is inpainted; wall
-    areas outside the photo get the median colour of the photographed band next to them."""
+    """Photo backdrop: the facing photo rectified onto the wall plane. What stands in front of the wall and is
+    modelled (the table, the furniture) is cut out and filled row by row; wall areas outside the photo get the
+    median colour of the photographed band next to them."""
     axis, u0, u1, _ = WALLS[name]
     hgt = ROOM["height"]
     size = (int(abs(u1 - u0) * px_per_m), int(hgt * px_per_m))
@@ -348,9 +440,9 @@ def wall_texture(name, img, px_per_m=160):
     photo = WALL_PHOTO[name]
     tex = rectify(photo, img, corners, size)
     valid = rectify(photo, np.full(img.shape[:2], 255, np.uint8), corners, size, cv2.INTER_NEAREST) > 0
-    # wall texels hidden behind the table in this photo
-    occl = rectify(photo, table_silhouette(photo, img.shape), corners, size, cv2.INTER_NEAREST) > 0
-    tex = cv2.inpaint(tex, (occl & valid).astype(np.uint8) * 255, 9, cv2.INPAINT_TELEA)
+    hidden = table_silhouette(photo, img.shape) | furniture_silhouette(photo, img.shape)
+    occl = rectify(photo, hidden, corners, size, cv2.INTER_NEAREST) > 0
+    tex = fill_rows(tex, occl & valid, valid)
     band = valid & ~cv2.erode(valid.astype(np.uint8), np.ones((41, 41))).astype(bool)
     tex[~valid] = np.median(tex[band], axis=0)
     return tex
@@ -422,6 +514,144 @@ def add_table(L):
             L.collider(f"Colliders/caster_{side}_{end}", box_xyz(wx - 0.02, wx + 0.02, wy - r, wy + r, 0.0, g["tip_z"]))
 
 
+# Furniture builders: local frame on the floor at the footprint centre, front at +X. Each returns
+# ([(part, mesh, material)], [collider meshes]); colliders are boxes or small convex hulls.
+def caster(x, y):
+    return ("caster", cyl(0.025, 0.0, 0.05, x, y), "plastic_black")
+
+
+def desk(length, depth=0.6, height=0.75, thick=0.025):
+    """Training desk: top on a splayed leg pair at each end (feet forward and back), casters, rails under the top."""
+    hd, hl, zu = depth / 2, length / 2, height - thick
+    top = box_xyz(-hd, hd, -hl, hl, zu, height)
+    parts = [
+        ("top", top, "desk_white"),
+        ("rail_back", box_xyz(-hd + 0.05, -hd + 0.08, -hl + 0.06, hl - 0.06, zu - 0.06, zu), "frame_white"),
+    ]
+    colliders = [top]
+    for sy in (1, -1):
+        y = sy * (hl - 0.06)
+        parts.append(("rail_end", box_xyz(-hd + 0.05, hd - 0.05, y - 0.015, y + 0.015, zu - 0.04, zu), "frame_white"))
+        for sx in (1, -1):
+            leg = rod((sx * (hd - 0.13), y, zu), (sx * (hd - 0.03), y, 0.05), 0.035)
+            parts += [("leg", leg, "frame_white"), caster(sx * (hd - 0.03), y)]
+            colliders.append(leg)
+    return parts, colliders
+
+
+def chair():
+    """Training chair: mesh back, armrests, four splayed legs on casters."""
+    back = trimesh.convex.convex_hull(
+        np.array(
+            [(x, y, z) for x, z in ((-0.25, 0.53), (-0.22, 0.53), (-0.32, 1.0), (-0.29, 1.0)) for y in (-0.23, 0.23)]
+        )
+    )
+    seat = box_xyz(-0.22, 0.24, -0.24, 0.24, 0.42, 0.48)
+    parts = [("seat", seat, "chair_black"), ("back", back, "chair_black")]
+    parts.append(("column", rod((0, 0, 0.42), (0, 0, 0.34), 0.05), "chair_black"))
+    for sy in (1, -1):
+        y = sy * 0.27
+        parts += [
+            ("arm", rod((-0.27, y, 0.68), (0.17, y, 0.66), 0.03), "chair_black"),
+            ("arm_post", rod((0.15, y, 0.66), (0.08, y, 0.48), 0.03), "chair_black"),
+        ]
+        for sx in (1, -1):
+            parts += [
+                ("leg", rod((sx * 0.06, sy * 0.06, 0.36), (sx * 0.29, sy * 0.27, 0.06), 0.03), "chair_black"),
+                caster(sx * 0.29, sy * 0.27),
+            ]
+    return parts, [box_xyz(-0.32, 0.32, -0.30, 0.30, 0.0, 0.48), back]
+
+
+def pedestal(width=0.48, depth=0.55, height=0.70):
+    """Three-drawer pedestal on casters with a flat cardboard box on top."""
+    hd, hw = depth / 2, width / 2
+    body = box_xyz(-hd, hd, -hw, hw, 0.05, height)
+    box = box_xyz(hd - 0.33, hd - 0.03, -0.21, 0.21, height, height + 0.09)
+    parts = [("body", body, "pedestal"), ("box", box, "cardboard")]
+    for z0, z1 in ((0.07, 0.37), (0.38, 0.53), (0.54, 0.685)):
+        parts += [
+            ("drawer", box_xyz(hd, hd + 0.006, -hw + 0.008, hw - 0.008, z0, z1), "pedestal"),
+            ("seam", box_xyz(hd, hd + 0.003, -hw + 0.004, hw - 0.004, z0 - 0.004, z1 + 0.004), "seam"),
+            ("pull", box_xyz(hd + 0.006, hd + 0.012, -0.08, 0.08, z1 - 0.03, z1 - 0.015), "seam"),
+        ]
+    parts += [caster(sx * (hd - 0.05), sy * (hw - 0.05)) for sx in (1, -1) for sy in (1, -1)]
+    return parts, [box_xyz(-hd, hd, -hw, hw, 0.0, height), box]
+
+
+def cabinet(width=0.89, depth=0.39, height=1.85):
+    """Two-door steel file cabinet (1850 x 900 x 390 catalogue size; the top is outside both photos)."""
+    hd, hw = depth / 2, width / 2
+    body = box_xyz(-hd, hd, -hw, hw, 0.0, height)
+    parts = [("body", body, "cabinet"), ("plinth", box_xyz(hd, hd + 0.002, -hw + 0.01, hw - 0.01, 0.0, 0.05), "seam")]
+    for sy in (1, -1):
+        y0, y1 = sorted((sy * 0.003, sy * (hw - 0.01)))
+        parts += [
+            ("door", box_xyz(hd, hd + 0.005, y0, y1, 0.06, height - 0.02), "cabinet"),
+            ("seam", box_xyz(hd, hd + 0.003, y0 - 0.003, y1 + 0.003, 0.057, height - 0.017), "seam"),
+            ("handle", box_xyz(hd + 0.005, hd + 0.02, sy * 0.03 - 0.008, sy * 0.03 + 0.008, 0.75, 0.90), "seam"),
+        ]
+    return parts, [body]
+
+
+def side_table(length=1.12, depth=0.5, height=0.66):
+    """Wood-top table on two T-shaped grey end frames."""
+    hd, hl = depth / 2, length / 2
+    top = box_xyz(-hd, hd, -hl, hl, height - 0.03, height)
+    parts, colliders = [("top", top, "wood")], [top]
+    for sy in (1, -1):
+        y = sy * 0.49
+        frame = [
+            box_xyz(-0.025, 0.025, y - 0.025, y + 0.025, 0.03, height - 0.03),
+            box_xyz(-hd + 0.03, hd - 0.03, y - 0.025, y + 0.025, 0.0, 0.03),
+            box_xyz(-hd + 0.04, hd - 0.04, y - 0.02, y + 0.02, height - 0.07, height - 0.03),
+        ]
+        parts += [("frame", m, "frame_gray") for m in frame]
+        colliders += frame[:2]
+    return parts, colliders
+
+
+def round_table(radius=0.38, height=0.75):
+    """Round cafe table on a single column and a disc foot."""
+    top, column, foot = cyl(radius, height - 0.03, height), cyl(0.04, 0.02, height - 0.03), cyl(0.22, 0.0, 0.02)
+    return [("top", top, "desk_white"), ("column", column, "desk_white"), ("foot", foot, "desk_white")], [
+        top,
+        column,
+        foot,
+    ]
+
+
+BUILDERS = dict(
+    desk=desk, chair=chair, pedestal=pedestal, cabinet=cabinet, side_table=side_table, round_table=round_table
+)
+
+
+def furniture_parts():
+    """[(name, [(part, mesh, material)], [colliders])] in the scene frame, one entry per FURNITURE item."""
+    out, seen = [], {}
+    for f in FURNITURE:
+        seen[f["kind"]] = seen.get(f["kind"], -1) + 1
+        parts, colliders = BUILDERS[f["kind"]](**{k: v for k, v in f.items() if k not in ("kind", "x", "y", "facing")})
+        m = trimesh.transformations.rotation_matrix(math.radians(f["facing"]), [0, 0, 1])
+        m[:2, 3] = f["x"], f["y"]
+        out.append(
+            (
+                f"{f['kind']}_{seen[f['kind']]}",
+                [(p, mesh.copy().apply_transform(m), mat) for p, mesh, mat in parts],
+                [c.copy().apply_transform(m) for c in colliders],
+            )
+        )
+    return out
+
+
+def add_furniture(L):
+    for name, parts, colliders in furniture_parts():
+        for i, (part, mesh, mat) in enumerate(parts):
+            L.mesh(f"Furniture/{name}/{part}_{i}", mesh, mat)
+        for j, c in enumerate(colliders):
+            L.collider(f"Furniture/{name}/collider_{j}", c)
+
+
 def add_background(L):
     r, hgt = ROOM, ROOM["height"]
     L.mesh(
@@ -446,6 +676,7 @@ def add_background(L):
         face = quad(a, b, (*b[:2], hgt), (*a[:2], hgt))
         L.mesh(f"Walls/{name}", face, f"wall_{name}", uv=rect_uv(axis, u0, u1, 2, 0.0, hgt))
         L.collider(f"Colliders/wall_{name}", box_xyz(*WALL_COLLIDERS[name], 0.0, hgt))
+    add_furniture(L)
 
 
 def add_lights(L):

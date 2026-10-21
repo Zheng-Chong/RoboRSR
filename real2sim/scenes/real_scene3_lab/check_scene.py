@@ -84,7 +84,15 @@ def main():
     rigid = [str(p.GetPath()) for p in st.Traverse() if p.HasAPI(UsdPhysics.RigidBodyAPI)]
     add("scene is static (no RigidBodyAPI)", not rigid, dict(rigid=rigid))
 
-    cb = {str(p.GetPath()).rsplit("/", 1)[-1]: bounds(p, cache) for p in colliders}
+    big = [str(p.GetPath()) for p in colliders if len(UsdGeom.Mesh(p).GetPointsAttr().Get()) > 64]
+    add("convex colliders have at most 64 points (else particles fall through)", not big, dict(over=big))
+
+    def item(p):  # "/World/Background/Furniture/desk_0/collider_1" -> "desk_0"
+        s = str(p.GetPath())
+        return s.split("/Furniture/")[1].split("/")[0] if "/Furniture/" in s else None
+
+    cb = {str(p.GetPath()).rsplit("/", 1)[-1]: bounds(p, cache) for p in colliders if not item(p)}
+    furniture = [(item(p), bounds(p, cache)) for p in colliders if item(p)]
     lo, hi = cb["top"]
     add(
         "tabletop collider: top at top_z, covers length x width",
@@ -141,6 +149,36 @@ def main():
             free_under_table_from_front=round(float(free_y - t["front_y"]), 3),
         ),
     )
+
+    names = sorted({n for n, _ in furniture})
+    floor_z = {}
+    for p in render:
+        if item(p):
+            floor_z[item(p)] = min(floor_z.get(item(p), np.inf), float(bounds(p, cache)[0][2]))
+    add(
+        "room furniture stands on the floor",
+        set(floor_z) == set(names) and all(abs(z) < 1e-4 for z in floor_z.values()),
+        dict(items=len(names), off_floor={n: round(z, 4) for n, z in floor_z.items() if abs(z) >= 1e-4}),
+    )
+
+    def overlap(a, b):
+        return (a[0] < b[1]).all() and (b[0] < a[1]).all()
+
+    in_wall = sorted({n for n, fb in furniture for wb in walls.values() if overlap(fb, wb)})
+    add("room furniture clears the walls", not in_wall, dict(in_wall=in_wall))
+    tlo = np.min([a for a, _ in table_parts.values()], axis=0)
+    thi = np.max([b for _, b in table_parts.values()], axis=0)
+    near = sorted(
+        {
+            n
+            for n, (a, b) in furniture
+            if np.linalg.norm(np.clip(root, a[:2], b[:2]) - root) < 1.0
+            or ((a[:2] < thi[:2] + 0.3).all() and (tlo[:2] - 0.3 < b[:2]).all())
+        }
+    )
+    add("room furniture keeps 1 m from the G1-D root and 0.3 m from the table", not near, dict(near=near))
+    clash = sorted({(m, n) for m, fa in furniture for n, fb in furniture if m < n and overlap(fa, fb)})
+    add("furniture pieces do not overlap (collider boxes)", not clash, dict(clash=clash))
 
     black = {}
     for f in sorted((USD / "textures").glob("*.png")):

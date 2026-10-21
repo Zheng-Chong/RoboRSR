@@ -1,8 +1,9 @@
 """Rough preview renders of usd/scene.usda with a tiny numpy rasteriser (Lambert + ambient, textures, alpha).
 
 For checking geometry, placement and textures against reference/p1-p4.jpg only: it does NOT reproduce the USD lights
-or RTX shading. Writes preview/compare_photo.jpg (per photo: photo | render from its fitted camera | table edges
-on the photo), preview/robot_head.jpg (estimated G1-D head-camera view) and preview/overview.jpg.
+or RTX shading. Writes preview/compare_photo.jpg (per photo: photo | render from its fitted camera | table edges red
+and furniture edges green on the photo), preview/robot_head.jpg (estimated G1-D head-camera view) and
+preview/overview.jpg.
 """
 
 import json
@@ -156,7 +157,10 @@ def main():
     (HERE / "preview").mkdir(exist_ok=True)
     scene = load_scene()
     fit = json.loads((HERE / "fit_photo.json").read_text())  # phone poses fitted by fit_photo.py
-    table_only = [o for o in scene if o["path"].startswith("/World/Table/")]
+    outlines = {  # BGR
+        (0, 0, 255): [o for o in scene if o["path"].startswith("/World/Table/")],
+        (0, 255, 0): [o for o in scene if o["path"].startswith("/World/Background/Furniture/")],
+    }
     rows = []
     for name in ("p1.jpg", "p2.jpg", "p3.jpg", "p4.jpg"):
         cam = fit[name]
@@ -165,10 +169,10 @@ def main():
         view = render(scene, eye=eye, target=None, hfov_deg=fit["hfov_deg"], size=(1024, 768), R=R)
         photo = cv2.imread(str(HERE / "reference" / name))
         view = cv2.cvtColor(view, cv2.COLOR_RGB2BGR)
-        table = render(table_only, eye=eye, target=None, hfov_deg=fit["hfov_deg"], size=(1024, 768), bg=(0, 0, 1), R=R)
-        edges = cv2.Canny(cv2.cvtColor(table, cv2.COLOR_RGB2GRAY), 20, 60)
         overlay = photo.copy()
-        overlay[edges > 0] = (0, 0, 255)
+        for color, objs in outlines.items():
+            img = render(objs, eye=eye, target=None, hfov_deg=fit["hfov_deg"], size=(1024, 768), bg=(0, 0, 1), R=R)
+            overlay[cv2.Canny(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), 20, 60) > 0] = color
         rows.append(np.hstack([photo, view, overlay]))
     sheet = np.vstack(rows)
     cv2.imwrite(
@@ -183,7 +187,7 @@ def main():
     pitch = math.radians(47.6)
     head = render(scene, eye=eye, target=eye + [0, math.cos(pitch), -math.sin(pitch)], hfov_deg=96, size=(640, 480))
     cv2.imwrite(str(HERE / "preview" / "robot_head.jpg"), cv2.cvtColor(head, cv2.COLOR_RGB2BGR))
-    top = render(scene, eye=(1.6, -2.2, 2.0), target=(0.0, 0.0, 0.5), hfov_deg=70, size=(1024, 768))
+    top = render(scene, eye=(0.9, -1.7, 2.5), target=(0.0, 0.6, 0.5), hfov_deg=80, size=(1024, 768))
     cv2.imwrite(str(HERE / "preview" / "overview.jpg"), cv2.cvtColor(top, cv2.COLOR_RGB2BGR))
     print("wrote", HERE / "preview")
 

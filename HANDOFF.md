@@ -1,6 +1,6 @@
 # Project Handoff
 
-更新时间：2026-10-21
+更新时间：2026-10-22
 当前分支：`main`。G1-D 桌面版 / 移动版（[PR #17](https://github.com/Zheng-Chong/RoboRSR/pull/17)）已于 2026-10-21 合并进 `main`。深圳实验室场景（[PR #22](https://github.com/Zheng-Chong/RoboRSR/pull/22)）已于 2026-10-21 合并（`2975b4a`）并部署到数采平台。更早：流水线规范化（[PR #1](https://github.com/Zheng-Chong/RoboRSR/pull/1)）和学校场景接入（[PR #2](https://github.com/Zheng-Chong/RoboRSR/pull/2)）都已于 2026-10-20 合并，短分支已删除。
 当前目标：把 G1-D 的三条流水线规范化：Real2Sim 采集（物体、场景）、仿真数据生成，以及本仓库内的仿真评估。训练在仓库外。
 
@@ -32,6 +32,14 @@
   - `5090-2`（8×5090）：仿真环境 `/root/miniconda3/envs/RoboDojo`；导出环境 `robodojo-lerobot`（lerobot 0.4.4，10-19 补装了 h5py 3.16，`pip -i` 用清华镜像）；上传环境 `/data/robodojo-runs/ms-venv`；运行目录在 `/data/robodojo-runs/`。
 
 ## 最近任务
+
+### 实验室场景 `real_scene3_lab` 的家具建成立体模型（2026-10-22）
+
+- **用户要求**：实验室场景要把桌子、椅子、柜子也重建出来，而不是只贴图。原来只有操作台是几何体，房间里的家具都压平在四面墙的照片上。
+- **做法**：相机沿用 `fit_photo.json`，在照片上手标落地点（桌脚、椅脚、柜底边），反投影到地面；p1、p4 都拍到的铁皮柜做三角化。尺寸取常见规格，再用照片核对。`build_scene.py` 新增 `FURNITURE`（15 件：北排 3 张工位桌 + 4 把网椅，西侧 2 张工位桌 + 2 把网椅，活动柜带纸箱，两门文件柜，木面边桌，圆咖啡桌）和六种参数化模型，放在 `background.usda` 的 `/Background/Furniture/`。这样 Room 入口、`render_scenes.py` 的取景（只对准 Background、Lights 以外的部分）和平台的「隐藏房间」都不用改。碰撞体都是盒体或 ≤ 50 点的凸包。墙面贴图把家具的投影区域膨胀 21 px 后抠掉，按行中值补色；操作台那块原来用 Telea 修补，也改成按行补色。
+- **照片之间的矛盾**（写进了 `PLAN.md`）：p2 的相机在画面边缘外推不准，按它算西墙转了约 13°，远处高度也偏低约 5 cm，所以西侧家具按与墙平行摆放。北排最右那张桌子按 p3 摆在 y≈3.05，p4 却要求 y≈2.45，相差 0.6 m；p4 左缘这一块用 `HAND_MASK` 手标多边形抠掉。圆桌只在 p4 出现，高度按 0.75 m 假设。
+- **验证**：`check_scene.py` 24/24。新增 5 项：碰撞体 ≤ 64 点、家具落地、不进墙、离 G1-D 根节点 1 m 以上且离操作台 0.3 m 以上、家具之间不重叠；原来的站位等检查改成只看操作台。`preview.py` 的叠图用绿色画家具边线：p1、p3、p4 误差约 10 px，p2 约 20 px。本机 `check.sh` 29 passed 1 skipped；`export_glb.py` 输出 205 个网格、2.9 MB。`5090-2` 隔离目录 `/data/robodojo-runs/lab-furniture-20261022-003901/`（GPU 4）只载场景跑 `render_scenes.py`：退出码 0，没有报错，家具正常渲染、有投影。**没有带机器人跑 `scripted_demo`**。
+- **没做**：共享资产库里的 `Assets/Room/real_scene3/` 还是 10-16 的版本（没有立体家具），按规定要用户同意才能更新。桌上的显示器、笔记本、机器人、三脚架、杯子仍压平在墙上。家具没有卷尺实测。
 
 ### G1-D 桌面版 / 移动版（2026-10-21，[PR #17](https://github.com/Zheng-Chong/RoboRSR/pull/17) 合并进 `main`）
 
@@ -234,6 +242,7 @@
 - **学校场景**：桌面高度和底盘偏航都依赖假设（零升降、12 号电机即躯干偏航），要用卷尺和叠图核对；从 sys01 拷真机头部和腕部画面（`outputs/g1d-real2sim`）做叠图。杯盘要在数采平台登记实测后，按 `scripts/objects/SKILL.md` 重建。
 - **共享库的倒豆布局过期**：`g1d`、`g1d_counter`、`g1d_lab` 的倒水、杯对杯布局是旧豆子参数（4 mm，`particle_mass` 6e-5），和当前 `build_asset.py`（5.6 mm）不一致；`g1d_shenzhen_lab` 已是新参数。要统一，就在隔离目录重跑 `build_asset.py`，经同意后替换（先备份）。
 - **深圳实验室**：已合并、部署、装共享库；站位卷尺（桌沿到根节点、横向偏移）和三视角叠图后，`acceptance.py` 才能通过。
+- **实验室场景家具**：共享库的 `real_scene3` 还没换成带家具的新版。更新流程：在隔离目录跑 `build_asset.py`，跑一次 `g1d_lab` 的 `scripted_demo`，看四路相机，经用户同意后替换（先备份）。
 - **场景**：除深圳实验室外没有卷尺实测，都没有叠图；`real_scene1` 和 09-21 那次真机运行时的摆放不一样，那批画面不能用来叠图。下次去现场按 `real2sim/scenes/SKILL.md` 一次采齐。
 - **真机对齐**：
   - 动力学没做系统辨识；末端位姿动作还不支持（需要 G1-D 的 cuRobo 配置，并且左右臂各用一个 planner）；
@@ -267,6 +276,7 @@
 
 ## 最近历史
 
+- 2026-10-22：实验室场景 `real_scene3_lab` 的工位桌、网椅、活动柜、文件柜、边桌、圆桌建成立体模型（`/Background/Furniture`），从墙面照片里抠掉；共享库未更新（见「最近任务」）。
 - 2026-10-21：物体的颜色、尺寸泛化改为仿真里按布局随机，不建新资产；形状、材质等仍建变体资产，平台上收进本体卡片（用户：泛化放到一个卡片下；能不能在仿真里随机改尺寸和颜色而不是新建资产；用户选定两个都做、随机值写进布局）。
   - 仿真：`RigidObject` 读布局条目的 `visual.color`（线性 RGB）绑一个 PreviewSurface，覆盖资产自带材质；有 `visual.color_parts` 时只换这些网格（保留标签、透明件）。`scale` 本来就从布局读、每次复位重设；新改的是 `LayoutManager.get_instance_bbox_vertices` 对刚体按 `scale` 缩放 metadata 包围盒（判据和脚本专家都用它，原来恒为未缩放值），`RigidObject.get_bbox` 同样处理。现有布局里刚体全是 scale 1（在 5090-2 元数据镜像里全量查过，只有流体豆子不是 1，流体不受影响），所以现有任务行为不变。
   - 布局：`build_asset.py` 新增 `RANDOMIZE`（按任务、标签打开 `{"scale": (lo, hi), "color": True}`）和 `randomize_objects`：按 `任务/seed 目录/序号` 定种子，等比缩放并保持立在桌面上，质量按体积换算，颜色在 HSV 里取（饱和度 0.45–0.9、明度 0.35–0.9）再转线性。**现有任务都没开**：开了会改它们的评测布局；倒豆任务按量杯固定腔体数豆子，不能缩放；`cup_grasp` 读的 metadata `contact_circle` 也没按缩放修正。这些值随 `additional_info/layout` 进每个回合（CONTRACT 已写）。
