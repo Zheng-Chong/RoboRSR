@@ -467,10 +467,11 @@ def write_registration(doc):
     path.write_text(json.dumps(compact(reg), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def write_task_registration(doc):
+def write_task_registration(doc, names=None):
     """A registered task as real2sim/tasks/<task>/registration.json: the input for implementing it.
 
-    Scenes are listed with the env configs that load them (build_asset.SCENES); not built yet means no config."""
+    Scenes are listed with the env configs that load them (build_asset.SCENES); not built yet means no config.
+    The owner is an account (doc["owner"], picked in the page), written with `names` {username: display name}."""
     path = TASKS_DIR / doc["id"] / "registration.json"
     if not doc.get("registered"):
         return path.unlink(missing_ok=True)
@@ -492,7 +493,7 @@ def write_task_registration(doc):
         "hand": r.get("hand"),
         "horizon_s": r.get("horizon_s"),
         "target_episodes": r.get("target"),
-        "owner": r.get("owner"),
+        "owner": doc.get("owner") and {"username": doc["owner"], "name": (names or {}).get(doc["owner"], doc["owner"])},
         "objects": r.get("roles"),  # [{label, candidates, count, xlim, ylim, yaw_deg}]; table frame, m
         "distractors": r.get("distractors"),
         "scenes": scenes,
@@ -670,6 +671,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(self.user)
         elif url.path == "/api/users":
             self.accounts("GET")
+        elif url.path == "/api/members":  # everyone signed in: who can be picked as an owner
+            self.send_json([{"username": u["username"], "name": u["name"]} for u in self.store.users()])
         elif url.path == "/api/info":
             self.send_json(self.info)
         elif url.path == "/api/object-indices":
@@ -737,7 +740,7 @@ class Handler(BaseHTTPRequestHandler):
         elif kind == "scene" and SCENE_ID.fullmatch(id_):
             write_registration(doc)
         elif kind == "task":
-            write_task_registration(doc)
+            write_task_registration(doc, {u["username"]: u["name"] for u in self.store.users()})
         self.send_json(doc)
 
     def do_DELETE(self):
