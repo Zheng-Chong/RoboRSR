@@ -230,7 +230,7 @@ def test_http():
 
         server.TASKS_DIR = tmp / "tasks"
         task = "/api/items?kind=task&id=g1d_wipe_table"
-        roles = [{"label": "sponge", "candidates": ["Rigid/sponge/00000"], "count": 1, "xlim": None, "yaw_deg": 0}]
+        roles = [{"label": "sponge", "candidates": ["Rigid/sponge/00000"], "count": 1, "randomize": [], "x": None}]
         reg = {"name": "擦桌子", "definition": "用海绵把桌上的污渍擦掉", "success": "污渍清除", "roles": roles}
         reg["instructions"] = {"count": 5, "languages": ["zh", "en"]}
         reg |= {"scenes": {"real_scene3_lab": "train", "real_scene1_office": "holdout", "real_scene2_counter": ""}}
@@ -239,7 +239,7 @@ def test_http():
         assert request("PUT", task, json.dumps({"registered": True, "reg": reg, "owner": "alice"}))[0] == 200
         written = json.loads((tmp / "tasks/g1d_wipe_table/registration.json").read_text(encoding="utf-8"))
         assert written["owner"] == {"username": "alice", "name": "张三"}  # an account, written with its display name
-        roles[0].pop("xlim")  # empty fields left out, also inside lists
+        roles[0].pop("x"), roles[0].pop("randomize")  # empty fields left out, also inside lists
         assert written["objects"] == roles
         assert written["scenes"] == {  # with the env configs that load each scene
             "train": [{"scene": "real_scene3_lab", "env_cfg": ["g1d_lab"]}],

@@ -1251,7 +1251,7 @@ function drawerTask(d) {
 }
 const TASK_WIZ = [
   ['任务定义', '新建一个 G1-D 任务，或给已有任务登记泛化方案。任务定义和成功判据要写清楚：语言指令由 coding agent 从定义总结并转写，判据会变成 run_reward 里的检查。'],
-  ['物体与干扰物', '每个角色是任务里的一类物体（对应任务配置的 label），从物体资产里选它可用的物体；干扰物另选。位置留空由 coding agent 按可达范围定。'],
+  ['物体与干扰物', '每个角色是任务里的一类物体（对应任务配置的 label），从物体资产里选它可用的物体；干扰物另选。只勾选位置、朝向是否每回合随机，具体范围由 coding agent 定。'],
   ['可用场景', '训练场景用于采集数据；L4 保留场景只在评测时出现，不进训练。'],
   ['泛化等级', '每一级只改变一个因素，其余与 L0 相同。范围和目标布局数都可以改，也可以补充其他泛化维度。'],
 ];
@@ -1263,8 +1263,9 @@ const SCENE_USES = {'': '不用', train: '训练', holdout: 'L4 保留'};
 const EXTRA_PRESETS = ['桌高 ±5 cm', '机器人站位 ±3 cm', '物体初始姿态（倒放 / 侧放）', '控制延迟 / 动作噪声'];
 const langText = (ins) => (ins?.languages || []).map((l) => INST_LANGS[l] || l).join('、');
 const instText = (ins) => `${langText(ins)}${ins.languages.length > 1 ? '各' : ''} ${ins.count} 条`;
-let NT = null;  // the task wizard's lists: {roles: [{label, candidates, count, xmin, xmax, ymin, ymax, yaw}], dis, holdout}
-const newRole = (label = '', candidates = []) => ({label, candidates, count: 1, xmin: null, xmax: null, ymin: null, ymax: null, yaw: null});
+let NT = null;  // the task wizard's lists: {roles: [{label, candidates, count, randomize}], dis, holdout}
+const RANDOMIZE = {position: '位置', yaw: '朝向'};
+const newRole = (label = '', candidates = []) => ({label, candidates, count: 1, randomize: ['position', 'yaw']});
 const ntList = (key) => (key === 'dis' ? NT.dis.candidates : key === 'hold' ? NT.holdout : NT.roles[Number(key.slice(1))].candidates);
 const objLabel = (oid) => { const o = S.object.find((x) => x.id === oid); return o ? `${objName(o)} · ${oid}` : oid; };
 // object picker: a search list with thumbnails; hovering a row or a picked chip shows a larger preview card
@@ -1341,14 +1342,13 @@ function objPreview(anchor, oid) {  // a card beside `anchor`, or hidden without
 }
 const ntNum = (v) => (v === '' ? null : Number(v));
 function renderRoles() {
-  const n = (i, k, ph, step = '0.01') => `<input type="number" step="${step}" value="${NT.roles[i][k] ?? ''}" placeholder="${ph}" aria-label="${ph}" oninput="NT.roles[${i}].${k} = ntNum(this.value)">`;
   $('#nt-roles').innerHTML = NT.roles.map((r, i) => `<div class="nt-role"><div class="wz-grid">
     ${wzFld(`nt-role-${i}`, `角色 ${i + 1}`, `<input id="nt-role-${i}" class="mono" value="${esc(r.label)}" placeholder="source_cup" autocomplete="off" oninput="NT.roles[${i}].label = this.value.trim()">`, {req: true, hint: '任务配置的 label，字母数字下划线'})}
     ${wzFld(`nt-count-${i}`, '每回合数量', `<input id="nt-count-${i}" type="number" min="1" step="1" value="${r.count}" oninput="NT.roles[${i}].count = ntNum(this.value)">`)}
     <div class="fld wide"><label>候选物体<em aria-hidden="true">*</em></label>${objPicker(`r${i}`)}<small>每回合从中选；评测保留的实例在第 4 步 L3 里选，不要放这里</small></div>
-    <div class="fld"><label>x 范围（m）</label><div class="pair">${n(i, 'xmin', '最小')}${n(i, 'xmax', '最大')}</div></div>
-    <div class="fld"><label>y 范围（m）</label><div class="pair">${n(i, 'ymin', '最小')}${n(i, 'ymax', '最大')}</div></div>
-    <div class="fld"><label>朝向随机 ±°</label>${n(i, 'yaw', '0 为固定', '1')}</div>
+    <div class="fld"><label>每回合随机</label><div class="toggles">${Object.entries(RANDOMIZE).map(([k, t]) => `<label class="toggle"><input type="checkbox" ${r.randomize.includes(k) ? 'checked' : ''}
+      onchange="NT.roles[${i}].randomize = this.checked ? [...NT.roles[${i}].randomize, '${k}'] : NT.roles[${i}].randomize.filter((x) => x !== '${k}')"><span>${ic('check')}${t}</span></label>`).join('')}</div>
+      <small>具体范围由 coding agent 按可达范围和物体尺寸设定</small></div>
     <div class="fld" style="justify-content:flex-end">${NT.roles.length > 1 ? `<button class="btn" type="button" onclick="NT.roles.splice(${i}, 1); renderRoles()">${ic('trash')}删除角色</button>` : ''}</div></div></div>`).join('');
 }
 function drawerNewTask() {
@@ -1359,7 +1359,7 @@ function drawerNewTask() {
   const scenes = live(S.scene);
   return {
     title: '登记任务', sub: '登记后生成给 coding agent 的实现任务；实现后同步，流程自动推进',
-    body: `${wzNav(TASK_WIZ)}
+    body: `<datalist id="dl-task-objs">${live(S.object).map((o) => `<option value="${esc(o.id)}" label="${esc(objName(o))}">`).join('')}</datalist>${wzNav(TASK_WIZ)}
     ${pane(0, `${group('任务', `<div class="wz-grid">
       ${fld('nt-mode', '登记方式', `<select id="nt-mode" onchange="taskModeChanged()">${opts({new: '新建任务', existing: '给已有任务登记泛化方案'}, 'new')}</select>`)}
       ${fld('nt-existing', '已有任务', `<select id="nt-existing" onchange="taskModeChanged()" disabled>${opts({'': '选择任务', ...Object.fromEntries(existing.map((t) => [t, t]))}, '')}</select>`, {hint: '只列出还没登记过的 G1-D 任务'})}
@@ -1451,7 +1451,7 @@ function taskWizError() {  // [message, field selector] blocking the current ste
     const i = NT.roles.findIndex((r) => !/^\w+$/.test(r.label) || labels.indexOf(r.label) !== labels.lastIndexOf(r.label));
     if (i >= 0) return ['每个角色要有唯一的 label（字母、数字、下划线）', `#nt-role-${i}`];
     const j = NT.roles.findIndex((r) => !r.candidates.length);
-    if (j >= 0) return [`角色 ${NT.roles[j].label} 还没选候选物体`, `#nt-chips-r${j} + .opick input`];
+    if (j >= 0) return [`角色 ${NT.roles[j].label} 还没选候选物体`, `#nt-chips-r${j} + input`];
     const k = NT.roles.findIndex((r) => !(r.count >= 1));
     if (k >= 0) return ['每回合数量至少为 1', `#nt-count-${k}`];
     const lo = ntNum($('#nt-dis-min').value), hi = ntNum($('#nt-dis-max').value);
@@ -1469,13 +1469,12 @@ async function createTask(btn) {
   const err = $('#no-err'), id = taskId(), value = (sel) => $(sel).value.trim();
   const [blocked, field] = taskWizError();  // the last step is not checked by wizGo
   if (blocked) { err.textContent = blocked; $(field)?.focus(); return; }
-  const range = (lo, hi) => (lo != null && hi != null ? [lo, hi] : null);
   const lo = ntNum($('#nt-dis-min').value), hi = ntNum($('#nt-dis-max').value);
   const reg = {
     existing: $('#nt-mode').value === 'existing', name: value('#nt-name'), name_en: value('#nt-name-en'), definition: value('#nt-definition'),
     instructions: {count: ntNum($('#nt-inst-n').value), languages: [...$$('[data-lang]:checked')].map((c) => c.dataset.lang)},
     success: value('#nt-success'), hand: value('#nt-hand'), horizon_s: ntNum($('#nt-horizon').value), target: ntNum($('#nt-target').value),
-    roles: NT.roles.map((r) => ({label: r.label, candidates: r.candidates, count: r.count, xlim: range(r.xmin, r.xmax), ylim: range(r.ymin, r.ymax), yaw_deg: r.yaw})),
+    roles: NT.roles.map((r) => ({label: r.label, candidates: r.candidates, count: r.count, randomize: r.randomize})),
     distractors: {count: lo == null && hi == null ? null : [lo ?? 0, hi ?? lo], candidates: NT.dis.candidates, clutter_library: $('#nt-dis-lib').checked,
       clutter_categories: $('#nt-dis-lib').checked ? [...$$('[data-clutter]:checked')].map((c) => c.dataset.clutter) : []},
     scenes: Object.fromEntries([...$$('[data-scene-use]')].filter((s) => s.value).map((s) => [s.dataset.sceneUse, s.value])),
@@ -1497,11 +1496,10 @@ async function createTask(btn) {
 }
 function taskBrief(d) {  // the task for a coding agent that implements this registration; skipped fields are left out
   const r = d.reg || {}, dir = `real2sim/tasks/${d.id}`, fact = (k, v) => (v === undefined || v === null || v === '' ? null : `- ${k}：${v}`);
-  const lim = (v) => (v ? `[${v.join(', ')}]` : null);
   const sceneLine = (use) => live(S.scene).filter((s) => r.scenes?.[s.id] === use)
     .map((s) => `${s.id}（${(s.auto.configs || []).join('、') || '还没建模'}）`).join('、');
-  const roles = (r.roles || []).map((x) => `  - ${x.label} × ${x.count}：${x.candidates.join('、')}${[lim(x.xlim) && `x ${lim(x.xlim)}`, lim(x.ylim) && `y ${lim(x.ylim)}`,
-    x.yaw_deg ? `朝向 ±${x.yaw_deg}°` : null].filter(Boolean).map((t, i) => (i ? '，' : '；') + t).join('')}`);
+  const roles = (r.roles || []).map((x) => `  - ${x.label} × ${x.count}：${x.candidates.join('、')}；${(x.randomize || []).length
+    ? `每回合随机${x.randomize.map((k) => RANDOMIZE[k] || k).join('、')}（范围由你定）` : '固定摆放'}`);
   const dis = r.distractors || {}, levels = Object.entries(r.levels || {});
   return [
     r.existing
@@ -1514,8 +1512,9 @@ function taskBrief(d) {  // the task for a coding agent that implements this reg
     fact('名称', [r.name, r.name_en].filter(Boolean).join('，')), fact('任务定义', r.definition),
     fact('语言指令', r.instructions && `由你从任务定义总结，${instText(r.instructions)}`), fact('成功判据', r.success),
     fact('用手', HANDS[r.hand || ''] === '未定' ? '' : HANDS[r.hand]), fact('预计时长', r.horizon_s ? `${r.horizon_s} s` : ''), fact('合格回合目标', r.target),
-    '- 物体角色（桌面坐标，m）：', ...roles,
-    dis.count || dis.candidates?.length || dis.clutter_library ? `- 干扰物：每回合 ${dis.count ? dis.count.join('–') : '若干'} 个${dis.candidates?.length ? `，从 ${dis.candidates.join('、')} 中取` : ''}${dis.clutter_library ? `，也从杂物库随机取（任务配置的 Clutter 段，yaml_path: Clutter/clutter.yml；${dis.clutter_categories?.length ? `只取类别 ${dis.clutter_categories.join('、')}，按这些类别另写一份 clutter 索引或在采样时过滤` : '整个杂物库'}）` : ''}` : '- 干扰物：无',
+    '- 物体角色：', ...roles,
+    (r.roles || []).some((x) => x.randomize?.length) ? '  随机范围：位置在机器人可达范围内（桌面物体 y≈[-0.55, -0.25]）、物体之间不重叠且留出抓取空间；朝向按抓取方式定，抓不到的角度不要采；L0 孪生布局仍用固定摆放。范围写进任务配置和交付说明。' : null,
+    dis.count || dis.candidates?.length || dis.clutter_library ? `- 干扰物：每回合 ${dis.count ? dis.count.join('–') : '若干'} 个${dis.candidates?.length ? `，从 ${dis.candidates.join('、')} 中取` : ''}${dis.clutter_library ? '，也从 Clutter 杂物库随机取' : ''}` : '- 干扰物：无',
     fact('训练场景', sceneLine('train')), fact('L4 保留场景', sceneLine('holdout')),
     '- 泛化等级：', ...levels.map(([k, v]) => `  - ${k}（目标 ${v.target ?? '—'} 个布局）：${v.range}`),
     fact('L3 保留实例', (r.holdout_objects || []).join('、')), fact('其他泛化', r.extra),
@@ -1550,8 +1549,8 @@ function taskRegSection(d) {
   return `${sec(`${ic('terminal')}${r.existing ? '泛化方案' : '实现任务'}（给 coding agent）`, `<p class="hint" style="margin:0 0 8px">登记信息已写入
       <a target="_blank" rel="noopener" href="${file(`${INFO.root}/real2sim/tasks/${d.id}/registration.json`)}">real2sim/tasks/${esc(d.id)}/registration.json</a>。把下面这段交给 coding agent；实现后同步，流程自动推进。</p>${code(taskBrief(d))}`)}
     ${sec('语言指令', instructionList(d))}
-    ${sec('登记的方案', `<dl class="kv"><dt>物体角色</dt><dd>${(r.roles || []).map((x) => `<div><b class="mono">${esc(x.label)}</b> × ${x.count}：${x.candidates.map((o) => link('object', o, objLabel(o))).join('、')}</div>`).join('') || '—'}</dd>
-      <dt>干扰物</dt><dd>${r.distractors?.count ? `${r.distractors.count.join('–')} 个` : '—'}${(r.distractors?.candidates || []).length ? `：${r.distractors.candidates.map((o) => link('object', o, objLabel(o))).join('、')}` : ''}${r.distractors?.clutter_library ? `（含杂物库：${r.distractors.clutter_categories?.length ? esc(r.distractors.clutter_categories.join('、')) : '全部类别'}）` : ''}</dd>
+    ${sec('登记的方案', `<dl class="kv"><dt>物体角色</dt><dd>${(r.roles || []).map((x) => `<div><b class="mono">${esc(x.label)}</b> × ${x.count}：${x.candidates.map((o) => link('object', o, objLabel(o))).join('、')} <span class="muted small">· ${(x.randomize || []).length ? `随机${x.randomize.map((k) => RANDOMIZE[k] || k).join('、')}` : '固定摆放'}</span></div>`).join('') || '—'}</dd>
+      <dt>干扰物</dt><dd>${r.distractors?.count ? `${r.distractors.count.join('–')} 个` : '—'}${(r.distractors?.candidates || []).length ? `：${r.distractors.candidates.map((o) => link('object', o, objLabel(o))).join('、')}` : ''}${r.distractors?.clutter_library ? '（含 Clutter 库）' : ''}</dd>
       <dt>训练场景</dt><dd>${scenes('train')}</dd><dt>L4 保留场景</dt><dd>${scenes('holdout')}</dd>
       <dt>泛化等级</dt><dd>${levels.map(([k, v]) => `<div><b class="mono">${k}</b> · 目标 ${v.target ?? '—'}：<span class="small">${esc(v.range)}</span></div>`).join('') || '—'}</dd>
       <dt>L3 保留实例</dt><dd>${(r.holdout_objects || []).map((o) => link('object', o, objLabel(o))).join('、') || '—'}</dd></dl>
