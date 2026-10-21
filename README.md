@@ -14,7 +14,11 @@
 
 - 两条 7 自由度手臂（coupled 模式）加 Dex1 两指夹爪，关节角控制，动作频率 30 Hz（`dt = 1/300 s`，每个动作 10 个物理步）。
 - 头部双目相机加两个腕部相机，位姿按真机画面对齐；全身配色按产品图和真机画面核对。
-- 轮子锁死，升降柱和腰部保持初始值，只做桌面操作。
+- 两个版本，对应官方的标准版和旗舰版，接口按 unitree_sdk2 的 G1-D 示例：
+  - **桌面版**（机器人 `g1d`，env 配置 `g1d` / `g1d_counter` / `g1d_lab` / `g1d_school` / `g1d_beans_collect`）：底盘固定。手臂和夹爪之外，可选动作键 `waist_joint_state`（[偏航, 俯仰] rad，对应官方 12、14 号电机）和 `lift_joint_state`（[升降柱高度] m，0–0.42，按官方 76.5 mm/s 限速）；不发这两个键就保持当前值，原来的 16 维策略和数据不受影响。
+  - **移动版**（机器人 `g1d_mobile`，env 配置 `g1d_mobile`）：桌面版加差速底盘，可选动作键 `base_velocity`（[vx m/s, vyaw rad/s]，底盘坐标系，限幅 ±1.5、±0.6，同 `AgvClient.Move`）；不发就停车。官方 URDF 只有两个驱动轮、没有万向轮，所以底盘用三个虚拟平面关节（x、y、偏航）驱动，轮子不转、没有碰撞体，底盘外壳照常碰撞。
+  - env 配置写 `observation.robot.body_states: true` 时，观测里加上 `waist_joint_state`、`lift_joint_state`，移动版再加 `base_velocity`（实测）和 `base_pose`（相对回合起点的 [x, y, yaw]）；只有 `g1d_mobile` 默认打开。
+  - GPU 自检：`scripts/g1d/body_probe.py`（用法见文件头）。
 
 **资产和物理**
 
@@ -76,6 +80,7 @@ python scripts/g1d/build_asset.py
 | `g1d_counter` | `real_scene2` 吧台（落地柜） | 0.833 m | 根节点 y=-0.80（底盘伸不进柜下），升降柱各 0.0765 |
 | `g1d_lab` | `real_scene3` 实验室培训桌 | 0.749 m | 根节点 y=-0.73，升降柱各 0.0345 |
 | `g1d_school` | `real_scene4` 学校实验室绿幕桌 | 0.763 m | 根节点 y=-0.79、左偏 1.63°，升降柱 0（桌面相对躯干的高差按拟合值保留） |
+| `g1d_mobile` | `real_scene1` 办公室升降桌（移动版） | 0.68 m | 起点同 `g1d`，底盘可移动 |
 
 布局写在 `Assets/Eval_Layout/RoboDojo/<配置>/`，评测结果也按配置分目录。
 

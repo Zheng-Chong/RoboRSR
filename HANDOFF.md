@@ -1,14 +1,14 @@
 # Project Handoff
 
-更新时间：2026-10-20
-当前分支：`main`。流水线规范化（[PR #1](https://github.com/Zheng-Chong/RoboRSR/pull/1)）和学校场景接入（[PR #2](https://github.com/Zheng-Chong/RoboRSR/pull/2)）都已于 2026-10-20 合并，两个短分支已删除。
+更新时间：2026-10-21
+当前分支：`chongzheng/robot-g1d-tabletop-mobile`（worktree `../RoboDojo-g1d-mobile`，G1-D 桌面版 / 移动版，见「最近任务」第一节）；`main` 上流水线规范化（[PR #1](https://github.com/Zheng-Chong/RoboRSR/pull/1)）和学校场景接入（[PR #2](https://github.com/Zheng-Chong/RoboRSR/pull/2)）都已于 2026-10-20 合并。
 当前目标：把 G1-D 的三条流水线规范化：Real2Sim 采集（物体、场景）、仿真数据生成，以及本仓库内的仿真评估。训练在仓库外。
 
 本文件只记录当前状态。逐次实验的细节（相机拟合、抓取调参、倒豆参数扫描、各次服务器验证）见 `git show 4fb9290:HANDOFF.md`。数采平台的运维细节（端口、账号、隧道、重启方法）已移到本机 `.agent/ops.local.md`，不入库，因为仓库是公开的。
 
 ## 项目状态
 
-- **机器人** G1-D + Dex1-1（带相机版夹爪）：两条 7 自由度手臂加两指夹爪，关节角控制，30 Hz；轮子锁死，升降柱和腰部保持初始值。
+- **机器人** G1-D + Dex1-1（带相机版夹爪）：两条 7 自由度手臂加两指夹爪，关节角控制，30 Hz。分两个版本（对应官方标准版 / 旗舰版）：桌面版 `g1d` 底盘固定，腰（`waist_joint_state`）和升降（`lift_joint_state`）是可选动作键，不发就保持；移动版 `g1d_mobile` 再加差速底盘 `base_velocity` [vx, vyaw]，不发就停车。已有数据和策略都只用 16 维手臂 + 夹爪，不受影响。细节见 README「机器人本体」和 CONTRACT「观测与动作」。
   - 头部用双目的左眼 `cam_head`（棋盘格标定 fx≈279.5，宇树合同外参），两个腕部相机 fx≈314；投影到真机画面核对过（误差 0.4–3.6 px）。
   - 关节驱动参数（刚度 4400、阻尼 40）和夹爪力是拍定的，没做系统辨识。同事把"相机+动作标定工具包"作为 `g1d_calib_toolkit_20261019.zip` 传到了仓库根目录，还没接入。
   - 构建：`python scripts/g1d/build_asset.py`（读 `real2sim/robot/g1d_v4`）。下载官方资产后先跑一次 `utils/update_embodiment_config_path.py`。
@@ -32,6 +32,24 @@
   - `5090-2`（8×5090）：仿真环境 `/root/miniconda3/envs/RoboDojo`；导出环境 `robodojo-lerobot`（lerobot 0.4.4，10-19 补装了 h5py 3.16，`pip -i` 用清华镜像）；上传环境 `/data/robodojo-runs/ms-venv`；运行目录在 `/data/robodojo-runs/`。
 
 ## 最近任务
+
+### G1-D 桌面版 / 移动版（2026-10-21，分支 `chongzheng/robot-g1d-tabletop-mobile`）
+
+- **用户要求**：仿真支持腰部、升降和底盘移动，分成桌面操作版和移动操作版；底盘和升降按官方方案。
+- **官方方案**（unitree_sdk2 `example/g1/g1d`、`g1_agv_client.hpp`，宇树 G1D 开发者文档）：标准版推拉底盘无电驱，17 自由度（两臂 14、腰 2、升降 1）；旗舰版两轮差速，19 自由度。腰是底层 12 WaistYaw、14 WaistPitch 位置控制；升降是 `AgvClient.HeightAdjust` 速度指令（最大 76.5 mm/s，高度读 `rt/hispeed_state`）；底盘是 `AgvClient.Move(vx, 0, vyaw)`（±1.5 m/s、±0.6 rad/s，`vy` 忽略）。官方 `g1_d.urdf` 只有两个驱动轮、没有万向轮，也没有任何仿真配置（`unitree_sim_isaaclab` 不支持 G1-D）。官方 URDF 里腰部关节名就和转轴对不上（`torso_Joint` 绕 z 是偏航，`Yaw_Joint` 绕 y 是俯仰），不是 v4 改的，CONTRACT 已更正。
+- **决策**（用户选定桌面版身体自由度为可选键）：
+  - 动作键：`waist_joint_state` [偏航, 俯仰] rad，`lift_joint_state` [高度] m（0–0.42，两级各一半），`base_velocity` [vx, vyaw]（仅移动版）。可选，缺省保持（底盘缺省为 0），旧 16 维策略不用改。
+  - 移动版底盘用虚拟平面关节（`base_x/y/yaw_joint`，在起点坐标系里），按差速运动学把 (vx, vyaw) 积分成位置目标并下发速度前馈；目标最多领先实测 1 cm / 0.02 rad，撞上东西会停而不是蓄力。轮子锁死、去掉碰撞体（两个轮子没有万向轮，靠轮子驱动会翻；轮子碰撞会拖地），底盘外壳（离地 3.4 cm）照常碰撞。
+  - 升降和腰按官方限速（0.0765 m/s 分到两级、5 rad/s）；复位时直接把身体关节写回默认值（升降柱 1 s 内开不回来）。
+  - 观测要 env 配置 `observation.robot.body_states: true` 才加（只有 `g1d_mobile` 打开），所以桌面版五个配置的观测和以前完全一样。
+- **改动**：`env/robot_manager/robot_class/g1d.py`（身体键 ↔ 关节的映射）、`robot_manager.py`（关节索引、复位、初始保持值、控制下发、`get_body_state`，注册 `g1d_mobile`）、`robot_config/g1d.py`（`mobile` 参数；执行器拆成 lift、waist、base）、`robot_config/g1d_mobile.py`、`x5.py`（`asset_name`，移动版读 `Assets/Robots/g1d/`）、`obs_manager.py`、`eval_env.py`（校验、身体键转控制、腰和升降在动作内插值）、`build_asset.py`（多写 `g1d_mobile_dex1.urdf`，`SCENES` 加 `g1d_mobile` 生成办公室布局）、`env_cfg/g1d_mobile.yml`、`env_cfg/robot/g1d_mobile.yml`、`_robot_info.json`、新测试 `scripts/g1d/test_g1d_body.py`（进 `check.sh`）、GPU 自检 `scripts/g1d/body_probe.py`；README、CONTRACT 同步。`test_server.py` 的期望改为办公室场景对应 `g1d` 和 `g1d_mobile` 两个配置。
+- **验证**：
+  - 本机：ruff 0.11.7（改动文件）、`git diff --check`、pytest 26 passed 1 skipped（XPolicyLab 空）、任务清单检查。
+  - `5090-2` 隔离目录 `/data/robodojo-runs/g1d-mobile-20261021/`（资产从 `school-scene-20261020-114517` 复制，`g1d_mobile_dex1.urdf` 由 `mobile_urdf()` 从其中的 `g1d_dex1.urdf` 生成，`Eval_Layout/RoboDojo/g1d_mobile` 软链接到 `g1d`；没跑 `build_asset.py`，那边没有 `unitree_ros`）。用量杯任务 seed 100（运行目录只有量杯布局）：
+    - `body_probe.py --env_cfg_type g1d_mobile`，2 回合都通过：升降 +0.1 m、腰 [0.3, 0.2]、后退 2 s 到 -0.6 m、原地转 2 s 到 0.6 rad，误差都 < 1e-5；躯干世界位姿跟着底盘走；不发底盘键 0.5 s 后速度 4e-5 m/s；第二回合开始时底盘和升降回到默认；`_result.json` success_rate 1.0、eval_time 2。截图在本机 `output/g1d_body_probe_20261021/`。
+    - `body_probe.py --env_cfg_type g1d`，2 回合都通过，桌面版拒绝 `base_velocity`。
+    - 回归：`scripted_demo.py --env_cfg_type g1d --task_name g1d_pour_beans_measuring_cups --seed 0` success_rate 1.0、eval_time 1。
+  - 踩坑：运行目录的资产只有量杯布局，拾取任务 seed 0 没有布局时 `main.py` 不报错直接退出；Kit 退出时会吞掉缓冲的 stdout，要 `PYTHONUNBUFFERED=1` 才看得到 `[main]` 输出。
 
 ### 数采平台任务登记（2026-10-20，[PR #11](https://github.com/Zheng-Chong/RoboRSR/pull/11) 合并进 `main`，已部署）
 
@@ -181,6 +199,12 @@
 
 ## 剩余事项与风险
 
+- **G1-D 移动版**：
+  - 共享资产库还没有 `g1d_mobile_dex1.urdf` 和 `Eval_Layout/RoboDojo/g1d_mobile/`，要在隔离目录跑完整的 `build_asset.py` 验证后，经用户同意再装；
+  - 录制（`collect.py` 的 `state_keys`）、LeRobot 导出和 XPolicyLab 的 `_robot_info.json` 都只认 16 维，要采带身体自由度的数据，先定契约再改录制器和转换器；
+  - 还没有用到底盘的任务；底盘撞桌、撞椅只靠领先量限幅，没有专门测；轮子只是外观，不转；
+  - 真机升降是速度接口，部署端要按官方 PD 示例把 `lift_joint_state` 换成 `HeightAdjust`；真机 `rt/hispeed_state` 高度的零点和仿真 0（最低）是否一致没核对；底盘加减速、腰和升降的动力学都没做辨识。
+
 - **主工作区里未提交的改动**（10-20 晚核对）：`CLAUDE.md`、`HANDOFF.md`、`README.md`、`real2sim/scenes/SKILL.md`、`scripts/g1d/export_office_beans.py`，主要是「服务器切到 5090-2」那次的文档改动；主工作区的本地 `main` 还停在 `a694da5`，落后 `origin/main`。物体 SKILL 已随 PR #5 合并。
 - **采集配置下的严格判据有方差**：同一组动作回放，2 条里有 1 条最后差 1 颗豆子。评估策略时，严格成功率要在同一布局上重复多次才有意义。
 - **XPolicyLab 注册**：`XPolicyLab/utils/robot/_robot_info.json` 里还没有 `g1d*`，用 XPolicyLab 的 `train.sh` 会拿不到动作维度。要给 XPolicyLab 提 PR（子模块不在本仓库里改）。
@@ -213,9 +237,11 @@
 3. 去现场按 `real2sim/scenes/SKILL.md` 采集（ChArUco 标定板照片、卷尺、灯光、机器人相机画面），在平台「登记场景」录入，回来跑 `overlay.py` 和 `acceptance.py`。
 4. 给 XPolicyLab 提 PR，注册 `g1d*` 的动作维度；然后用一个 LeRobot 策略在 `--env-cfg g1d_beans_collect` 下走通"外部训练 → 本仓库评估"的整条链。
 5. 学校场景：用户重建 sys01 连接后拷真机画面做叠图（`overlay.py --env-cfg g1d_school`）；要用学校场景做任务时，再写杯盘布局和任务。
+6. G1-D 移动版：PR 合并后，在隔离目录跑完整 `build_asset.py` 和 `body_probe.py`（两个版本），征得同意再装共享库；要做移动操作任务或采身体自由度数据时，先改 CONTRACT。
 
 ## 最近历史
 
+- 2026-10-21：G1-D 分为桌面版 `g1d`（腰、升降可选动作键）和移动版 `g1d_mobile`（加差速底盘 `base_velocity`，虚拟平面关节），接口按官方 unitree_sdk2；`5090-2` 上两版 `body_probe.py` 和量杯回归通过（分支 `chongzheng/robot-g1d-tabletop-mobile`）。
 - 2026-10-21：登记任务的位置随机移到第 4 步 L1（用户：位置泛化应属于泛化等级），第 2 步只选物体；L1 下勾「位置 / 朝向」，训练布局和 L1 评测集都按它们随机，范围仍由 coding agent 定，都不勾即固定摆放。`registration.json` 的随机字段从每个角色的 `randomize` 移到任务级 `randomize`。第 3 步场景不再每个场景一个下拉框（场景多了不好选），改为「训练场景」「L4 保留场景」两个搜索选择框：和物体选择共用组件（`PICK` 按键名区分物体和场景），带缩略图和悬停预览（桌面尺寸、env 配置、照片数），同一场景只能在一边，选进另一边自动移走；「加入全部已建模场景」一键加入。验证：`test_server.py`、ruff；本机浏览器：加入全部已建模场景、搜索、悬停预览、回车把实验室移到 L4 保留、L1 取消朝向后提交，登记和实现任务文本正确。PR #16 合并（`f717246`）并部署。
 - 2026-10-21：登记任务的物体角色不再手填 x/y 范围和朝向角度（用户：不要人为定这么细），改为「每回合随机」两个勾选项：位置、朝向（默认都勾）。`registration.json` 的角色字段由 `xlim/ylim/yaw_deg` 换成 `randomize: ["position", "yaw"]`；实现任务文本让 coding agent 按可达范围（桌面物体 y≈[-0.55, -0.25]）、物体不重叠且留抓取空间、按抓取方式定朝向来设范围，L0 孪生仍固定摆放，范围写进任务配置和交付说明。线上没有登记过任务，不用迁移。验证：`test_server.py`、ruff；本机浏览器里勾选、取消、提交，看了实现任务文本和抽屉摘要。PR #15 合并（`e1b347c`）并部署。
 - 2026-10-21：登记任务里的物体选择改为带预览的搜索列表（用户反馈：选的时候看不出是哪个）：输入名称、类别或 id 过滤，每行有缩略图，鼠标悬停（或方向键）在旁边浮出大图卡片（名称、id、尺寸、质量、入库状态；图取渲染图，没有就取实拍），回车或点击加入；已选标签带缩略图，悬停也能预览。干扰物的杂物库说明清楚了：它是共享资产库 `Object/RoboDojo/Clutter/`（95 类 193 个，`clutter.yml` 索引），任务配置的 `Clutter` 段引用它；勾选后列出各类别和数量，可只选部分类别（不选即全库），写进 `distractors.clutter_categories`。新接口 `GET /api/clutter` 从资产库镜像统计类别。杂物没有渲染图，只显示类别名。验证：`test_server.py`（`/api/clutter`）、ruff；本机用部署机的元数据镜像和主工作区的渲染图在浏览器里试了搜索、悬停预览、方向键 + 回车、标签预览、杂物类别写入登记。PR #14 合并（`99cf0b6`）并部署到 `5090-2`，线上镜像统计出杂物库 95 类 193 个。

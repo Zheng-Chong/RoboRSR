@@ -83,6 +83,7 @@ class RobotManager:
         for idx, robot in enumerate(self.robot_list):
             obs_list.append(self.process_name(robot.arm_name))
             obs_list.append(self.process_name(robot.gripper_name))
+            obs_list.extend(getattr(robot, "body_dims", {}))
         return obs_list
 
     def set_robot_init_pose(self):
@@ -93,6 +94,23 @@ class RobotManager:
                 target_vel = key.data.default_joint_vel.clone()
                 key.set_joint_position_target(target_joints)
                 key.set_joint_velocity_target(target_vel)
+                if hasattr(robot, "body_joint_indices"):
+                    # The column (76.5 mm/s) and the chassis cannot drive back within the reset steps: place them.
+                    ids = robot.body_joint_indices
+                    key.write_joint_state_to_sim(target_joints[:, ids], target_vel[:, ids], joint_ids=ids)
+
+    def _body_arrays(self, robot):
+        """Measured positions, velocities and the position targets of the robot's body joints, (num_envs, n) each."""
+        key = self.robot_key[self.robot_list.index(robot)]
+        ids = robot.body_joint_indices
+        data = (key.data.joint_pos, key.data.joint_vel, key.data.joint_pos_target)
+        return [d[:, ids].cpu().numpy().astype(np.float64) for d in data]
+
+    def get_body_state(self, robot, env_idx_list=None):
+        """{env_idx: robot.body_state(...)} from the measured body joints."""
+        q, qd, _ = self._body_arrays(robot)
+        env_idx_list = range(self.num_envs) if env_idx_list is None else env_idx_list
+        return {env_idx: robot.body_state(q[env_idx], qd[env_idx]) for env_idx in env_idx_list}
 
     def set_robot_init_state(self, env_idx_list=None):
         if env_idx_list is None:
@@ -109,6 +127,10 @@ class RobotManager:
                     gripper_list = [[val, val * mimic[1] + mimic[2]] for _ in range(len(joint_list))]
                 elif robot.ee_type == "hand":
                     gripper_list = self.get_end_effector_real_val(robot=robot)
+                if hasattr(robot, "body_dims"):
+                    # Body keys a policy leaves out hold their targets (the chassis stands still).
+                    _, _, target = self._body_arrays(robot)
+                    zero = np.zeros(target.shape[1])
                 for env_idx in env_idx_list:
                     state_dict[env_idx][self.process_name(robot.arm_name)] = {
                         "position": joint_list[env_idx],
@@ -118,6 +140,11 @@ class RobotManager:
                         "position": gripper_list[env_idx],
                         "velocity": [0.0] * len(gripper_list[env_idx]),
                     }
+                    if hasattr(robot, "body_dims"):
+                        body = robot.body_state(target[env_idx], zero)
+                        for name in robot.body_dims:
+                            position = [0.0, 0.0] if name == "base_velocity" else body[name]
+                            state_dict[env_idx][name] = {"position": position, "velocity": [0.0] * len(position)}
 
         for env_idx in env_idx_list:
             self.control_manager.update_prev_control(env_idx, MetaControl(state_dict[env_idx]))
@@ -373,12 +400,15 @@ class RobotManager:
                 arm_position = torch.zeros((plan_num, action_dim), device=sim.device, dtype=torch.float32)
                 arm_velocity = torch.zeros((plan_num, action_dim), device=sim.device, dtype=torch.float32)
                 gripper_position = torch.zeros((plan_num, gripper_dim), device=sim.device, dtype=torch.float32)
+                body_dims = getattr(robot, "body_dims", {})
+                body_commands = []
 
                 for id, env_idx in enumerate(plan_lst):
                     meta_control = meta_control_list[env_idx].get_action(
                         self,
                         env_idx=env_idx,
                     )  # get action dict
+                    body_commands.append({name: meta_control[name]["position"] for name in body_dims})
                     arm_position[id] = torch.tensor(
                         meta_control[self.process_name(robot.arm_name)]["position"],
                         device=sim.device,
@@ -403,6 +433,18 @@ class RobotManager:
                     joint_ids=robot.gripper_joint_indices,
                     env_ids=env_ids,
                 )  # gripper
+                if body_dims and plan_num > 0:
+                    q, _, target = self._body_arrays(robot)
+                    pos, vel = zip(
+                        *(
+                            robot.body_targets(command, target[env_idx], q[env_idx], self.control_dt)
+                            for command, env_idx in zip(body_commands, plan_lst)
+                        )
+                    )
+                    ids = robot.body_joint_indices
+                    pos, vel = (torch.tensor(np.array(v), device=sim.device, dtype=torch.float32) for v in (pos, vel))
+                    arm.set_joint_position_target(pos, joint_ids=ids, env_ids=env_ids)
+                    arm.set_joint_velocity_target(vel, joint_ids=ids, env_ids=env_ids)
             else:
                 pass
 
@@ -506,6 +548,10 @@ class RobotManager:
                 robot.arm_joint_indices, arm_names = self.robot_key[idx].find_joints(robot.arm_joints_name)
                 robot.arm_joints_name = arm_names
                 robot.action_dim = len(robot.arm_joint_indices)
+            if hasattr(robot, "body_joints_name"):
+                robot.body_joint_indices, _ = self.robot_key[idx].find_joints(
+                    robot.body_joints_name, preserve_order=True
+                )
 
             robot.base_link_origin_pose = self.get_link_pose(
                 robot,
@@ -517,6 +563,7 @@ class RobotManager:
     def initialize(self, sim: IsaacRLEnv):
         self.sim = sim
         self.scene = sim.scene
+        self.control_dt = sim.cfg.sim.dt * sim.cfg.decimation  # time between control_robot calls
 
     def close(self):
         self.control_manager.reset()
@@ -684,7 +731,11 @@ ROBOT_CLASS_REGISTRY = {
         "module": "x5",
         "classes": ("X5",),
     },
-    "g1d": {
+    "g1d": {  # tabletop: arms, waist, lift; chassis fixed
+        "module": "g1d",
+        "classes": ("G1DLeft", "G1DRight"),
+    },
+    "g1d_mobile": {  # tabletop + differential chassis
         "module": "g1d",
         "classes": ("G1DLeft", "G1DRight"),
     },
@@ -695,4 +746,5 @@ ROBOT_CONFIG_REGISTRY = {
     "franka": "franka",
     "x5": "x5",
     "g1d": "g1d",
+    "g1d_mobile": "g1d_mobile",
 }

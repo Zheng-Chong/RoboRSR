@@ -244,7 +244,7 @@ def test_http():
         assert written["objects"] == roles
         assert written["scenes"] == {  # with the env configs that load each scene
             "train": [{"scene": "real_scene3_lab", "env_cfg": ["g1d_lab"]}],
-            "holdout": [{"scene": "real_scene1_office", "env_cfg": ["g1d"]}],
+            "holdout": [{"scene": "real_scene1_office", "env_cfg": ["g1d", "g1d_mobile"]}],
         }
         assert "distractors" not in written and written["levels"] == {"L0": {"target": 25, "range": "孪生"}}
         assert written["instructions"] == {"count": 5, "languages": ["zh", "en"]} and "instruction" not in written
