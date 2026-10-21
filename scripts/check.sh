@@ -14,6 +14,7 @@ if [ -n "$files" ]; then
     ruff format --check $files
 fi
 git diff --check "$base"
-python -m pytest -q scripts/datagen scripts/scenes scripts/g1d/test_office_beans.py src/real2sim_platform/test_server.py
+python -m pytest -q scripts/datagen scripts/scenes scripts/g1d/test_office_beans.py scripts/g1d/test_g1d_body.py \
+    src/real2sim_platform/test_server.py
 python scripts/internal/task_inventory.py --format json --check >/dev/null
 echo "checks passed"

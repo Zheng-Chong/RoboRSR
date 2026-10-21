@@ -454,6 +454,12 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
                             }
                         else:
                             pass
+                body_dims = self._body_dims()
+                for key in body_dims:
+                    if key in action:
+                        control_info[key] = {"position": list(np.asarray(action[key], dtype=float))}
+                if "base_velocity" in body_dims and "base_velocity" not in action:
+                    control_info["base_velocity"] = {"position": [0.0, 0.0]}  # no command: the chassis stops
                 control_seq = self.process_control_info(control_info, env_idx)
                 control_info_list.append(control_seq)
 
@@ -568,7 +574,27 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
                         for i in range(interp_count, interpolation_nums):
                             control_info_list[i][key_name]["position"] = vals
 
+                # Waist and lift targets are interpolated like the arm joints; base_velocity holds over the action.
+                body_keys = [k for k in getattr(robot, "body_dims", {}) if k in control_info and k != "base_velocity"]
+                if body_keys:
+                    current = self.robot_manager.get_body_state(robot, env_idx_list=[env_idx])[env_idx]
+                    interp_count = int(np.floor(interpolation_nums * 0.8))
+                    for key in body_keys:
+                        start, end = np.array(current[key]), np.array(control_info[key]["position"])
+                        for i in range(interpolation_nums):
+                            alpha = (i + 1) / (interp_count + 1) if i < interp_count else 1.0
+                            control_info_list[i][key]["position"] = ((1 - alpha) * start + alpha * end).tolist()
+
             return control_info_list
+
+        def _body_dims(self):
+            """Optional action keys of the target robots' bodies (G1-D waist, lift, chassis) -> dims."""
+            return {
+                k: d
+                for r in self.robot_manager.robot_list
+                if r.type == "target"
+                for k, d in getattr(r, "body_dims", {}).items()
+            }
 
         def validate_action_dict(self, action_dict: dict) -> None:
             """Validate that a policy action dict uses the expected per-arm keys
@@ -619,6 +645,7 @@ def create_eval_env(config, app, resume_state=None, **kwargs):
                 forbidden_prefixes = ()
             else:
                 raise ValueError(f"Unsupported arm count: {arm_count}")
+            expected.update(self._body_dims())
 
             if forbidden_prefixes:
                 bad_prefixed_keys = [k for k in action_dict.keys() if k.startswith(forbidden_prefixes)]

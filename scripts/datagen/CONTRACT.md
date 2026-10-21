@@ -23,7 +23,8 @@
 ## 观测与动作
 
 - **16 维向量的顺序**：左臂 7 个关节、左夹爪、右臂 7 个关节、右夹爪。左右臂各自的关节顺序以质检单里的 `joint_names` 为准；G1-D 是 shoulder_pitch、shoulder_roll、shoulder_yaw、elbow、wrist_roll、wrist_pitch、wrist_yaw。关节角单位是 rad。
-- **夹爪 state**：两指关节实测位置的均值，换算到 0（闭合）到 1（张开）。被物体挡住时，读数停在物体宽度对应的开度上，不裁剪。由 env 配置里的 `observation.robot.ee_state: measured` 打开，G1-D 的六个配置（`g1d`、`g1d_counter`、`g1d_lab`、`g1d_school`、`g1d_shenzhen_lab`、`g1d_beans_collect`）都已打开。不写这个键时仍是上一步的指令值，这是 RoboDojo 原来的行为，X5 等任务不受影响。
+- **身体自由度（腰、升降、底盘）不在 16 维向量里**，已有数据集都没有录。仿真支持它们作为可选的动作键：`waist_joint_state` [偏航, 俯仰] rad（官方 12 WaistYaw、14 WaistPitch，仿真关节 `torso_Joint`、`Yaw_Joint`）、`lift_joint_state` [升降柱高度] m（两级 `LZ_*_Joint` 各一半），以及只在 `g1d_mobile` 上有的 `base_velocity` [vx, vyaw]（底盘坐标系，m/s、rad/s）。不发腰和升降就保持，不发底盘就停车。env 配置打开 `observation.robot.body_states` 才进观测，同时多一个只在 state 里的 `base_pose` [x, y, yaw]（相对回合起点）。录制（`collect.py` 的 `state_keys`）和 LeRobot 导出都还只认 16 维，要录身体自由度先改本契约、录制器和转换器。
+- **夹爪 state**：两指关节实测位置的均值，换算到 0（闭合）到 1（张开）。被物体挡住时，读数停在物体宽度对应的开度上，不裁剪。由 env 配置里的 `observation.robot.ee_state: measured` 打开，G1-D 的七个配置（`g1d`、`g1d_counter`、`g1d_lab`、`g1d_school`、`g1d_shenzhen_lab`、`g1d_beans_collect`、`g1d_mobile`）都已打开。不写这个键时仍是上一步的指令值，这是 RoboDojo 原来的行为，X5 等任务不受影响。
 - **夹爪 action**：指令值，刻度同上，执行前裁剪到 [0, 1]。
 - **夹持力**（不在数据里）：G1-D 的 obs 有 `obs["gripper_force"]["left_ee" / "right_ee"]`，是两个指垫（`*_dex1_finger_link_{1,2}_tip`）上 ContactSensor 读出的接触合力大小，单位 N，顺序同两个手指关节（挤压的法向力加上托住物体的摩擦力）。只有 `robot_config` 里写了 `FINGER_PADS` 的机器人才有这个键。录制器不写它，所以 16 维 state 不变；真机能否给出对应的量还没确认。
 - **机械臂 action**：关节位置目标，30 Hz。仿真在每个动作内部做插值，与真机控制器的跟踪方式不同（见 README「控制对齐」）。
@@ -52,7 +53,8 @@
 
 - **夹爪**：真机遥操记录里，夹爪读数 0 是全闭、5.4 是全开，除以 5.4 就换到本契约的刻度。这个读数和指尖行程是否成线性，还没有标定过。
 - **腕部相机**：`cam_left_wrist` 永远指左手相机。真机图像服务的 `left_wrist_camera` 流实际是右手相机，部署客户端默认设了 `SWAP_WRISTS=True`；2026-09-21 之前录的真机数据，左右是反的。
-- **腰部关节**：v4 URDF 把官方 `torso_Joint`（腰俯仰）和 `Yaw_Joint`（腰偏航）的名字互换了。这两个关节不在 16 维向量里，但回放真机全身状态时要按官方名字映射。
+- **腰部关节**：官方 `g1_d.urdf`（v4 照搬）里关节名和转轴对不上：`torso_Joint` 绕 z 轴，是腰偏航（12 号电机 WaistYaw，±155°）；`Yaw_Joint` 绕 y 轴，是腰俯仰（14 号电机 WaistPitch，-2.5° 到 135°）。`waist_joint_state` 按电机顺序 [偏航, 俯仰]；回放真机全身状态时按电机号映射，不要按关节名。
+- **升降柱和底盘**：真机走 `AgvClient`，升降是速度指令 `HeightAdjust`（高度从 `rt/hispeed_state` 读，官方示例用 PD 把目标高度换成速度），底盘是 `Move(vx, 0, vyaw)`。仿真的 `lift_joint_state` 是位置目标，部署端要照官方示例换成速度；真机高度读数的零点和仿真的 0（升降柱最低）是否一致，还没核对。
 - **头部图像**：真机是 1280×480 的左右拼接图（SBS），取左半边对应 `cam_head`。是裁剪还是缩放得到的，还没确认。
 
 ## 旧数据

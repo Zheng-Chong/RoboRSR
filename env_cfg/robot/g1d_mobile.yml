@@ -1,0 +1,11 @@
+robots:
+  - {
+    robot_type: arm,
+    # G1-D Flagship: g1d plus the differential chassis (base_velocity [vx, vyaw]) on virtual planar joints.
+    robot_name: g1d_mobile,
+    coupled: True,
+    need_planner: False,
+    # Start pose as in g1d (office); the chassis moves from here, base_pose is relative to it.
+    default_root_pos: [0.0, -0.73, 0.1115],
+    default_root_rot: [0.707, 0, 0, 0.707]
+  }

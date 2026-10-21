@@ -1,0 +1,21 @@
+{
+  "embodiment": "g1d",
+  "name": "G1-D 桌面版",
+  "name_en": "G1-D",
+  "model": "Unitree G1-D",
+  "variant": "桌面版（轮子锁死）",
+  "dof": "双臂各 7 自由度 + 两指夹爪各 1，关节角控制；轮子锁死，腰部和升降柱保持初始值（升降柱按各场景桌高设定）",
+  "end_effector": "Dex1-1 两指夹爪（带相机版）",
+  "cameras": "头部双目，用左眼 cam_head；左右腕部相机各一个",
+  "control_hz": 30,
+  "urdf": "real2sim/robot/g1d_v4（scripts/g1d/build_asset.py 构建）",
+  "calib_camera": "done",
+  "calib_notes": "相机：头部左眼棋盘格标定 fx≈279.5，外参用宇树合同值；腕部相机 fx≈314；投影到真机画面误差 0.4–3.6 px（2026-10-16）。真机腕部相机的流名左右互换，部署端要设 SWAP_WRISTS=True。\n关节零位：没有记录。\n夹爪：真机读数 0–5.4，和指尖行程是否成线性没有标定。\n动力学：关节刚度 4400、阻尼 40 和夹爪力是拍定值，没做系统辨识。\n同事的相机 + 动作标定工具包 g1d_calib_toolkit_20261019.zip 在仓库根目录，还没接入。",
+  "notes": "末端位姿动作暂不支持（需要 G1-D 的 cuRobo 配置，左右臂各一个 planner），只用关节角动作。手臂在桌面高度的可达距离约 0.45 m，自有任务的物体放在 y≈[-0.55, -0.25]。以上由 coding agent 按 HANDOFF.md 代填（2026-10-21）。",
+  "owner": {
+    "username": "chongzheng",
+    "name": "种政"
+  },
+  "updated_by": "种政（agent 代填）",
+  "updated_at": "2026-10-21 14:34:02"
+}

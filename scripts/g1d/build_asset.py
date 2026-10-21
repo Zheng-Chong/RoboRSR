@@ -3,9 +3,10 @@
 Takes the team's assembled G1-D + Dex1-1 (camera version) URDF, v4: official g1_d.urdf with the standalone
 dex1_1.urdf mounted on each wrist (real2sim/robot/g1d_v4/: g1_d_full_dex1_v4.urdf, meshes/, physics_contract.json),
 rebuilds the Dex1-1 wrist camera module at its real mount (scripts/g1d/dex1_camera), adds the G1 head D435 frame from
-unitree_ros g1_29dof_mode_15_with_dex1_1.urdf and locks the wheels (tabletop only).
+unitree_ros g1_29dof_mode_15_with_dex1_1.urdf and locks the wheels.
 Writes:
-    Assets/Robots/g1d/                     g1d_dex1.urdf, meshes/, physics_contract.json (self-collision filters),
+    Assets/Robots/g1d/                     g1d_dex1.urdf (tabletop, robot g1d), g1d_mobile_dex1.urdf (mobile chassis,
+                                           robot g1d_mobile), meshes/, physics_contract.json (self-collision filters),
                                            {left,right}_robot_config.yml
     Assets/Room/real_scene{1,...,5}/      the real scenes in SCENES (office, counter, lab, school, ShenZhen lab):
                                            <room>.usd + usd/
@@ -42,6 +43,7 @@ G1_DEX1_URDF = "robots/g1_description/g1_29dof_mode_15_with_dex1_1.urdf"
 SCENES_DIR = ROOT / "real2sim" / "scenes"
 SCENES = {  # env config: (scene dir, Room category, Room position, object (x, y) shift)
     "g1d": ("real_scene1_office", "real_scene1", [0.0, -0.29, 0.0], (0.0, 0.0)),
+    "g1d_mobile": ("real_scene1_office", "real_scene1", [0.0, -0.29, 0.0], (0.0, 0.0)),  # same start pose as g1d
     # floor cabinet: the chassis cannot go under it, so the robot stands 7 cm further back (root y=-0.80)
     "g1d_counter": ("real_scene2_counter", "real_scene2", [-0.35, -0.32, 0.0], (0.0, -0.07)),
     "g1d_lab": ("real_scene3_lab", "real_scene3", [0.0, -0.257, 0.0], (0.0, 0.0)),
@@ -154,9 +156,45 @@ def build_urdf(v4, src, out):
     seat_wrist_camera(g1d, v4, out)
     recess_carrier_hulls(g1d, out)
     shutil.copy(v4 / "physics_contract.json", out)
-    shutil.rmtree(out / "usd", ignore_errors=True)  # UrdfFileCfg hashes only the URDF path, not mesh files
+    for usd in ("usd", "usd_mobile"):  # UrdfFileCfg hashes only the URDF path, not mesh files
+        shutil.rmtree(out / usd, ignore_errors=True)
     ET.ElementTree(g1d).write(out / "g1d_dex1.urdf", encoding="utf-8", xml_declaration=True)
     print(f"wrote {out / 'g1d_dex1.urdf'} ({len(movable)} movable joints)")
+    mobile = mobile_urdf(g1d)
+    ET.ElementTree(mobile).write(out / "g1d_mobile_dex1.urdf", encoding="utf-8", xml_declaration=True)
+    print(f"wrote {out / 'g1d_mobile_dex1.urdf'}")
+
+
+def mobile_urdf(g1d):
+    """G1-D Flagship (differential chassis): the tabletop URDF on three virtual planar joints (x, y, yaw in the frame of
+    the start pose), driven from AgvClient-style (vx, vyaw) commands by env/robot_manager/robot_class/g1d.py. The
+    official URDF has only the two drive wheels (no casters), so a wheel-driven chassis would tip over: the wheels stay
+    locked and lose their colliders, which would drag on the floor; the chassis body (3.4 cm ground clearance) keeps
+    its collider."""
+    mobile = copy.deepcopy(g1d)
+    for link in mobile.findall("link"):
+        if link.get("name").endswith("Wheel_Link"):
+            for collision in link.findall("collision"):
+                link.remove(collision)
+    chain = [("base_world", None), ("base_x_link", ("base_x_joint", "prismatic", "1 0 0"))]
+    chain += [
+        ("base_y_link", ("base_y_joint", "prismatic", "0 1 0")),
+        ("AGV_link", ("base_yaw_joint", "revolute", "0 0 1")),
+    ]
+    for i, (child, joint) in enumerate(chain):
+        if child != "AGV_link":
+            mobile.insert(i, ET.fromstring(f'<link name="{child}">{D435_INERTIAL}</link>'))
+        if joint:
+            name, kind, axis = joint
+            limit = 1e3 if kind == "prismatic" else 1e4  # unbounded in practice; continuous joints import unreliably
+            mobile.append(
+                ET.fromstring(
+                    f'<joint name="{name}" type="{kind}"><parent link="{chain[i - 1][0]}"/><child link="{child}"/>'
+                    f'<origin xyz="0 0 0" rpy="0 0 0"/><axis xyz="{axis}"/>'
+                    f'<limit lower="{-limit}" upper="{limit}" effort="1e4" velocity="10"/></joint>'
+                )
+            )
+    return mobile
 
 
 def seat_wrist_camera(g1d, v4, out):

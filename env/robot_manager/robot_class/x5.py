@@ -16,7 +16,9 @@ class X5:
         self.SceneCfg = None
         self.static_camera_list = None
         self.robot_cfg = get_embodiment_config_by_robot_type(
-            robot_type=self.robot_type, robot_name=self.robot_name, key=getattr(self, "config_key", None)
+            robot_type=self.robot_type,
+            robot_name=getattr(self, "asset_name", self.robot_name),  # Assets/Robots/<asset_name>/
+            key=getattr(self, "config_key", None),
         )
 
         self.robot_file = self.robot_cfg["robot_file"]

@@ -1,0 +1,21 @@
+config_name: g1d_mobile
+
+config:
+  sim: g1d_sim_config
+  scene: default
+  robot: g1d_mobile
+  camera: g1d_camera  # camera_config + cam_third
+
+observation:
+  collect_freq: 30
+  robot:
+    joint_states: true
+    world_ee_state: true
+    ee_state: measured  # gripper state from the finger joints, not the last command (scripts/datagen/CONTRACT.md)
+    body_states: true  # waist, lift, chassis (base_velocity, base_pose) in obs
+  vision:
+    approximate_depth: false
+    depth: false
+    intrinsic_matrix: false
+    extrinsic_matrix: false
+    shape: true

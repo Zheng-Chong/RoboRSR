@@ -79,13 +79,48 @@ def _spawn_g1d(prim_path, cfg, *args, **kwargs):
 FINGER_PADS = {f"{s}_dex1_finger_joint_{i}": f"{s}_dex1_finger_link_{i}_tip" for s in ("left", "right") for i in (1, 2)}
 
 
-def get_robot_config():
-    # Unitree G1-D (wheeled base locked) with Dex1-1 grippers; URDF built by scripts/g1d/build_asset.py.
+def get_robot_config(mobile=False):
+    # Unitree G1-D with Dex1-1 grippers; URDFs built by scripts/g1d/build_asset.py. Tabletop (robot g1d, official
+    # Standard version): chassis fixed. Mobile (robot g1d_mobile, Flagship): the chassis on virtual planar joints.
+    name = "g1d_mobile_dex1" if mobile else "g1d_dex1"
+    actuators = {
+        # Official column speed 76.5 mm/s (AgvClient.HeightAdjust), shared by the two equal stages.
+        "lift": ImplicitActuatorCfg(
+            joint_names_expr=["LZ_.*_Joint"],
+            effort_limit_sim=1e4,
+            velocity_limit_sim=0.0765 / 2,
+            stiffness=1e6,
+            damping=1e4,
+        ),
+        "waist": ImplicitActuatorCfg(
+            joint_names_expr=["Yaw_Joint", "torso_Joint"],
+            effort_limit_sim=1e4,
+            velocity_limit_sim=5.0,  # URDF
+            stiffness=1e6,
+            damping=1e4,
+        ),
+    }
+    if mobile:
+        # Official chassis limits (AgvClient.Move): 1.5 m/s, 0.6 rad/s.
+        actuators["base_xy"] = ImplicitActuatorCfg(
+            joint_names_expr=["base_[xy]_joint"],
+            effort_limit_sim=1e4,
+            velocity_limit_sim=1.5,
+            stiffness=1e6,
+            damping=1e4,
+        )
+        actuators["base_yaw"] = ImplicitActuatorCfg(
+            joint_names_expr=["base_yaw_joint"],
+            effort_limit_sim=1e4,
+            velocity_limit_sim=0.6,
+            stiffness=1e6,
+            damping=1e4,
+        )
     return ArticulationCfg(
         spawn=sim_utils.UrdfFileCfg(
             func=_spawn_g1d,
-            asset_path=f"{ROBOTS_PATH}/g1d/g1d_dex1.urdf",
-            usd_dir=f"{ROBOTS_PATH}/g1d/usd",  # converted once, reused while the URDF/config hash matches
+            asset_path=f"{ROBOTS_PATH}/g1d/{name}.urdf",
+            usd_dir=f"{ROBOTS_PATH}/g1d/{'usd_mobile' if mobile else 'usd'}",  # reused while the URDF/config hash matches
             fix_base=True,
             activate_contact_sensors=True,  # FINGER_PADS
             merge_fixed_joints=False,  # keep d435_link / *_dex1_base_link for cameras and the EE frame
@@ -113,15 +148,11 @@ def get_robot_config():
                 ".*_elbow_joint": -1.0,  # forearms raised (0 = forward at table height, through the objects)
                 ".*_wrist_.*": 0.0,
                 ".*_dex1_finger_joint_.*": -0.02,  # open (Dex1-1: positive closes)
+                **({"base_.*_joint": 0.0} if mobile else {}),
             },
         ),
         actuators={
-            "body": ImplicitActuatorCfg(
-                joint_names_expr=["LZ_.*_Joint", "Yaw_Joint", "torso_Joint"],
-                effort_limit_sim=1e4,
-                stiffness=1e6,
-                damping=1e4,
-            ),
+            **actuators,
             "arm": ImplicitActuatorCfg(
                 joint_names_expr=[".*_shoulder_.*", ".*_elbow_joint", ".*_wrist_.*"],
                 effort_limit_sim=100.0,

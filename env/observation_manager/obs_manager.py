@@ -37,6 +37,7 @@ class ObsManager:
         # Gripper opening in obs["state"]: the last command ("command", default) or the finger joints ("measured");
         # obs["action"] always holds the command.
         self.ee_state = self.robot_cfg.get("ee_state", "command")
+        # body_states: true adds the robot's body (G1-D waist, lift, chassis) to obs["state"] / obs["action"].
         if self.ee_state not in ("command", "measured"):
             raise ValueError(f"observation.robot.ee_state must be 'command' or 'measured', got {self.ee_state!r}")
         self.collect_freq = self.obs_config.get("collect_freq", 0)
@@ -191,6 +192,15 @@ class ObsManager:
                             else:
                                 name = robot.arm_name.split("_")[0]
                                 obs[env_idx]["state"][f"{name}_ee_pose"] = endpose[env_idx]
+
+                    if self.robot_cfg.get("body_states", False) and hasattr(robot, "body_dims"):
+                        body = self.robot_manager.get_body_state(robot=robot, env_idx_list=env_idx_list)
+                        for env_idx in env_idx_list:
+                            obs[env_idx]["state"].update(body[env_idx])
+                            prev = self.robot_manager.control_manager.prev_control[env_idx]
+                            for name in robot.body_dims:
+                                if name in prev:
+                                    obs[env_idx]["action"][name] = list(prev[name]["position"])
 
                 if hasattr(self.robot_manager, "control_manager"):
                     measured = (
