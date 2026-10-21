@@ -233,6 +233,16 @@ def test_http():
         assert request("POST", "/api/photo?kind=scene&id=Rigid/cup/00000&name=a.jpg", b"jpg")[0] == 400
         found = server.scan_scenes()["real_scene9_kitchen"]
         assert found["registered"] and not found["built"] and len(found["photos"]) == 1
+        assert found["renders"] == [] and found["model"] is None
+        preview = tmp / "scenes/real_scene9_kitchen/preview"
+        (preview / "render").mkdir(parents=True)
+        (preview / "render/sim.jpg").write_bytes(b"jpg")
+        (preview / "scene.glb").write_bytes(b"glTF")
+        found = server.scan_scenes()["real_scene9_kitchen"]
+        assert found["renders"] == [str(preview / "render/sim.jpg")] and found["model"] == str(preview / "scene.glb")
+        assert found["previews"] == []  # the render is not listed again among the comparison previews
+        status, body, _ = request("GET", f"/file?path={preview / 'scene.glb'}")
+        assert status == 200 and body == b"glTF"
         assert request("DELETE", f"/api/photo?path={found['photos'][0]}")[0] == 200
         assert request("DELETE", scene)[0] == 200
         assert not (tmp / "scenes/real_scene9_kitchen/registration.json").exists()

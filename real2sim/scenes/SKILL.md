@@ -58,4 +58,7 @@ python scripts/scenes/overlay.py --env-cfg <配置> --labels view1.json --image 
 
 1. 在 `build_asset.py` 的 `SCENES` 里加一行（场景目录、Room 名、Room 位置、物体平移），新增 `env_cfg/g1d_<场景>.yml` 和 `env_cfg/robot/g1d_<场景>.yml`。桌子比办公室的高多少，升降柱就抬高多少，物体跟着平移，这样机器人的可达范围在各场景里保持一致。
 2. 在 GPU 服务器的隔离目录里跑 `build_asset.py`，再跑一次 `scripted_demo`，检查四路相机画面。装进共享资产库要按 README 的五步流程走，先征得同意。注意：`build_asset.py` 会先删掉旧布局；如果共享库里缺任务要用的物体，它会中途退出，留下一个空的布局目录（10-16 出过这个事故）。
-3. 更新 `real2sim/ASSETS.md` 的场景行、`scene_spec.json`、`PLAN.md` 和 `HANDOFF.md`，一起提交。
+3. 平台的卡片封面和 3D 预览（都在 `preview/`，不入库，同步到部署机的同一路径；重建场景后重跑）：
+   - `uv run --no-project --with usd-core --with numpy python scripts/scenes/export_glb.py real2sim/scenes/<场景>`：本机就能跑，把 `usd/scene.usda` 转成 `preview/scene.glb`，抽屉里可拖拽旋转。墙和天花板是单面朝内的，从房间外看会自动剖开；背景物体要放在 `/World/Background` 下，平台据此取景和「隐藏房间」。
+   - `OMNI_KIT_ACCEPT_EULA=YES python scripts/scenes/render_scenes.py real2sim/scenes/<场景> --device cuda:<卡>`：GPU 服务器上用场景自带灯光的 RTX 渲染，写 `preview/render/sim.jpg`，平台优先用它当卡片封面。
+4. 更新 `real2sim/ASSETS.md` 的场景行、`scene_spec.json`、`PLAN.md` 和 `HANDOFF.md`，一起提交。

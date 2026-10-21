@@ -26,7 +26,7 @@
 - **数据**：所有数据集登记在 `scripts/datagen/registry.json`。目前有 2 份办公室量杯全量倒豆数据，各 100 条，LeRobot v3.0，都是按旧的 legacy 格式导出的：
   - 固定朝向的一份，已上传 ModelScope 私有仓库；
   - 随机左右手、随机朝向、大范围位置的一份，也已上传 ModelScope 私有仓库（单独的仓库）。
-- **数采平台** `src/real2sim_platform/`：部署在 `5090-2`，经阿里云反向隧道对外访问。
+- **数采平台** `src/real2sim_platform/`：部署在 `5090-2`，经阿里云反向隧道对外访问。场景卡片封面是 RTX 渲染图，抽屉里有 3D 预览（见「最近历史」10-21）。
 - **服务器**：
   - `21196`（4090）：共享资产库 `/data2/zhongzheng/Project/RoboDojo_assets/Assets`；环境用 `source /data2/zhongzheng/Project/robodojo_env.sh`；隔离目录放在 `/data2/tmp/robodojo/agent-remote-runs/`。
   - `5090-2`（8×5090）：仿真环境 `/root/miniconda3/envs/RoboDojo`；导出环境 `robodojo-lerobot`（lerobot 0.4.4，10-19 补装了 h5py 3.16，`pip -i` 用清华镜像）；上传环境 `/data/robodojo-runs/ms-venv`；运行目录在 `/data/robodojo-runs/`。
@@ -258,6 +258,7 @@
   - 权限只有两级；HTTP 明文传密码；
   - `5090-2` 上的资产库是手动刷新的元数据镜像；学校纸杯、纸盘的 `metadata.json`/`description.json` 是 10-20 从隔离目录 `school-scene-20261020-114517` 的 `ovl/Rigid/` 手动放进镜像的（共享库里没有），平台因此显示为「已入库」；下次整体重刷镜像会被删掉，要么先装共享库，要么重刷后再放一次；
   - 看不到 `scripts/datagen` 的产出（`quality.json`、数据集登记表）；
+  - 场景的 `preview/scene.glb` 和 `preview/render/sim.jpg` 不入库，是手动同步到部署机的，场景重建后要重跑 `export_glb.py` / `render_scenes.py` 再同步；3D 预览要浏览器能访问 `registry.npmmirror.com`（three.js），访问不了时抽屉里显示加载失败，卡片和其他内容不受影响；
   - 公开仓库的 git 历史里仍然有运维细节，建议把仓库改为私有。
 - **零碎**：
   - 旧批次 `office-beans-100-20261019` 的 final-audit 进程还在等一个不会完成的导出，需要手动结束；
@@ -280,6 +281,7 @@
 
 - 2026-10-21：G1-D 夹爪力反馈：指垫 ContactSensor，输出 `obs["gripper_force"]`（N），不进数据集；5090-2 上量杯 seed 0 通过，夹持时每个指垫 15–22 N。
 - 2026-10-21：查了真机 Dex1-1（kp=5、kd=0.05、tau=0，每步超前 0.18–0.3 rad），估算每指约 55 N；仿真夹爪改成刚度 3.6e4、上限 55 N，量杯 seed 0/100/101 回归通过。
+- 2026-10-21：场景卡片改用 Isaac RTX 渲染图做封面，场景抽屉顶部加可拖拽旋转的 3D 预览（用户：卡片放渲染的场景图，网页端 3D 预览）。新脚本 `scripts/scenes/export_glb.py`（只要 usd-core + numpy，本机可跑）把 `usd/scene.usda` 的可见网格（跳过 guide 碰撞体）连同 UsdPreviewSurface 材质和贴图转成 `preview/scene.glb`（Y 轴向上，节点名是 USD 路径）；`scripts/scenes/render_scenes.py`（GPU）只载场景、用场景自带灯光，从机器人一侧斜上方对准 `/World/Background`、`/Lights` 以外的部分（桌子和桌上物体），相机限制在地面范围内、天花板以下，写 `preview/render/sim.jpg`。平台扫描 `renders`、`model`，`/file` 放行 `.glb`；卡片封面优先渲染图，有模型的卡片带「3D」标记；抽屉用 three.js 0.169（浏览器按需从 `registry.npmmirror.com` 加载，importmap，不进仓库）+ OrbitControls：左键旋转、右键平移、滚轮缩放，不能转到地板以下，「隐藏房间」（墙、天花板、背景家具，地面保留）、「重置视角」、「全屏」；墙和天花板单面朝内，从房间外看自动剖开。抽屉每次重绘时把活的查看器节点放回原位，关抽屉或切走时释放 WebGL。`5090-2` 隔离目录 `/data/robodojo-runs/scene-render-20261021-222151`（GPU 5，只拷了场景目录和脚本）渲出 5 个场景，逐张看过；GLB 0.03–2.7 MB。验证：`check.sh`（29 passed 1 skipped，新增 `GlbTests` 和场景 `renders`/`model` 扫描、`.glb` 下载）、新脚本 ruff；本机浏览器 5 个场景都加载、贴图和透明材质正常、模拟拖拽能转、隐藏房间、切换场景后只剩一个画布、关抽屉后画布释放。`real2sim/scenes/SKILL.md`「接入和登记」和平台建模任务文本加了这两步。`e4552a2` 直接快进推 `main` 并部署：`5090-2` 从 `01e50fe` 快进（推临时分支再 `--ff-only`，部署机 `HANDOFF.md` 的另一会话改动先存 `.cache/handoff-local-20261021-222905.patch` 再放回），5 个场景的 `scene.glb` 和 `render/sim.jpg` 拷到部署机同一路径，重启后扫描到模型和渲染图，未登录 `/api/info` 401。没有登录线上页面看（没有账号密码）。
 - 2026-10-21：登记向导（物体、场景、任务、本体、评测）误关不再丢内容（用户：点到左边区域填的都没了）。抽屉关闭或切走时（点遮罩、Esc、关闭按钮、点别的行、换页面），如果表单相对刚打开时有改动、选了照片或物体 / 场景 / 任务，就把抽屉节点和向导状态（当前步骤、照片、各选择框的列表）暂存在页面内存里，并提示已暂存；再点同一个登记按钮原样恢复，顶部提示「已恢复上次没提交的内容」和「清空重填」。提交成功后清掉暂存。只存在当前页面，刷新浏览器就没了。验证：ruff；本机浏览器：物体向导填两步后点遮罩、重开恢复（步骤、名称、质量、类别），换页面后仍能恢复，清空重填得到空表；没改动的表单关闭不暂存；任务向导选了物体后按 Esc、重开恢复，提交后暂存清空。
 - 2026-10-21：数采平台新增「模型评测」选项卡（用户：提交评测任务，给定模型、部署代码和要测的任务，负责 Real2Sim 的同学交给 coding agent 部署和评测）。提交向导三步：① 模型名称、版本、框架、checkpoint 位置、部署代码（必填）、训练数据，接口（本体、动作空间、图像输入、指令语言）、推理环境、显存、动作块；提示仓库公开、不要填凭据；② 任务（带预览的搜索框，至少一个）、可选限定场景、泛化等级（默认 L0、L1）、每个任务 × env 配置的布局数（默认 50）和重复次数（默认 3）、是否加脚本专家对照；③ 截止、优先级、评测负责人（可空，等认领）。编号 = 模型名 slug + 日期，同时是 eval_result 里的策略名。写 `real2sim/evals/<编号>/request.json`；提交人由服务端按登录账号写，后续更新不能改，新申请状态为「待受理」。抽屉：部署与评测任务文本（隔离目录、凭据不落盘、XPolicyLab 服务或 `--policy_module` 适配器、按 CONTRACT 对齐、冒烟后全量、颗粒任务用 `g1d_beans_collect`、同步 `eval_result/`、写 `result.json` 的格式、更新状态），受理（状态、评测负责人、评测记录），结果（`result.json` 的总成功率、按任务 × env 配置 × 等级的成功率 / 区间 / 专家对照、问题；以及 eval_result 里同名策略的回合，可跳质检），申请内容。datagen SKILL 补了这条流程。验证：`test_server.py`（申请写入、提交人不可伪造、状态和负责人更新、`result.json` 扫描、坏 id、删除）、ruff；本机浏览器：成员账号提交（校验、编号、任务搜索和预览）、模拟 `result.json` 后结果表和列表成功率、改状态为已完成。
 - 2026-10-21：本体卡片加仿真渲染图。新脚本 `scripts/embodiments/render_embodiments.py`：按 `env/robot_manager/robot_config/<robot_name>.py` 把每个本体单独放在地面上（最低网格点落地，固定底座所以和臂姿无关），初始化并保持默认关节角后，按连杆实际位置加边距取景（`set_world_pose`，初始化前的 USD 包围盒和稳定后的姿态对不上，Franka 第一版被裁掉），写 `real2sim/embodiments/<id>/preview/sim.png`（不入库）。平台扫描 `preview/`：卡片封面优先用渲染图，抽屉分「仿真渲染」「实拍照片」。`5090-2` 隔离目录 `/data/robodojo-runs/embodiment-render-20261021-144517`（GPU 4；G1-D 资产复制自 `g1d-mobile-20261021`，X5 / Franka 从 21196 共享库经本机中转，共享库未改；要设 `OMNI_KIT_ACCEPT_EULA=YES`）渲出 g1d、g1d_mobile、x5、franka 四张，拷到部署机同一路径。两版 G1-D 外观相同（移动版只多底盘自由度），靠「变体」区分。验证：`test_server.py`（renders 扫描）、ruff；四张图逐张看过。

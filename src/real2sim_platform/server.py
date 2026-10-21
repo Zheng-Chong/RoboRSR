@@ -1,7 +1,7 @@
 """Real2Sim data-collection platform: scene reconstruction, object assets, task collection and data QA in one web page.
 
 Stdlib only (any python3 >= 3.10, no Isaac). On start, and on "从项目同步" in the page, it scans:
-    real2sim/scenes/<dir>/                reference photos, camera fit, USD, check_report.json, previews
+    real2sim/scenes/<dir>/                reference photos, camera fit, USD, check_report.json, previews, RTX render, GLB
     task/RoboDojo/config/<task>.yml       tasks (scripts/internal/task_inventory.py), objects of the G1-D tasks
     <assets>/Object/RoboDojo/<id>/        metadata.json / description.json of those objects
     <assets>/Eval_Layout/RoboDojo/<cfg>/  eval layouts per task and env config
@@ -62,7 +62,7 @@ EMBODIMENT_ID = re.compile(r"[a-z][a-z0-9_]*")  # robot_name, e.g. g1d, g1d_mobi
 EVALS_DIR = ROOT / "real2sim" / "evals"  # <id>/request.json from the platform, <id>/result.json from the coding agent
 EVAL_ID = re.compile(r"[a-z0-9][a-z0-9_-]*")  # also the policy name in eval_result/, e.g. openwam-step1000-20261021
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
-SERVED_SUFFIXES = IMAGE_SUFFIXES | {".mp4", ".webm", ".md", ".json"}
+SERVED_SUFFIXES = IMAGE_SUFFIXES | {".mp4", ".webm", ".md", ".json", ".glb"}
 MAX_UPLOAD = 25 << 20
 # images and videos: fresh for a minute, then shown from cache at once while the ETag is rechecked in the background,
 # so a re-rendered preview appears on the next visit; private, because they are only served to signed-in users
@@ -249,6 +249,8 @@ def scan_scenes():
             "photos": images(d / "reference"),
             "registered": (d / "registration.json").is_file(),
             "previews": sorted(str(p) for p in (d / "preview").glob("*.jpg")),
+            "renders": images(d / "preview" / "render"),  # scripts/scenes/render_scenes.py
+            "model": str(d / "preview" / "scene.glb") if (d / "preview" / "scene.glb").is_file() else None,
             "top_z": table.get("top_z"),
             "size": [table.get("length"), table.get("width")],
             "checks_total": len(checks),

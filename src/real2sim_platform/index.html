@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Real2Sim 数采管理平台</title>
+<!-- three.js for the scene 3D view, fetched by the browser from the npm mirror only when a scene drawer shows a model -->
+<script type="importmap">{"imports": {"three": "https://registry.npmmirror.com/three/0.169.0/files/build/three.module.min.js",
+  "three/addons/": "https://registry.npmmirror.com/three/0.169.0/files/examples/jsm/"}}</script>
 <style>
 :root {
   --bg: #F6F8FB; --surface: #FFFFFF; --surface-2: #F1F5F9; --surface-3: #E8EDF4;
@@ -213,6 +216,14 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
 .media .inset { position: absolute; right: 8px; bottom: 8px; width: 34%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border: 2px solid #fff; border-radius: 6px; box-shadow: var(--shadow-2); }
 .media .pills { position: absolute; top: 8px; left: 8px; display: flex; gap: 4px; }
 .pill { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; border-radius: 6px; background: rgba(15, 23, 42, .72); color: #fff; font: 500 11px var(--mono); }
+.m3d { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: #EEF2F7; }
+.m3d:fullscreen { border: 0; border-radius: 0; }
+.m3d canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.m3d canvas:active { cursor: grabbing; }
+.m3d-status { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; color: var(--muted); font-size: 13px; text-align: center; pointer-events: none; }
+.m3d-bar { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
+.m3d-bar .btn { min-height: 28px; padding: 3px 9px; font-size: 12px; background: rgba(255, 255, 255, .9); }
+.m3d-hint { position: absolute; left: 8px; bottom: 8px; padding: 2px 7px; border-radius: 6px; background: rgba(15, 23, 42, .6); color: #fff; font-size: 11px; pointer-events: none; }
 .mcard-b { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px 12px; }
 .mcard-t { display: flex; align-items: baseline; gap: 8px; }
 .mcard-t b { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
@@ -820,10 +831,10 @@ const sceneDatalists = () => `<datalist id="dl-scene-types">${SCENE_TYPES.map((t
 const g1dTasks = () => live(S.task).filter((t) => t.auto.dimension === 'custom').map((t) => t.id).sort();
 function viewScenes() {
   const cardsHtml = S.scene.map((d) => {
-    const a = d.auto, rs = evalStages(SCENE_STAGES, d), cover = (a.previews || []).find((p) => /compar/.test(p)) || a.previews?.[0] || a.photos?.[0];
+    const a = d.auto, rs = evalStages(SCENE_STAGES, d), cover = sceneImage(d);
     return `<article class="card mcard" data-open="scene" data-id="${esc(d.id)}" tabindex="0" role="button" aria-label="打开场景 ${esc(d.id)}">
       <div class="media r169">${cover ? `<img loading="lazy" decoding="async" src="${file(cover)}" alt="">` : ic('image', 'ic-lg')}
-        <div class="pills">${(a.configs || []).map((c) => `<span class="pill">${esc(c)}</span>`).join('')}</div></div>
+        <div class="pills">${(a.configs || []).map((c) => `<span class="pill">${esc(c)}</span>`).join('')}${a.model ? `<span class="pill" title="可在详情里 3D 预览">${ic('cube', 'ic-sm')}3D</span>` : ''}</div></div>
       <div class="mcard-b"><div class="mcard-t"><b>${esc(sceneName(d))}</b>${d.registered ? '<span class="tag">已登记</span>' : ''}${missingBadge(d)}</div>
         ${d.reg?.name ? `<div class="small muted mono" style="margin-top:-4px">${esc(d.id)}</div>` : ''}
         <div class="small muted">${esc(sceneDims(d))} · 照片 ${a.photos?.length || 0} · 预览 ${a.previews?.length || 0}</div>${progress(rs)}${stageChips(rs)}</div></article>`;
@@ -861,7 +872,7 @@ function sceneBrief(d) {  // the task for a coding agent that builds this scene 
     `1. 从最接近的已有场景复制目录开始（real_scene3_lab 是照片拟合的最新写法），在 ${dir}/ 下写 fit_photo.py、build_scene.py、check_scene.py、preview.py 和 PLAN.md；${r.charuco ? '先用 scripts/scenes/charuco.py solve 求出每张照片的相机位姿，作为强先验。' : '没有标定板，相机位姿从照片里的桌角和桌沿拟合。'}`,
     '2. 卷尺实测是硬约束：把 registration.json 的 measurements 原样抄进新建的 scene_spec.json，拟合时把桌高、长、宽固定成实测值；建好后 python scripts/scenes/acceptance.py 里每项误差 < 1 cm。',
     '3. 灯光按登记的光源和色温建模，房间要有天花板；lighting.status 写 recorded（和头部相机画面比对过才算 matched）。碰撞体每个凸包 ≤ 64 个顶点、单面 ≤ 32 个顶点。',
-    `4. 在 scripts/g1d/build_asset.py 的 SCENES 里加一行，新增 env_cfg/g1d_${slug}.yml 和 env_cfg/robot/g1d_${slug}.yml；在 5090-2 的隔离目录跑 build_asset.py 和一次 scripted_demo，检查四路相机画面。和照片对比的渲染图放到 ${dir}/preview/（jpg），平台据此显示。装进共享资产库前先征得同意。`,
+    `4. 在 scripts/g1d/build_asset.py 的 SCENES 里加一行，新增 env_cfg/g1d_${slug}.yml 和 env_cfg/robot/g1d_${slug}.yml；在 5090-2 的隔离目录跑 build_asset.py 和一次 scripted_demo，检查四路相机画面。和照片对比的渲染图放到 ${dir}/preview/（jpg），平台据此显示；再按 SKILL「接入和登记」跑 scripts/scenes/export_glb.py（3D 预览）和 render_scenes.py（卡片封面），preview/ 同步到部署机。装进共享资产库前先征得同意。`,
     `5. 提交场景目录（含 registration.json、照片、scene_spec.json）、build_asset.py 和 env 配置，更新 real2sim/ASSETS.md 的场景行。`,
   ].filter((line) => line !== null).join('\n');
 }
@@ -914,7 +925,12 @@ function drawerScene(d) {
     + '# 装入 Assets/Room/ 并为各场景配置生成 G1-D 布局（改共享库前先在隔离目录验证、征得同意并备份）\npython scripts/g1d/build_asset.py';
   return {
     title: sceneName(d), sub: `${dir} · ${sceneDims(d)} · env 配置 ${(a.configs || []).join('、') || '—'}`,
-    body: `${sec('验收进度', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
+    body: `${a.model ? sec(`${ic('cube')}3D 预览`, `<div class="m3d" data-model="${esc(file(a.model))}"><canvas aria-label="场景 3D 模型，拖拽旋转"></canvas>
+      <div class="m3d-status">加载中…</div><div class="m3d-hint">左键拖拽旋转 · 右键拖拽平移 · 滚轮缩放</div>
+      <div class="m3d-bar"><button class="btn" type="button" onclick="VIEWER?.toggleRoom(this)" title="墙、天花板和背景家具，地面保留">隐藏房间</button><button class="btn" type="button" onclick="VIEWER?.reset()">重置视角</button>
+      <button class="btn" type="button" onclick="VIEWER?.el.requestFullscreen?.()">全屏</button></div></div>`, ' <span class="muted small">preview/scene.glb · scripts/scenes/export_glb.py</span>') : ''}
+    ${a.renders?.length ? sec(`${ic('image')}仿真渲染`, gallery(`scene-renders-${d.id}`, a.renders), ' <span class="muted small">Isaac RTX · scripts/scenes/render_scenes.py</span>') : ''}
+    ${sec('验收进度', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
     ${a.checks_failed?.length ? `<div class="callout bad" style="margin-top:12px">${ic('alert')}<div><b>未通过的离线检查</b><br>${a.checks_failed.map(esc).join('<br>')}</div></div>` : ''}
     ${sec('验收录入', `<div class="form">
       ${row('实测桌高 (m)', 'measured_top_z', inp(d, 'measured_top_z', 'number', 'step="0.001"'), `仿真 ${a.top_z ?? '—'} m`)}
@@ -1661,7 +1677,7 @@ const objLabel = (oid) => { const o = S.object.find((x) => x.id === oid); return
 // pickers: a search list with thumbnails; hovering a row or a picked chip shows a larger preview card. Keys "sc-*" pick
 // scenes, the others objects.
 const objImage = (o) => o?.auto.renders?.[0] || o?.auto.photos?.[0];
-const sceneImage = (s) => (s?.auto.previews || []).find((x) => /compar/.test(x)) || s?.auto.previews?.[0] || s?.auto.photos?.[0];
+const sceneImage = (s) => s?.auto.renders?.[0] || (s?.auto.previews || []).find((x) => /compar/.test(x)) || s?.auto.previews?.[0] || s?.auto.photos?.[0];
 const PICK = {
   obj: {
     all: () => live(S.object).sort((x, y) => Number(ownObj(y)) - Number(ownObj(x)) || x.id.localeCompare(y.id)),
@@ -2671,6 +2687,95 @@ function renderDrawer() {
   if (scroll) $('#drawer .dr-b').scrollTop = scroll;
   if (UI.drawerFocus) { UI.drawerFocus = false; $('#drawer .dr-close').focus({preventScroll: true}); }
 }
+
+// scene 3D view of preview/scene.glb (scripts/scenes/export_glb.py, Y-up, room under /World/Background). The drawer is
+// re-rendered on every change, so the live viewer node is put back in place of the new slot; closing the drawer frees it
+let VIEWER = null;
+function mountModel() {
+  const slot = $('#drawer [data-model]');
+  if (VIEWER && slot?.dataset.model === VIEWER.url) { slot.replaceWith(VIEWER.el); return; }
+  VIEWER?.stop();
+  VIEWER = slot ? startViewer(slot) : null;
+}
+function startViewer(el) {
+  const v = {url: el.dataset.model, el, stopped: false, stop() { this.stopped = true; this.free?.(); }};
+  const status = el.querySelector('.m3d-status');
+  Promise.all(['three', 'three/addons/controls/OrbitControls.js', 'three/addons/loaders/GLTFLoader.js', 'three/addons/environments/RoomEnvironment.js'].map((m) => import(m)))
+    .then(async ([THREE, {OrbitControls}, {GLTFLoader}, {RoomEnvironment}]) => {
+      if (v.stopped) return;
+      status.textContent = '加载模型…';
+      const gltf = await new GLTFLoader().loadAsync(v.url, (e) => {
+        status.textContent = `加载模型 ${e.total ? `${Math.round((100 * e.loaded) / e.total)}%` : `${(e.loaded / 1e6).toFixed(1)} MB`}`;
+      });
+      if (v.stopped) return;
+      const canvas = el.querySelector('canvas'), renderer = new THREE.WebGLRenderer({canvas, antialias: true});
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      renderer.toneMapping = THREE.NeutralToneMapping;
+      const scene = new THREE.Scene(), pmrem = new THREE.PMREMGenerator(renderer);
+      scene.background = new THREE.Color(0xeef2f7);
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+      sun.position.set(2, 6, 3);
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f99, 0.5), sun, gltf.scene);
+      // walls and ceiling are single-sided and face inward, so they drop out when looking in from outside the room
+      const meshes = [];
+      gltf.scene.traverse((o) => o.isMesh && meshes.push(o));
+      const inRoom = (o) => (o.userData.name || '').startsWith('/World/Background/');  // the USD path; o.name drops "/"
+      v.room = meshes.filter((o) => inRoom(o) && !/\/Floor/i.test(o.userData.name));
+      const focus = new THREE.Box3();
+      for (const o of meshes.filter((m) => !inRoom(m))) focus.expandByObject(o);
+      if (focus.isEmpty()) focus.setFromObject(gltf.scene);
+      const centre = focus.getCenter(new THREE.Vector3()), size = focus.getSize(new THREE.Vector3()).length();
+      const camera = new THREE.PerspectiveCamera(45, 1, 0.02, 200), controls = new OrbitControls(camera, canvas);
+      controls.enableDamping = true;
+      controls.screenSpacePanning = true;
+      controls.maxPolarAngle = 0.49 * Math.PI;  // stay above the floor
+      v.reset = () => {  // front-right, above: the robot stands at -y in USD, which is +z here
+        camera.position.copy(centre).addScaledVector(new THREE.Vector3(0.55, 0.6, 1).normalize(), 1.1 * size + 0.8);
+        controls.target.copy(centre);
+        controls.update();
+      };
+      v.toggleRoom = (btn) => {
+        const show = !v.room[0]?.visible;
+        for (const o of v.room) o.visible = show;
+        btn.textContent = show ? '隐藏房间' : '显示房间';
+      };
+      const resize = () => {
+        const w = el.clientWidth, h = el.clientHeight;
+        if (!w || !h) return;
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      };
+      const observer = new ResizeObserver(resize);
+      observer.observe(el);
+      resize();
+      v.reset();
+      renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+      status.hidden = true;
+      v.free = () => {
+        renderer.setAnimationLoop(null);
+        observer.disconnect();
+        controls.dispose();
+        scene.traverse((o) => {
+          o.geometry?.dispose();
+          for (const m of [o.material].flat().filter(Boolean)) {
+            for (const t of Object.values(m).filter((x) => x?.isTexture)) t.dispose();
+            m.dispose();
+          }
+        });
+        scene.environment.dispose();
+        pmrem.dispose();
+        renderer.dispose();
+        renderer.forceContextLoss();
+      };
+      if (v.stopped) v.free();
+    })
+    .catch((err) => {
+      if (!v.stopped) status.textContent = `3D 预览加载失败：${err.message || err}（three.js 从 registry.npmmirror.com 加载，内网环境需能访问它）`;
+    });
+  return v;
+}
 function onKey(ev) {
   if ($('#lightbox').classList.contains('on')) {
     if (ev.key === 'Escape') closeLB();
@@ -2718,6 +2823,7 @@ function render() {
   if (oldVideos && slot && oldVideos.dataset.ep === slot.dataset.ep) slot.replaceWith(oldVideos);  // keep playback position
   if (scroll && $('.qa-list')) $('.qa-list').scrollTop = scroll;
   renderDrawer();
+  mountModel();
   const el = focus && document.getElementById(focus);
   if (el && el !== document.activeElement && !opening) {
     el.focus({preventScroll: true});
