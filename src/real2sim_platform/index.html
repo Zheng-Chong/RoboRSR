@@ -1251,7 +1251,7 @@ function drawerTask(d) {
 }
 const TASK_WIZ = [
   ['任务定义', '新建一个 G1-D 任务，或给已有任务登记泛化方案。任务定义和成功判据要写清楚：语言指令由 coding agent 从定义总结并转写，判据会变成 run_reward 里的检查。'],
-  ['物体与干扰物', '每个角色是任务里的一类物体（对应任务配置的 label），从物体资产里选它可用的物体；干扰物另选。只勾选位置、朝向是否每回合随机，具体范围由 coding agent 定。'],
+  ['物体与干扰物', '每个角色是任务里的一类物体（对应任务配置的 label），从物体资产里选它可用的物体；干扰物另选。位置、朝向的随机在第 4 步 L1 里设。'],
   ['可用场景', '训练场景用于采集数据；L4 保留场景只在评测时出现，不进训练。'],
   ['泛化等级', '每一级只改变一个因素，其余与 L0 相同。范围和目标布局数都可以改，也可以补充其他泛化维度。'],
 ];
@@ -1259,81 +1259,103 @@ const HANDS = {'': '未定', left: '左手', right: '右手', either: '任一手
 const INST_LANGS = {zh: '中文', en: '英文'};
 let CLUTTER = {};  // {category: instances} of the Clutter library, loaded when the task wizard opens
 const CLUTTER_N = () => (Object.keys(CLUTTER).length ? `${Object.keys(CLUTTER).length} 类、${sum(Object.values(CLUTTER))} 个` : '镜像里没有');
-const SCENE_USES = {'': '不用', train: '训练', holdout: 'L4 保留'};
 const EXTRA_PRESETS = ['桌高 ±5 cm', '机器人站位 ±3 cm', '物体初始姿态（倒放 / 侧放）', '控制延迟 / 动作噪声'];
 const langText = (ins) => (ins?.languages || []).map((l) => INST_LANGS[l] || l).join('、');
 const instText = (ins) => `${langText(ins)}${ins.languages.length > 1 ? '各' : ''} ${ins.count} 条`;
-let NT = null;  // the task wizard's lists: {roles: [{label, candidates, count, randomize}], dis, holdout}
+let NT = null;  // the task wizard's lists: {roles: [{label, candidates, count}], dis, holdout, scenes: {train, holdout}}
 const RANDOMIZE = {position: '位置', yaw: '朝向'};
-const newRole = (label = '', candidates = []) => ({label, candidates, count: 1, randomize: ['position', 'yaw']});
-const ntList = (key) => (key === 'dis' ? NT.dis.candidates : key === 'hold' ? NT.holdout : NT.roles[Number(key.slice(1))].candidates);
+const newRole = (label = '', candidates = []) => ({label, candidates, count: 1});
+const ntList = (key) => ({dis: NT.dis.candidates, hold: NT.holdout, 'sc-train': NT.scenes.train, 'sc-holdout': NT.scenes.holdout})[key]
+  || NT.roles[Number(key.slice(1))].candidates;
 const objLabel = (oid) => { const o = S.object.find((x) => x.id === oid); return o ? `${objName(o)} · ${oid}` : oid; };
-// object picker: a search list with thumbnails; hovering a row or a picked chip shows a larger preview card
+// pickers: a search list with thumbnails; hovering a row or a picked chip shows a larger preview card. Keys "sc-*" pick
+// scenes, the others objects.
 const objImage = (o) => o?.auto.renders?.[0] || o?.auto.photos?.[0];
-const objPicker = (key, ph = '搜索物体名称、类别或 id') => `<div class="chips" id="nt-chips-${key}">${ntChips(key)}</div>
-  <div class="opick"><input type="search" placeholder="${ph}" autocomplete="off" aria-label="添加物体" aria-controls="opick-${key}" aria-expanded="false"
+const sceneImage = (s) => (s?.auto.previews || []).find((x) => /compar/.test(x)) || s?.auto.previews?.[0] || s?.auto.photos?.[0];
+const PICK = {
+  obj: {
+    all: () => live(S.object).sort((x, y) => Number(ownObj(y)) - Number(ownObj(x)) || x.id.localeCompare(y.id)),
+    get: (id) => S.object.find((x) => x.id === id), name: objName, img: objImage, icon: 'cube',
+    text: (o) => `${o.id} ${objName(o)} ${o.name_en || ''} ${o.auto.category}`,
+    empty: '没有匹配的物体；新物体先在「物体资产」登记',
+    card: (o) => `<div class="small">${measured(o) ? `实测 ${esc(dimText(o))} mm · ${o.real_mass} g` : `仿真 ${mm(o.auto.size)} mm${num(o.auto.mass) ? ` · ${(o.auto.mass * 1000).toFixed(0)} g` : ''}`}</div>
+      <div class="small muted">${o.auto.in_library ? '资产库已有' : o.auto.built ? '已建好，未装共享库' : '还没建模'}${o.auto.renders?.length ? '' : o.auto.photos?.length ? ' · 图为实拍' : ''}</div>`,
+  },
+  scene: {
+    all: () => live(S.scene).sort((x, y) => Number(Boolean(y.auto.configs?.length)) - Number(Boolean(x.auto.configs?.length)) || x.id.localeCompare(y.id)),
+    get: (id) => S.scene.find((x) => x.id === id), name: sceneName, img: sceneImage, icon: 'scan',
+    text: (s) => `${s.id} ${sceneName(s)} ${s.reg?.name_en || ''} ${s.reg?.scene_type || ''} ${(s.auto.configs || []).join(' ')}`,
+    empty: '没有匹配的场景；新场景先在「场景重建」登记',
+    card: (s) => `<div class="small">${esc(sceneDims(s))}</div>
+      <div class="small muted">${s.auto.configs?.length ? `env 配置 ${esc(s.auto.configs.join('、'))}` : '还没建模'} · 照片 ${s.auto.photos?.length || 0}</div>`,
+  },
+};
+const pickSrc = (key) => PICK[key.startsWith('sc-') ? 'scene' : 'obj'];
+const pickLabel = (key, id) => { const x = pickSrc(key).get(id); return x ? `${pickSrc(key).name(x)} · ${id}` : id; };
+const picker = (key, ph = '搜索物体名称、类别或 id') => `<div class="chips" id="nt-chips-${key}">${ntChips(key)}</div>
+  <div class="opick"><input type="search" placeholder="${ph}" autocomplete="off" aria-label="${ph}" aria-controls="opick-${key}" aria-expanded="false"
     oninput="opickOpen('${key}', this)" onfocus="opickOpen('${key}', this)" onblur="setTimeout(() => opickClose('${key}'), 150)" onkeydown="opickKey(event, '${key}', this)">
   <div class="opick-list" id="opick-${key}" role="listbox" hidden></div></div>`;
-const ntChips = (key) => ntList(key).map((oid, i) => {
-  const o = S.object.find((x) => x.id === oid), img = objImage(o);
-  return `<span class="tag obj-chip" onmouseenter="objPreview(this, '${esc(oid)}')" onmouseleave="objPreview()">${img ? `<img src="${file(img)}" alt="">` : ''}${esc(objLabel(oid))}
-    <button type="button" class="tag-x" aria-label="移除 ${esc(oid)}" onclick="objPreview(); unpickObj('${key}', ${i})">${ic('close', 'ic-sm')}</button></span>`;
+const objPicker = picker;
+const ntChips = (key) => ntList(key).map((id, i) => {
+  const img = pickSrc(key).img(pickSrc(key).get(id));
+  return `<span class="tag obj-chip" onmouseenter="pickPreview(this, '${key}', '${esc(id)}')" onmouseleave="pickPreview()">${img ? `<img src="${file(img)}" alt="">` : ''}${esc(pickLabel(key, id))}
+    <button type="button" class="tag-x" aria-label="移除 ${esc(id)}" onclick="pickPreview(); unpickObj('${key}', ${i})">${ic('close', 'ic-sm')}</button></span>`;
 }).join('');
-function opickMatches(q) {
-  q = q.trim().toLowerCase();
-  return live(S.object).filter((o) => !q || `${o.id} ${objName(o)} ${o.name_en || ''} ${o.auto.category}`.toLowerCase().includes(q))
-    .sort((x, y) => Number(ownObj(y)) - Number(ownObj(x)) || x.id.localeCompare(y.id)).slice(0, 40);
-}
 function opickOpen(key, el) {
-  const list = $(`#opick-${key}`), picked = ntList(key), rows = opickMatches(el.value);
-  list.innerHTML = rows.length ? rows.map((o, i) => `<div class="opick-item${i ? '' : ' on'}" role="option" data-oid="${esc(o.id)}" aria-selected="${picked.includes(o.id)}"
-      onmousedown="event.preventDefault(); pickObjId('${key}', this.dataset.oid)" onmouseenter="opickHover(this)">
-      <span class="thumb">${objImage(o) ? `<img loading="lazy" src="${file(objImage(o))}" alt="">` : ic('cube')}</span>
-      <span class="opick-t"><b>${esc(objName(o))}</b><small class="mono">${esc(o.id)}</small></span>${picked.includes(o.id) ? `<span class="st ok">${ic('check')}已选</span>` : ''}</div>`).join('')
-    : '<div class="opick-empty small muted">没有匹配的物体；新物体先在「物体资产」登记</div>';
+  const s = pickSrc(key), q = el.value.trim().toLowerCase(), list = $(`#opick-${key}`), picked = ntList(key);
+  const rows = s.all().filter((x) => !q || s.text(x).toLowerCase().includes(q)).slice(0, 40);
+  list.innerHTML = rows.length ? rows.map((x, i) => `<div class="opick-item${i ? '' : ' on'}" role="option" data-oid="${esc(x.id)}" aria-selected="${picked.includes(x.id)}"
+      onmousedown="event.preventDefault(); pickObjId('${key}', this.dataset.oid)" onmouseenter="opickHover(this, '${key}')">
+      <span class="thumb">${s.img(x) ? `<img loading="lazy" src="${file(s.img(x))}" alt="">` : ic(s.icon)}</span>
+      <span class="opick-t"><b>${esc(s.name(x))}</b><small class="mono">${esc(x.id)}</small></span>${picked.includes(x.id) ? `<span class="st ok">${ic('check')}已选</span>` : ''}</div>`).join('')
+    : `<div class="opick-empty small muted">${s.empty}</div>`;
   list.hidden = false;
   el.setAttribute('aria-expanded', 'true');
-  objPreview(list.querySelector('.opick-item.on'), rows[0]?.id);
+  pickPreview(list.querySelector('.opick-item.on'), key, rows[0]?.id);
 }
 function opickClose(key) {
   const list = $(`#opick-${key}`);
   if (!list) return;
   list.hidden = true;
   list.previousElementSibling?.setAttribute('aria-expanded', 'false');
-  objPreview();
+  pickPreview();
 }
-function opickHover(item) {
+function opickHover(item, key) {
   item.parentElement.querySelectorAll('.opick-item.on').forEach((x) => x.classList.remove('on'));
   item.classList.add('on');
-  objPreview(item, item.dataset.oid);
+  pickPreview(item, key, item.dataset.oid);
 }
-function opickKey(ev, key, el) {
+function opickKey(ev, key) {
   const list = $(`#opick-${key}`), items = [...list.querySelectorAll('.opick-item')], at = items.findIndex((x) => x.classList.contains('on'));
   if (ev.key === 'Escape') { opickClose(key); return; }
   if (!items.length || !['ArrowDown', 'ArrowUp', 'Enter'].includes(ev.key)) return;
   ev.preventDefault();
   if (ev.key === 'Enter') { pickObjId(key, items[Math.max(at, 0)].dataset.oid); return; }
   const next = items[(at + (ev.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length];
-  opickHover(next);
+  opickHover(next, key);
   next.scrollIntoView({block: 'nearest'});
 }
-function pickObjId(key, oid) {
+function pickObjId(key, id) {
   const list = ntList(key);
-  if (!list.includes(oid)) list.push(oid);
+  if (!list.includes(id)) list.push(id);
+  const other = {'sc-train': 'sc-holdout', 'sc-holdout': 'sc-train'}[key];  // a scene trains or is held out, not both
+  if (other && ntList(other).includes(id)) {
+    ntList(other).splice(ntList(other).indexOf(id), 1);
+    $(`#nt-chips-${other}`).innerHTML = ntChips(other);
+  }
   $(`#nt-chips-${key}`).innerHTML = ntChips(key);
-  const input = $(`#opick-${key}`).previousElementSibling;
-  input.value = '';
-  opickOpen(key, input);
+  const input = $(`#opick-${key}`)?.previousElementSibling;
+  if (input && document.activeElement === input) { input.value = ''; opickOpen(key, input); }
 }
 function unpickObj(key, i) { ntList(key).splice(i, 1); $(`#nt-chips-${key}`).innerHTML = ntChips(key); }
-function objPreview(anchor, oid) {  // a card beside `anchor`, or hidden without arguments
-  const card = $('#obj-preview'), o = oid && S.object.find((x) => x.id === oid);
-  if (!anchor || !o) { card.hidden = true; return; }
-  const img = objImage(o), a = o.auto;
-  card.innerHTML = `<div class="op-img">${img ? `<img src="${file(img)}" alt="">` : `${ic('cube', 'ic-lg')}<span class="small muted">没有渲染图和实拍照片</span>`}</div>
-    <div class="op-b"><b>${esc(objName(o))}</b><div class="mono small muted">${esc(o.id)}</div>
-    <div class="small">${measured(o) ? `实测 ${esc(dimText(o))} mm · ${o.real_mass} g` : `仿真 ${mm(a.size)} mm${num(a.mass) ? ` · ${(a.mass * 1000).toFixed(0)} g` : ''}`}</div>
-    <div class="small muted">${a.in_library ? '资产库已有' : a.built ? '已建好，未装共享库' : '还没建模'}${a.renders?.length ? '' : a.photos?.length ? ' · 图为实拍' : ''}</div></div>`;
+function addBuiltScenes() { live(S.scene).filter((s) => s.auto.configs?.length).forEach((s) => pickObjId('sc-train', s.id)); }
+function pickPreview(anchor, key, id) {  // a card beside `anchor`, or hidden without arguments
+  const card = $('#obj-preview'), s = key && pickSrc(key), x = id && s.get(id);
+  if (!anchor || !x) { card.hidden = true; return; }
+  const img = s.img(x);
+  card.innerHTML = `<div class="op-img">${img ? `<img src="${file(img)}" alt="">` : `${ic(s.icon, 'ic-lg')}<span class="small muted">没有图片</span>`}</div>
+    <div class="op-b"><b>${esc(s.name(x))}</b><div class="mono small muted">${esc(x.id)}</div>${s.card(x)}</div>`;
   card.hidden = false;
   const r = anchor.getBoundingClientRect(), w = card.offsetWidth, h = card.offsetHeight;
   const left = r.left - w - 12 >= 8 ? r.left - w - 12 : Math.min(r.right + 12, innerWidth - w - 8);
@@ -1346,9 +1368,6 @@ function renderRoles() {
     ${wzFld(`nt-role-${i}`, `角色 ${i + 1}`, `<input id="nt-role-${i}" class="mono" value="${esc(r.label)}" placeholder="source_cup" autocomplete="off" oninput="NT.roles[${i}].label = this.value.trim()">`, {req: true, hint: '任务配置的 label，字母数字下划线'})}
     ${wzFld(`nt-count-${i}`, '每回合数量', `<input id="nt-count-${i}" type="number" min="1" step="1" value="${r.count}" oninput="NT.roles[${i}].count = ntNum(this.value)">`)}
     <div class="fld wide"><label>候选物体<em aria-hidden="true">*</em></label>${objPicker(`r${i}`)}<small>每回合从中选；评测保留的实例在第 4 步 L3 里选，不要放这里</small></div>
-    <div class="fld"><label>每回合随机</label><div class="toggles">${Object.entries(RANDOMIZE).map(([k, t]) => `<label class="toggle"><input type="checkbox" ${r.randomize.includes(k) ? 'checked' : ''}
-      onchange="NT.roles[${i}].randomize = this.checked ? [...NT.roles[${i}].randomize, '${k}'] : NT.roles[${i}].randomize.filter((x) => x !== '${k}')"><span>${ic('check')}${t}</span></label>`).join('')}</div>
-      <small>具体范围由 coding agent 按可达范围和物体尺寸设定</small></div>
     <div class="fld" style="justify-content:flex-end">${NT.roles.length > 1 ? `<button class="btn" type="button" onclick="NT.roles.splice(${i}, 1); renderRoles()">${ic('trash')}删除角色</button>` : ''}</div></div></div>`).join('');
 }
 function drawerNewTask() {
@@ -1356,7 +1375,6 @@ function drawerNewTask() {
   const text = (id, ph = '', attrs = '') => `<input id="${id}" placeholder="${esc(ph)}" autocomplete="off" ${attrs}>`;
   const note = (id, ph, rows = 2) => `<textarea id="${id}" rows="${rows}" placeholder="${esc(ph)}"></textarea>`;
   const existing = live(S.task).filter((t) => t.auto.dimension === 'custom' && t.auto.module && !t.registered).map((t) => t.id).sort();
-  const scenes = live(S.scene);
   return {
     title: '登记任务', sub: '登记后生成给 coding agent 的实现任务；实现后同步，流程自动推进',
     body: `<datalist id="dl-task-objs">${live(S.object).map((o) => `<option value="${esc(o.id)}" label="${esc(objName(o))}">`).join('')}</datalist>${wzNav(TASK_WIZ)}
@@ -1384,15 +1402,17 @@ function drawerNewTask() {
         <small>杂物库是共享资产库的 Object/RoboDojo/Clutter/（${CLUTTER_N()}），由其中的 clutter.yml 索引；任务配置的 Clutter 段引用它，生成布局时按数量和区域随机摆放。</small>
         <div id="nt-clutter" hidden>${Object.keys(CLUTTER).length ? `<div class="toggles clutter-cats">${Object.entries(CLUTTER).map(([c, n]) => `<label class="toggle"><input type="checkbox" data-clutter="${esc(c)}"><span>${ic('check')}${esc(c)} <small class="muted">${n}</small></span></label>`).join('')}</div>
           <small>只取选中的类别；一个都不选就是整个杂物库。杂物没有渲染图，只显示类别名。</small>` : '<small class="txt-bad">资产库镜像里没有杂物库，无法列出类别；不选就是整个杂物库。</small>'}</div></div></div>`)}`)}
-    ${pane(2, group('场景', scenes.length ? `<div class="table-wrap"><table class="plain"><thead><tr><th>场景</th><th>env 配置</th><th style="width:130px">用途</th></tr></thead><tbody>
-      ${scenes.map((s) => `<tr><td><b>${esc(sceneName(s))}</b><div class="t-sub mono">${esc(s.id)}</div></td>
-        <td class="small mono">${esc((s.auto.configs || []).join('、') || '还没建模')}</td>
-        <td><select data-scene-use="${esc(s.id)}" aria-label="${esc(s.id)} 用途">${opts(SCENE_USES, '')}</select></td></tr>`).join('')}</tbody></table></div>
-      <small class="muted">还没建模的场景也能选，coding agent 会在场景建好后再生成它的布局。</small>` : empty('scan', '还没有场景', '先在「场景重建」登记')))}
+    ${pane(2, `${group('训练场景', `${picker('sc-train', '搜索场景名称、类型、id 或 env 配置')}
+      <div class="presets"><button type="button" onclick="addBuiltScenes()">${ic('plus', 'ic-sm')}加入全部已建模场景</button></div>
+      <small class="muted">采集训练数据用；还没建模的场景也能选，coding agent 等它建好再生成布局。</small>`)}
+    ${group('L4 保留场景 <span class="opt">选了 L4 才需要</span>', `${picker('sc-holdout', '搜索场景名称、类型、id 或 env 配置')}
+      <small class="muted">只在评测时出现，不进训练；选进这里会自动从训练场景里移走。</small>`)}`)}
     ${pane(3, `${group('等级', LEVELS.map(([k, name, range, target]) => `<div class="nt-level">
       <label class="toggle"><input type="checkbox" data-level="${k}" ${k === 'L0' ? 'checked' : ''}><span>${ic('check')}<b class="mono">${k}</b> ${name}</span></label>
       <div class="wz-grid"><div class="fld wide"><label for="nt-range-${k}">变化因素与范围</label><textarea id="nt-range-${k}" rows="2">${esc(range)}</textarea></div>
       <div class="fld"><label for="nt-ltarget-${k}">目标布局数</label><input id="nt-ltarget-${k}" type="number" min="0" step="5" value="${target}"></div></div>
+      ${k === 'L1' ? `<div class="fld" style="margin-top:10px"><label>随机的维度</label><div class="toggles">${Object.entries(RANDOMIZE).map(([r, txt]) => `<label class="toggle"><input type="checkbox" data-random="${r}" checked><span>${ic('check')}${txt}</span></label>`).join('')}</div>
+        <small>训练布局也按这些维度随机；具体范围由 coding agent 按可达范围和物体尺寸设定。都不勾就是全部固定摆放。</small></div>` : ''}
       ${k === 'L3' ? `<div class="fld" style="margin-top:10px"><label>保留实例（不进训练）</label>${objPicker('hold', '没见过的尺寸、颜色、材质的物体')}</div>` : ''}</div>`).join(''))}
     ${group('其他泛化 <span class="opt">可选</span>', `<textarea id="nt-extra" rows="3" placeholder="上面五级没覆盖的维度和范围"></textarea>
       <div class="presets">${EXTRA_PRESETS.map((t) => `<button type="button" onclick="addExtra(this)">${ic('plus', 'ic-sm')}${esc(t)}</button>`).join('')}</div>`)}
@@ -1405,7 +1425,7 @@ function drawerNewTask() {
 }
 async function openNewTask(btn) {
   try { CLUTTER = await api('/api/clutter'); } catch { CLUTTER = {}; }
-  NT = {roles: [newRole()], dis: {candidates: []}, holdout: []};
+  NT = {roles: [newRole()], dis: {candidates: []}, holdout: [], scenes: {train: [], holdout: []}};
   WZ = {steps: TASK_WIZ, check: taskWizError};
   WIZ_AT = 0;
   openDrawer('new-task', 'new', btn);
@@ -1457,11 +1477,11 @@ function taskWizError() {  // [message, field selector] blocking the current ste
     const lo = ntNum($('#nt-dis-min').value), hi = ntNum($('#nt-dis-max').value);
     if (lo != null && hi != null && lo > hi) return ['干扰物最少数量不能大于最多数量', '#nt-dis-min'];
   }
-  if (WIZ_AT === 2 && ![...$$('[data-scene-use]')].some((s) => s.value === 'train')) return ['至少选一个训练场景', '[data-scene-use]'];
+  if (WIZ_AT === 2 && !NT.scenes.train.length) return ['至少选一个训练场景', '#nt-chips-sc-train + .opick input'];
   if (WIZ_AT === 3) {
     const levels = [...$$('[data-level]:checked')].map((c) => c.dataset.level);
     if (!levels.length) return ['至少选一个泛化等级', '[data-level]'];
-    if (levels.includes('L4') && ![...$$('[data-scene-use]')].some((s) => s.value === 'holdout')) return ['选了 L4，要在第 3 步把至少一个场景设为「L4 保留」', '[data-level="L4"]'];
+    if (levels.includes('L4') && !NT.scenes.holdout.length) return ['选了 L4，要在第 3 步至少选一个 L4 保留场景', '[data-level="L4"]'];
   }
   return [''];
 }
@@ -1474,10 +1494,11 @@ async function createTask(btn) {
     existing: $('#nt-mode').value === 'existing', name: value('#nt-name'), name_en: value('#nt-name-en'), definition: value('#nt-definition'),
     instructions: {count: ntNum($('#nt-inst-n').value), languages: [...$$('[data-lang]:checked')].map((c) => c.dataset.lang)},
     success: value('#nt-success'), hand: value('#nt-hand'), horizon_s: ntNum($('#nt-horizon').value), target: ntNum($('#nt-target').value),
-    roles: NT.roles.map((r) => ({label: r.label, candidates: r.candidates, count: r.count, randomize: r.randomize})),
+    roles: NT.roles.map((r) => ({label: r.label, candidates: r.candidates, count: r.count})),
     distractors: {count: lo == null && hi == null ? null : [lo ?? 0, hi ?? lo], candidates: NT.dis.candidates, clutter_library: $('#nt-dis-lib').checked,
       clutter_categories: $('#nt-dis-lib').checked ? [...$$('[data-clutter]:checked')].map((c) => c.dataset.clutter) : []},
-    scenes: Object.fromEntries([...$$('[data-scene-use]')].filter((s) => s.value).map((s) => [s.dataset.sceneUse, s.value])),
+    scenes: Object.fromEntries([...NT.scenes.train.map((id) => [id, 'train']), ...NT.scenes.holdout.map((id) => [id, 'holdout'])]),
+    randomize: [...$$('[data-random]:checked')].map((c) => c.dataset.random),
     levels: Object.fromEntries([...$$('[data-level]:checked')].map((c) => [c.dataset.level, {target: ntNum($(`#nt-ltarget-${c.dataset.level}`).value), range: value(`#nt-range-${c.dataset.level}`)}])),
     holdout_objects: NT.holdout, extra: value('#nt-extra'), expert: value('#nt-expert'), requirements: value('#nt-req'), notes: value('#nt-notes'),
   };
@@ -1498,8 +1519,7 @@ function taskBrief(d) {  // the task for a coding agent that implements this reg
   const r = d.reg || {}, dir = `real2sim/tasks/${d.id}`, fact = (k, v) => (v === undefined || v === null || v === '' ? null : `- ${k}：${v}`);
   const sceneLine = (use) => live(S.scene).filter((s) => r.scenes?.[s.id] === use)
     .map((s) => `${s.id}（${(s.auto.configs || []).join('、') || '还没建模'}）`).join('、');
-  const roles = (r.roles || []).map((x) => `  - ${x.label} × ${x.count}：${x.candidates.join('、')}；${(x.randomize || []).length
-    ? `每回合随机${x.randomize.map((k) => RANDOMIZE[k] || k).join('、')}（范围由你定）` : '固定摆放'}`);
+  const roles = (r.roles || []).map((x) => `  - ${x.label} × ${x.count}：${x.candidates.join('、')}`);
   const dis = r.distractors || {}, levels = Object.entries(r.levels || {});
   return [
     r.existing
@@ -1513,7 +1533,8 @@ function taskBrief(d) {  // the task for a coding agent that implements this reg
     fact('语言指令', r.instructions && `由你从任务定义总结，${instText(r.instructions)}`), fact('成功判据', r.success),
     fact('用手', HANDS[r.hand || ''] === '未定' ? '' : HANDS[r.hand]), fact('预计时长', r.horizon_s ? `${r.horizon_s} s` : ''), fact('合格回合目标', r.target),
     '- 物体角色：', ...roles,
-    (r.roles || []).some((x) => x.randomize?.length) ? '  随机范围：位置在机器人可达范围内（桌面物体 y≈[-0.55, -0.25]）、物体之间不重叠且留出抓取空间；朝向按抓取方式定，抓不到的角度不要采；L0 孪生布局仍用固定摆放。范围写进任务配置和交付说明。' : null,
+    r.randomize?.length ? `- 位置随机：训练布局和 L1 评测集每回合随机${r.randomize.map((k) => RANDOMIZE[k] || k).join('、')}，范围由你定：位置在机器人可达范围内（桌面物体 y≈[-0.55, -0.25]）、物体之间不重叠且留出抓取空间；朝向按抓取方式定，抓不到的角度不要采。L0 孪生布局固定摆放。范围写进任务配置和交付说明。`
+      : '- 位置随机：不随机，所有布局固定摆放。',
     dis.count || dis.candidates?.length || dis.clutter_library ? `- 干扰物：每回合 ${dis.count ? dis.count.join('–') : '若干'} 个${dis.candidates?.length ? `，从 ${dis.candidates.join('、')} 中取` : ''}${dis.clutter_library ? '，也从 Clutter 杂物库随机取' : ''}` : '- 干扰物：无',
     fact('训练场景', sceneLine('train')), fact('L4 保留场景', sceneLine('holdout')),
     '- 泛化等级：', ...levels.map(([k, v]) => `  - ${k}（目标 ${v.target ?? '—'} 个布局）：${v.range}`),
@@ -1549,8 +1570,9 @@ function taskRegSection(d) {
   return `${sec(`${ic('terminal')}${r.existing ? '泛化方案' : '实现任务'}（给 coding agent）`, `<p class="hint" style="margin:0 0 8px">登记信息已写入
       <a target="_blank" rel="noopener" href="${file(`${INFO.root}/real2sim/tasks/${d.id}/registration.json`)}">real2sim/tasks/${esc(d.id)}/registration.json</a>。把下面这段交给 coding agent；实现后同步，流程自动推进。</p>${code(taskBrief(d))}`)}
     ${sec('语言指令', instructionList(d))}
-    ${sec('登记的方案', `<dl class="kv"><dt>物体角色</dt><dd>${(r.roles || []).map((x) => `<div><b class="mono">${esc(x.label)}</b> × ${x.count}：${x.candidates.map((o) => link('object', o, objLabel(o))).join('、')} <span class="muted small">· ${(x.randomize || []).length ? `随机${x.randomize.map((k) => RANDOMIZE[k] || k).join('、')}` : '固定摆放'}</span></div>`).join('') || '—'}</dd>
+    ${sec('登记的方案', `<dl class="kv"><dt>物体角色</dt><dd>${(r.roles || []).map((x) => `<div><b class="mono">${esc(x.label)}</b> × ${x.count}：${x.candidates.map((o) => link('object', o, objLabel(o))).join('、')}</div>`).join('') || '—'}</dd>
       <dt>干扰物</dt><dd>${r.distractors?.count ? `${r.distractors.count.join('–')} 个` : '—'}${(r.distractors?.candidates || []).length ? `：${r.distractors.candidates.map((o) => link('object', o, objLabel(o))).join('、')}` : ''}${r.distractors?.clutter_library ? '（含 Clutter 库）' : ''}</dd>
+      <dt>位置随机</dt><dd>${r.randomize?.length ? r.randomize.map((k) => RANDOMIZE[k] || k).join('、') : '不随机'}</dd>
       <dt>训练场景</dt><dd>${scenes('train')}</dd><dt>L4 保留场景</dt><dd>${scenes('holdout')}</dd>
       <dt>泛化等级</dt><dd>${levels.map(([k, v]) => `<div><b class="mono">${k}</b> · 目标 ${v.target ?? '—'}：<span class="small">${esc(v.range)}</span></div>`).join('') || '—'}</dd>
       <dt>L3 保留实例</dt><dd>${(r.holdout_objects || []).map((o) => link('object', o, objLabel(o))).join('、') || '—'}</dd></dl>
