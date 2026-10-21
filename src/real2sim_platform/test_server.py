@@ -259,6 +259,10 @@ def test_http():
         assert status == 200 and json.loads(body_photo)["path"].endswith("embodiments/g1d_mobile/reference/side.jpg")
         found = server.scan_embodiments()["g1d_mobile"]
         assert found["registered"] and len(found["photos"]) == 1 and "setups" in found
+        (tmp / "embodiments/g1d_mobile/preview").mkdir()
+        (tmp / "embodiments/g1d_mobile/preview/sim.png").write_bytes(b"png")
+        sim = tmp / "embodiments/g1d_mobile/preview/sim.png"
+        assert server.scan_embodiments()["g1d_mobile"]["renders"] == [str(sim)]
         assert request("DELETE", body)[0] == 200 and not (tmp / "embodiments/g1d_mobile/registration.json").exists()
 
         server.TASKS_DIR = tmp / "tasks"

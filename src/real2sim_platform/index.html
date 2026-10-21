@@ -950,7 +950,7 @@ const robotEnvCfgs = (d) => [...new Set((d.auto.setups || []).flatMap((s) => s.e
 function viewRobots() {
   const docs = live(S.embodiment).sort((x, y) => Number(y.auto.in_code) - Number(x.auto.in_code) || x.id.localeCompare(y.id));
   const cards = docs.map((d) => {
-    const a = d.auto, rs = evalStages(ROBOT_STAGES, d), cover = a.photos?.[0];
+    const a = d.auto, rs = evalStages(ROBOT_STAGES, d), cover = a.renders?.[0] || a.photos?.[0];
     return `<article class="card mcard" data-open="embodiment" data-id="${esc(d.id)}" tabindex="0" role="button" aria-label="打开本体 ${esc(d.id)}">
       <div class="media r169">${cover ? `<img loading="lazy" decoding="async" src="${file(cover)}" alt="">` : ic('bot', 'ic-lg')}
         <div class="pills">${a.in_code ? '<span class="pill">已接入仿真</span>' : '<span class="pill">待接入</span>'}${d.reg?.variant ? `<span class="pill">${esc(d.reg.variant)}</span>` : ''}</div></div>
@@ -995,7 +995,8 @@ function drawerRobot(d) {
     actions: d.registered && !a.in_code ? `<button class="btn" type="button" data-id="${esc(d.id)}" onclick="removeDoc('embodiment', this.dataset.id)">${ic('trash')}删除登记</button>` : '',
     body: `${a.in_code ? '' : sec(`${ic('terminal')}接入任务（给 coding agent）`, `<p class="hint" style="margin:0 0 8px">登记信息写在 real2sim/embodiments/${esc(d.id)}/registration.json。把下面这段交给 coding agent；接入后同步，流程自动推进。</p>${code(robotBrief(d))}`)}
     ${sec('流程', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
-    ${sec(`${ic('camera')}照片`, scenePhotos(d, 'embodiment', 0))}
+    ${sec(`${ic('cube')}仿真渲染`, gallery(`embodiment-renders-${d.id}`, a.renders), ` <span class="muted small">${a.renders?.length || 0} 张 · scripts/embodiments/render_embodiments.py</span>`)}
+    ${sec(`${ic('camera')}实拍照片`, scenePhotos(d, 'embodiment', 0))}
     ${sec('仿真配置', a.setups?.length ? `<div class="table-wrap"><table class="plain"><thead><tr><th>站位配置</th><th class="num">数量</th><th>臂 / 末端维度</th><th>根节点位置</th><th>env 配置</th><th>场景</th></tr></thead><tbody>
       ${a.setups.map((s) => `<tr><td class="mono small">${esc(s.robot_cfg)}</td><td class="num">${s.count}</td><td class="small">${s.arm_dim ? `${s.arm_dim.join(' + ')} / ${(s.ee_dim || []).join(' + ')}` : '—'}</td>
         <td class="mono small">${s.root_pos ? esc(s.root_pos.join(', ')) : '—'}</td><td class="mono small">${esc(s.env_cfgs.join('、') || '—')}</td>

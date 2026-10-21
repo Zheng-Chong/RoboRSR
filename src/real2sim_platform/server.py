@@ -602,6 +602,7 @@ def scan_embodiments():
             "config": str((configs / f"{name}.py").relative_to(ROOT)) if (configs / f"{name}.py").is_file() else None,
             "setups": setups.get(name, []),
             "photos": images(EMBODIMENTS_DIR / name / "reference"),
+            "renders": images(EMBODIMENTS_DIR / name / "preview"),  # scripts/embodiments/render_embodiments.py
             "registered": (EMBODIMENTS_DIR / name / "registration.json").is_file(),
         }
         for name in sorted(ids)
