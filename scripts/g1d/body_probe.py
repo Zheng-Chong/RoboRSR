@@ -49,7 +49,8 @@ def eval_one_episode(TASK_ENV, model_client):
     act(60, lift_joint_state=[lift])  # 0.1 m at 76.5 mm/s takes 1.3 s
     checks["lift_m"] = abs(body()["lift_joint_state"][0] - lift)
     checks["torso_rise_m"] = abs(torso()[2] - start_torso[2] - LIFT)
-    act(30, waist_joint_state=WAIST)  # the lift holds its last command
+    for i in range(1, 31):  # ramp over 1 s like a policy would; a step reaches 0.3 rad in ~60 ms (5 rad/s)
+        act(1, waist_joint_state=list(np.multiply(WAIST, i / 30)))  # the lift holds its last command
     checks["waist_rad"] = float(np.abs(np.subtract(body()["waist_joint_state"], WAIST)).max())
     checks["lift_held_m"] = abs(body()["lift_joint_state"][0] - lift)
     if robot.mobile:
