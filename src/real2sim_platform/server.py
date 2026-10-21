@@ -48,7 +48,7 @@ sys.path[:0] = [str(ROOT / "scripts" / "internal"), str(ROOT / "scripts" / "g1d"
 import build_asset  # SCENES: env config -> real2sim scene
 import task_inventory
 
-KINDS = ("scene", "object", "task", "episode")
+KINDS = ("scene", "object", "task", "episode", "embodiment")
 OBJECT_ID = re.compile(r"\w+/\w[\w-]*/\d+")  # <type>/<category>/<index>, e.g. Rigid/measuring_cup/00001
 EXPECTED_CAMERAS = {"head", "left_wrist", "right_wrist"}  # same acceptance as scripts/internal/summarize_result.py
 VIDEO_RE = re.compile(r"episode_(\d+)_cam_(.+)_(success|fail)\.mp4")
@@ -57,6 +57,8 @@ OBJECTS_DIR = ROOT / "real2sim" / "objects"  # <id>/reference/: real-object phot
 SCENE_ID = re.compile(r"real_scene\d+_[a-z0-9_]+")  # directory under real2sim/scenes/, e.g. real_scene5_kitchen
 TASKS_DIR = ROOT / "real2sim" / "tasks"  # <task>/registration.json: a task registered on the platform
 TASK_ID = re.compile(r"[A-Za-z]\w*")  # task module name; new G1-D tasks are g1d_<name>
+EMBODIMENTS_DIR = ROOT / "real2sim" / "embodiments"  # <id>/registration.json and reference/ photos of a robot body
+EMBODIMENT_ID = re.compile(r"[a-z][a-z0-9_]*")  # robot_name, e.g. g1d, g1d_mobile, x5
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 SERVED_SUFFIXES = IMAGE_SUFFIXES | {".mp4", ".webm", ".md", ".json"}
 MAX_UPLOAD = 25 << 20
@@ -564,6 +566,66 @@ def scan_episodes(roots):
     return found
 
 
+def scan_embodiments():
+    """Robot bodies: each robot_name with a config in env/robot_manager/robot_config/, plus bodies registered on the
+    platform. Per body, the robot setups (env_cfg/robot/*.yml: stand pose, arm / gripper dims) and the env configs
+    and scenes that load them."""
+    info = load_json(ROOT / "env_cfg" / "robot" / "_robot_info.json") or {}
+    env_cfgs = {}
+    for path in sorted((ROOT / "env_cfg").glob("*.yml")):
+        if m := re.search(r"^\s+robot:\s*(\w+)", path.read_text(encoding="utf-8"), re.M):
+            env_cfgs.setdefault(m[1], []).append(path.stem)
+    setups = {}
+    for path in sorted((ROOT / "env_cfg" / "robot").glob("*.yml")):
+        text = path.read_text(encoding="utf-8")
+        root = re.search(r"default_root_pos:\s*\[([^\]]*)\]", text)
+        for name, n in Counter(re.findall(r"robot_name:\s*(\w+)", text)).items():
+            setups.setdefault(name, []).append(
+                {
+                    "robot_cfg": path.stem,
+                    "count": n,  # bodies of this kind in the setup, e.g. 2 in dual_x5
+                    "env_cfgs": env_cfgs.get(path.stem, []),
+                    "scenes": sorted(
+                        {build_asset.SCENES[c][0] for c in env_cfgs.get(path.stem, []) if c in build_asset.SCENES}
+                    ),
+                    "arm_dim": (info.get(path.stem) or {}).get("arm_dim"),
+                    "ee_dim": (info.get(path.stem) or {}).get("ee_dim"),
+                    "root_pos": [float(v) for v in root[1].split(",")] if root else None,
+                }
+            )
+    configs = ROOT / "env" / "robot_manager" / "robot_config"
+    ids = {p.stem for p in configs.glob("*.py") if not p.stem.startswith("_")}
+    ids |= {p.parent.name for p in EMBODIMENTS_DIR.glob("*/registration.json")}
+    return {
+        name: {
+            "in_code": (configs / f"{name}.py").is_file(),
+            "config": str((configs / f"{name}.py").relative_to(ROOT)) if (configs / f"{name}.py").is_file() else None,
+            "setups": setups.get(name, []),
+            "photos": images(EMBODIMENTS_DIR / name / "reference"),
+            "registered": (EMBODIMENTS_DIR / name / "registration.json").is_file(),
+        }
+        for name in sorted(ids)
+    }
+
+
+def write_embodiment_registration(doc, names=None):
+    """What is entered for a robot body, as real2sim/embodiments/<id>/registration.json next to its photos."""
+    path = EMBODIMENTS_DIR / doc["id"] / "registration.json"
+    reg = compact(doc.get("reg") or {})
+    if not (doc.get("registered") or reg):
+        return path.unlink(missing_ok=True)
+    owner = doc.get("owner")
+    body = {
+        "embodiment": doc["id"],
+        **reg,
+        "owner": owner and {"username": owner, "name": (names or {}).get(owner, owner)},
+        "updated_by": doc.get("_by"),
+        "updated_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(doc["_at"])),
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(compact(body), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
 def scan(store, assets, eval_roots):
     tasks = scan_tasks(assets)
     custom = {name: t for name, t in tasks.items() if t["dimension"] == "custom"}
@@ -574,6 +636,7 @@ def scan(store, assets, eval_roots):
         "task": tasks,
         "object": scan_objects(assets, custom, keep),
         "episode": scan_episodes(eval_roots),
+        "embodiment": scan_embodiments(),
     }
     for kind, items in found.items():
         store.sync(kind, items)
@@ -724,12 +787,13 @@ class Handler(BaseHTTPRequestHandler):
         query = {k: v[0] for k, v in parse_qs(url.query).items()}
         oid, name = query.get("id", ""), Path(query.get("name", "")).name
         size, suffix = int(self.headers.get("Content-Length", 0)), Path(name).suffix.lower()
-        scene = query.get("kind") == "scene"
-        if not (SCENE_ID if scene else OBJECT_ID).fullmatch(oid):
+        owner = {"scene": (SCENE_ID, build_asset.SCENES_DIR), "embodiment": (EMBODIMENT_ID, EMBODIMENTS_DIR)}
+        pattern, root = owner.get(query.get("kind"), (OBJECT_ID, OBJECTS_DIR))
+        if not pattern.fullmatch(oid):
             return self.send_error(400)
         if suffix not in IMAGE_SUFFIXES or not 0 < size <= MAX_UPLOAD:
             return self.send_error(400)
-        folder = (build_asset.SCENES_DIR if scene else OBJECTS_DIR) / oid / "reference"
+        folder = root / oid / "reference"
         folder.mkdir(parents=True, exist_ok=True)
         stem = re.sub(r"[^\w.-]", "_", Path(name).stem)[:60] or "photo"
         path, n = folder / f"{stem}{suffix}", 1
@@ -747,7 +811,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_error(400)
         if kind == "scene" and fields.get("registered") and not SCENE_ID.fullmatch(id_):
             return self.send_error(400)
-        if kind == "task" and not TASK_ID.fullmatch(id_):
+        if (kind == "task" and not TASK_ID.fullmatch(id_)) or (
+            kind == "embodiment" and not EMBODIMENT_ID.fullmatch(id_)
+        ):
             return self.send_error(400)
         doc = self.store.update(kind, id_, fields, by=self.user["name"])
         if kind == "object":
@@ -756,6 +822,8 @@ class Handler(BaseHTTPRequestHandler):
             write_registration(doc)
         elif kind == "task":
             write_task_registration(doc, {u["username"]: u["name"] for u in self.store.users()})
+        elif kind == "embodiment":
+            write_embodiment_registration(doc, {u["username"]: u["name"] for u in self.store.users()})
         self.send_json(doc)
 
     def do_DELETE(self):
@@ -765,7 +833,7 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/photo":
             path = Path(parse_qs(url.query).get("path", [""])[0]).resolve()
             photo = path.parent.name == "reference" and path.suffix.lower() in IMAGE_SUFFIXES
-            owners = (OBJECTS_DIR.resolve(), build_asset.SCENES_DIR.resolve())
+            owners = (OBJECTS_DIR.resolve(), build_asset.SCENES_DIR.resolve(), EMBODIMENTS_DIR.resolve())
             if not (photo and path.is_file() and any(path.is_relative_to(d) for d in owners)):
                 return self.send_error(400)
             path.unlink()
@@ -780,6 +848,8 @@ class Handler(BaseHTTPRequestHandler):
             (build_asset.SCENES_DIR / id_ / "registration.json").unlink(missing_ok=True)
         elif kind == "task" and TASK_ID.fullmatch(id_):
             (TASKS_DIR / id_ / "registration.json").unlink(missing_ok=True)
+        elif kind == "embodiment" and EMBODIMENT_ID.fullmatch(id_):
+            (EMBODIMENTS_DIR / id_ / "registration.json").unlink(missing_ok=True)
         self.send_json({"ok": True})
 
     def target(self):
