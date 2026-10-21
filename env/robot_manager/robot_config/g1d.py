@@ -132,8 +132,10 @@ def get_robot_config():
             ),
             "gripper": ImplicitActuatorCfg(
                 joint_names_expr=[".*_dex1_finger_joint_.*"],
-                effort_limit_sim=20.0,  # Dex1-1 rating per finger
-                stiffness=1e4,  # full force within 2 mm, so thin handles are still squeezed before the stroke ends
+                # Real Dex1-1: motor PD kp=5 N*m/rad, target clipped 0.18 rad ahead (teleop); at ~8.3 mm/rad per
+                # finger (assumed linear, uncalibrated) that is ~3.6e4 N/m and ~55 N per finger. Not measured.
+                effort_limit_sim=55.0,
+                stiffness=3.6e4,
                 damping=100,
             ),
         },
