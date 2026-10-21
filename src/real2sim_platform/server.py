@@ -507,6 +507,7 @@ def write_task_registration(doc, names=None):
         "owner": doc.get("owner") and {"username": doc["owner"], "name": (names or {}).get(doc["owner"], doc["owner"])},
         "objects": r.get("roles"),  # [{label, candidates, count}]
         "randomize": r.get("randomize"),  # ["position", "yaw"]: varied in training and L1 layouts; agent sets ranges
+        "appearance": r.get("appearance"),  # ["light", "texture", "camera"]: varied in training and L2 layouts
         # {count, candidates, clutter_library, clutter_categories: [] = the whole Clutter library}
         "distractors": r.get("distractors"),
         "scenes": scenes,
