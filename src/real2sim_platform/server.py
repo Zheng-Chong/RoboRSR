@@ -1,7 +1,7 @@
 """Real2Sim data-collection platform: scene reconstruction, object assets, task collection and data QA in one web page.
 
 Stdlib only (any python3 >= 3.10, no Isaac). On start, and on "从项目同步" in the page, it scans:
-    real2sim/scenes/<dir>/                reference photos, camera fit, USD, check_report.json, previews, RTX render, GLB
+    real2sim/scenes/<dir>/                reference photos, camera fit, USD, check_report.json, previews, render, GLB
     task/RoboDojo/config/<task>.yml       tasks (scripts/internal/task_inventory.py), objects of the G1-D tasks
     <assets>/Object/RoboDojo/<id>/        metadata.json / description.json of those objects
     <assets>/Eval_Layout/RoboDojo/<cfg>/  eval layouts per task and env config
@@ -356,6 +356,8 @@ def scan_objects(assets, tasks, keep):
             "dynamic_friction": physics.get("dynamic_friction"),
             # model size per registered dimension name
             "measurements": (meta or {}).get("measurements_mm") or check.get("measurements_mm") or {},
+            # a generalization variant of another object (metadata.json "variant_of"), shown on that object's card
+            "variant_of": (meta or {}).get("variant_of") or check.get("variant_of"),
             "photos": images(OBJECTS_DIR / oid / "reference"),
             "renders": images(OBJECTS_DIR / oid / "preview") + images(d),
         }
@@ -400,7 +402,8 @@ def write_spec(doc):
         "features": doc.get("features"),
         "requirements": doc.get("requirements"),
         "notes": doc.get("notes"),
-        # variants to build next to the twin: {"count", "color"/"material"/"size"/"shape": may vary, "requirements"}
+        # randomized per layout, no new asset: "rt_color" (bool), "rt_scale" (+-percent); variant assets to build next
+        # to the twin: {"count", "color"/"material"/"size"/"shape": may vary, "requirements"}
         "generalization": {k: v for k, v in (doc.get("gen") or {}).items() if v not in (None, "", False, 0)},
         "updated_by": doc.get("_by"),
         "updated_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(doc["_at"])),

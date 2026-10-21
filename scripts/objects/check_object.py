@@ -139,6 +139,7 @@ def main():
                 "mass_kg": meta["physics"].get("mass"),
                 "size_m": size,
                 "measurements_mm": meta.get("measurements_mm") or {},
+                "variant_of": meta.get("variant_of"),  # a generalization variant: the platform shows it on that card
                 "checked_at": time.strftime("%Y-%m-%d %H:%M:%S"),
             }
             out = Path(args.image_dir) / d.parent.parent.name / d.parent.name / d.name / "preview" / "check.json"

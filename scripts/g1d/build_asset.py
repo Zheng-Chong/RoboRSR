@@ -22,6 +22,7 @@ Usage:
 """
 
 import argparse
+import colorsys
 import copy
 import json
 from pathlib import Path
@@ -451,6 +452,42 @@ G1D_TASKS = {
 }
 
 
+# Size and colour generalization without new assets, per task and object label, drawn per layout (so every episode is
+# reproducible from its layout file): {"scale": (lo, hi)} uniform factor, "color": True for a random plain colour
+# (RigidObject binds it over the asset's looks; on the meshes in metadata visual.color_parts if listed). Off for every
+# current task: their eval sets and datasets were made at scale 1 in the asset colours. A task that turns it on must
+# read sizes from the layout manager's bboxes (scaled), not fixed geometry; the beans tasks count beans in fixed
+# cavities.
+RANDOMIZE = {}  # e.g. "g1d_general_pickup": {"target": {"scale": (0.85, 1.15), "color": True}}
+
+
+def randomize_objects(layout, rules, table_top, assets, seed):
+    """Apply RANDOMIZE `rules` to the labelled rigid objects of `layout`: scale about the tabletop (the object keeps
+    standing on it), mass by the volume, a plain colour in linear RGB."""
+    rng = random.Random(seed)
+    for cat, entries in layout.get("Rigid", {}).items():
+        for entry in entries:
+            rule = rules.get(entry.get("label"))
+            if not rule:
+                continue
+            if "scale" in rule:
+                s = rng.uniform(*rule["scale"])
+                entry["scale"] = [v * s for v in entry.get("scale", [1.0, 1.0, 1.0])]
+                entry["default_pos"][2] = table_top + (entry["default_pos"][2] - table_top) * s
+                if "mass" in entry.get("physics", {}):
+                    entry["physics"] = dict(entry["physics"], mass=entry["physics"]["mass"] * s**3)
+            if rule.get("color"):
+                rgb = colorsys.hsv_to_rgb(rng.random(), rng.uniform(0.45, 0.9), rng.uniform(0.35, 0.9))
+                sub, index = "Clutter" if entry.get("type") == "cluttered" else "Rigid", entry.get("category_idx", 0)
+                name = entry.get("category") or cat
+                meta = json.loads((assets / f"Object/RoboDojo/{sub}/{name}/{index:05d}/metadata.json").read_text())
+                visual = dict(entry.get("visual") or {}, color=[round(c**2.2, 4) for c in rgb])  # sRGB -> linear
+                if meta.get("visual", {}).get("color_parts"):
+                    visual["color_parts"] = meta["visual"]["color_parts"]
+                entry["visual"] = visual
+    return layout
+
+
 def _layout_sort_key(path):
     tail = path.stem.rpartition("_")[2]
     return str(path.parent), int(tail) if tail.isdigit() else -1, path.stem
@@ -485,6 +522,9 @@ def build_layouts(assets):
                     seq = counts.get(key, 0)
                     if swap:
                         shifted = swap(shifted, assets, seq, table_top)
+                    if shifted is not None and task in RANDOMIZE:
+                        seed = f"{task}/{out.parent.name}/{seq}"  # the same draws in every scene config
+                        randomize_objects(shifted, RANDOMIZE[task], table_top, assets, seed)
                     if shifted is not None:
                         shift_objects(shifted, (*shift, 0.0))
                         (out.parent / f"{task}_{seq}.json").write_text(json.dumps(shifted, indent=4))

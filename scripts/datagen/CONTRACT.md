@@ -16,6 +16,8 @@
 | `vision/cam_head/colors` 等 | 用 `encode_image_bit` 编码的 JPEG，存成定长字节列 |
 | `privileged/` | 我们自己加的扩展字段，只给审计用（例如豆子位置、杯子位姿），训练时不要读 |
 
+物体的尺寸和颜色泛化写在布局里（`scripts/g1d/build_asset.py` 的 `RANDOMIZE`，按任务和标签打开，现有任务都没开）：刚体条目的 `scale` 是等比缩放（质量已按体积换算，`physics.mass`），`visual.color` 是线性 RGB 纯色（`visual.color_parts` 只给列出的网格换色）。它们随 `additional_info/layout` 进每个回合，按回合统计泛化范围时读这里。
+
 质检单字段：`accepted`、`acceptance_version`、`hold_frames`、`stable_frames`、`task_success`、`env_cfg`、`physics_dt`、`layout_seed`、`layout_id`、`layout_sha256`、`planned_poses`、`state_keys`、`joint_names`、`revision`，以及插件附加的字段。
 
 **发布格式**：LeRobot v3.0，只能由 XPolicyLab 官方转换器 `XPolicyLab/scripts/transform_lerobot_v30_format.py` 生成（`export.py` 负责调用它）。键名：`observation.state`、`action`、`observation.images.cam_high`（对应 `cam_head`）、`observation.images.cam_left_wrist`、`observation.images.cam_right_wrist`；`robot_type` 是 `unified_robot`，电机名为 `left_joint_0..7`、`right_joint_0..7`；视频为 AV1。

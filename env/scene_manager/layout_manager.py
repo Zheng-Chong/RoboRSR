@@ -362,7 +362,7 @@ class LayoutManager:
             deep_resolve_paths(visual_cfg)
             visual_cfg = OmegaConf.to_container(visual_cfg, resolve=True)
         color_list = visual_cfg.get("color", None)
-        if color_list is not None and isinstance(color_list[0], (int, float)):
+        if color_list is not None and isinstance(color_list[0], int | float):
             color_list = [color_list]
         visual_material_usd_folder = None
         visual_material_mdl_folder = None
@@ -470,7 +470,10 @@ class LayoutManager:
                 and ("oriented_bbox" in _data["geometry"])
                 and ("vertices" in _data["geometry"]["oriented_bbox"])
             ):
-                return np.asarray(_data["geometry"]["oriented_bbox"]["vertices"], dtype=float).reshape(-1, 3)
+                vertices = np.asarray(_data["geometry"]["oriented_bbox"]["vertices"], dtype=float).reshape(-1, 3)
+                if physics_type == "rigid":  # metadata is at scale 1; a layout may scale the object (build_asset.py)
+                    vertices = vertices * np.asarray(getattr(obj, "scale", (1.0, 1.0, 1.0)), dtype=float)
+                return vertices
         if getattr(obj, "get_bbox", None) is not None:
             return obj.get_bbox()
         return None
@@ -681,7 +684,6 @@ class LayoutManager:
 
     @staticmethod
     def required_keys(data: dict, keys: str | List[str], sep: str = "/") -> bool:
-
         def _is_missing(value) -> bool:
             return value is None or value == {}
 

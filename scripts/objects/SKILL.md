@@ -67,12 +67,13 @@ rsync -az --exclude preview/ <部署机>:<仓库>/real2sim/objects/<id>/ real2si
 | `features` | 外观与结构（透明度、把手、刻度、纹理、壁厚等） |
 | `requirements` | 建模要求（如中空能装豆子、把手可抓、刻度不用建模） |
 | `notes` | 备注，常有补充的实测值 |
-| `generalization` | 要另建的泛化变体：`count` 数量，`color`/`material`/`size`/`shape` 为 true 的属性可以变（其余与本体一致），`requirements` 泛化要求；变体放同类别后续空号，不实测，在 `ASSETS.md` 标为泛化变体 |
+| `generalization` | `rt_color`（颜色随机）、`rt_scale`（整体等比缩放 ±%）：运行时按布局随机，**不建新资产**，见下方「运行时随机」；`count` 等是要另建的变体资产：`count` 数量，`color`/`material`/`size`/`shape` 为 true 的属性可以变（其余与本体一致），`requirements` 泛化要求；变体放同类别后续空号，不实测，`metadata.json` 顶层写 `"variant_of": "<本体 id>"`（平台据此把它收进本体卡片），在 `ASSETS.md` 标为泛化变体 |
 | `updated_by`、`updated_at` | 最后修改人和时间，写进脚本 docstring 作为测量来源 |
 
 - 没有 `spec.json`：物体还没登记成实物孪生。让用户先在平台登记，不要自己编测量值。
 - 尺寸和质量以 `spec.json` 为准（`dimensions_mm` 和 `notes` 里的实测值都算），照片只用来定形状、比例和外观。都没给的尺寸按照片估，在脚本注释和 `ASSETS.md` 里标「估计」。
 - `notes` 和 `dimensions_mm` 矛盾时，问用户。
+- **运行时随机**（`rt_color`、`rt_scale`）：资产只建本体一份。换色默认覆盖整个物体；要保留标签、透明件时，在 `metadata.json` 的 `visual` 里写 `"color_parts": [主体网格名]`（如 `["model"]`）。真正随机是在任务层打开的：`scripts/g1d/build_asset.py` 的 `RANDOMIZE` 给用到它的任务和标签加 `{"scale": (lo, hi), "color": True}`，这会改那个任务的布局，先问用户；放大后仍要能被 Dex1-1 夹住（窄边 ≤ 80 mm）。
 
 ### 3. 几何方案
 
