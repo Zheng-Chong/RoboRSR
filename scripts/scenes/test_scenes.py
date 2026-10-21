@@ -2,11 +2,12 @@
 
 import json
 from pathlib import Path
+import struct
 import unittest
 
 import numpy as np
 
-from scripts.scenes import acceptance, overlay
+from scripts.scenes import acceptance, export_glb, overlay
 
 try:
     import cv2
@@ -105,6 +106,35 @@ class CharucoTests(unittest.TestCase):
         K_fit, _, rms = charuco.calibrate(views, (1280, 960))
         self.assertLess(rms, 0.5)
         self.assertAlmostEqual(K_fit[0, 0] / 900.0, 1.0, delta=0.01)
+
+
+class GlbTests(unittest.TestCase):
+    def test_glb_layout(self):
+        quad = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], float)
+        tris = export_glb.fan([4])
+        np.testing.assert_array_equal(tris, [0, 1, 2, 0, 2, 3])
+        mesh = {"name": "/World/Table/Top", "positions": quad[tris], "uv": quad[tris, :2], "material": 0}
+        material = {"pbrMetallicRoughness": {"baseColorTexture": {"index": 0}}}
+        data = export_glb.pack_glb([mesh], [material], [(b"\x89PNG", "image/png", 33648, 10497)])
+        magic, version, length = struct.unpack("<III", data[:12])
+        self.assertEqual((magic, version, length), (0x46546C67, 2, len(data)))
+        size, kind = struct.unpack("<II", data[12:20])
+        gltf = json.loads(data[20 : 20 + size])
+        self.assertEqual(kind, 0x4E4F534A)
+        self.assertEqual(gltf["nodes"][0]["name"], "/World/Table/Top")
+        position = gltf["accessors"][gltf["meshes"][0]["primitives"][0]["attributes"]["POSITION"]]
+        self.assertEqual((position["count"], position["max"]), (6, [1, 1, 0]))
+        self.assertEqual(gltf["samplers"][0], {"wrapS": 33648, "wrapT": 10497})
+        self.assertEqual(len(data) % 4, 0)
+        bin_size = struct.unpack("<I", data[20 + size : 24 + size])[0]
+        self.assertEqual(bin_size, gltf["buffers"][0]["byteLength"])
+
+    def test_primvars_expand_per_corner(self):
+        counts, indices = np.array([3, 3]), np.array([0, 1, 2, 0, 2, 3])
+        uniform = export_glb.per_corner([[1, 0, 0], [0, 1, 0]], "uniform", indices, counts)
+        np.testing.assert_array_equal(uniform[3:], [[0, 1, 0]] * 3)
+        vertex = export_glb.per_corner(np.eye(4)[:, :2], "vertex", indices, counts)
+        np.testing.assert_array_equal(vertex[4], [0, 0])
 
 
 if __name__ == "__main__":
