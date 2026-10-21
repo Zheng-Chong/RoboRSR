@@ -103,6 +103,7 @@ def test_http():
     server.Handler.failures, server.FAIL_DELAY = {}, 0
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    evals_dir = server.EVALS_DIR
     session, scenes_dir, tasks_dir, bodies_dir = (
         {},
         server.build_asset.SCENES_DIR,
@@ -265,6 +266,37 @@ def test_http():
         assert server.scan_embodiments()["g1d_mobile"]["renders"] == [str(sim)]
         assert request("DELETE", body)[0] == 200 and not (tmp / "embodiments/g1d_mobile/registration.json").exists()
 
+        server.EVALS_DIR = tmp / "evals"
+        ev = "/api/items?kind=evaluation&id=openwam-1000-20261021"
+        assert request("PUT", "/api/items?kind=evaluation&id=Bad/../x", json.dumps({"registered": True}))[0] == 400
+        reg = {
+            "model_name": "OpenWAM step1000",
+            "checkpoint": "5090-2:/data/ckpt",
+            "tasks": ["g1d_stack_blocks"],
+            "env": "",
+        }
+        assert request("PUT", ev, json.dumps({"registered": True, "reg": reg, "submitter": "forged"}))[0] == 200
+        written = json.loads((tmp / "evals/openwam-1000-20261021/request.json").read_text(encoding="utf-8"))
+        assert written.pop(
+            "updated_at"
+        ) and written == {  # submitter is the signed-in account, new requests start submitted
+            "evaluation": "openwam-1000-20261021",
+            "status": "submitted",
+            "model_name": "OpenWAM step1000",
+            "checkpoint": "5090-2:/data/ckpt",
+            "tasks": ["g1d_stack_blocks"],
+            "submitter": {"username": "alice", "name": "张三"},
+            "updated_by": "张三",
+        }
+        request("PUT", ev, json.dumps({"status": "evaluating", "assignee": "alice", "submitter": "forged"}))
+        written = json.loads((tmp / "evals/openwam-1000-20261021/request.json").read_text(encoding="utf-8"))
+        assert written["status"] == "evaluating" and written["assignee"]["name"] == "张三"
+        assert written["submitter"]["username"] == "alice"  # a later update cannot change who submitted
+        result = {"summary": "ok", "runs": [{"task": "g1d_stack_blocks", "episodes": 6, "success_rate": 0.5}]}
+        (tmp / "evals/openwam-1000-20261021/result.json").write_text(json.dumps(result))
+        assert server.scan_evaluations()["openwam-1000-20261021"]["result"] == result
+        assert request("DELETE", ev)[0] == 200 and not (tmp / "evals/openwam-1000-20261021/request.json").exists()
+
         server.TASKS_DIR = tmp / "tasks"
         task = "/api/items?kind=task&id=g1d_wipe_table"
         roles = [
@@ -345,6 +377,7 @@ def test_http():
         assert login("alice", "password2")[0] == 429  # locked out after 5 failures, even with the right password
     finally:
         server.build_asset.SCENES_DIR, server.TASKS_DIR, server.EMBODIMENTS_DIR = scenes_dir, tasks_dir, bodies_dir
+        server.EVALS_DIR = evals_dir
         httpd.shutdown()
 
 

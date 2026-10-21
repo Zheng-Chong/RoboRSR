@@ -48,7 +48,7 @@ sys.path[:0] = [str(ROOT / "scripts" / "internal"), str(ROOT / "scripts" / "g1d"
 import build_asset  # SCENES: env config -> real2sim scene
 import task_inventory
 
-KINDS = ("scene", "object", "task", "episode", "embodiment")
+KINDS = ("scene", "object", "task", "episode", "embodiment", "evaluation")
 OBJECT_ID = re.compile(r"\w+/\w[\w-]*/\d+")  # <type>/<category>/<index>, e.g. Rigid/measuring_cup/00001
 EXPECTED_CAMERAS = {"head", "left_wrist", "right_wrist"}  # same acceptance as scripts/internal/summarize_result.py
 VIDEO_RE = re.compile(r"episode_(\d+)_cam_(.+)_(success|fail)\.mp4")
@@ -59,6 +59,8 @@ TASKS_DIR = ROOT / "real2sim" / "tasks"  # <task>/registration.json: a task regi
 TASK_ID = re.compile(r"[A-Za-z]\w*")  # task module name; new G1-D tasks are g1d_<name>
 EMBODIMENTS_DIR = ROOT / "real2sim" / "embodiments"  # <id>/registration.json and reference/ photos of a robot body
 EMBODIMENT_ID = re.compile(r"[a-z][a-z0-9_]*")  # robot_name, e.g. g1d, g1d_mobile, x5
+EVALS_DIR = ROOT / "real2sim" / "evals"  # <id>/request.json from the platform, <id>/result.json from the coding agent
+EVAL_ID = re.compile(r"[a-z0-9][a-z0-9_-]*")  # also the policy name in eval_result/, e.g. openwam-step1000-20261021
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 SERVED_SUFFIXES = IMAGE_SUFFIXES | {".mp4", ".webm", ".md", ".json"}
 MAX_UPLOAD = 25 << 20
@@ -627,6 +629,40 @@ def write_embodiment_registration(doc, names=None):
     path.write_text(json.dumps(compact(body), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def scan_evaluations():
+    """Evaluation requests (real2sim/evals/<id>/request.json) and the results the coding agent wrote (result.json)."""
+    found = {}
+    for path in sorted(EVALS_DIR.glob("*/request.json")):
+        result = path.parent / "result.json"
+        found[path.parent.name] = {
+            "result": load_json(result),
+            "result_at": result.stat().st_mtime if result.is_file() else None,
+        }
+    return found
+
+
+def write_eval_request(doc, names=None):
+    """An evaluation request as real2sim/evals/<id>/request.json: the input for deploying and evaluating the model."""
+    path = EVALS_DIR / doc["id"] / "request.json"
+    if not doc.get("registered"):
+        return path.unlink(missing_ok=True)
+
+    def account(username):
+        return username and {"username": username, "name": (names or {}).get(username, username)}
+
+    body = {
+        "evaluation": doc["id"],
+        "status": doc.get("status"),
+        **(doc.get("reg") or {}),
+        "submitter": account(doc.get("submitter")),
+        "assignee": account(doc.get("assignee")),
+        "updated_by": doc.get("_by"),
+        "updated_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(doc["_at"])),
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(compact(body), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
 def scan(store, assets, eval_roots):
     tasks = scan_tasks(assets)
     custom = {name: t for name, t in tasks.items() if t["dimension"] == "custom"}
@@ -638,6 +674,7 @@ def scan(store, assets, eval_roots):
         "object": scan_objects(assets, custom, keep),
         "episode": scan_episodes(eval_roots),
         "embodiment": scan_embodiments(),
+        "evaluation": scan_evaluations(),
     }
     for kind, items in found.items():
         store.sync(kind, items)
@@ -816,6 +853,13 @@ class Handler(BaseHTTPRequestHandler):
             kind == "embodiment" and not EMBODIMENT_ID.fullmatch(id_)
         ):
             return self.send_error(400)
+        if kind == "evaluation":
+            if not EVAL_ID.fullmatch(id_):
+                return self.send_error(400)
+            fields = {k: v for k, v in fields.items() if k != "submitter"}  # set by the server only
+            if fields.get("registered") and not any(d["id"] == id_ for d in self.store.list(kind)):
+                # a new request: stamped with who submitted it, starting as submitted
+                fields = {**fields, "submitter": self.user["username"], "status": fields.get("status") or "submitted"}
         doc = self.store.update(kind, id_, fields, by=self.user["name"])
         if kind == "object":
             write_spec(doc)
@@ -825,6 +869,8 @@ class Handler(BaseHTTPRequestHandler):
             write_task_registration(doc, {u["username"]: u["name"] for u in self.store.users()})
         elif kind == "embodiment":
             write_embodiment_registration(doc, {u["username"]: u["name"] for u in self.store.users()})
+        elif kind == "evaluation":
+            write_eval_request(doc, {u["username"]: u["name"] for u in self.store.users()})
         self.send_json(doc)
 
     def do_DELETE(self):
@@ -851,6 +897,8 @@ class Handler(BaseHTTPRequestHandler):
             (TASKS_DIR / id_ / "registration.json").unlink(missing_ok=True)
         elif kind == "embodiment" and EMBODIMENT_ID.fullmatch(id_):
             (EMBODIMENTS_DIR / id_ / "registration.json").unlink(missing_ok=True)
+        elif kind == "evaluation" and EVAL_ID.fullmatch(id_):
+            (EVALS_DIR / id_ / "request.json").unlink(missing_ok=True)
         self.send_json({"ok": True})
 
     def target(self):

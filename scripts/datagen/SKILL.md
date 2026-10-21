@@ -94,6 +94,7 @@ description: 在 RoboDojo 里用脚本专家批量生成 G1-D 仿真示教数据
 
 ## 用本仓库评估外部训练的 checkpoint
 
+- 评测申请走数采平台「模型评测」：提交人填 checkpoint、部署代码、接口（本体、动作空间、图像、指令）、任务、场景、泛化等级和回合数，写到 `real2sim/evals/<编号>/request.json`；评测抽屉里有给 coding agent 的部署与评测任务。策略名用评测编号；跑完把运行目录的 `eval_result/` 同步到部署机的 `eval_result/`，并写 `real2sim/evals/<编号>/result.json`（`summary`、`runs`：每个任务 × env 配置 × 等级的回合数、成功率、95% 区间、专家对照，`issues`），平台据此显示结果。凭据不要写进这两个文件。
 - 策略适配代码属于 XPolicyLab（子模块，不在本仓库里改）。LeRobot 格式的策略（ACT、SmolVLA、Pi0 等）读的是官方转换器的键名，只有按本契约导出的数据集能直接用。
 - G1-D 目前只注册在本仓库的 `env_cfg/robot/_robot_info.json` 里。XPolicyLab 的 `utils/robot/_robot_info.json` 还没有 `g1d*`，走 XPolicyLab 的 `train.sh` 会拿不到动作维度，需要给 XPolicyLab 提 PR。
 - 命令：`bash scripts/robodojo.sh eval --policy-dir XPolicyLab/policy/<策略> --task <任务> --ckpt <名称> --policy-env <环境> --env-cfg <数据集的配置> --action-type joint --eval-num <N>`。

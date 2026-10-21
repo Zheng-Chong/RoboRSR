@@ -490,10 +490,10 @@ const base = (p) => String(p).split('/').pop();
 const opts = (options, value) => Object.entries(options).map(([k, l]) => `<option value="${esc(k)}" ${k === String(value ?? '') ? 'selected' : ''}>${esc(l)}</option>`).join('');
 const ic = (name, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
-const KINDS = ['scene', 'object', 'task', 'episode', 'embodiment'];
-const TAB_OF = {scene: 'scenes', object: 'objects', task: 'tasks', episode: 'qa', embodiment: 'robots'};
-const KIND_LABEL = {scene: '场景', object: '物体', task: '任务', episode: '回合', embodiment: '本体'};
-const S = {scene: [], object: [], task: [], episode: [], embodiment: []};
+const KINDS = ['scene', 'object', 'task', 'episode', 'embodiment', 'evaluation'];
+const TAB_OF = {scene: 'scenes', object: 'objects', task: 'tasks', episode: 'qa', embodiment: 'robots', evaluation: 'evals'};
+const KIND_LABEL = {scene: '场景', object: '物体', task: '任务', episode: '回合', embodiment: '本体', evaluation: '评测'};
+const S = {scene: [], object: [], task: [], episode: [], embodiment: [], evaluation: []};
 const UI = {
   tab: 'overview', drawer: null, ep: null, taskDim: 'custom', taskQ: '', sel: new Set(), loaded: false, syncing: false, syncedAt: '',
   obj: {q: '', src: '', photo: false, view: localStorage.objView || 'cards'},
@@ -722,6 +722,7 @@ function renderNav() {
     ['robots', '本体管理', 'bot', live(S.embodiment).length],
     ['tasks', '任务采集', 'list', live(S.task).filter((t) => t.auto.dimension === 'custom').length],
     ['qa', '数据质检', 'clipboard', pending],
+    ['evals', '模型评测', 'compare', live(S.evaluation).filter((d) => !['done', 'failed', 'cancelled'].includes(d.status)).length],
     ...(ME?.admin ? [['users', '成员管理', 'users', USERS.length]] : []),
   ];
   $('#nav').innerHTML = items.map(([tab, label, icon, n]) => `<a class="nav-item" href="#${tab}" ${UI.tab === tab ? 'aria-current="page"' : ''}>${ic(icon, 'ic-lg')}<span>${label}</span>${
@@ -1081,6 +1082,201 @@ async function createRobot(btn) {
     $('#no-err').textContent = `登记失败：${err.message}`;
     btn.disabled = false;
     btn.lastChild.textContent = '重试登记';
+  }
+}
+
+// ---------- evaluations ----------
+const EVAL_STATUS = {submitted: '待受理', deploying: '部署中', evaluating: '评测中', done: '已完成', failed: '失败', cancelled: '已取消'};
+const evalState = (s) => ({done: 'ok', failed: 'bad', cancelled: 'na'})[s] || 'todo';
+const ACTION_SPACES = {joint16: '关节角 16 维（双臂 7 + 夹爪 1，数据契约默认）', eef: '末端位姿', body: '关节角 + 腰 / 升降 / 底盘'};
+const EVAL_CAMS = {head: '头部', left_wrist: '左腕', right_wrist: '右腕', third: '第三人称'};
+const EVAL_LANGS = {en: '英文指令', zh: '中文指令', none: '不用指令'};
+const FRAMEWORKS = ['OpenWAM', 'ACT', 'Diffusion Policy', 'π0 / π0.5', 'SmolVLA', 'LeRobot 其他策略', 'XPolicyLab 已有策略'];
+const PRIORITIES = {normal: '普通', high: '加急'};
+let NE = null;  // the evaluation wizard's lists: {tasks, scenes}
+const evalName = (d) => d.reg?.model_name || d.id;
+const evalEps = (d) => live(S.episode).filter((e) => e.auto.policy === d.id);
+function evalOverall(d) {  // [success rate, label] from result.json, else from the scanned episodes
+  const runs = d.auto.result?.runs || [];
+  const eps = runs.reduce((n, r) => n + (r.episodes || 0), 0);
+  if (eps) return [runs.reduce((s, r) => s + (r.success_rate || 0) * (r.episodes || 0), 0) / eps, `${eps} 回合（result.json）`];
+  const e = evalEps(d);
+  return e.length ? [rate(e), `${e.length} 回合（eval_result）`] : [null, '还没有结果'];
+}
+const evalEnvCfgs = (d, task) => {  // env configs to evaluate a task in: those with its layouts, limited to the chosen scenes
+  const cfgs = Object.keys(S.task.find((x) => x.id === task)?.auto.layouts || {});
+  const scenes = d.reg?.scenes || [];
+  if (!scenes.length) return cfgs;
+  const allowed = new Set(scenes.flatMap((s) => S.scene.find((x) => x.id === s)?.auto.configs || []));
+  return cfgs.filter((c) => allowed.has(c));
+};
+function viewEvals() {
+  const f = UI.evalStatus ?? 'open';
+  const docs = live(S.evaluation).filter((d) => f === 'all' || (f === 'open' ? !['done', 'failed', 'cancelled'].includes(d.status) : d.status === f))
+    .sort((x, y) => (y._at || 0) - (x._at || 0));
+  return `<div class="page">${pageHead('模型评测', '提交外部训练的模型，由评测负责人交给 coding agent 部署到 5090-2 并在仿真里评测；结果回到这里',
+    `<button class="btn btn-primary" type="button" onclick="openNewEval(this)">${ic('plus')}提交评测</button>`)}
+  <div class="toolbar filters"><select aria-label="状态" onchange="UI.evalStatus = this.value; render()">${opts({open: '未完成', all: '全部', ...EVAL_STATUS}, f)}</select><span class="muted small">${docs.length} 个</span></div>
+  ${docs.length ? `<div class="table-wrap"><table><thead><tr><th>评测</th><th>任务</th><th>状态</th><th>提交人</th><th>评测负责人</th><th class="num">成功率</th><th>更新</th></tr></thead><tbody>
+  ${docs.map((d) => {
+    const [sr, how] = evalOverall(d), tasks = d.reg?.tasks || [];
+    return `<tr data-open="evaluation" data-id="${esc(d.id)}" tabindex="0" class="${UI.drawer?.id === d.id ? 'sel' : ''}">
+      <td><div class="t-main">${esc(evalName(d))}</div><div class="t-sub mono">${esc(d.id)}</div></td>
+      <td class="small">${tasks.length} 个<div class="t-sub mono">${esc(tasks.slice(0, 2).join('、'))}${tasks.length > 2 ? ' …' : ''}</div></td>
+      <td>${st(evalState(d.status), EVAL_STATUS[d.status] || d.status || '—')}${d.reg?.priority === 'high' ? ' <span class="tag">加急</span>' : ''}</td>
+      <td class="small">${esc(memberName(d.submitter))}</td><td class="small">${esc(memberName(d.assignee) || '—')}</td>
+      <td class="num">${sr == null ? '—' : pct(sr)}<div class="t-sub">${esc(how)}</div></td><td class="small muted nowrap num">${fmtTime(d._at)}</td></tr>`;
+  }).join('')}</tbody></table></div>` : `<div class="card">${empty('compare', '没有评测', '点「提交评测」新建')}</div>`}</div>`;
+}
+function evalBrief(d) {  // the task for a coding agent that deploys and evaluates the model
+  const r = d.reg || {}, dir = `real2sim/evals/${d.id}`, fact = (k, v) => (v || v === 0 ? `- ${k}：${v}` : null);
+  const tasks = (r.tasks || []).map((tk) => `  - ${tk}：${evalEnvCfgs(d, tk).join('、') || '没有可用的评测布局（先报告，不要临时造布局）'}`);
+  return [
+    `为 RoboDojo 部署并评测外部模型「${evalName(d)}」（评测编号 ${d.id}），按仓库 scripts/datagen/SKILL.md「用本仓库评估外部训练的 checkpoint」和 scripts/datagen/CONTRACT.md 做。先 git fetch，从最新的 origin/main 开独立 worktree 和短分支。`,
+    '',
+    `输入：${dir}/request.json（平台申请），在平台所在机器的 ${INFO.root}/${dir}/。`,
+    '',
+    '模型：',
+    fact('名称 / 版本', [r.model_name, r.version].filter(Boolean).join('，')), fact('框架', r.framework), fact('checkpoint', r.checkpoint), fact('部署代码', r.code),
+    fact('训练数据', r.train_data), fact('本体', r.embodiment), fact('动作空间', ACTION_SPACES[r.action_space]), fact('图像输入', (r.cameras || []).map((c) => EVAL_CAMS[c] || c).join('、')),
+    fact('指令', EVAL_LANGS[r.language]), fact('推理环境', r.env), fact('显存', r.gpu_gb && `${r.gpu_gb} GB`), fact('动作块 / 推理频率', r.chunk),
+    '',
+    '评测范围（任务：env 配置）：', ...tasks,
+    fact('泛化等级', (r.levels || []).join('、') + '（用任务已有的分级评测布局；缺的等级在交付说明里列出，不要临时造）'),
+    fact('回合', `每个任务 × env 配置 ${r.layouts ?? 50} 个布局，每个布局重复 ${r.repeats ?? 3} 次，成功率附 95% 区间`),
+    r.expert ? '- 对照：有脚本专家的任务，同一批布局再用 scripted_demo 跑一遍' : null,
+    fact('截止', r.due), fact('优先级', PRIORITIES[r.priority]), fact('备注', r.notes),
+    '',
+    '步骤：',
+    `1. 在 5090-2 开隔离目录 /data/robodojo-runs/eval-${d.id}-<时间>/，把 checkpoint 和部署代码拉过去，按推理环境建 conda 环境。凭据只在服务器上用，不要写进仓库、request.json、result.json 或日志。`,
+    '2. 接入：优先用 XPolicyLab 的策略服务（policy 目录 + deploy.yml，WebSocket）；XPolicyLab 里没有对应策略时，在运行目录写进程内适配器，用 src/eval_client/main.py 的 --policy_module 跑（适配器不进本仓库，需要通用化时给 XPolicyLab 提 PR）。观测和动作按 CONTRACT 对齐（16 维顺序、夹爪 state 是实测开度、30 Hz、图像键名），不一致的写进交付说明。',
+    `3. 先冒烟 1 回合：_result.json 的 eval_time ≥ 1、相机视频齐全、动作不越限；再按上面的范围跑全量。颗粒任务用 g1d_beans_collect（1/600 s）。只用没有 train 标记的评测布局。策略名用 ${d.id}。`,
+    `4. 把运行目录的 eval_result/ 同步到 5090-2:${INFO.root}/eval_result/，平台据此在「数据质检」里列出这些回合和视频。`,
+    `5. 写 ${dir}/result.json，平台读它显示结果：{"evaluated_at": "...", "summary": "一两句结论", "runs": [{"task", "env_cfg", "level", "layouts", "repeats", "episodes", "success_rate", "ci95": [lo, hi], "expert_success_rate", "eval_time", "result_dir"}], "issues": "部署和对齐中的问题"}。放到部署机同一路径并提交入库。`,
+    '6. 过程中在平台上把这条评测的状态改成「部署中」「评测中」，完成后改「已完成」或「失败」，在评测记录里写原因。',
+  ].filter((line) => line !== null).join('\n');
+}
+function drawerEval(d) {
+  const r = d.reg || {}, res = d.auto.result, eps = evalEps(d), [sr, how] = evalOverall(d);
+  const canDelete = ME?.admin || d.submitter === ME?.username;
+  return {
+    title: evalName(d), sub: `${d.id} · ${EVAL_STATUS[d.status] || d.status || '—'} · 提交人 ${memberName(d.submitter) || '—'}`,
+    actions: canDelete ? `<button class="btn" type="button" data-id="${esc(d.id)}" onclick="removeDoc('evaluation', this.dataset.id)">${ic('trash')}删除</button>` : '',
+    body: `${sec(`${ic('terminal')}部署与评测任务（给 coding agent）`, `<p class="hint" style="margin:0 0 8px">申请写在 real2sim/evals/${esc(d.id)}/request.json。评测负责人把下面这段交给 coding agent；结果写回 result.json 后同步，这里自动显示。</p>${code(evalBrief(d))}`)}
+    ${sec('受理', `<div class="form">${row('状态', 'status', sel(d, 'status', EVAL_STATUS))}${row('评测负责人', 'assignee', sel(d, 'assignee', memberOpts(d.assignee)))}
+      ${row('评测记录', 'handling_notes', area(d, 'handling_notes', 'placeholder="部署进展、遇到的问题、失败原因"'))}</div>`)}
+    ${sec('结果', `${sr == null ? '<div class="small muted">还没有结果</div>' : `<p><b class="mono">${pct(sr)}</b> <span class="muted small">${esc(how)}</span></p>`}
+      ${res?.summary ? `<p class="small">${esc(res.summary)}</p>` : ''}
+      ${(res?.runs || []).length ? `<div class="table-wrap"><table class="plain"><thead><tr><th>任务</th><th>env 配置</th><th>等级</th><th class="num">回合</th><th class="num">成功率</th><th>95% 区间</th><th class="num">专家</th></tr></thead><tbody>
+        ${res.runs.map((x) => `<tr><td class="mono small">${link('task', x.task)}</td><td class="mono small">${esc(x.env_cfg || '')}</td><td class="mono small">${esc(x.level || '')}</td>
+          <td class="num">${x.episodes ?? '—'}</td><td class="num">${pct(x.success_rate)}</td><td class="small">${x.ci95 ? `${pct(x.ci95[0])}–${pct(x.ci95[1])}` : '—'}</td><td class="num">${pct(x.expert_success_rate)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      ${res?.issues ? `<div class="callout" style="margin-top:10px">${ic('alert')}<div>${esc(res.issues)}</div></div>` : ''}
+      <p class="hint">eval_result 里策略名为 ${esc(d.id)} 的回合：${eps.length} 个${eps.length ? `，仿真成功率 ${pct(rate(eps))} · <a href="#qa" data-t="" data-c="" data-p="${esc(d.id)}" onclick="event.preventDefault(); qaFilter(this.dataset)">去质检 ${ic('arrow-r', 'ic-sm')}</a>` : ''}</p>`)}
+    ${sec('申请内容', `<dl class="kv"><dt>checkpoint</dt><dd class="small">${esc(r.checkpoint || '—')}</dd><dt>部署代码</dt><dd class="small">${esc(r.code || '—')}</dd>
+      <dt>框架 / 版本</dt><dd class="small">${esc([r.framework, r.version].filter(Boolean).join(' · ') || '—')}</dd><dt>训练数据</dt><dd class="small">${esc(r.train_data || '—')}</dd>
+      <dt>接口</dt><dd class="small">${esc([r.embodiment, ACTION_SPACES[r.action_space], (r.cameras || []).map((c) => EVAL_CAMS[c] || c).join('、'), EVAL_LANGS[r.language]].filter(Boolean).join(' · '))}</dd>
+      <dt>推理环境</dt><dd class="small">${esc([r.env, r.gpu_gb && `${r.gpu_gb} GB`, r.chunk].filter(Boolean).join(' · ') || '—')}</dd>
+      <dt>任务</dt><dd>${(r.tasks || []).map((x) => link('task', x)).join('、') || '—'}</dd><dt>场景</dt><dd>${(r.scenes || []).map((x) => link('scene', x, sceneName(S.scene.find((s) => s.id === x) || {id: x}))).join('、') || '任务有布局的全部场景'}</dd>
+      <dt>等级 / 回合</dt><dd class="small">${esc((r.levels || []).join('、'))} · 每个任务 × env 配置 ${r.layouts ?? '—'} 个布局 × ${r.repeats ?? '—'} 次${r.expert ? ' · 脚本专家对照' : ''}</dd>
+      <dt>截止 / 优先级</dt><dd class="small">${esc(r.due || '—')} · ${esc(PRIORITIES[r.priority] || '普通')}</dd></dl>
+      <div class="form" style="margin-top:10px">${row('备注', 'reg.notes', area(d, 'reg.notes'))}</div>`)}`,
+  };
+}
+const EVAL_WIZ = [
+  ['模型与部署', '模型放在哪、部署代码在哪、怎么跑起来。仓库是公开的：不要填写令牌、密码；私有仓库只写名称，凭据另外交给评测负责人。'],
+  ['评测范围', '要测哪些任务、场景和泛化等级，每项跑多少回合。'],
+  ['分派', '截止时间和评测负责人。负责人可以先空着，由做 Real2Sim 的同学认领。'],
+];
+function drawerNewEval() {
+  const fld = wzFld, group = wzGroup, pane = (n, body) => wzPane(EVAL_WIZ, n, body);
+  const text = (id, ph = '', attrs = '') => `<input id="${id}" placeholder="${esc(ph)}" autocomplete="off" ${attrs}>`;
+  const note = (id, ph, rows = 2) => `<textarea id="${id}" rows="${rows}" placeholder="${esc(ph)}"></textarea>`;
+  const bodies = Object.fromEntries(live(S.embodiment).filter((x) => x.auto.in_code).map((x) => [x.id, `${robotName(x)}（${x.id}）`]));
+  return {
+    title: '提交评测', sub: '提交后生成给 coding agent 的部署与评测任务；评测负责人认领后交给它执行',
+    body: `<datalist id="dl-frameworks">${FRAMEWORKS.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>${wzNav(EVAL_WIZ)}
+    ${pane(0, `${group('模型', `<div class="wz-grid">
+      ${fld('ne-name', '模型名称', text('ne-name', 'OpenWAM 量杯倒豆 step1000', 'oninput="suggestEvalId()"'), {req: true})}
+      ${fld('ne-version', '版本 / 说明', text('ne-version', '从真机后训练 step20000 出发，仿真数据微调 1000 步'))}
+      <div class="fld"><label>评测编号</label><code id="ne-id" class="wz-id">填写模型名称后生成</code></div>
+      ${fld('ne-framework', '框架', text('ne-framework', 'OpenWAM', 'list="dl-frameworks"'))}
+      ${fld('ne-ckpt', 'checkpoint 位置', note('ne-ckpt', '服务器路径、ModelScope / HuggingFace 仓库名或对象存储路径；文件名和 sha256 有的话一并写'), {wide: true, req: true})}
+      ${fld('ne-code', '部署代码', note('ne-code', '仓库地址 + 分支或 commit，或服务器路径；推理入口和启动命令'), {wide: true, req: true})}
+      ${fld('ne-data', '训练数据', text('ne-data', 'registry.json 里的数据集名称，或说明'), {wide: true, hint: '用来选评测的 env 配置，并避开训练用过的布局'})}</div>`)}
+    ${group('接口与环境', `<div class="wz-grid">
+      ${fld('ne-body', '本体', `<select id="ne-body">${opts(bodies, 'g1d')}</select>`)}
+      ${fld('ne-action', '动作空间', `<select id="ne-action">${opts(ACTION_SPACES, 'joint16')}</select>`)}
+      <div class="fld wide"><label>图像输入</label><div class="toggles">${Object.entries(EVAL_CAMS).map(([k, x]) => `<label class="toggle"><input type="checkbox" data-cam="${k}" ${k === 'third' ? '' : 'checked'}><span>${ic('check')}${x}</span></label>`).join('')}</div></div>
+      ${fld('ne-lang', '指令', `<select id="ne-lang">${opts(EVAL_LANGS, 'en')}</select>`)}
+      ${fld('ne-gpu', '推理显存', wzUnit('ne-gpu', 'GB', 'step="1"'))}
+      ${fld('ne-env', '推理环境', note('ne-env', 'conda 环境 / docker 镜像 / requirements；torch、CUDA 版本'), {wide: true})}
+      ${fld('ne-chunk', '动作块 / 推理频率', text('ne-chunk', '如：每次推理输出 30 步，30 Hz 执行'), {wide: true})}</div>`)}`)}
+    ${pane(1, `${group('任务', `${picker('tk-eval', '搜索任务名称或 id')}<small class="muted">至少一个；每个任务在它有评测布局的 env 配置上测。</small>`)}
+    ${group('场景 <span class="opt">可选</span>', `${picker('sc-eval', '只测这些场景；留空 = 任务有布局的全部场景')}`)}
+    ${group('泛化等级与回合', `<div class="toggles">${LEVELS.map(([k, name]) => `<label class="toggle"><input type="checkbox" data-elevel="${k}" ${['L0', 'L1'].includes(k) ? 'checked' : ''}><span>${ic('check')}<b class="mono">${k}</b> ${name}</span></label>`).join('')}</div>
+      <div class="wz-grid" style="margin-top:12px">
+      ${fld('ne-layouts', '每个任务 × env 配置的布局数', '<input id="ne-layouts" type="number" min="1" step="1" value="50">')}
+      ${fld('ne-repeats', '每个布局重复次数', '<input id="ne-repeats" type="number" min="1" step="1" value="3">', {hint: '仿真有随机性，至少 3 次才能给出成功率区间'})}
+      <div class="fld wide"><label class="check"><input id="ne-expert" type="checkbox" checked>有脚本专家的任务，同一批布局再用专家跑一遍作对照</label></div></div>`)}`)}
+    ${pane(2, group('分派', `<div class="wz-grid">
+      ${fld('ne-due', '截止日期', '<input id="ne-due" type="date">')}
+      ${fld('ne-priority', '优先级', `<select id="ne-priority">${opts(PRIORITIES, 'normal')}</select>`)}
+      ${fld('ne-assignee', '评测负责人', `<select id="ne-assignee">${opts(memberOpts(), '')}</select>`, {hint: '可留空，由做 Real2Sim 的同学认领'})}
+      ${fld('ne-notes', '备注', note('ne-notes', '关注点、已知问题、希望对比的模型等'), {wide: true})}</div>`))}
+    ${wzFoot('createEval', '提交并生成评测任务')}`,
+  };
+}
+function openNewEval(btn) {
+  NE = {tasks: [], scenes: []};
+  WZ = {steps: EVAL_WIZ, check: evalWizError, idCheck: evalIdError};
+  WIZ_AT = 0;
+  openDrawer('new-eval', 'new', btn);
+  wizGo(0);
+}
+function evalId() {
+  const slug = $('#ne-name').value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'eval';
+  const stem = `${slug}-${new Date().toLocaleDateString('sv').replace(/-/g, '')}`;
+  let id = stem, n = 2;
+  while (S.evaluation.some((d) => d.id === id)) id = `${stem}-${n++}`;
+  return id;
+}
+function suggestEvalId() { $('#ne-id').textContent = $('#ne-name').value.trim() ? evalId() : '填写模型名称后生成'; }
+function evalIdError() { return /^[a-z0-9][a-z0-9_-]*$/.test(evalId()) ? [''] : ['评测编号不合法', '#ne-name']; }
+function evalWizError() {
+  if (WIZ_AT === 0) {
+    return !$('#ne-name').value.trim() ? ['填写模型名称', '#ne-name'] : !$('#ne-ckpt').value.trim() ? ['写清楚 checkpoint 在哪', '#ne-ckpt']
+      : !$('#ne-code').value.trim() ? ['写清楚部署代码在哪、怎么启动', '#ne-code'] : [''];
+  }
+  if (WIZ_AT === 1) {
+    if (!NE.tasks.length) return ['至少选一个任务', '#nt-chips-tk-eval + .opick input'];
+    if (!$$('[data-elevel]:checked').length) return ['至少选一个泛化等级', '[data-elevel]'];
+    if (!(Number($('#ne-layouts').value) >= 1)) return ['布局数至少为 1', '#ne-layouts'];
+    if (!(Number($('#ne-repeats').value) >= 1)) return ['重复次数至少为 1', '#ne-repeats'];
+  }
+  return [''];
+}
+async function createEval(btn) {
+  if (wizBlocked()) return;
+  const value = (sel) => $(sel).value.trim(), id = evalId();
+  const reg = {
+    model_name: value('#ne-name'), version: value('#ne-version'), framework: value('#ne-framework'), checkpoint: value('#ne-ckpt'), code: value('#ne-code'),
+    train_data: value('#ne-data'), embodiment: value('#ne-body'), action_space: value('#ne-action'), cameras: [...$$('[data-cam]:checked')].map((c) => c.dataset.cam),
+    language: value('#ne-lang'), gpu_gb: ntNum($('#ne-gpu').value), env: value('#ne-env'), chunk: value('#ne-chunk'),
+    tasks: NE.tasks, scenes: NE.scenes, levels: [...$$('[data-elevel]:checked')].map((c) => c.dataset.elevel),
+    layouts: ntNum($('#ne-layouts').value), repeats: ntNum($('#ne-repeats').value), expert: $('#ne-expert').checked,
+    due: value('#ne-due'), priority: value('#ne-priority'), notes: value('#ne-notes'),
+  };
+  btn.disabled = true;
+  btn.lastChild.textContent = '提交中…';
+  try {
+    await api(`/api/items?kind=evaluation&id=${encodeURIComponent(id)}`, {method: 'PUT', body: JSON.stringify({registered: true, reg, assignee: value('#ne-assignee')})});
+    await sync(true);
+    openDrawer('evaluation', id);
+    toast(`已提交 ${id}；部署与评测任务在抽屉顶部`);
+  } catch (err) {
+    $('#no-err').textContent = `提交失败：${err.message}`;
+    btn.disabled = false;
+    btn.lastChild.textContent = '重试提交';
   }
 }
 
@@ -1448,7 +1644,7 @@ function renderLevels() {
 }
 const newRole = (label = '', candidates = []) => ({label, candidates, holdout: [], count: 1});
 // picker keys: r<i> / h<i> = role i's training candidates / held-out objects, dis / dish = distractors, sc-* = scenes
-const ntList = (key) => ({dis: NT.dis.candidates, dish: NT.dis.holdout, 'sc-train': NT.scenes.train, 'sc-holdout': NT.scenes.holdout})[key]
+const ntList = (key) => (key === 'tk-eval' ? NE.tasks : key === 'sc-eval' ? NE.scenes : null) || ({dis: NT.dis.candidates, dish: NT.dis.holdout, 'sc-train': NT.scenes.train, 'sc-holdout': NT.scenes.holdout})[key]
   || NT.roles[Number(key.slice(1))][key[0] === 'h' ? 'holdout' : 'candidates'];
 const trainObjects = () => new Set([...NT.roles.flatMap((r) => r.candidates), ...NT.dis.candidates]);
 const heldObjects = () => new Set([...NT.roles.flatMap((r) => r.holdout), ...NT.dis.holdout]);
@@ -1467,6 +1663,14 @@ const PICK = {
     card: (o) => `<div class="small">${measured(o) ? `实测 ${esc(dimText(o))} mm · ${o.real_mass} g` : `仿真 ${mm(o.auto.size)} mm${num(o.auto.mass) ? ` · ${(o.auto.mass * 1000).toFixed(0)} g` : ''}`}</div>
       <div class="small muted">${o.auto.in_library ? '资产库已有' : o.auto.built ? '已建好，未装共享库' : '还没建模'}${o.auto.renders?.length ? '' : o.auto.photos?.length ? ' · 图为实拍' : ''}</div>`,
   },
+  task: {
+    all: () => live(S.task).sort((x, y) => Number(y.auto.dimension === 'custom') - Number(x.auto.dimension === 'custom') || x.id.localeCompare(y.id)),
+    get: (id) => S.task.find((x) => x.id === id), name: (x) => x.reg?.name || x.id, img: () => null, icon: 'list',
+    text: (x) => `${x.id} ${x.reg?.name || ''} ${DIMS[x.auto.dimension] || ''}`,
+    empty: '没有匹配的任务；新任务先在「任务采集」登记',
+    card: (x) => `<div class="small">${esc(DIMS[x.auto.dimension] || x.auto.dimension || '')}${x.auto.module ? '' : ' · 还没实现'}</div>
+      <div class="small muted">${Object.keys(x.auto.layouts || {}).length ? `评测布局：${esc(Object.entries(x.auto.layouts).map(([c, n]) => `${c} ${n}`).join('、'))}` : '资产库里没有布局'}</div>`,
+  },
   scene: {
     all: () => live(S.scene).sort((x, y) => Number(Boolean(y.auto.configs?.length)) - Number(Boolean(x.auto.configs?.length)) || x.id.localeCompare(y.id)),
     get: (id) => S.scene.find((x) => x.id === id), name: sceneName, img: sceneImage, icon: 'scan',
@@ -1476,8 +1680,8 @@ const PICK = {
       <div class="small muted">${s.auto.configs?.length ? `env 配置 ${esc(s.auto.configs.join('、'))}` : '还没建模'} · 照片 ${s.auto.photos?.length || 0}</div>`,
   },
 };
-const pickSrc = (key) => PICK[key.startsWith('sc-') ? 'scene' : 'obj'];
-const pickLabel = (key, id) => { const x = pickSrc(key).get(id); return x ? `${pickSrc(key).name(x)} · ${id}` : id; };
+const pickSrc = (key) => PICK[key.startsWith('sc-') ? 'scene' : key.startsWith('tk-') ? 'task' : 'obj'];
+const pickLabel = (key, id) => { const x = pickSrc(key).get(id), n = x && pickSrc(key).name(x); return n && n !== id ? `${n} · ${id}` : id; };
 const picker = (key, ph = '搜索物体名称、类别或 id') => `<div class="chips" id="nt-chips-${key}">${ntChips(key)}</div>
   <div class="opick"><input type="search" placeholder="${ph}" autocomplete="off" aria-label="${ph}" aria-controls="opick-${key}" aria-expanded="false"
     oninput="opickOpen('${key}', this)" onfocus="opickOpen('${key}', this)" onblur="setTimeout(() => opickClose('${key}'), 150)" onkeydown="opickKey(event, '${key}', this)">
@@ -1523,7 +1727,7 @@ function opickKey(ev, key) {
   next.scrollIntoView({block: 'nearest'});
 }
 function pickObjId(key, id) {
-  if (!key.startsWith('sc-')) {
+  if (!/^(sc|tk)-/.test(key)) {
     const clash = isHoldKey(key) ? trainObjects().has(id) && '已经是训练候选，评测保留的必须是训练里没见过的物体'
       : heldObjects().has(id) && '已经选为评测保留物体，不能再进训练';
     if (clash) return toast(`${pickLabel(key, id)} ${clash}`, true);
@@ -2397,8 +2601,8 @@ function renderDrawer() {
   const wizard = x.kind.startsWith('new-');
   if ((wizard || x.kind === 'account') && dr.dataset.k === key) return;  // keep typed input
   const d = S[x.kind]?.find((y) => y.id === x.id);
-  const view = x.kind === 'new-object' ? drawerNewObject() : x.kind === 'new-scene' ? drawerNewScene() : x.kind === 'new-task' ? drawerNewTask() : x.kind === 'new-robot' ? drawerNewRobot() : x.kind === 'account' ? drawerAccount()
-    : d ? {scene: drawerScene, object: drawerObject, task: drawerTask, embodiment: drawerRobot}[x.kind](d) : {title: '记录不存在', body: ''};
+  const view = x.kind === 'new-object' ? drawerNewObject() : x.kind === 'new-scene' ? drawerNewScene() : x.kind === 'new-task' ? drawerNewTask() : x.kind === 'new-robot' ? drawerNewRobot() : x.kind === 'new-eval' ? drawerNewEval() : x.kind === 'account' ? drawerAccount()
+    : d ? {scene: drawerScene, object: drawerObject, task: drawerTask, embodiment: drawerRobot, evaluation: drawerEval}[x.kind](d) : {title: '记录不存在', body: ''};
   const scroll = dr.dataset.k === key ? $('#drawer .dr-b')?.scrollTop : 0;
   dr.innerHTML = `<div class="dr-h"><div style="min-width:0;flex:1"><h2 id="drawer-title">${esc(view.title)}</h2>${view.sub ? `<p>${esc(view.sub)}</p>` : ''}</div>
     ${view.actions || ''}<button class="btn btn-icon dr-close" type="button" aria-label="关闭（Esc）" onclick="closeDrawer()">${ic('close')}</button></div>
@@ -2445,7 +2649,7 @@ function onClick(ev) {
 }
 
 // ---------- render ----------
-const VIEWS = {overview: viewOverview, scenes: viewScenes, objects: viewObjects, robots: viewRobots, tasks: viewTasks, qa: viewQA, users: viewUsers};
+const VIEWS = {overview: viewOverview, scenes: viewScenes, objects: viewObjects, robots: viewRobots, tasks: viewTasks, qa: viewQA, evals: viewEvals, users: viewUsers};
 function render() {
   EP_BY_TASK = group(live(S.episode), (e) => e.auto.task);
   renderNav();
