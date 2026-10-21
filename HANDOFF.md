@@ -10,7 +10,7 @@
 
 - **机器人** G1-D + Dex1-1（带相机版夹爪）：两条 7 自由度手臂加两指夹爪，关节角控制，30 Hz；轮子锁死，升降柱和腰部保持初始值。
   - 头部用双目的左眼 `cam_head`（棋盘格标定 fx≈279.5，宇树合同外参），两个腕部相机 fx≈314；投影到真机画面核对过（误差 0.4–3.6 px）。
-  - 关节驱动参数（刚度 4400、阻尼 40）和夹爪力是拍定的，没做系统辨识。夹爪上限是每指 20 N；官方规格（零售商转载）写的是夹持力 5–120 N 可调，是否提高上限待用户决定（见「剩余事项」）。仿真里能读到夹持力：`obs["gripper_force"]`（指垫 ContactSensor，单位 N，不进数据集）。同事把"相机+动作标定工具包"作为 `g1d_calib_toolkit_20261019.zip` 传到了仓库根目录，还没接入。
+  - 关节驱动参数（刚度 4400、阻尼 40）和夹爪力是拍定的，没做系统辨识。夹爪上限是每指 20 N；官方规格（零售商转载）写的是夹持力 5–120 N 可调，真机采集估计约 55 N（kp 换算，见「剩余事项」），仿真偏小，是否提高待定。仿真里能读到夹持力：`obs["gripper_force"]`（指垫 ContactSensor，单位 N，不进数据集）。同事把"相机+动作标定工具包"作为 `g1d_calib_toolkit_20261019.zip` 传到了仓库根目录，还没接入。
   - 构建：`python scripts/g1d/build_asset.py`（读 `real2sim/robot/g1d_v4`）。下载官方资产后先跑一次 `utils/update_embodiment_config_path.py`。
 - **场景**（`real2sim/scenes/`）：env 配置 `g1d` 是办公室，`g1d_counter` 是吧台，`g1d_lab` 是公司实验室，`g1d_school` 是学校实验室绿幕桌，`g1d_shenzhen_lab` 是深圳实验室办公桌。前三个从照片拟合，尺度靠先验；学校的来自同事用真机相机画面拟合的 MuJoCo 孪生；深圳实验室是第一个按平台登记、用卷尺定尺度的场景（卷尺三项通过，站位和叠图待做）。其余都没有卷尺实测，都没有叠图验收。状态汇总：`python scripts/scenes/acceptance.py`（目前全部 pending）。新场景先在数采平台登记（≥ 5 张照片 + 卷尺实测，写 `registration.json`），再按 `real2sim/scenes/SKILL.md` 交给 coding agent 建模。新场景先在数采平台「登记场景」（至少 5 张照片 + 卷尺实测，写 `real2sim/scenes/<场景>/registration.json`），再按 `real2sim/scenes/SKILL.md` 建模。
 - **物体**：每件资产的来源和匹配程度看 `real2sim/ASSETS.md`。按数采平台的登记（`real2sim/objects/<id>/spec.json` + 照片）给实物建模，交给 coding agent 时按 `scripts/objects/SKILL.md`；平台物体页生成的「建模任务」文本第一行就指向它。
@@ -218,7 +218,10 @@
 - **共享库的倒豆布局过期**：`g1d`、`g1d_counter`、`g1d_lab` 的倒水、杯对杯布局是旧豆子参数（4 mm，`particle_mass` 6e-5），和当前 `build_asset.py`（5.6 mm）不一致；`g1d_shenzhen_lab` 已是新参数。要统一，就在隔离目录重跑 `build_asset.py`，经同意后替换（先备份）。
 - **深圳实验室**：已合并、部署、装共享库；站位卷尺（桌沿到根节点、横向偏移）和三视角叠图后，`acceptance.py` 才能通过。
 - **场景**：除深圳实验室外没有卷尺实测，都没有叠图；`real_scene1` 和 09-21 那次真机运行时的摆放不一样，那批画面不能用来叠图。下次去现场按 `real2sim/scenes/SKILL.md` 一次采齐。
-- **夹爪上限**：仿真每指 20 N，官方写 5–120 N 可调。改上限会改变物理，和已采数据的 env 不再一致（`replay.py` 能看出来），所以要先确认真机实际设的是多少，再决定是否改、是否重采。
+- **夹爪上限**：仿真每指 20 N，官方写 5–120 N 可调。改上限会改变物理，和已采数据的 env 不再一致（`replay.py` 能看出来）。用户 10-21 要求先查真机设定再决定，目前没改。
+  - **真机设定**（10-21 在 `ssh unitree` 上只读查看）：遥操作采集（`~/g1d_infra/teleop/robot_control/robot_arm.py`）、策略评测客户端（`~/client/jepa_g1d_client/g1d_jepa_client.py`、`motus_client`），以及 unitree_lerobot 官方的 `Dex1_1_Gripper_Controller`，用的都是电机层 PD：`kp=5.0`、`kd=0.05`、`tau=0`，读数 q 范围 0（闭合）到 5.36（张开）。每步指令都裁到当前位置附近：遥操作 ±0.18 rad（再加平滑滤波），评测客户端闭合时最多超前 0.3 rad（`GRIP_SQUEEZE`）。没有显式的力矩上限，真正决定夹持力的是 kp 乘以这个误差上限：遥操作最多约 0.9 N·m，评测最多约 1.5 N·m。
+  - **换算成指尖力（估计，没实测）**：假设 q 和指尖行程成线性（每指 44.5 mm 对应 5.36 rad，约 8.3 mm/rad），一个电机同时推两指，那么每指的力约等于 60 × τ：遥操作约 55 N，评测约 90 N；每指的等效刚度约 3.6e4 N/m（仿真是 1e4）。没算传动效率和摩擦，实际会低一些。线性假设本身也没标定过（见下面的「真机对齐」）。
+  - **要定准**：在真机上夹一个已知宽度的硬物，读电机 31、33 在 `rt/lowstate` 里的 `tau_est`，或者夹测力计直接量。
 - **真机对齐**：
   - 动力学没做系统辨识；末端位姿动作还不支持（需要 G1-D 的 cuRobo 配置，并且左右臂各用一个 planner）；
   - 真机开环回放的关卡没有工具；
