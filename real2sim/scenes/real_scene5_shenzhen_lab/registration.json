@@ -1,0 +1,42 @@
+{
+  "scene": "real_scene5_shenzhen_lab",
+  "name": "深圳实验室",
+  "name_en": "ShenZhen Lab",
+  "scene_type": "办公桌",
+  "location": "B5-2L",
+  "purpose": "twin",
+  "measurements": {
+    "table_top_z": {
+      "value_m": 0.75,
+      "tool": "卷尺",
+      "date": "2026-10-21"
+    },
+    "table_length": {
+      "value_m": 1.2,
+      "tool": "卷尺",
+      "date": "2026-10-21"
+    },
+    "table_width": {
+      "value_m": 0.6,
+      "tool": "卷尺",
+      "date": "2026-10-21"
+    }
+  },
+  "table": {
+    "thickness_cm": 2,
+    "support": "四条腿",
+    "surface": "白色",
+    "edge_shape": "圆角"
+  },
+  "surroundings": {
+    "floor": "灰色条纹瓷砖",
+    "walls": "乳白色粗糙墙",
+    "back_clearance_cm": 0,
+    "fixtures": "储物柜 75×120×45 cm, 金属材质"
+  },
+  "lighting": {
+    "sources": "室内顶部，顶条，面光源，和照片颜色对齐"
+  },
+  "updated_by": "种政",
+  "updated_at": "2026-10-21 12:08:33"
+}
