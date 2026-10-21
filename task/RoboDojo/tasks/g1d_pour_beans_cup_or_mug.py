@@ -8,7 +8,7 @@ TARGETS = {
 
 
 class G1dPourBeansCupOrMugCommon(G1dPourBeansCupToCupCommon):
-    """g1d_pour_beans_measuring_cups with the target varied: the tall measuring cup's red beans (100-300 per layout)
+    """g1d_pour_beans_measuring_cups with the target varied: the tall measuring cup's red beans (300-600 per layout)
     go into either the short measuring cup or the white plastic mug with a handle, among unrelated distractors. Same
     success check as the cup-to-cup pour; the instruction names the target.
 

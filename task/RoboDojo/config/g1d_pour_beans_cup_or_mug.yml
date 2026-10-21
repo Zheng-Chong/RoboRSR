@@ -1,4 +1,4 @@
-# G1-D bean pour with the target varied: red beans (100-300) in the tall measuring cup (index 1, source) go into the
+# G1-D bean pour with the target varied: red beans (300-600) in the tall measuring cup (index 1, source) go into the
 # short measuring cup (index 0) or the white plastic mug (plastic_mug/00000) as the target, among 2-5 Clutter
 # distractors. Collection layouts come from scripts/g1d/prepare_bean_pour_layouts.py; the ranges below only document
 # a default (measuring-cup) layout for the random-layout path.

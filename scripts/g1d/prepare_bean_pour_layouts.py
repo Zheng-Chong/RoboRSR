@@ -1,5 +1,5 @@
 """Prepare bean-pour layouts (g1d_pour_beans_cup_or_mug): tall measuring cup -> short measuring cup or white mug,
-100-300 red beans, 2-5 Clutter distractors, on any G1-D tabletop scene.
+300-600 red beans (targets in BEANS), 2-5 Clutter distractors, on any G1-D tabletop scene.
 
 Pouring hand, both cups' positions and the tall cup's yaw come from prepare_office_beans_layouts.sample_layouts. On
 top of that, per layout:
@@ -8,7 +8,7 @@ top of that, per layout:
   palm comes from the other side, so the handle is clear of both;
 - beans: a stratified count in BEANS; the bean ellipsoid is scaled by (count / BEANS_REF)^(1/3) from the 0.9 fill
   (BEANS_REF beans) and lowered to keep its bottom gap. The simulator samples the particles, so the actual count is
-  near the target; the collection plugin records it and rejects counts outside BEANS;
+  near the target; the collection plugin records it and rejects counts outside its 300-600;
 - distractors: 2-5 Clutter objects (distinct categories) standing upright at a random yaw in the table's back strip
   and outer sides, clear of each other and of the cups' and arms' working area (ZONES, CLEAR).
 
@@ -34,16 +34,21 @@ sys.path.insert(0, str(ROOT))
 from scripts.g1d.prepare_office_beans_layouts import sample_layouts, yaw_wxyz  # noqa: E402
 
 TASK = "g1d_pour_beans_cup_or_mug"
-BEANS, BEANS_REF, FILL_REF = (100, 300), 672, 0.9  # beans; beans at the 0.9 fill of the tall cup (2026-10-19 runs)
+BEANS_REF, FILL_REF = 672, 0.9  # beans at the 0.9 fill of the tall cup (2026-10-19 runs)
+# Target counts drawn here. The particles sit on a grid, so the actual count takes a few values and is not monotonic in
+# the target: targets 285-335 gave 288 or 297, 350+ gave 320-572 (ShenZhen probes, 2026-10-21). The plugin accepts
+# 300-600 and rejects the rare count past 600.
+BEANS = (350, 630)
 BEAN_GAP, BEAN_HALF = 0.0048, 0.035  # bottom gap above the outside bottom, ellipsoid half height at scale 1 (m)
 MUG_HANDLE = 40  # deg either side of the holding hand's finger direction
 CUP_YAW = 45  # scripted_demo.CUP_YAW: the hand turns this far inward from fingers-forward
 DISTRACTORS = (2, 5)
 DISTRACTOR_MAX_R = 0.09  # m, largest footprint (projection circle) used
 # (x range, y range) of distractor footprint centres, |x| mirrored for the sides: the back strip and both outer sides
-ZONES = (((-0.50, 0.50), (-0.20, -0.06)), ((0.30, 0.52), (-0.52, -0.22)), ((-0.52, -0.30), (-0.52, -0.22)))
+ZONES = (((-0.50, 0.50), (-0.20, -0.06)), ((0.36, 0.52), (-0.52, -0.22)), ((-0.52, -0.36), (-0.52, -0.22)))
 TABLE = ((-0.58, 0.58), (-0.58, -0.02))  # footprints stay inside
-CLEAR = 0.10  # m between a distractor's footprint and a cup centre
+CLEAR = 0.16  # m between a distractor's footprint and a cup centre: the hand comes in from 8 cm out (at 0.10 it
+# pushed a distractor into the tall cup)
 GAP = 0.02  # m between distractor footprints
 
 

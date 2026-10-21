@@ -400,6 +400,10 @@ def cup_to_cup_actions(env, pour_share=None):
     for grip, hand, opening, air in ((s_grip, s_hand, s_open, s_start), (t_grip, t_hand, t_open, t_air)):
         approach = grip - hand.apply([CUP_SLIDE, 0, 0])
         raised = grip + [0, 0, C2C_RAISE]
+        # the source first rises to its pour height over its own place, then moves across: its bottom is then above
+        # the target's rim (pour() keeps BODY_CLEAR), where a straight carry brushed the target cup in ~40% of the
+        # ShenZhen episodes (2026-10-21)
+        high = np.r_[raised[:2], max(raised[2], air[2])] if grip is s_grip else raised
         keys.append(
             [
                 (approach + [0, 0, HOVER], hand, opening, 54),
@@ -407,7 +411,8 @@ def cup_to_cup_actions(env, pour_share=None):
                 (grip, hand, opening, 40),  # slide in
                 (grip, hand, 0, 15),  # close
                 (raised, hand, 0, carry(grip, raised)),  # straight up first
-                (air, hand, 0, carry(raised, air)),
+                (high, hand, 0, carry(raised, high)),
+                (air, hand, 0, carry(high, air)),
             ]
         )
 

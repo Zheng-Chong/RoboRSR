@@ -233,19 +233,20 @@ class ContractTests(unittest.TestCase):
         from scripts.datagen.plugins import g1d_pour_beans_cup_or_mug as plugin
         from scripts.objects import measuring_cup_shape, plastic_mug_shape
 
-        hold, n = plugin.HOLD, 120
+        hold, n = plugin.HOLD, 360
         jitter = np.random.default_rng(0).uniform(-0.01, 0.01, (n, 3))
         # cavity centres in each cup's bbox frame (cups at x = -+0.15, upright)
         tall = np.array([0, 0, 0.06]) + measuring_cup_shape.origin_shift(0.17) + [-0.15, 0, 0]
         mug = np.array([0, 0, 0.05]) + plastic_mug_shape.origin_shift() + [0.15, 0, 0]
         cups = np.tile([[-0.15, 0, 0, 1, 0, 0, 0], [0.15, 0, 0, 1, 0, 0, 0]], (hold, 1, 1))
         beans = np.tile(mug + jitter, (hold, 1, 1))
+        distractors = np.tile([[0.4, -0.1, 0, 1, 0, 0, 0], [-0.4, -0.1, 0, 1, 0, 0, 0]], (hold, 1, 1))
         privileged = dict(
             initial_particles=tall + jitter,
             particles=beans,
             cup_poses=cups,
-            distractor_poses_start=np.zeros((2, 7)),
-            distractor_poses_end=np.zeros((2, 7)),
+            distractor_poses=distractors,
+            distractor_poses_start=distractors[0].copy(),
         )
         cup_info = dict(
             source_cup=dict(kind="measuring_cup", height=0.17), target_cup=dict(kind="plastic_mug", height=0.1)
@@ -253,12 +254,26 @@ class ContractTests(unittest.TestCase):
         quality = dict(frames=hold, initial_counts=dict(total=n), cups=cup_info)
         report = plugin.audit(privileged, quality)
         self.assertEqual((report["beans"], report["target"]), (n, "plastic_mug"))
-        beans[-1, 0] = mug + [0.045, 0, 0]  # in the mug wall in the last frame
+
+        def fails(**changes):
+            with self.assertRaises(AssertionError):
+                plugin.audit({k: changes.get(k, v) for k, v in privileged.items()}, quality)
+
+        moved = distractors.copy()
+        moved[3, 0, 0] += 0.03  # a distractor pushed 3 cm in one frame
+        fails(distractor_poses=moved)
+        touching = cups.copy()
+        touching[3, 0, 0] = 0.07  # the tall cup's side inside the mug
+        fails(cup_poses=touching)
+        tilted = cups.copy()
+        tilted[3, 1, 3:] = [np.cos(np.radians(10)), np.sin(np.radians(10)), 0, 0]  # target 20 deg over
+        fails(cup_poses=tilted)
+        stray = beans.copy()
+        stray[-1, 0] = mug + [0.045, 0, 0]  # in the mug wall in the last frame
+        fails(particles=stray)
+        few = dict(privileged, initial_particles=privileged["initial_particles"][:250], particles=beans[:, :250])
         with self.assertRaises(AssertionError):
-            plugin.audit(privileged, quality)
-        few = dict(privileged, initial_particles=privileged["initial_particles"][:50], particles=beans[:, :50])
-        with self.assertRaises(AssertionError):
-            plugin.audit(few, dict(quality, initial_counts=dict(total=50)))
+            plugin.audit(few, dict(quality, initial_counts=dict(total=250)))
 
     def test_registry_entries_are_complete(self):
         registry = json.loads(Path(__file__).with_name("registry.json").read_text())
