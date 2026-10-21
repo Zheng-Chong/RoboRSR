@@ -223,6 +223,11 @@ def test_http():
         assert request("DELETE", scene)[0] == 200
         assert not (tmp / "scenes/real_scene9_kitchen/registration.json").exists()
 
+        for inst in ("cup/00000", "cup/00001", "ball/00000"):  # the Clutter library, as in the asset mirror
+            (tmp / "Object/RoboDojo/Clutter" / inst).mkdir(parents=True)
+            (tmp / "Object/RoboDojo/Clutter" / inst / "metadata.json").write_text("{}")
+        assert json.loads(request("GET", "/api/clutter")[1]) == {"ball": 1, "cup": 2}
+
         server.TASKS_DIR = tmp / "tasks"
         task = "/api/items?kind=task&id=g1d_wipe_table"
         roles = [{"label": "sponge", "candidates": ["Rigid/sponge/00000"], "count": 1, "xlim": None, "yaw_deg": 0}]
