@@ -329,6 +329,8 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
 #obj-preview .op-img img { width: 100%; height: 100%; object-fit: contain; }
 #obj-preview .op-b { display: grid; gap: 3px; padding: 10px 12px; }
 .clutter-cats { max-height: 180px; overflow: auto; margin-top: 8px; }
+.draft-note { margin-top: 14px; }
+.draft-note > div { display: flex; flex: 1; align-items: center; gap: 10px; }
 
 /* drawer */
 #scrim { position: fixed; inset: 0; z-index: 20; background: rgba(15, 23, 42, .38); opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -1043,11 +1045,13 @@ function drawerNewRobot() {
   };
 }
 function openNewRobot(btn) {
+  if (restoreDraft('new-robot', btn)) return;
   NEW_PHOTOS = [];
   WZ = {steps: ROBOT_WIZ, check: robotWizError, idCheck: robotIdError};
   WIZ_AT = 0;
   openDrawer('new-robot', 'new', btn);
   wizGo(0);
+  WZ.baseline = formState();  // what the wizard filled in itself, so an untouched form keeps no draft
 }
 function suggestRobotId() {
   const el = $('#nr-id');
@@ -1077,6 +1081,7 @@ async function createRobot(btn) {
     if (NEW_PHOTOS.length) await uploadFiles(id, NEW_PHOTOS, 'embodiment');
     await sync(true);
     openDrawer('embodiment', id);
+    delete DRAFTS['new-robot'];
     toast(`已登记 ${id}；接入任务在抽屉顶部`);
   } catch (err) {
     $('#no-err').textContent = `登记失败：${err.message}`;
@@ -1227,11 +1232,13 @@ function drawerNewEval() {
   };
 }
 function openNewEval(btn) {
+  if (restoreDraft('new-eval', btn)) return;
   NE = {tasks: [], scenes: []};
   WZ = {steps: EVAL_WIZ, check: evalWizError, idCheck: evalIdError};
   WIZ_AT = 0;
   openDrawer('new-eval', 'new', btn);
   wizGo(0);
+  WZ.baseline = formState();  // what the wizard filled in itself, so an untouched form keeps no draft
 }
 function evalId() {
   const slug = $('#ne-name').value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'eval';
@@ -1272,6 +1279,7 @@ async function createEval(btn) {
     await api(`/api/items?kind=evaluation&id=${encodeURIComponent(id)}`, {method: 'PUT', body: JSON.stringify({registered: true, reg, assignee: value('#ne-assignee')})});
     await sync(true);
     openDrawer('evaluation', id);
+    delete DRAFTS['new-eval'];
     toast(`已提交 ${id}；部署与评测任务在抽屉顶部`);
   } catch (err) {
     $('#no-err').textContent = `提交失败：${err.message}`;
@@ -1821,6 +1829,7 @@ function drawerNewTask() {
   };
 }
 async function openNewTask(btn) {
+  if (restoreDraft('new-task', btn)) return;
   try { CLUTTER = await api('/api/clutter'); } catch { CLUTTER = {}; }
   NT = {roles: [newRole()], dis: {candidates: [], holdout: []}, scenes: {train: [], holdout: []},
     levels: Object.fromEntries(LEVELS.map(([k, , range, target]) => [k, {range, target}]))};
@@ -1829,6 +1838,7 @@ async function openNewTask(btn) {
   openDrawer('new-task', 'new', btn);
   renderRoles();
   wizGo(0);
+  WZ.baseline = formState();  // what the wizard filled in itself, so an untouched form keeps no draft
 }
 const taskId = () => ($('#nt-mode').value === 'existing' ? $('#nt-existing').value : `g1d_${$('#nt-slug').value.trim()}`);
 function suggestTaskId() {
@@ -1905,6 +1915,7 @@ async function createTask(btn) {
     await api(`/api/items?kind=task&id=${encodeURIComponent(id)}`, {method: 'PUT', body: JSON.stringify({registered: true, reg, owner: value('#nt-owner')})});
     await sync(true);
     openDrawer('task', id);
+    delete DRAFTS['new-task'];
     toast(`已登记 ${id}；实现任务在抽屉顶部`);
   } catch (e) {
     err.textContent = `登记失败：${e.message}`;
@@ -2249,12 +2260,14 @@ async function removeDoc(kind, id) {
 let NEW_PHOTOS = [], WIZ_AT = 0, WZ = null;  // the open registration wizard: photos picked so far, current step, {steps, check}
 async function openNewObject(btn) {
   try { IDX = await api('/api/object-indices'); } catch (err) { return toast(`读取编号失败：${err.message}`, true); }
+  if (restoreDraft('new-object', btn)) return;
   NEW_PHOTOS = [];
   WZ = {steps: WIZ, check: wizError, idCheck: objIdError};
   WIZ_AT = 0;
   openDrawer('new-object', 'new', btn);
   suggestIndex();
   wizGo(0);
+  WZ.baseline = formState();  // what the wizard filled in itself, so an untouched form keeps no draft
 }
 function objIdError() {  // [message, field] when the asset id is unusable, or ['']
   const type = $('#no-type').value, cat = $('#no-cat').value.trim(), idx = $('#no-idx').value.trim();
@@ -2301,11 +2314,13 @@ function wizGo(n) {
   else if (WIZ_AT !== from) { $('#drawer .dr-b').scrollTop = 0; $(`.wiz-pane[data-step="${WIZ_AT}"] input, .wiz-pane[data-step="${WIZ_AT}"] textarea`)?.focus({preventScroll: true}); }
 }
 function openNewScene(btn) {
+  if (restoreDraft('new-scene', btn)) return;
   NEW_PHOTOS = [];
   WZ = {steps: SCENE_WIZ, check: sceneWizError, idCheck: sceneIdError};
   WIZ_AT = 0;
   openDrawer('new-scene', 'new', btn);
   wizGo(0);
+  WZ.baseline = formState();  // what the wizard filled in itself, so an untouched form keeps no draft
 }
 const nextSceneNo = () => Math.max(0, ...S.scene.map((d) => Number(/^real_scene(\d+)_/.exec(d.id)?.[1] || 0))) + 1;
 const newSceneId = () => `real_scene${nextSceneNo()}_${$('#ns-slug').value.trim()}`;
@@ -2356,6 +2371,7 @@ async function createScene(btn) {
     const n = await uploadFiles(id, NEW_PHOTOS, 'scene');
     await sync(true);
     openDrawer('scene', id);
+    delete DRAFTS['new-scene'];
     toast(`已登记 ${id}，上传 ${n} 张照片；建模任务在抽屉顶部`);
   } catch (e) {
     err.textContent = `登记失败：${e.message}`;
@@ -2418,6 +2434,7 @@ async function createObject(btn) {
     const n = NEW_PHOTOS.length ? await uploadFiles(id, NEW_PHOTOS) : 0;
     await sync(true);
     openDrawer('object', id);
+    delete DRAFTS['new-object'];
     toast(`已登记 ${id}${n ? `，上传 ${n} 张照片` : ''}；建模任务在抽屉顶部`);
   } catch (e) {
     err.textContent = `登记失败：${e.message}`;
@@ -2580,7 +2597,47 @@ function renderLB() {
 }
 function lbStep(d) { LB.i = (LB.i + d + LB.list.length) % LB.list.length; renderLB(); }
 function closeLB() { $('#lightbox').classList.remove('on'); LB.ret?.focus?.(); }
+// registration wizards keep their form when the drawer closes or switches away (a stray click on the scrim, Esc, another
+// row, another tab): the drawer's nodes and the wizard state, restored the next time the same wizard opens
+const DRAFTS = {};
+const WIZ_OPENERS = () => ({'new-object': openNewObject, 'new-scene': openNewScene, 'new-task': openNewTask, 'new-robot': openNewRobot, 'new-eval': openNewEval});
+const formState = () => JSON.stringify([...$$('#drawer .dr-b input, #drawer .dr-b textarea, #drawer .dr-b select')]
+  .filter((e) => e.type !== 'file').map((e) => (e.type === 'checkbox' || e.type === 'radio' ? e.checked : e.value)));
+function wizardDirty(kind) {
+  const changed = formState() !== WZ?.baseline;
+  const lists = kind === 'new-task' ? NT && [...NT.roles.flatMap((r) => [...r.candidates, ...r.holdout]), ...NT.dis.candidates, ...NT.dis.holdout, ...NT.scenes.train, ...NT.scenes.holdout].length
+    : kind === 'new-eval' ? NE && NE.tasks.length + NE.scenes.length : 0;
+  return changed || NEW_PHOTOS.length > 0 || lists > 0;
+}
+function stashDraft() {  // true if the open wizard's form was kept
+  const x = UI.drawer, dr = $('#drawer');
+  if (!x?.kind.startsWith('new-') || dr.dataset.k !== `${x.kind}|new`) return false;
+  if (!wizardDirty(x.kind)) { delete DRAFTS[x.kind]; return false; }
+  $('#obj-preview').hidden = true;
+  DRAFTS[x.kind] = {nodes: [...dr.childNodes], state: {WIZ_AT, WZ, NT, NE, NEW_PHOTOS}};
+  return true;
+}
+function restoreDraft(kind, btn) {  // true if the wizard reopened with its kept form
+  const draft = DRAFTS[kind], dr = $('#drawer');
+  if (!draft) return false;
+  ({WIZ_AT, WZ, NT, NE, NEW_PHOTOS} = draft.state);
+  dr.replaceChildren(...draft.nodes);
+  dr.dataset.k = `${kind}|new`;  // renderDrawer keeps a wizard whose key is unchanged
+  openDrawer(kind, 'new', btn);
+  dr.classList.add('on');
+  dr.querySelector('.draft-note')?.remove();
+  dr.querySelector('.dr-b').insertAdjacentHTML('afterbegin', `<div class="callout draft-note">${ic('refresh')}<div>已恢复上次没提交的内容。<span class="sp"></span>
+    <button class="btn" type="button" onclick="discardDraft('${kind}')">清空重填</button></div></div>`);
+  return true;
+}
+function discardDraft(kind) {
+  delete DRAFTS[kind];
+  $('#drawer').dataset.k = '';
+  UI.drawer = null;
+  WIZ_OPENERS()[kind](UI.drawerRet);
+}
 function openDrawer(kind, id, trigger) {
+  if (UI.drawer && (UI.drawer.kind !== kind || UI.drawer.id !== id)) stashDraft();
   const wasOpen = Boolean(UI.drawer);
   UI.drawer = {kind, id};
   if (!wasOpen) UI.drawerRet = trigger || document.activeElement;
@@ -2589,6 +2646,7 @@ function openDrawer(kind, id, trigger) {
 }
 function closeDrawer() {
   if (!UI.drawer) return;
+  if (stashDraft()) toast('没提交的内容已暂存，重新点登记按钮可以继续填写');
   UI.drawer = null;
   render();
   UI.drawerRet?.focus?.();
@@ -2667,7 +2725,7 @@ function render() {
   }
 }
 const tabFromHash = () => (VIEWS[location.hash.slice(1)] ? location.hash.slice(1) : 'overview');
-window.addEventListener('hashchange', () => { UI.tab = tabFromHash(); UI.drawer = null; render(); window.scrollTo(0, 0); });
+window.addEventListener('hashchange', () => { UI.tab = tabFromHash(); stashDraft(); UI.drawer = null; render(); window.scrollTo(0, 0); });
 document.addEventListener('change', onFieldChange);
 document.addEventListener('keydown', onKey);
 document.addEventListener('click', onClick);
