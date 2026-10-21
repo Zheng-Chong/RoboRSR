@@ -59,7 +59,7 @@
    "name": "every render mesh has a bound material",
    "ok": true,
    "detail": {
-    "render_meshes": 22,
+    "render_meshes": 205,
     "unbound": []
    }
   },
@@ -67,14 +67,14 @@
    "name": "render triangle budget (< 100k)",
    "ok": true,
    "detail": {
-    "triangles": 594
+    "triangles": 7074
    }
   },
   {
    "name": "colliders are guide purpose (not rendered)",
    "ok": true,
    "detail": {
-    "colliders": 20,
+    "colliders": 68,
     "rendered": []
    }
   },
@@ -83,6 +83,13 @@
    "ok": true,
    "detail": {
     "rigid": []
+   }
+  },
+  {
+   "name": "convex colliders have at most 64 points (else particles fall through)",
+   "ok": true,
+   "detail": {
+    "over": []
    }
   },
   {
@@ -153,16 +160,45 @@
    }
   },
   {
+   "name": "room furniture stands on the floor",
+   "ok": true,
+   "detail": {
+    "items": 15,
+    "off_floor": {}
+   }
+  },
+  {
+   "name": "room furniture clears the walls",
+   "ok": true,
+   "detail": {
+    "in_wall": []
+   }
+  },
+  {
+   "name": "room furniture keeps 1 m from the G1-D root and 0.3 m from the table",
+   "ok": true,
+   "detail": {
+    "near": []
+   }
+  },
+  {
+   "name": "furniture pieces do not overlap (collider boxes)",
+   "ok": true,
+   "detail": {
+    "clash": []
+   }
+  },
+  {
    "name": "textures have no unfilled (black) areas (< 1%)",
    "ok": true,
    "detail": {
     "carpet.png": 0.0,
     "panel.png": 0.0,
     "tabletop.png": 0.0,
-    "wall_east.png": 0.0005,
-    "wall_north.png": 0.001,
-    "wall_south.png": 0.0006,
-    "wall_west.png": 0.0004
+    "wall_east.png": 0.0003,
+    "wall_north.png": 0.0006,
+    "wall_south.png": 0.0004,
+    "wall_west.png": 0.0003
    }
   },
   {
@@ -185,6 +221,6 @@
   "RTX rendering, exposure and colour match against the photos",
   "real sizes (scale from the 0.75 m height prior), friction and light intensities (estimates)"
  ],
- "passed": 19,
- "total": 19
+ "passed": 24,
+ "total": 24
 }
