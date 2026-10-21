@@ -33,6 +33,15 @@
 
 ## 最近任务
 
+### 深圳实验室倒豆 500 条（2026-10-22，`chongzheng/datagen-shenzhen-beans` 快进进 `main`，已上传 ModelScope）
+
+- **用户要求**：深圳实验室场景；高量杯倒进矮量杯或白色塑料马克杯；2–5 个无关干扰物；500 条；多卡并行。看过首批视频后改为：红豆 300–600（原 100–300）、抓取要稳、两杯不能碰。
+- **数据集** `g1d_shenzhen_pour_beans_cup_or_mug_500`：500 回合、199697 帧、30 Hz，XPolicyLab 官方转换器出的 LeRobot v3.0；目标矮量杯 257、马克杯 243；豆数 320–594；干扰物 2/3/4/5 个各 140/123/119/118 回合。私有仓库 `ChongZheng/g1d_shenzhen_pour_beans_cup_or_mug_500`。registry 已登记。
+- **代码**：任务 `g1d_pour_beans_cup_or_mug`（指令按目标说 “…into the short measuring cup / the white mug.”）；插件 `scripts/datagen/plugins/g1d_pour_beans_cup_or_mug.py`，验收 `all_beans_retained_any_target_v2`：结尾 30 帧全部豆子在目标杯腔内、两杯 ≤ 15°；整回合两杯杯身不接触（圆柱采样 + 马克杯把手）、目标杯 ≤ 15°、干扰物位移 ≤ 2 cm，违规即结束回合；`scripts/objects/plastic_mug_shape.py`（马克杯尺寸、原点偏移、杯腔）；`scripted_demo.cup_to_cup_actions` 按杯种取夹持高度、下倾角、杯腔，源杯先在原地升到倒豆高度再横移（旧版 43% 回合在搬运时擦碰）；布局 `scripts/g1d/prepare_bean_pour_layouts.py`（复用办公室采样器；马克杯把手朝持杯手指方向 ±40°；豆数目标 350–630，因颗粒网格采样实际 320–594；干扰物从 19 类 Clutter 直立放在桌后部和两侧，离杯 ≥ 0.16 m）；env 配置 `g1d_shenzhen_lab_beans_collect`；`run_batch.py --per-gpu N`，以及进程位多于分片时空队列 pop 崩溃的修复。
+- **运行** `5090-2:/data/robodojo-runs/shenzhen-beans-20261021`，`output/datagen/shenzhen-beans-v2`，代码 `1d39c9d`（rebase 前的提交号，内容同 `main` 上的对应提交）。GPU 0/6/7 每卡 3 进程，6.3 小时，751 回合 505 合格（67%；矮量杯 262/372、马克杯 243/379；左手 246/364、右手 259/387）。不合格：结尾条件 143、目标杯倾斜 87、两杯接触 15、干扰物被碰 1。100–300 豆的 v1 批次（199 回合 156 合格）已弃用。
+- **验证**：导出读回 500/199697；`audit.py` 500/500 重算验收通过，布局互不相同（`final_validation.json`、`sha256.json`、`coverage.png`）；开环回放 seed500、seed509 各 4 条：手臂状态偏差 ≤ 2e-3 rad，6/8 复现合格，1 条豆子落点不同（190 颗留在源杯，颗粒物理开环发散），1 条稳定帧 29/30；上传后 `upload.py verify` 逐文件核对 sha256。本机 `check.sh`。
+- **没做**：55 N 夹爪 A/B（另一会话 `c575c8e`）合格率同为 16/28，没合入；指令只有一种英文说法。
+
 ### 实验室场景 `real_scene3_lab` 的家具建成立体模型（2026-10-22）
 
 - **用户要求**：实验室场景要把桌子、椅子、柜子也重建出来，而不是只贴图。原来只有操作台是几何体，房间里的家具都压平在四面墙的照片上。
@@ -277,6 +286,7 @@
 
 ## 最近历史
 
+- 2026-10-22：深圳实验室倒豆 500 条（矮量杯或马克杯、300–600 豆、2–5 干扰物、严格整回合验收）采完、审计、上传 ModelScope 私有仓库 `ChongZheng/g1d_shenzhen_pour_beans_cup_or_mug_500`。
 - 2026-10-22：实验室场景 `real_scene3_lab` 的工位桌、网椅、活动柜、文件柜、边桌、圆桌建成立体模型（`/Background/Furniture`），从墙面照片里抠掉；共享库未更新（见「最近任务」）。
 - 2026-10-21：物体的颜色、尺寸泛化改为仿真里按布局随机，不建新资产；形状、材质等仍建变体资产，平台上收进本体卡片（用户：泛化放到一个卡片下；能不能在仿真里随机改尺寸和颜色而不是新建资产；用户选定两个都做、随机值写进布局）。
   - 仿真：`RigidObject` 读布局条目的 `visual.color`（线性 RGB）绑一个 PreviewSurface，覆盖资产自带材质；有 `visual.color_parts` 时只换这些网格（保留标签、透明件）。`scale` 本来就从布局读、每次复位重设；新改的是 `LayoutManager.get_instance_bbox_vertices` 对刚体按 `scale` 缩放 metadata 包围盒（判据和脚本专家都用它，原来恒为未缩放值），`RigidObject.get_bbox` 同样处理。现有布局里刚体全是 scale 1（在 5090-2 元数据镜像里全量查过，只有流体豆子不是 1，流体不受影响），所以现有任务行为不变。
