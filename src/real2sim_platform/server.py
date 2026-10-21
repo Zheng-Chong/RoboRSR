@@ -299,12 +299,14 @@ def scan_tasks(assets):
             "objects": config_objects(ROOT / t["config"]) if t["config"] and t["dimension"] == "custom" else {},
             "layouts": {cfg: n for (task, cfg), n in sorted(layouts.items()) if task == t["name"]},
             "registered": (TASKS_DIR / t["name"] / "registration.json").is_file(),
+            "instructions": load_json(TASKS_DIR / t["name"] / "instructions.json"),  # written by the coding agent
         }
     for path in sorted(TASKS_DIR.glob("*/registration.json")):  # registered on the platform, not implemented yet
         found.setdefault(
             path.parent.name,
             {"dimension": "custom", "runnable": False, "module": None, "config": None, "step_lim": None}
-            | {"objects": {}, "layouts": {}, "registered": True},
+            | {"objects": {}, "layouts": {}, "registered": True}
+            | {"instructions": load_json(path.parent / "instructions.json")},
         )
     return found
 
@@ -488,7 +490,8 @@ def write_task_registration(doc, names=None):
         "existing": r.get("existing"),  # registers a generalization plan for a task already in task/RoboDojo
         "name": r.get("name"),
         "name_en": r.get("name_en"),
-        "instruction": r.get("instruction"),
+        "definition": r.get("definition"),  # in Chinese; the coding agent writes the instructions from it
+        "instructions": r.get("instructions"),  # {"count": N per language, "languages": ["zh", "en"]}
         "success": r.get("success"),
         "hand": r.get("hand"),
         "horizon_s": r.get("horizon_s"),
