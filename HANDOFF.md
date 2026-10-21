@@ -1,7 +1,7 @@
 # Project Handoff
 
 更新时间：2026-10-21
-当前分支：`chongzheng/scene-shenzhen-lab`（worktree `../RoboDojo-scene-shenzhen-lab`，从 `origin/main` `10a4e06` 开出，已合入 `origin/main` `df9b4d6`）：新场景 `real_scene5_shenzhen_lab`，PR 待合并。此前：流水线规范化（[PR #1](https://github.com/Zheng-Chong/RoboRSR/pull/1)）和学校场景接入（[PR #2](https://github.com/Zheng-Chong/RoboRSR/pull/2)）都已于 2026-10-20 合并，两个短分支已删除。
+当前分支：`main`。深圳实验室场景（[PR #22](https://github.com/Zheng-Chong/RoboRSR/pull/22)）已于 2026-10-21 合并（`2975b4a`）并部署到数采平台。更早：流水线规范化（[PR #1](https://github.com/Zheng-Chong/RoboRSR/pull/1)）和学校场景接入（[PR #2](https://github.com/Zheng-Chong/RoboRSR/pull/2)）都已于 2026-10-20 合并，短分支已删除。
 当前目标：把 G1-D 的三条流水线规范化：Real2Sim 采集（物体、场景）、仿真数据生成，以及本仓库内的仿真评估。训练在仓库外。
 
 本文件只记录当前状态。逐次实验的细节（相机拟合、抓取调参、倒豆参数扫描、各次服务器验证）见 `git show 4fb9290:HANDOFF.md`。数采平台的运维细节（端口、账号、隧道、重启方法）已移到本机 `.agent/ops.local.md`，不入库，因为仓库是公开的。
@@ -33,7 +33,7 @@
 
 ## 最近任务
 
-### 深圳实验室场景 `real_scene5_shenzhen_lab`（2026-10-21，分支 `chongzheng/scene-shenzhen-lab`，未合并）
+### 深圳实验室场景 `real_scene5_shenzhen_lab`（2026-10-21，[PR #22](https://github.com/Zheng-Chong/RoboRSR/pull/22) 合并进 `main`，已部署）
 
 - **输入**：平台登记 `registration.json`（卷尺：桌面 0.75 m 高、1.20 × 0.60 m、厚 2 cm；储物柜 75 × 120 × 45 cm；后沿贴墙；顶条面光源）和 6 张照片，从 `5090-2:/root/RoboDojo/real2sim/scenes/real_scene5_shenzhen_lab/` 同步，入库。
 - **建模**（从 `real_scene3_lab` 的写法复制）：`fit_photo.py` 在 5 张照片上手标桌沿、立柱、桌脚、柜角（4915 和 4914 同机位，不用），桌面尺寸、厚度、柜子尺寸、贴墙都固定成登记值，只拟合相机、共享焦距、桌腿和柜子位置。桌沿残差 ≤ 3.7 px；焦距 773.6 px，与 EXIF 26 mm 等效的 769 px 一致。`build_scene.py` 出 `usd/`（背景、桌子、柜子、灯光四层）和 `real_scene5.usd`；碰撞体全是盒体。`check_scene.py` 22/22。`acceptance.py`：桌高、长、宽误差 0。
@@ -50,6 +50,7 @@
   - **去掉了 `g1d_pour_beans_measuring_cups_*`（165 个）**：共享库没有 `measuring_cup`，其他配置也没有这个任务的布局。
   - 生成输入核对：同一次运行生成的 `g1d_lab` 和共享库的 `g1d_lab` 比，拾取、叠块逐字节相同；倒水、杯对杯只有豆子参数不同，因为**共享库里 `g1d`、`g1d_counter`、`g1d_lab` 的这两个任务布局还是旧的 4 mm 豆子参数**，当前代码是 5.6 mm。`g1d_shenzhen_lab` 按当前代码生成，所以和旧配置在这两个任务上不一致（见「剩余事项」）。
   - 平台：`5090-2` 的元数据镜像补了同样的 574 个布局 json（整体重刷镜像时会从共享库带上）。
+- **部署**（14:00）：`5090-2` 从 `d5db8aa` 快进到 `2975b4a`（推临时分支再 `--ff-only`）；部署机 `HANDOFF.md` 里另一会话的绿幕桌记录照旧先存为 `.cache/handoff-local-20261021-135957.patch`，快进后重新应用；airpods `spec.json` 的平台时间戳改动保留。`real_scene5.usd` 和地毯贴图检出后只是 LFS 指针，从本机 rsync 真实文件后 `git add` 刷新 stat。重启服务后未登录 `/api/info` 401；部署机上直接调用 `scan_scenes()`：已建模、配置 `g1d_shenzhen_lab`、离线检查 22/22、拟合 5 视角（最大 8.1 px）、5 张渲染图。网页里点「同步项目数据」即可看到。
 - **没做**：站位卷尺和叠图（要真机头部、腕部画面和关节角）；灯光没和头部相机比。
 
 ### 数采平台任务登记（2026-10-20，[PR #11](https://github.com/Zheng-Chong/RoboRSR/pull/11) 合并进 `main`，已部署）
@@ -207,7 +208,7 @@
 - **新流水线还没跑过整批**：collection_v3 是用旧采集器采的，下一批数据应该改用 `scripts/datagen/run_batch.py`。
 - **学校场景**：桌面高度和底盘偏航都依赖假设（零升降、12 号电机即躯干偏航），要用卷尺和叠图核对；从 sys01 拷真机头部和腕部画面（`outputs/g1d-real2sim`）做叠图。杯盘要在数采平台登记实测后，按 `scripts/objects/SKILL.md` 重建。
 - **共享库的倒豆布局过期**：`g1d`、`g1d_counter`、`g1d_lab` 的倒水、杯对杯布局是旧豆子参数（4 mm，`particle_mass` 6e-5），和当前 `build_asset.py`（5.6 mm）不一致；`g1d_shenzhen_lab` 已是新参数。要统一，就在隔离目录重跑 `build_asset.py`，经同意后替换（先备份）。
-- **深圳实验室**：分支待合并；已装共享库；站位卷尺（桌沿到根节点、横向偏移）和三视角叠图后，`acceptance.py` 才能通过。
+- **深圳实验室**：已合并、部署、装共享库；站位卷尺（桌沿到根节点、横向偏移）和三视角叠图后，`acceptance.py` 才能通过。
 - **场景**：除深圳实验室外没有卷尺实测，都没有叠图；`real_scene1` 和 09-21 那次真机运行时的摆放不一样，那批画面不能用来叠图。下次去现场按 `real2sim/scenes/SKILL.md` 一次采齐。
 - **真机对齐**：
   - 动力学没做系统辨识；末端位姿动作还不支持（需要 G1-D 的 cuRobo 配置，并且左右臂各用一个 planner）；
@@ -230,7 +231,7 @@
 ## 下一会话
 
 0. 实现平台登记的 `g1d_pour_beans_any_cups`：在平台任务抽屉复制「实现任务」文本交给 coding agent（输入 `real2sim/tasks/g1d_pour_beans_any_cups/registration.json`）。
-0. 深圳实验室：合并 `chongzheng/scene-shenzhen-lab`（共享库已装好）；去现场量站位、拍头部 / 腕部画面做叠图（`overlay.py --env-cfg g1d_shenzhen_lab`）。
+0. 深圳实验室（已合并、部署、装共享库）：去现场量站位、拍头部 / 腕部画面做叠图（`overlay.py --env-cfg g1d_shenzhen_lab`）。
 1. 先看 `git log`、本文件和 `scripts/datagen/CONTRACT.md`。主工作区里还有物体建模 SKILL 会话没提交的改动（见"最近任务"里的"并行会话"）；拉取新的 `main` 前，先让那个会话提交，或者先 stash。
 2. 下一批数据用新流水线采集。先跑单回合探针，确认 `joint_names`、夹爪 state 和图像都正常，再按 `scripts/datagen/SKILL.md` 批量采集、导出、审计、回放，最后登记。
 3. 去现场按 `real2sim/scenes/SKILL.md` 采集（ChArUco 标定板照片、卷尺、灯光、机器人相机画面），在平台「登记场景」录入，回来跑 `overlay.py` 和 `acceptance.py`。
@@ -239,7 +240,7 @@
 
 ## 最近历史
 
-- 2026-10-21：按平台登记新建深圳实验室场景 `real_scene5_shenzhen_lab`（env 配置 `g1d_shenzhen_lab`），卷尺定尺度，5090-2 上 `build_asset.py` 和脚本演示通过，经用户同意装进共享库（不含量杯任务布局）；修 `build_asset.py` 相对 `--assets` 时的软链接问题。分支 `chongzheng/scene-shenzhen-lab`。
+- 2026-10-21：按平台登记新建深圳实验室场景 `real_scene5_shenzhen_lab`（env 配置 `g1d_shenzhen_lab`），卷尺定尺度，5090-2 上 `build_asset.py` 和脚本演示通过，经用户同意装进共享库（不含量杯任务布局）；修 `build_asset.py` 相对 `--assets` 时的软链接问题。PR #22 合并（`2975b4a`）并部署到 `5090-2`。
 - 2026-10-21：登记任务的评测保留物体改为跟着角色走（用户：每个角色都要有候选和保留，干扰物也要有）：第 2 步每个角色分「训练候选」「评测保留」两个选择框，干扰物分「训练用」「评测保留」，去掉单独的「评测保留实例」栏；已是训练候选的物体不能再选为保留，反之亦然（保留的必须是训练里没见过的）。L3 只在选了保留物体时开启（多候选、干扰物只算训练多样性）。「目标布局数」改名「评测布局数」并注明只用于评测、训练数据量看合格回合目标。`registration.json`：角色和 `distractors` 各加 `holdout`，去掉 `holdout_objects`。顺带修复 PR #15 把 PR #14 的两处改回旧版的问题：实现任务文本里的杂物类别、抽屉里的「含杂物库：类别」（登记文件的 `clutter_categories` 一直正确）。验证：`test_server.py`、ruff；本机浏览器：两栏选择、双向互斥提示、L3 依据、评测布局数、实现任务文本和抽屉摘要。PR #21 合并（`d5db8aa`）并部署。
 - 2026-10-21：PR #19 合并（`2944698`）并部署；部署前删掉了部署机上和 `main` 内容一致的未跟踪 `real2sim/tasks/g1d_pour_beans_any_cups/registration.json`（sha256 核对过）。线上第一个场景登记 `real_scene5_shenzhen_lab`（深圳实验室，B5-2L，种政 10-21 12:08 登记：6 张照片、卷尺桌面 75 × 120 × 60 cm、厚 2 cm、四条腿白色圆角桌、储物柜 75×120×45 cm 金属、顶部条形面光源）拷回入库，照片走 LFS。还没建模，没量机器人站位，也没有标定板；部署 PR #21 时已核对一致、挪开后快进并放回真实照片，部署机上现在是跟踪文件。
 - 2026-10-21：登记任务的泛化等级不再手动勾选，按前面的选择自动开启（用户：干扰物、换物体、选场景本身就是泛化，最后一步重复）：L0 始终开；L1 = 第 4 步勾了位置或朝向；L2 = 第 3 步新加的「外观随机」（灯光、纹理、相机扰动）勾了任一项；L3 = 某角色候选物体多于 1 个、有干扰物或选了保留实例（保留实例挪到第 2 步）；L4 = 选了保留场景。第 4 步只显示各级开没开和依据，开启的级可改范围和目标布局数。`registration.json` 新增 `appearance`。另外三个登记向导对管理员不再强制「填完才能下一步」：跳过的项在底栏列出；提交前仍检查 ID（物体类别和编号、场景目录名、任务 ID），对管理员也生效；普通成员不变。验证：`test_server.py`、ruff；本机浏览器：管理员空表跳到最后一步、空后缀提交被拦、等级随选择开关、取消位置和朝向后 L1 关闭、L4 目标改 80 写进登记；场景向导管理员可跳；普通成员三个向导都被拦在第 1 步。
