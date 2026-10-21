@@ -94,6 +94,11 @@ def make_shards(args):
     return files[: len(shards) * per]
 
 
+def assign(slots, active, queue):
+    """[(slot, seed)] for free (gpu, k) slots in order, popping seeds off the queue until it runs out."""
+    return [(slot, queue.pop(0)) for slot in slots if slot not in active and queue]
+
+
 def accepted_count(raw):
     return sum(json.loads(p.read_text()).get("accepted", False) for p in raw.glob("seed*/episode_*.json"))
 
@@ -158,8 +163,8 @@ def main():
         if accepted >= args.target:
             stop.touch()
             queue.clear()
-        for slot in [s for s in slots if s not in active and queue]:
-            gpu, seed = slot[0], queue.pop(0)
+        for slot, seed in assign(slots, active, queue):
+            gpu = slot[0]
             log = (args.output / f"worker_{seed}.log").open("a")
             cmd = [args.python, "-u", "scripts/datagen/collect.py", "--task", args.task, "--env-cfg", args.env_cfg]
             cmd += ["--seed", str(seed), "--output", str(raw / f"seed{seed}"), "--stop-file", str(stop)]

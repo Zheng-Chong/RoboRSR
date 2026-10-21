@@ -158,6 +158,13 @@ class RecorderTests(unittest.TestCase):
                 self.assertEqual(json.loads((root / seed / "split.json").read_text())["split"], "train")
         self.assertEqual(run_batch.span("0-2,5"), [0, 1, 2, 5])
 
+    def test_more_worker_slots_than_shards(self):
+        slots = [(gpu, k) for k in range(3) for gpu in (0, 2)]
+        queue = [100, 101, 102, 103]
+        got = run_batch.assign(slots, {(0, 0): None}, queue)
+        self.assertEqual(got, [((2, 0), 100), ((0, 1), 101), ((2, 1), 102), ((0, 2), 103)])
+        self.assertEqual((queue, run_batch.assign(slots, {}, queue)), ([], []))
+
 
 class ContractTests(unittest.TestCase):
     def obs(self, ee_state):
