@@ -34,6 +34,14 @@ def test_repo_scan():
     assert not any(".." in oid for oid in objects)
 
 
+def test_embodiments():
+    bodies = server.scan_embodiments()  # robot_config modules; per-scene stands of one body count as one
+    assert {"g1d", "x5", "franka"} <= set(bodies) and bodies["g1d"]["in_code"]
+    lab = next(s for s in bodies["g1d"]["setups"] if s["robot_cfg"] == "g1d_lab")
+    assert lab["env_cfgs"] == ["g1d_lab"] and lab["scenes"] == ["real_scene3_lab"] and lab["arm_dim"] == [7, 7]
+    assert next(s for s in bodies["x5"]["setups"] if s["robot_cfg"] == "dual_x5")["count"] == 2
+
+
 def make_run(root, cams=("head", "left_wrist"), tag="success"):
     run = root / "RoboDojo/g1d_stack_blocks/scripted_demo/g1d_lab/0_scripted/2026-10-19_10-00-00"
     run.mkdir(parents=True)
@@ -95,7 +103,12 @@ def test_http():
     server.Handler.failures, server.FAIL_DELAY = {}, 0
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    session, scenes_dir, tasks_dir = {}, server.build_asset.SCENES_DIR, server.TASKS_DIR
+    session, scenes_dir, tasks_dir, bodies_dir = (
+        {},
+        server.build_asset.SCENES_DIR,
+        server.TASKS_DIR,
+        server.EMBODIMENTS_DIR,
+    )
 
     def request(method, path, body=None, headers=None):
         conn = http.client.HTTPConnection("127.0.0.1", httpd.server_port)
@@ -228,6 +241,26 @@ def test_http():
             (tmp / "Object/RoboDojo/Clutter" / inst / "metadata.json").write_text("{}")
         assert json.loads(request("GET", "/api/clutter")[1]) == {"ball": 1, "cup": 2}
 
+        server.EMBODIMENTS_DIR = tmp / "embodiments"
+        body = "/api/items?kind=embodiment&id=g1d_mobile"
+        assert request("PUT", "/api/items?kind=embodiment&id=G1D/../x", json.dumps({"registered": True}))[0] == 400
+        reg = {"name": "G1-D 移动版", "dof": "双臂各 7 + 差速底盘", "calib_camera": "done", "units": ""}
+        assert request("PUT", body, json.dumps({"registered": True, "reg": reg, "owner": "alice"}))[0] == 200
+        written = json.loads((tmp / "embodiments/g1d_mobile/registration.json").read_text(encoding="utf-8"))
+        assert written.pop("updated_at") and written == {
+            "embodiment": "g1d_mobile",
+            "name": "G1-D 移动版",
+            "dof": "双臂各 7 + 差速底盘",
+            "calib_camera": "done",
+            "owner": {"username": "alice", "name": "张三"},
+            "updated_by": "张三",
+        }
+        status, body_photo, _ = request("POST", "/api/photo?kind=embodiment&id=g1d_mobile&name=side.jpg", b"jpg")
+        assert status == 200 and json.loads(body_photo)["path"].endswith("embodiments/g1d_mobile/reference/side.jpg")
+        found = server.scan_embodiments()["g1d_mobile"]
+        assert found["registered"] and len(found["photos"]) == 1 and "setups" in found
+        assert request("DELETE", body)[0] == 200 and not (tmp / "embodiments/g1d_mobile/registration.json").exists()
+
         server.TASKS_DIR = tmp / "tasks"
         task = "/api/items?kind=task&id=g1d_wipe_table"
         roles = [
@@ -307,7 +340,7 @@ def test_http():
         assert [login("alice", "bad-pass")[0] for _ in range(5)] == [401] * 5
         assert login("alice", "password2")[0] == 429  # locked out after 5 failures, even with the right password
     finally:
-        server.build_asset.SCENES_DIR, server.TASKS_DIR = scenes_dir, tasks_dir
+        server.build_asset.SCENES_DIR, server.TASKS_DIR, server.EMBODIMENTS_DIR = scenes_dir, tasks_dir, bodies_dir
         httpd.shutdown()
 
 

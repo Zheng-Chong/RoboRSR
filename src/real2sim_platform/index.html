@@ -430,6 +430,7 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
     <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></symbol>
     <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
     <symbol id="i-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.2A10.4 10.4 0 0 1 12 4c6.4 0 10 8 10 8a17.6 17.6 0 0 1-2.2 3.2"/><path d="M6.6 6.6C3.9 8.4 2 12 2 12s3.6 8 10 8a9.7 9.7 0 0 0 5.4-1.6"/><path d="M14.1 14.1a3 3 0 0 1-4.2-4.2"/><path d="m2 2 20 20"/></symbol>
+    <symbol id="i-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></symbol>
     <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
     <symbol id="i-table" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></symbol>
   </defs>
@@ -489,10 +490,10 @@ const base = (p) => String(p).split('/').pop();
 const opts = (options, value) => Object.entries(options).map(([k, l]) => `<option value="${esc(k)}" ${k === String(value ?? '') ? 'selected' : ''}>${esc(l)}</option>`).join('');
 const ic = (name, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
-const KINDS = ['scene', 'object', 'task', 'episode'];
-const TAB_OF = {scene: 'scenes', object: 'objects', task: 'tasks', episode: 'qa'};
-const KIND_LABEL = {scene: '场景', object: '物体', task: '任务', episode: '回合'};
-const S = {scene: [], object: [], task: [], episode: []};
+const KINDS = ['scene', 'object', 'task', 'episode', 'embodiment'];
+const TAB_OF = {scene: 'scenes', object: 'objects', task: 'tasks', episode: 'qa', embodiment: 'robots'};
+const KIND_LABEL = {scene: '场景', object: '物体', task: '任务', episode: '回合', embodiment: '本体'};
+const S = {scene: [], object: [], task: [], episode: [], embodiment: []};
 const UI = {
   tab: 'overview', drawer: null, ep: null, taskDim: 'custom', taskQ: '', sel: new Set(), loaded: false, syncing: false, syncedAt: '',
   obj: {q: '', src: '', photo: false, view: localStorage.objView || 'cards'},
@@ -718,6 +719,7 @@ function renderNav() {
     ['overview', '总览', 'grid', ''],
     ['scenes', '场景重建', 'scan', S.scene.length],
     ['objects', '物体资产', 'box', live(S.object).length],
+    ['robots', '本体管理', 'bot', live(S.embodiment).length],
     ['tasks', '任务采集', 'list', live(S.task).filter((t) => t.auto.dimension === 'custom').length],
     ['qa', '数据质检', 'clipboard', pending],
     ...(ME?.admin ? [['users', '成员管理', 'users', USERS.length]] : []),
@@ -881,11 +883,11 @@ function sceneRegForm(d) {  // the registration, editable after the wizard; each
     ${t('requirements', '建模要求')}${t('notes', '备注')}</div>
     <p class="hint">计划任务：${esc((d.reg?.tasks || []).join('、') || '未选')}。照片在 ${esc(rel(d.auto.path))}/reference/，可在下方上传或删除。</p>`;
 }
-function scenePhotos(d) {
-  const photos = d.auto.photos || [], key = `scene-photos-${d.id}`;
+function scenePhotos(d, kind = 'scene', min = MIN_SCENE_PHOTOS) {
+  const photos = d.auto.photos || [], key = `${kind}-photos-${d.id}`;
   GAL[key] = photos;
-  return `<div class="toolbar" style="margin-bottom:8px"><span class="small ${photos.length < MIN_SCENE_PHOTOS ? 'txt-bad' : 'muted'}">${photos.length} 张 / 至少 ${MIN_SCENE_PHOTOS} 张</span><span class="sp"></span>
-    <label class="btn upload" title="jpg / png / webp，单张 ≤ 25 MB">${ic('upload')}上传<input type="file" accept="image/jpeg,image/png,image/webp" multiple data-kind="scene" data-id="${esc(d.id)}" onchange="uploadPhotos(this)" aria-label="上传场景照片"></label></div>
+  return `<div class="toolbar" style="margin-bottom:8px"><span class="small ${photos.length < min ? 'txt-bad' : 'muted'}">${photos.length} 张${min ? ` / 至少 ${min} 张` : ''}</span><span class="sp"></span>
+    <label class="btn upload" title="jpg / png / webp，单张 ≤ 25 MB">${ic('upload')}上传<input type="file" accept="image/jpeg,image/png,image/webp" multiple data-kind="${kind}" data-id="${esc(d.id)}" onchange="uploadPhotos(this)" aria-label="上传照片"></label></div>
     <div class="strip">${photos.map((p, i) => `<div class="item"><button class="gthumb" type="button" data-lb="${esc(key)}" data-i="${i}" aria-label="查看 ${esc(base(p))}"><img loading="lazy" src="${file(p)}" alt=""></button>
     <button class="del" type="button" data-path="${esc(p)}" onclick="deletePhoto(this.dataset.path)" aria-label="删除 ${esc(base(p))}">${ic('trash', 'ic-sm')}</button></div>`).join('')}</div>`;
 }
@@ -926,6 +928,159 @@ function drawerScene(d) {
     ${sec(`${ic('file')}文档`, `<div class="toolbar">${(a.docs || []).map((p) => `<a class="btn" target="_blank" rel="noopener" href="${file(p)}">${ic('file')}${esc(base(p))}</a>`).join('') || '<span class="small muted">无</span>'}</div>`)}
     ${sec(`${ic('terminal')}命令`, code(cmd))}`,
   };
+}
+
+// ---------- robots ----------
+const robotName = (d) => d.reg?.name || d.id;
+const CALIB = {'': '未做', done: '已完成', na: '不适用'};
+const calibStage = (k, label, hint) => [k, label, (d) => (d.reg?.[`calib_${k}`] === 'done' ? ok('已完成') : d.reg?.[`calib_${k}`] === 'na' ? na('不适用') : todo(hint))];
+const ROBOT_STAGES = [
+  ['code', '仿真接入', (d) => (d.auto.in_code ? ok(d.auto.config) : todo('还没有 env/robot_manager/robot_config 配置'))],
+  ['setup', '站位配置', (d) => (d.auto.setups?.length ? ok(`${d.auto.setups.length} 个：${d.auto.setups.map((s) => s.robot_cfg).join('、')}`) : todo('env_cfg/robot/ 下没有用到它的配置'))],
+  calibStage('camera', '相机标定', '头部和腕部相机的内参、外参'),
+  calibStage('joint', '关节零位', '真机关节零位和仿真一致'),
+  calibStage('gripper', '夹爪标定', '真机夹爪读数和开度的对应关系'),
+  calibStage('dynamics', '动力学辨识', '关节刚度、阻尼、摩擦按真机辨识'),
+];
+const robotDims = (d) => {
+  const s = d.auto.setups?.find((x) => x.arm_dim);
+  return s ? `${s.count > 1 ? `${s.count} 台 · ` : ''}臂 ${s.arm_dim.join(' + ')} · 末端 ${(s.ee_dim || []).join(' + ')}` : '';
+};
+const robotEnvCfgs = (d) => [...new Set((d.auto.setups || []).flatMap((s) => s.env_cfgs))];
+function viewRobots() {
+  const docs = live(S.embodiment).sort((x, y) => Number(y.auto.in_code) - Number(x.auto.in_code) || x.id.localeCompare(y.id));
+  const cards = docs.map((d) => {
+    const a = d.auto, rs = evalStages(ROBOT_STAGES, d), cover = a.photos?.[0];
+    return `<article class="card mcard" data-open="embodiment" data-id="${esc(d.id)}" tabindex="0" role="button" aria-label="打开本体 ${esc(d.id)}">
+      <div class="media r169">${cover ? `<img loading="lazy" decoding="async" src="${file(cover)}" alt="">` : ic('bot', 'ic-lg')}
+        <div class="pills">${a.in_code ? '<span class="pill">已接入仿真</span>' : '<span class="pill">待接入</span>'}${d.reg?.variant ? `<span class="pill">${esc(d.reg.variant)}</span>` : ''}</div></div>
+      <div class="mcard-b"><div class="mcard-t"><b>${esc(robotName(d))}</b>${missingBadge(d)}</div>
+        <div class="small muted mono" style="margin-top:-4px">${esc(d.id)}</div>
+        <div class="small muted">${esc([robotDims(d), `站位配置 ${a.setups?.length || 0}`, `env 配置 ${robotEnvCfgs(d).length}`].filter(Boolean).join(' · '))}${d.owner ? ` · ${esc(memberName(d.owner))}` : ''}</div>
+        ${progress(rs)}${stageChips(rs)}</div></article>`;
+  }).join('');
+  return `<div class="page">${pageHead('本体管理', `机器人本体来自 env/robot_manager/robot_config/（与 env_cfg/robot/ 的站位配置）和平台登记；同一本体在不同场景的站位配置算作一个本体`,
+    `<button class="btn btn-primary" type="button" onclick="openNewRobot(this)">${ic('plus')}登记本体</button>`)}
+    ${docs.length ? `<div class="grid scene-grid">${cards}</div>` : `<div class="card">${empty('bot', '还没有本体', '点「登记本体」新建')}</div>`}</div>`;
+}
+function robotBrief(d) {  // the task for a coding agent that brings a registered body into the sim
+  const r = d.reg || {}, dir = `real2sim/embodiments/${d.id}`, fact = (k, v) => (v ? `- ${k}：${v}` : null);
+  return [
+    `为 RoboDojo 接入新的机器人本体 ${d.id}（${robotName(d)}）。参照现有的 G1-D 接入（env/robot_manager/robot_config/g1d.py、robot_class/g1d.py、scripts/g1d/build_asset.py、env_cfg/robot/g1d.yml），先 git fetch，从最新的 origin/main 开独立 worktree 和短分支。`,
+    '',
+    `输入：${dir}/registration.json 和 ${dir}/reference/ 下的 ${(d.auto.photos || []).length} 张照片，在平台所在机器的 ${INFO.root}/${dir}/。`,
+    '',
+    '登记信息：',
+    fact('名称', [r.name, r.name_en].filter(Boolean).join('，')), fact('型号 / 厂商', r.model), fact('变体', r.variant), fact('自由度', r.dof),
+    fact('末端执行器', r.end_effector), fact('相机', r.cameras), fact('控制频率', r.control_hz && `${r.control_hz} Hz`), fact('URDF / 资产来源', r.urdf),
+    fact('真机', r.units), fact('备注', r.notes),
+    '',
+    '验收：',
+    `1. 资产：从 URDF 生成 USD（参照 build_asset.py 的 G1-D 部分），源文件放 real2sim/robot/<目录>/，生成结果不入库。`,
+    `2. 配置：新建 env/robot_manager/robot_config/${d.id}.py（必要时 robot_class/${d.id}.py），env_cfg/robot/${d.id}.yml（robot_name: ${d.id}、站位），在 env_cfg/robot/_robot_info.json 写 arm_dim / ee_dim，相机配置写进 env_cfg 的 camera 配置。`,
+    '3. 数据契约：状态和动作的语义（关节顺序、夹爪读数是实测还是指令）对齐 scripts/datagen/CONTRACT.md，有不同的地方写进去。',
+    '4. 在 5090-2 的隔离目录（/data/robodojo-runs/）跑一个关节空间的探针（各关节往返、夹爪开合）和一次 scripted_demo，检查相机画面；没有专家时至少让 eval 跑通 1 回合，_result.json 的 eval_time ≥ 1。',
+    '5. 跑 bash scripts/check.sh；提交代码、配置和 registration.json。改共享资产库前先征得同意。',
+  ].filter((line) => line !== null).join('\n');
+}
+function drawerRobot(d) {
+  const a = d.auto, rs = evalStages(ROBOT_STAGES, d), envs = robotEnvCfgs(d);
+  const tasks = live(S.task).filter((t) => Object.keys(t.auto.layouts || {}).some((c) => envs.includes(c)));
+  const eps = live(S.episode).filter((e) => envs.includes(e.auto.config));
+  const r = (f, label, type = 'text', attrs = '', hint = '') => row(label, `reg.${f}`, inp(d, `reg.${f}`, type, attrs), hint);
+  const t = (f, label, hint = '') => row(label, `reg.${f}`, area(d, `reg.${f}`, hint ? `placeholder="${esc(hint)}"` : ''));
+  const calib = (k, label) => row(label, `reg.calib_${k}`, sel(d, `reg.calib_${k}`, CALIB));
+  return {
+    title: robotName(d), sub: `${d.id} · ${a.in_code ? a.config : '还没接入仿真'}`,
+    actions: d.registered && !a.in_code ? `<button class="btn" type="button" data-id="${esc(d.id)}" onclick="removeDoc('embodiment', this.dataset.id)">${ic('trash')}删除登记</button>` : '',
+    body: `${a.in_code ? '' : sec(`${ic('terminal')}接入任务（给 coding agent）`, `<p class="hint" style="margin:0 0 8px">登记信息写在 real2sim/embodiments/${esc(d.id)}/registration.json。把下面这段交给 coding agent；接入后同步，流程自动推进。</p>${code(robotBrief(d))}`)}
+    ${sec('流程', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
+    ${sec(`${ic('camera')}照片`, scenePhotos(d, 'embodiment', 0))}
+    ${sec('仿真配置', a.setups?.length ? `<div class="table-wrap"><table class="plain"><thead><tr><th>站位配置</th><th class="num">数量</th><th>臂 / 末端维度</th><th>根节点位置</th><th>env 配置</th><th>场景</th></tr></thead><tbody>
+      ${a.setups.map((s) => `<tr><td class="mono small">${esc(s.robot_cfg)}</td><td class="num">${s.count}</td><td class="small">${s.arm_dim ? `${s.arm_dim.join(' + ')} / ${(s.ee_dim || []).join(' + ')}` : '—'}</td>
+        <td class="mono small">${s.root_pos ? esc(s.root_pos.join(', ')) : '—'}</td><td class="mono small">${esc(s.env_cfgs.join('、') || '—')}</td>
+        <td class="small">${s.scenes.map((sc) => link('scene', sc, sceneName(S.scene.find((x) => x.id === sc) || {id: sc}))).join('、') || '—'}</td></tr>`).join('')}</tbody></table></div>`
+      : '<div class="small muted">env_cfg/robot/ 下还没有用到它的配置</div>')}
+    ${sec('任务与回合', `<dl class="kv"><dt>有布局的任务</dt><dd>${tasks.map((x) => link('task', x.id)).join('、') || '—'}</dd><dt>采集回合</dt><dd>${eps.length} 个${eps.length ? `，仿真成功率 ${pct(rate(eps))}` : ''}</dd></dl>`)}
+    ${sec('基本信息', `<div class="form">${r('name', '名称', 'text', 'placeholder="G1-D 桌面版"')}${r('name_en', '英文名')}${r('model', '型号 / 厂商', 'text', 'placeholder="Unitree G1-D"')}
+      ${r('variant', '变体', 'text', 'placeholder="桌面版 / 移动版"')}${row('负责人', 'owner', sel(d, 'owner', memberOpts(d.owner)))}
+      ${t('dof', '自由度', '如：双臂各 7 + 腰 2 + 升降 1，轮子锁死')}${r('end_effector', '末端执行器', 'text', 'placeholder="Dex1-1 两指夹爪（带相机）"')}
+      ${t('cameras', '相机', '如：头部双目（用左眼）、两个腕部相机')}${r('control_hz', '控制频率 (Hz)', 'number', 'min="0" step="1"')}
+      ${r('urdf', 'URDF / 资产来源', 'text', 'placeholder="real2sim/robot/g1d_v4"')}${t('units', '真机', '编号、所在位置、负责人、网络地址等')}${t('notes', '备注')}</div>`)}
+    ${sec('标定', `<div class="form">${calib('camera', '相机标定')}${calib('joint', '关节零位')}${calib('gripper', '夹爪标定')}${calib('dynamics', '动力学辨识')}${t('calib_notes', '标定记录', '日期、方法、结果文件位置')}</div>`)}`,
+  };
+}
+const ROBOT_WIZ = [
+  ['名称与照片', '登记一台还没接入仿真的机器人本体。照片可选：整机、末端执行器、相机位置各一张最有用。'],
+  ['硬件', '写清楚自由度、末端执行器和相机，coding agent 据此接入仿真。不知道的留空。'],
+];
+function drawerNewRobot() {
+  const fld = wzFld, group = wzGroup, pane = (n, body) => wzPane(ROBOT_WIZ, n, body);
+  const text = (id, ph = '', attrs = '') => `<input id="${id}" placeholder="${esc(ph)}" autocomplete="off" ${attrs}>`;
+  const note = (id, ph, rows = 2) => `<textarea id="${id}" rows="${rows}" placeholder="${esc(ph)}"></textarea>`;
+  return {
+    title: '登记本体', sub: '登记后生成给 coding agent 的接入任务；接入后同步，流程自动推进',
+    body: `${wzNav(ROBOT_WIZ)}
+    ${pane(0, `${group('本体', `<div class="wz-grid">
+      ${fld('nr-name', '中文名称', text('nr-name', 'G1-D 移动版'), {req: true})}
+      ${fld('nr-name-en', '英文名称', text('nr-name-en', 'G1-D Mobile', 'oninput="suggestRobotId()"'), {req: true})}
+      ${fld('nr-id', '本体 ID', text('nr-id', 'g1d_mobile', 'class="mono" autocapitalize="off" spellcheck="false" oninput="this.dataset.edited = 1"'), {hint: '即配置里的 robot_name：小写字母开头，字母、数字、下划线'})}
+      ${fld('nr-model', '型号 / 厂商', text('nr-model', 'Unitree G1-D'))}
+      ${fld('nr-variant', '变体', text('nr-variant', '桌面版 / 移动版'))}</div>`)}
+    ${group('照片 <span class="opt">可选</span>', photoDrop('整机、末端执行器、相机位置 · jpg / png / webp · 单张 ≤ 25 MB'))}`)}
+    ${pane(1, group('硬件', `<div class="wz-grid">
+      ${fld('nr-dof', '自由度', note('nr-dof', '双臂各 7 + 腰 2 + 升降 1 + 差速底盘'), {wide: true, req: true})}
+      ${fld('nr-ee', '末端执行器', text('nr-ee', 'Dex1-1 两指夹爪（带相机）'))}
+      ${fld('nr-hz', '控制频率', wzUnit('nr-hz', 'Hz', 'step="1"'))}
+      ${fld('nr-cameras', '相机', note('nr-cameras', '头部双目（用左眼）、两个腕部相机'), {wide: true})}
+      ${fld('nr-urdf', 'URDF / 资产来源', text('nr-urdf', '厂商 URDF 的位置或链接'), {wide: true})}
+      ${fld('nr-units', '真机', note('nr-units', '编号、所在位置、网络地址等'), {wide: true})}
+      ${fld('nr-owner', '负责人', `<select id="nr-owner">${opts(memberOpts(), ME?.username || '')}</select>`)}
+      ${fld('nr-notes', '备注', note('nr-notes', ''), {wide: true})}</div>`))}
+    ${wzFoot('createRobot', '登记并生成接入任务')}`,
+  };
+}
+function openNewRobot(btn) {
+  NEW_PHOTOS = [];
+  WZ = {steps: ROBOT_WIZ, check: robotWizError, idCheck: robotIdError};
+  WIZ_AT = 0;
+  openDrawer('new-robot', 'new', btn);
+  wizGo(0);
+}
+function suggestRobotId() {
+  const el = $('#nr-id');
+  if (!el.dataset.edited) el.value = $('#nr-name-en').value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+function robotIdError() {
+  const id = $('#nr-id').value.trim();
+  return !/^[a-z][a-z0-9_]*$/.test(id) ? ['本体 ID 要小写字母开头，只含小写字母、数字、下划线', '#nr-id']
+    : S.embodiment.some((d) => d.id === id) ? [`已有本体 ${id}`, '#nr-id'] : [''];
+}
+function robotWizError() {
+  if (WIZ_AT === 0) return !$('#nr-name').value.trim() ? ['填写中文名称', '#nr-name'] : !$('#nr-name-en').value.trim() ? ['填写英文名称', '#nr-name-en'] : robotIdError();
+  if (WIZ_AT === 1 && !$('#nr-dof').value.trim()) return ['写下自由度，coding agent 据此接入', '#nr-dof'];
+  return [''];
+}
+async function createRobot(btn) {
+  if (wizBlocked()) return;
+  const [e, field] = robotWizError();  // the last step is not checked by wizGo
+  if (e && !ME?.admin) { $('#no-err').textContent = e; $(field)?.focus(); return; }
+  const id = $('#nr-id').value.trim(), value = (sel) => $(sel).value.trim();
+  const reg = {name: value('#nr-name'), name_en: value('#nr-name-en'), model: value('#nr-model'), variant: value('#nr-variant'), dof: value('#nr-dof'),
+    end_effector: value('#nr-ee'), control_hz: ntNum($('#nr-hz').value), cameras: value('#nr-cameras'), urdf: value('#nr-urdf'), units: value('#nr-units'), notes: value('#nr-notes')};
+  btn.disabled = true;
+  btn.lastChild.textContent = NEW_PHOTOS.length ? `登记中，上传 ${NEW_PHOTOS.length} 张照片…` : '登记中…';
+  try {
+    await api(`/api/items?kind=embodiment&id=${encodeURIComponent(id)}`, {method: 'PUT', body: JSON.stringify({registered: true, reg, owner: value('#nr-owner')})});
+    if (NEW_PHOTOS.length) await uploadFiles(id, NEW_PHOTOS, 'embodiment');
+    await sync(true);
+    openDrawer('embodiment', id);
+    toast(`已登记 ${id}；接入任务在抽屉顶部`);
+  } catch (err) {
+    $('#no-err').textContent = `登记失败：${err.message}`;
+    btn.disabled = false;
+    btn.lastChild.textContent = '重试登记';
+  }
 }
 
 // ---------- objects ----------
@@ -1865,7 +2020,7 @@ async function sync(quiet = false) {
   try {
     const n = await api('/api/scan', {method: 'POST'});
     await load();
-    if (!quiet) toast(`同步完成：场景 ${n.scene} · 物体 ${n.object} · 任务 ${n.task} · 回合 ${n.episode}`);
+    if (!quiet) toast(`同步完成：场景 ${n.scene} · 物体 ${n.object} · 本体 ${n.embodiment} · 任务 ${n.task} · 回合 ${n.episode}`);
   } catch (err) { toast(`同步失败：${err.message}`, true); }
   UI.syncing = false;
   renderNav();
@@ -2105,6 +2260,7 @@ function onFieldChange(ev) {
   let patch = {[k]: v};
   if (/^\d+$/.test(sub || '')) { const arr = [...(doc[k] || [])]; arr[Number(sub)] = v; patch = {[k]: arr}; }
   else if (sub) patch = {[k]: {...(doc[k] || {}), [sub]: v}};
+  Object.assign(doc, patch);  // the next change builds on this one even before the save returns
   save(kind, id, patch);
 }
 async function setQA(status) {
@@ -2240,8 +2396,8 @@ function renderDrawer() {
   const wizard = x.kind.startsWith('new-');
   if ((wizard || x.kind === 'account') && dr.dataset.k === key) return;  // keep typed input
   const d = S[x.kind]?.find((y) => y.id === x.id);
-  const view = x.kind === 'new-object' ? drawerNewObject() : x.kind === 'new-scene' ? drawerNewScene() : x.kind === 'new-task' ? drawerNewTask() : x.kind === 'account' ? drawerAccount()
-    : d ? {scene: drawerScene, object: drawerObject, task: drawerTask}[x.kind](d) : {title: '记录不存在', body: ''};
+  const view = x.kind === 'new-object' ? drawerNewObject() : x.kind === 'new-scene' ? drawerNewScene() : x.kind === 'new-task' ? drawerNewTask() : x.kind === 'new-robot' ? drawerNewRobot() : x.kind === 'account' ? drawerAccount()
+    : d ? {scene: drawerScene, object: drawerObject, task: drawerTask, embodiment: drawerRobot}[x.kind](d) : {title: '记录不存在', body: ''};
   const scroll = dr.dataset.k === key ? $('#drawer .dr-b')?.scrollTop : 0;
   dr.innerHTML = `<div class="dr-h"><div style="min-width:0;flex:1"><h2 id="drawer-title">${esc(view.title)}</h2>${view.sub ? `<p>${esc(view.sub)}</p>` : ''}</div>
     ${view.actions || ''}<button class="btn btn-icon dr-close" type="button" aria-label="关闭（Esc）" onclick="closeDrawer()">${ic('close')}</button></div>
@@ -2288,7 +2444,7 @@ function onClick(ev) {
 }
 
 // ---------- render ----------
-const VIEWS = {overview: viewOverview, scenes: viewScenes, objects: viewObjects, tasks: viewTasks, qa: viewQA, users: viewUsers};
+const VIEWS = {overview: viewOverview, scenes: viewScenes, objects: viewObjects, robots: viewRobots, tasks: viewTasks, qa: viewQA, users: viewUsers};
 function render() {
   EP_BY_TASK = group(live(S.episode), (e) => e.auto.task);
   renderNav();
