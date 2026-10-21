@@ -481,6 +481,10 @@ const UI = {
 let INFO = {};
 let ME = null;
 let USERS = [];
+let MEMBERS = [];  // [{username, name}] of every account, to pick owners from
+const memberName = (u) => MEMBERS.find((m) => m.username === u)?.name || u || '';
+const memberOpts = (value) => ({'': '未指定', ...Object.fromEntries(MEMBERS.map((m) => [m.username, `${m.name}（${m.username}）`])),
+  ...(value && !MEMBERS.some((m) => m.username === value) ? {[value]: `${value}（不是平台账号）`} : {})});
 let IDX = {};  // indices in use per <type>/<category>, for registering objects
 let EP_BY_TASK = {};
 const GAL = {};
@@ -1180,7 +1184,7 @@ function viewTasks() {
   ${docs.map((d) => {
     const eps = EP_BY_TASK[d.id] || [], e = experts(eps), q2 = qualified(eps).length, target = d.target || d.reg?.target || 500, layouts = Object.entries(d.auto.layouts || {});
     return `<tr data-open="task" data-id="${esc(d.id)}" tabindex="0" class="${UI.drawer?.id === d.id ? 'sel' : ''}">
-      <td><div class="t-main mono">${esc(d.id)}${d.registered ? ` <span class="tag">${d.auto.module ? '已登记' : '待实现'}</span>` : ''}</div><div class="t-sub">${d.reg?.name ? `${esc(d.reg.name)} · ` : ''}${esc(DIMS[d.auto.dimension] || d.auto.dimension || '—')} · step_lim ${d.auto.step_lim ?? '继承'}${d.owner || d.reg?.owner ? ` · ${esc(d.owner || d.reg.owner)}` : ''}</div></td>
+      <td><div class="t-main mono">${esc(d.id)}${d.registered ? ` <span class="tag">${d.auto.module ? '已登记' : '待实现'}</span>` : ''}</div><div class="t-sub">${d.reg?.name ? `${esc(d.reg.name)} · ` : ''}${esc(DIMS[d.auto.dimension] || d.auto.dimension || '—')} · step_lim ${d.auto.step_lim ?? '继承'}${d.owner || d.reg?.owner ? ` · ${esc(memberName(d.owner || d.reg.owner))}` : ''}</div></td>
       <td><div class="chips">${layouts.map(([c, n]) => `<span class="tag">${esc(c)} ${n}</span>`).join('') || '<span class="muted small">—</span>'}</div></td>
       <td class="num">${eps.length}</td><td class="num">${pct(rate(eps))}</td><td class="num ${e.length && rate(e) < 0.8 ? 'txt-bad' : ''}">${e.length ? pct(rate(e)) : '—'}</td>
       <td><div class="progress-row"><div class="bar" style="flex:1"><i class="ok" style="width:${Math.min(100, (q2 / target) * 100)}%"></i></div><span class="small mono">${q2}/${target}</span></div></td>
@@ -1201,7 +1205,7 @@ function drawerTask(d) {
     sub: a.module ? `${DIMS[a.dimension] || a.dimension} · ${a.module} · ${a.config}` : `平台登记，还没实现 · real2sim/tasks/${d.id}/registration.json`,
     actions: d.registered ? `<button class="btn" type="button" data-id="${esc(d.id)}" onclick="unregisterTask(this.dataset.id)">${ic('trash')}删除登记</button>` : '',
     body: `${d.registered ? taskRegSection(d) : ''}${sec('流程', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
-    ${sec('采集计划', `<div class="form">${row('负责人', 'owner', inp(d, 'owner'))}
+    ${sec('采集计划', `<div class="form">${row('负责人', 'owner', sel(d, 'owner', memberOpts(d.owner)), '从平台账号里选')}
       ${row('合格回合目标', 'target', inp(d, 'target', 'number', 'min="0" placeholder="500"'))}${row('备注', 'notes', area(d, 'notes'))}</div>`)}
     ${sec('分级泛化评测集', `<p class="hint" style="margin:0 0 10px">每一级只改变一个因素，其余与 L0 相同；布局预先生成为固定 JSON，并先用 scripted_demo 过滤，L0–L3 专家成功率目标 ≥ 80%。</p>
       <div class="table-wrap"><table class="plain"><thead><tr><th>级别</th><th>变化因素与范围</th><th class="num">目标</th><th>已生成</th></tr></thead><tbody>
@@ -1280,7 +1284,7 @@ function drawerNewTask() {
       ${fld('nt-hand', '用手', `<select id="nt-hand">${opts(HANDS, '')}</select>`)}
       ${fld('nt-horizon', '预计时长', wzUnit('nt-horizon', 's', 'step="1"'), {hint: '30 Hz，step_lim 按它留余量'})}
       ${fld('nt-target', '合格回合目标', '<input id="nt-target" type="number" min="0" step="10" value="500">')}
-      ${fld('nt-owner', '负责人', text('nt-owner', ME?.name || ''))}</div>`)}`)}
+      ${fld('nt-owner', '负责人', `<select id="nt-owner">${opts(memberOpts(), ME?.username || '')}</select>`, {hint: '从平台账号里选'})}</div>`)}`)}
     ${pane(1, `${group('物体角色', `<div id="nt-roles"></div>
       <button class="btn" type="button" style="margin-top:10px" onclick="NT.roles.push(newRole()); renderRoles()">${ic('plus')}添加角色</button>`)}
     ${group('干扰物 <span class="opt">可选</span>', `<div class="wz-grid">
@@ -1372,7 +1376,7 @@ async function createTask(btn) {
   const lo = ntNum($('#nt-dis-min').value), hi = ntNum($('#nt-dis-max').value);
   const reg = {
     existing: $('#nt-mode').value === 'existing', name: value('#nt-name'), name_en: value('#nt-name-en'), instruction: value('#nt-instruction'),
-    success: value('#nt-success'), hand: value('#nt-hand'), horizon_s: ntNum($('#nt-horizon').value), target: ntNum($('#nt-target').value), owner: value('#nt-owner'),
+    success: value('#nt-success'), hand: value('#nt-hand'), horizon_s: ntNum($('#nt-horizon').value), target: ntNum($('#nt-target').value),
     roles: NT.roles.map((r) => ({label: r.label, candidates: r.candidates, count: r.count, xlim: range(r.xmin, r.xmax), ylim: range(r.ymin, r.ymax), yaw_deg: r.yaw})),
     distractors: {count: lo == null && hi == null ? null : [lo ?? 0, hi ?? lo], candidates: NT.dis.candidates, clutter_library: $('#nt-dis-lib').checked},
     scenes: Object.fromEntries([...$$('[data-scene-use]')].filter((s) => s.value).map((s) => [s.dataset.sceneUse, s.value])),
@@ -1382,7 +1386,7 @@ async function createTask(btn) {
   btn.disabled = true;
   btn.lastChild.textContent = '登记中…';
   try {
-    await api(`/api/items?kind=task&id=${encodeURIComponent(id)}`, {method: 'PUT', body: JSON.stringify({registered: true, reg})});
+    await api(`/api/items?kind=task&id=${encodeURIComponent(id)}`, {method: 'PUT', body: JSON.stringify({registered: true, reg, owner: value('#nt-owner')})});
     await sync(true);
     openDrawer('task', id);
     toast(`已登记 ${id}；实现任务在抽屉顶部`);
@@ -1676,7 +1680,7 @@ async function deleteUser(username) {
   } catch (err) { toast(`删除失败：${err.message}`, true); }
 }
 async function load() {
-  await Promise.all(KINDS.map(async (k) => { S[k] = await api(`/api/items?kind=${k}`); }));
+  await Promise.all([...KINDS.map(async (k) => { S[k] = await api(`/api/items?kind=${k}`); }), api('/api/members').then((m) => { MEMBERS = m; })]);
   UI.loaded = true;
   UI.syncedAt = new Date().toLocaleTimeString('zh-CN', {hour12: false});
   render();

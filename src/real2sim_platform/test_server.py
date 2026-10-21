@@ -230,8 +230,9 @@ def test_http():
         reg |= {"scenes": {"real_scene3_lab": "train", "real_scene1_office": "holdout", "real_scene2_counter": ""}}
         reg |= {"levels": {"L0": {"target": 25, "range": "孪生"}}, "distractors": {"count": None, "candidates": []}}
         assert request("PUT", "/api/items?kind=task&id=../x", json.dumps({"registered": True}))[0] == 400
-        assert request("PUT", task, json.dumps({"registered": True, "reg": reg}))[0] == 200
+        assert request("PUT", task, json.dumps({"registered": True, "reg": reg, "owner": "alice"}))[0] == 200
         written = json.loads((tmp / "tasks/g1d_wipe_table/registration.json").read_text(encoding="utf-8"))
+        assert written["owner"] == {"username": "alice", "name": "张三"}  # an account, written with its display name
         roles[0].pop("xlim")  # empty fields left out, also inside lists
         assert written["objects"] == roles
         assert written["scenes"] == {  # with the env configs that load each scene
@@ -258,6 +259,8 @@ def test_http():
         carol_cookie = login("carol", "password1")[2]
         for method in ("GET", "POST", "PUT", "DELETE"):  # members cannot manage accounts
             assert users(method, "/api/users?username=alice", {"admin": False}, carol_cookie)[0] == 403
+        status, members = users("GET", "/api/members", cookie=carol_cookie)  # but see who can own a task
+        assert status == 200 and {"username": "alice", "name": "张三"} in members and "admin" not in members[0]
         assert users("PUT", "/api/users?username=alice", {"admin": False})[0] == 400  # admins cannot demote themselves
         assert users("DELETE", "/api/users?username=alice")[0] == 400
         assert users("PUT", "/api/users?username=nobody", {"name": "x"})[0] == 404
