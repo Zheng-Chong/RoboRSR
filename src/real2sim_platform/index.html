@@ -1256,7 +1256,7 @@ const TASK_WIZ = [
   ['任务定义', '新建一个 G1-D 任务，或给已有任务登记泛化方案。任务定义和成功判据要写清楚：语言指令由 coding agent 从定义总结并转写，判据会变成 run_reward 里的检查。'],
   ['物体与干扰物', '每个角色是任务里的一类物体（对应任务配置的 label），从物体资产里选它可用的物体；干扰物另选。位置、朝向的随机在第 4 步 L1 里设。'],
   ['可用场景', '训练场景用于采集数据；L4 保留场景只在评测时出现，不进训练。'],
-  ['泛化等级', '等级按前面的选择自动开启：位置随机开 L1，外观随机开 L2，多个候选物体、干扰物或保留实例开 L3，保留场景开 L4。这里只调整各级的范围和目标布局数。'],
+  ['泛化等级', '等级按前面的选择自动开启：位置随机开 L1，外观随机开 L2，角色或干扰物选了评测保留物体开 L3，保留场景开 L4。这里只调整各级的范围和评测布局数。'],
 ];
 const HANDS = {'': '未定', left: '左手', right: '右手', either: '任一手（随布局）', both: '双手'};
 const INST_LANGS = {zh: '中文', en: '英文'};
@@ -1265,35 +1265,38 @@ const CLUTTER_N = () => (Object.keys(CLUTTER).length ? `${Object.keys(CLUTTER).l
 const EXTRA_PRESETS = ['桌高 ±5 cm', '机器人站位 ±3 cm', '物体初始姿态（倒放 / 侧放）', '控制延迟 / 动作噪声'];
 const langText = (ins) => (ins?.languages || []).map((l) => INST_LANGS[l] || l).join('、');
 const instText = (ins) => `${langText(ins)}${ins.languages.length > 1 ? '各' : ''} ${ins.count} 条`;
-let NT = null;  // the task wizard's lists: {roles: [{label, candidates, count}], dis, holdout, scenes: {train, holdout}}
+let NT = null;  // the task wizard's lists: {roles: [{label, candidates, holdout, count}], dis: {candidates, holdout}, scenes: {train, holdout}}
 const RANDOMIZE = {position: '位置', yaw: '朝向'};
 const APPEARANCE = {light: '灯光（亮度、色温、灯的位置）', texture: '桌面 / 地面 / 背景纹理', camera: '相机位姿扰动'};
 function levelReasons() {  // {level: why it is on, or null}; levels follow from the earlier steps
   const picked = (sel) => [...$$(`${sel}:checked`)];
   const random = picked('[data-random]').map((c) => RANDOMIZE[c.dataset.random]);
   const appear = picked('[data-appear]').map((c) => APPEARANCE[c.dataset.appear].replace(/（.*/, ''));
-  const multi = NT.roles.filter((r) => r.candidates.length > 1).map((r) => r.label);
-  const dis = NT.dis.candidates.length || $('#nt-dis-lib')?.checked || Number($('#nt-dis-max')?.value) > 0;
-  const objects = [multi.length && `${multi.join('、')} 有多个候选物体`, dis && '有干扰物', NT.holdout.length && `${NT.holdout.length} 个保留实例`].filter(Boolean);
+  const held = NT.roles.filter((r) => r.holdout.length).map((r) => `${r.label || '未命名角色'} ${r.holdout.length} 个`);
+  if (NT.dis.holdout.length) held.push(`干扰物 ${NT.dis.holdout.length} 个`);
   return {
     L0: '始终开启',
     L1: random.length ? `随机${random.join('、')}` : null,
     L2: appear.length ? `随机${appear.join('、')}` : null,
-    L3: objects.length ? objects.join('，') : null,
+    L3: held.length ? `保留物体：${held.join('、')}` : null,
     L4: NT.scenes.holdout.length ? `${NT.scenes.holdout.length} 个保留场景` : null,
   };
 }
-const LEVEL_OFF = {L1: '没勾位置或朝向', L2: '第 3 步没勾外观随机', L3: '每个角色只有 1 个候选物体，没有干扰物和保留实例', L4: '第 3 步没选保留场景'};
+const LEVEL_OFF = {L1: '没勾位置或朝向', L2: '第 3 步没勾外观随机', L3: '第 2 步没有给角色或干扰物选评测保留物体', L4: '第 3 步没选保留场景'};
 function renderLevels() {
   const why = levelReasons();
   $('#nt-levels').innerHTML = LEVELS.map(([k, name]) => `<div class="nt-level${why[k] ? '' : ' off'}">
     <div class="nt-level-h">${st(why[k] ? 'ok' : 'na', why[k] ? '开启' : '不开启')}<b class="mono">${k}</b> ${name}<span class="small muted">${esc(why[k] || LEVEL_OFF[k])}</span></div>
     ${why[k] ? `<div class="wz-grid"><div class="fld wide"><label for="nt-range-${k}">变化因素与范围</label><textarea id="nt-range-${k}" rows="2" oninput="NT.levels.${k}.range = this.value">${esc(NT.levels[k].range)}</textarea></div>
-      <div class="fld"><label for="nt-ltarget-${k}">目标布局数</label><input id="nt-ltarget-${k}" type="number" min="0" step="5" value="${NT.levels[k].target}" oninput="NT.levels.${k}.target = ntNum(this.value)"></div></div>` : ''}</div>`).join('');
+      <div class="fld"><label for="nt-ltarget-${k}">评测布局数</label><input id="nt-ltarget-${k}" type="number" min="0" step="5" value="${NT.levels[k].target}" oninput="NT.levels.${k}.target = ntNum(this.value)"></div></div>` : ''}</div>`).join('');
 }
-const newRole = (label = '', candidates = []) => ({label, candidates, count: 1});
-const ntList = (key) => ({dis: NT.dis.candidates, hold: NT.holdout, 'sc-train': NT.scenes.train, 'sc-holdout': NT.scenes.holdout})[key]
-  || NT.roles[Number(key.slice(1))].candidates;
+const newRole = (label = '', candidates = []) => ({label, candidates, holdout: [], count: 1});
+// picker keys: r<i> / h<i> = role i's training candidates / held-out objects, dis / dish = distractors, sc-* = scenes
+const ntList = (key) => ({dis: NT.dis.candidates, dish: NT.dis.holdout, 'sc-train': NT.scenes.train, 'sc-holdout': NT.scenes.holdout})[key]
+  || NT.roles[Number(key.slice(1))][key[0] === 'h' ? 'holdout' : 'candidates'];
+const trainObjects = () => new Set([...NT.roles.flatMap((r) => r.candidates), ...NT.dis.candidates]);
+const heldObjects = () => new Set([...NT.roles.flatMap((r) => r.holdout), ...NT.dis.holdout]);
+const isHoldKey = (key) => key === 'dish' || /^h\d+$/.test(key);
 const objLabel = (oid) => { const o = S.object.find((x) => x.id === oid); return o ? `${objName(o)} · ${oid}` : oid; };
 // pickers: a search list with thumbnails; hovering a row or a picked chip shows a larger preview card. Keys "sc-*" pick
 // scenes, the others objects.
@@ -1364,6 +1367,11 @@ function opickKey(ev, key) {
   next.scrollIntoView({block: 'nearest'});
 }
 function pickObjId(key, id) {
+  if (!key.startsWith('sc-')) {
+    const clash = isHoldKey(key) ? trainObjects().has(id) && '已经是训练候选，评测保留的必须是训练里没见过的物体'
+      : heldObjects().has(id) && '已经选为评测保留物体，不能再进训练';
+    if (clash) return toast(`${pickLabel(key, id)} ${clash}`, true);
+  }
   const list = ntList(key);
   if (!list.includes(id)) list.push(id);
   const other = {'sc-train': 'sc-holdout', 'sc-holdout': 'sc-train'}[key];  // a scene trains or is held out, not both
@@ -1394,7 +1402,8 @@ function renderRoles() {
   $('#nt-roles').innerHTML = NT.roles.map((r, i) => `<div class="nt-role"><div class="wz-grid">
     ${wzFld(`nt-role-${i}`, `角色 ${i + 1}`, `<input id="nt-role-${i}" class="mono" value="${esc(r.label)}" placeholder="source_cup" autocomplete="off" oninput="NT.roles[${i}].label = this.value.trim()">`, {req: true, hint: '任务配置的 label，字母数字下划线'})}
     ${wzFld(`nt-count-${i}`, '每回合数量', `<input id="nt-count-${i}" type="number" min="1" step="1" value="${r.count}" oninput="NT.roles[${i}].count = ntNum(this.value)">`)}
-    <div class="fld wide"><label>候选物体<em aria-hidden="true">*</em></label>${objPicker(`r${i}`)}<small>每回合从中选；评测保留的实例在第 4 步 L3 里选，不要放这里</small></div>
+    <div class="fld wide"><label>训练候选<em aria-hidden="true">*</em></label>${objPicker(`r${i}`)}<small>训练布局每回合从中选</small></div>
+    <div class="fld wide"><label>评测保留 <span class="opt">选了就开启 L3</span></label>${objPicker(`h${i}`, '训练里没见过的同类物体（尺寸、颜色、材质不同）')}<small>只在 L3 评测集里出现，不进训练</small></div>
     <div class="fld" style="justify-content:flex-end">${NT.roles.length > 1 ? `<button class="btn" type="button" onclick="NT.roles.splice(${i}, 1); renderRoles()">${ic('trash')}删除角色</button>` : ''}</div></div></div>`).join('');
 }
 function drawerNewTask() {
@@ -1424,13 +1433,13 @@ function drawerNewTask() {
       <button class="btn" type="button" style="margin-top:10px" onclick="NT.roles.push(newRole()); renderRoles()">${ic('plus')}添加角色</button>`)}
     ${group('干扰物 <span class="opt">可选</span>', `<div class="wz-grid">
       <div class="fld"><label>每回合数量</label><div class="pair"><input id="nt-dis-min" type="number" min="0" step="1" placeholder="最少" aria-label="干扰物最少"><input id="nt-dis-max" type="number" min="0" step="1" placeholder="最多" aria-label="干扰物最多"></div></div>
-      <div class="fld wide"><label>指定干扰物</label>${objPicker('dis')}<small>从物体资产里挑的固定干扰物</small></div>
+      <div class="fld wide"><label>训练用干扰物</label>${objPicker('dis')}<small>从物体资产里挑，训练布局随机放</small></div>
+      <div class="fld wide"><label>评测保留干扰物 <span class="opt">选了就开启 L3</span></label>${objPicker('dish', '训练里没见过的干扰物')}<small>只在 L3 评测集里出现</small></div>
       <div class="fld wide"><label class="check"><input id="nt-dis-lib" type="checkbox" onchange="$('#nt-clutter').hidden = !this.checked">也从杂物库随机取</label>
         <small>杂物库是共享资产库的 Object/RoboDojo/Clutter/（${CLUTTER_N()}），由其中的 clutter.yml 索引；任务配置的 Clutter 段引用它，生成布局时按数量和区域随机摆放。</small>
         <div id="nt-clutter" hidden>${Object.keys(CLUTTER).length ? `<div class="toggles clutter-cats">${Object.entries(CLUTTER).map(([c, n]) => `<label class="toggle"><input type="checkbox" data-clutter="${esc(c)}"><span>${ic('check')}${esc(c)} <small class="muted">${n}</small></span></label>`).join('')}</div>
           <small>只取选中的类别；一个都不选就是整个杂物库。杂物没有渲染图，只显示类别名。</small>` : '<small class="txt-bad">资产库镜像里没有杂物库，无法列出类别；不选就是整个杂物库。</small>'}</div></div></div>`)}
-    ${group('评测保留实例 <span class="opt">可选，选了就开启 L3</span>', `${objPicker('hold', '没见过的尺寸、颜色、材质的物体')}
-      <small class="muted">只在 L3 评测集里出现，不进训练布局。</small>`)}`)}
+`)}
     ${pane(2, `${group('训练场景', `${picker('sc-train', '搜索场景名称、类型、id 或 env 配置')}
       <div class="presets"><button type="button" onclick="addBuiltScenes()">${ic('plus', 'ic-sm')}加入全部已建模场景</button></div>
       <small class="muted">采集训练数据用；还没建模的场景也能选，coding agent 等它建好再生成布局。</small>`)}
@@ -1440,7 +1449,8 @@ function drawerNewTask() {
       <small class="muted">训练布局和 L2 评测集都按这些随机；具体范围由 coding agent 设定。</small>`)}`)}
     ${pane(3, `${group('位置随机 <span class="opt">勾了就开启 L1</span>', `<div class="toggles">${Object.entries(RANDOMIZE).map(([r, txt]) => `<label class="toggle"><input type="checkbox" data-random="${r}" checked onchange="renderLevels()"><span>${ic('check')}${txt}</span></label>`).join('')}</div>
       <small class="muted">训练布局和 L1 评测集都按这些随机；具体范围由 coding agent 按可达范围和物体尺寸设定。都不勾就是全部固定摆放。</small>`)}
-    ${group('泛化等级 <span class="opt">按前面的选择自动开启</span>', '<div id="nt-levels"></div>')}
+    ${group('泛化等级 <span class="opt">按前面的选择自动开启</span>', `<div id="nt-levels"></div>
+      <small class="muted">评测布局数：每级预先生成的固定布局，只用于评测、不进训练，让不同策略在同一批布局上比较。训练数据量看第 1 步的合格回合目标。</small>`)}
     ${group('其他泛化 <span class="opt">可选</span>', `<textarea id="nt-extra" rows="3" placeholder="上面五级没覆盖的维度和范围"></textarea>
       <div class="presets">${EXTRA_PRESETS.map((t) => `<button type="button" onclick="addExtra(this)">${ic('plus', 'ic-sm')}${esc(t)}</button>`).join('')}</div>`)}
     ${group('实现要求', `<div class="wz-grid">
@@ -1452,7 +1462,7 @@ function drawerNewTask() {
 }
 async function openNewTask(btn) {
   try { CLUTTER = await api('/api/clutter'); } catch { CLUTTER = {}; }
-  NT = {roles: [newRole()], dis: {candidates: []}, holdout: [], scenes: {train: [], holdout: []},
+  NT = {roles: [newRole()], dis: {candidates: [], holdout: []}, scenes: {train: [], holdout: []},
     levels: Object.fromEntries(LEVELS.map(([k, , range, target]) => [k, {range, target}]))};
   WZ = {steps: TASK_WIZ, check: taskWizError, idCheck: taskIdError, onStep: (n) => n === 3 && renderLevels()};
   WIZ_AT = 0;
@@ -1520,14 +1530,14 @@ async function createTask(btn) {
     existing: $('#nt-mode').value === 'existing', name: value('#nt-name'), name_en: value('#nt-name-en'), definition: value('#nt-definition'),
     instructions: {count: ntNum($('#nt-inst-n').value), languages: [...$$('[data-lang]:checked')].map((c) => c.dataset.lang)},
     success: value('#nt-success'), hand: value('#nt-hand'), horizon_s: ntNum($('#nt-horizon').value), target: ntNum($('#nt-target').value),
-    roles: NT.roles.map((r) => ({label: r.label, candidates: r.candidates, count: r.count})),
-    distractors: {count: lo == null && hi == null ? null : [lo ?? 0, hi ?? lo], candidates: NT.dis.candidates, clutter_library: $('#nt-dis-lib').checked,
+    roles: NT.roles.map((r) => ({label: r.label, candidates: r.candidates, holdout: r.holdout, count: r.count})),
+    distractors: {count: lo == null && hi == null ? null : [lo ?? 0, hi ?? lo], candidates: NT.dis.candidates, holdout: NT.dis.holdout, clutter_library: $('#nt-dis-lib').checked,
       clutter_categories: $('#nt-dis-lib').checked ? [...$$('[data-clutter]:checked')].map((c) => c.dataset.clutter) : []},
     scenes: Object.fromEntries([...NT.scenes.train.map((id) => [id, 'train']), ...NT.scenes.holdout.map((id) => [id, 'holdout'])]),
     randomize: [...$$('[data-random]:checked')].map((c) => c.dataset.random),
     levels: Object.fromEntries(Object.entries(levelReasons()).filter(([, why]) => why).map(([k]) => [k, NT.levels[k]])),
     appearance: [...$$('[data-appear]:checked')].map((c) => c.dataset.appear),
-    holdout_objects: NT.holdout, extra: value('#nt-extra'), expert: value('#nt-expert'), requirements: value('#nt-req'), notes: value('#nt-notes'),
+    extra: value('#nt-extra'), expert: value('#nt-expert'), requirements: value('#nt-req'), notes: value('#nt-notes'),
   };
   btn.disabled = true;
   btn.lastChild.textContent = '登记中…';
@@ -1546,7 +1556,7 @@ function taskBrief(d) {  // the task for a coding agent that implements this reg
   const r = d.reg || {}, dir = `real2sim/tasks/${d.id}`, fact = (k, v) => (v === undefined || v === null || v === '' ? null : `- ${k}：${v}`);
   const sceneLine = (use) => live(S.scene).filter((s) => r.scenes?.[s.id] === use)
     .map((s) => `${s.id}（${(s.auto.configs || []).join('、') || '还没建模'}）`).join('、');
-  const roles = (r.roles || []).map((x) => `  - ${x.label} × ${x.count}：${x.candidates.join('、')}`);
+  const roles = (r.roles || []).map((x) => `  - ${x.label} × ${x.count}：训练 ${x.candidates.join('、') || '（未选）'}${x.holdout?.length ? `；评测保留 ${x.holdout.join('、')}` : ''}`);
   const dis = r.distractors || {}, levels = Object.entries(r.levels || {});
   return [
     r.existing
@@ -1563,10 +1573,11 @@ function taskBrief(d) {  // the task for a coding agent that implements this reg
     r.randomize?.length ? `- 位置随机：训练布局和 L1 评测集每回合随机${r.randomize.map((k) => RANDOMIZE[k] || k).join('、')}，范围由你定：位置在机器人可达范围内（桌面物体 y≈[-0.55, -0.25]）、物体之间不重叠且留出抓取空间；朝向按抓取方式定，抓不到的角度不要采。L0 孪生布局固定摆放。范围写进任务配置和交付说明。`
       : '- 位置随机：不随机，所有布局固定摆放。',
     r.appearance?.length ? `- 外观随机：训练布局和 L2 评测集随机${r.appearance.map((k) => APPEARANCE[k] || k).join('、')}，范围由你定（灯光放在 Room 里，色温和亮度围绕场景登记的实测值变化）。` : null,
-    dis.count || dis.candidates?.length || dis.clutter_library ? `- 干扰物：每回合 ${dis.count ? dis.count.join('–') : '若干'} 个${dis.candidates?.length ? `，从 ${dis.candidates.join('、')} 中取` : ''}${dis.clutter_library ? '，也从 Clutter 杂物库随机取' : ''}` : '- 干扰物：无',
+    dis.count || dis.candidates?.length || dis.holdout?.length || dis.clutter_library ? `- 干扰物：每回合 ${dis.count ? dis.count.join('–') : '若干'} 个${dis.candidates?.length ? `，训练从 ${dis.candidates.join('、')} 中取` : ''}${dis.holdout?.length ? `，评测保留 ${dis.holdout.join('、')}` : ''}${dis.clutter_library ? `，也从杂物库随机取（任务配置的 Clutter 段，yaml_path: Clutter/clutter.yml；${dis.clutter_categories?.length ? `只取类别 ${dis.clutter_categories.join('、')}，按这些类别另写一份 clutter 索引或在采样时过滤` : '整个杂物库'}）` : ''}` : '- 干扰物：无',
     fact('训练场景', sceneLine('train')), fact('L4 保留场景', sceneLine('holdout')),
     '- 泛化等级：', ...levels.map(([k, v]) => `  - ${k}（目标 ${v.target ?? '—'} 个布局）：${v.range}`),
-    fact('L3 保留实例', (r.holdout_objects || []).join('、')), fact('其他泛化', r.extra),
+    [...(r.roles || []).flatMap((x) => x.holdout || []), ...(dis.holdout || [])].length ? '- 评测保留物体（上面标「评测保留」的）只出现在 L3 评测集里，不能出现在任何训练布局中；L3 布局用它们替换同一角色的训练物体，干扰物同理。' : null,
+    fact('其他泛化', r.extra),
     fact('脚本专家思路', r.expert), fact('其他要求', r.requirements), fact('备注', r.notes),
     '',
     '验收：',
@@ -1598,13 +1609,13 @@ function taskRegSection(d) {
   return `${sec(`${ic('terminal')}${r.existing ? '泛化方案' : '实现任务'}（给 coding agent）`, `<p class="hint" style="margin:0 0 8px">登记信息已写入
       <a target="_blank" rel="noopener" href="${file(`${INFO.root}/real2sim/tasks/${d.id}/registration.json`)}">real2sim/tasks/${esc(d.id)}/registration.json</a>。把下面这段交给 coding agent；实现后同步，流程自动推进。</p>${code(taskBrief(d))}`)}
     ${sec('语言指令', instructionList(d))}
-    ${sec('登记的方案', `<dl class="kv"><dt>物体角色</dt><dd>${(r.roles || []).map((x) => `<div><b class="mono">${esc(x.label)}</b> × ${x.count}：${x.candidates.map((o) => link('object', o, objLabel(o))).join('、')}</div>`).join('') || '—'}</dd>
-      <dt>干扰物</dt><dd>${r.distractors?.count ? `${r.distractors.count.join('–')} 个` : '—'}${(r.distractors?.candidates || []).length ? `：${r.distractors.candidates.map((o) => link('object', o, objLabel(o))).join('、')}` : ''}${r.distractors?.clutter_library ? '（含 Clutter 库）' : ''}</dd>
+    ${sec('登记的方案', `<dl class="kv"><dt>物体角色</dt><dd>${(r.roles || []).map((x) => `<div><b class="mono">${esc(x.label)}</b> × ${x.count}：${x.candidates.map((o) => link('object', o, objLabel(o))).join('、')}${x.holdout?.length ? `<div class="small muted">评测保留：${x.holdout.map((o) => link('object', o, objLabel(o))).join('、')}</div>` : ''}</div>`).join('') || '—'}</dd>
+      <dt>干扰物</dt><dd>${r.distractors?.count ? `${r.distractors.count.join('–')} 个` : '—'}${(r.distractors?.candidates || []).length ? `：${r.distractors.candidates.map((o) => link('object', o, objLabel(o))).join('、')}` : ''}${r.distractors?.clutter_library ? `（含杂物库：${r.distractors.clutter_categories?.length ? esc(r.distractors.clutter_categories.join('、')) : '全部类别'}）` : ''}${(r.distractors?.holdout || []).length ? `<div class="small muted">评测保留：${r.distractors.holdout.map((o) => link('object', o, objLabel(o))).join('、')}</div>` : ''}</dd>
       <dt>位置随机</dt><dd>${r.randomize?.length ? r.randomize.map((k) => RANDOMIZE[k] || k).join('、') : '不随机'}</dd>
       <dt>外观随机</dt><dd>${r.appearance?.length ? r.appearance.map((k) => APPEARANCE[k] || k).join('、') : '不随机'}</dd>
       <dt>训练场景</dt><dd>${scenes('train')}</dd><dt>L4 保留场景</dt><dd>${scenes('holdout')}</dd>
       <dt>泛化等级</dt><dd>${levels.map(([k, v]) => `<div><b class="mono">${k}</b> · 目标 ${v.target ?? '—'}：<span class="small">${esc(v.range)}</span></div>`).join('') || '—'}</dd>
-      <dt>L3 保留实例</dt><dd>${(r.holdout_objects || []).map((o) => link('object', o, objLabel(o))).join('、') || '—'}</dd></dl>
+</dl>
       <p class="hint">物体、场景和等级要改就删除登记后重新登记；下面的文字字段可以直接改，改动会写回 registration.json。</p>
       <div class="form">${t('definition', '任务定义')}${t('success', '成功判据')}${t('extra', '其他泛化')}${t('expert', '脚本专家思路')}${t('requirements', '其他要求')}${t('notes', '备注')}</div>`)}`;
 }
