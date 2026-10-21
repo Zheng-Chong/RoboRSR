@@ -505,14 +505,13 @@ def write_task_registration(doc, names=None):
         "horizon_s": r.get("horizon_s"),
         "target_episodes": r.get("target"),
         "owner": doc.get("owner") and {"username": doc["owner"], "name": (names or {}).get(doc["owner"], doc["owner"])},
-        "objects": r.get("roles"),  # [{label, candidates, count}]
+        "objects": r.get("roles"),  # [{label, candidates, holdout, count}]; holdout = only in L3 eval layouts
         "randomize": r.get("randomize"),  # ["position", "yaw"]: varied in training and L1 layouts; agent sets ranges
         "appearance": r.get("appearance"),  # ["light", "texture", "camera"]: varied in training and L2 layouts
-        # {count, candidates, clutter_library, clutter_categories: [] = the whole Clutter library}
+        # {count, candidates, holdout, clutter_library, clutter_categories: [] = the whole Clutter library}
         "distractors": r.get("distractors"),
         "scenes": scenes,
         "levels": r.get("levels"),  # {"L1": {"target": 50, "range": "..."}}, only the chosen levels
-        "holdout_objects": r.get("holdout_objects"),
         "extra_generalization": r.get("extra"),
         "expert": r.get("expert"),
         "requirements": r.get("requirements"),

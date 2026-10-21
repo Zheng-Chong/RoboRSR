@@ -230,7 +230,15 @@ def test_http():
 
         server.TASKS_DIR = tmp / "tasks"
         task = "/api/items?kind=task&id=g1d_wipe_table"
-        roles = [{"label": "sponge", "candidates": ["Rigid/sponge/00000"], "count": 1, "x": None}]
+        roles = [
+            {
+                "label": "sponge",
+                "candidates": ["Rigid/sponge/00000"],
+                "count": 1,
+                "x": None,
+                "holdout": ["Rigid/sponge/00001"],
+            }
+        ]
         reg = {"name": "擦桌子", "definition": "用海绵把桌上的污渍擦掉", "success": "污渍清除", "roles": roles}
         reg["instructions"] = {"count": 5, "languages": ["zh", "en"]}
         reg["randomize"] = ["position"]
