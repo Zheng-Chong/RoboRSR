@@ -5,6 +5,7 @@ from typing import List, Literal
 
 from isaaclab.assets.articulation import ArticulationCfg
 from isaaclab.scene import InteractiveSceneCfg
+from isaaclab.sensors import ContactSensorCfg
 import numpy as np
 from omegaconf import DictConfig, OmegaConf
 import torch
@@ -200,6 +201,18 @@ class RobotManager:
             else:
                 results[env_idx] = None
         return results
+
+    def get_gripper_force(self, robot, env_idx_list=None):
+        """{env_idx: contact force magnitude (N) on each finger pad, in gripper_joints_name order}, from the pad
+        ContactSensor (net force: normal squeeze plus friction); None for robots without FINGER_PADS."""
+        sensor = getattr(robot, "pad_sensor", None)
+        if sensor is None:
+            return None
+        if env_idx_list is None:
+            env_idx_list = list(range(self.num_envs))
+        ids = [sensor.body_names.index(robot.finger_pads[name]) for name in robot.gripper_joints_name]
+        forces = sensor.data.net_forces_w[:, ids].norm(dim=-1).cpu().numpy()
+        return {env_idx: forces[env_idx] for env_idx in env_idx_list}
 
     def get_delta_endpose(self, robot, env_idx_list=None):
         if env_idx_list is None:
@@ -494,10 +507,12 @@ class RobotManager:
         idx = 0
         for i in range(len(self.robot_list)):
             if not self.use_scene_cfg[i]:
-                self.robot_key.append(self.scene[f"robot{idx - 1}"])
+                name = f"robot{idx - 1}"
             else:
-                self.robot_key.append(self.scene[f"robot{idx}"])
+                name = f"robot{idx}"
                 idx += 1
+            self.robot_key.append(self.scene[name])
+            self.robot_list[i].pad_sensor = self.scene.sensors.get(f"{name}_pads")
         for idx, robot in enumerate(self.robot_list):
             robot.gripper_joint_indices, gripper_names = self.robot_key[idx].find_joints(robot.gripper_joints_name)
             robot.gripper_joints_name = gripper_names
@@ -531,8 +546,16 @@ class RobotManager:
             replicate_physics=replicate_physics,
         )
         for idx, robot in enumerate(self.robot_list):
+            robot.finger_pads = getattr(self._robot_config_module(robot.robot_name), "FINGER_PADS", None)
             if self.use_scene_cfg[idx]:
                 setattr(scene_cfg, f"robot{idx}", robot.SceneCfg)
+                if robot.finger_pads:
+                    pads = "|".join(robot.finger_pads.values())
+                    setattr(
+                        scene_cfg,
+                        f"robot{idx}_pads",
+                        ContactSensorCfg(prim_path=f"{ENV_REGEX_NAMESPACE}/robot{idx}/({pads})"),
+                    )
         ensure_usd_path(scene_cfg)
         return scene_cfg
 
@@ -669,10 +692,11 @@ class RobotManager:
         if robot_name not in ROBOT_CONFIG_REGISTRY:
             raise ValueError(f"No such robot: {robot_name}")
 
-        module_name = ROBOT_CONFIG_REGISTRY[robot_name]
-        module = import_module(f".robot_config.{module_name}", package=__package__)
+        return self._robot_config_module(robot_name).get_robot_config()
 
-        return module.get_robot_config()
+    @staticmethod
+    def _robot_config_module(robot_name):
+        return import_module(f".robot_config.{ROBOT_CONFIG_REGISTRY[robot_name]}", package=__package__)
 
 
 ROBOT_CLASS_REGISTRY = {

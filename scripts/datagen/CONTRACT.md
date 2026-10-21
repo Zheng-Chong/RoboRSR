@@ -25,6 +25,7 @@
 - **16 维向量的顺序**：左臂 7 个关节、左夹爪、右臂 7 个关节、右夹爪。左右臂各自的关节顺序以质检单里的 `joint_names` 为准；G1-D 是 shoulder_pitch、shoulder_roll、shoulder_yaw、elbow、wrist_roll、wrist_pitch、wrist_yaw。关节角单位是 rad。
 - **夹爪 state**：两指关节实测位置的均值，换算到 0（闭合）到 1（张开）。被物体挡住时，读数停在物体宽度对应的开度上，不裁剪。由 env 配置里的 `observation.robot.ee_state: measured` 打开，G1-D 的六个配置（`g1d`、`g1d_counter`、`g1d_lab`、`g1d_school`、`g1d_shenzhen_lab`、`g1d_beans_collect`）都已打开。不写这个键时仍是上一步的指令值，这是 RoboDojo 原来的行为，X5 等任务不受影响。
 - **夹爪 action**：指令值，刻度同上，执行前裁剪到 [0, 1]。
+- **夹持力**（不在数据里）：G1-D 的 obs 有 `obs["gripper_force"]["left_ee" / "right_ee"]`，是两个指垫（`*_dex1_finger_link_{1,2}_tip`）上 ContactSensor 读出的接触合力大小，单位 N，顺序同两个手指关节（挤压的法向力加上托住物体的摩擦力）。只有 `robot_config` 里写了 `FINGER_PADS` 的机器人才有这个键。录制器不写它，所以 16 维 state 不变；真机能否给出对应的量还没确认。
 - **机械臂 action**：关节位置目标，30 Hz。仿真在每个动作内部做插值，与真机控制器的跟踪方式不同（见 README「控制对齐」）。
 - **帧对齐**：第 t 帧的图像和 state 都是在执行 `action[t]` 之前采集的。
 - **相机**：`cam_head` 是头部双目的左眼（640×480，fx ≈ 279.5）；`cam_left_wrist`、`cam_right_wrist` 是左、右腕相机（640×480，fx ≈ 314）。都按针孔模型渲染，没有加畸变，腕部主点的偏移也没有建模。

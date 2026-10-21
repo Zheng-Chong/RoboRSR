@@ -75,6 +75,10 @@ def _spawn_g1d(prim_path, cfg, *args, **kwargs):
     return prim
 
 
+# Dex1-1 pad (Link{1,2}_3) of each finger joint; RobotManager puts a ContactSensor on them for the grip force.
+FINGER_PADS = {f"{s}_dex1_finger_joint_{i}": f"{s}_dex1_finger_link_{i}_tip" for s in ("left", "right") for i in (1, 2)}
+
+
 def get_robot_config():
     # Unitree G1-D (wheeled base locked) with Dex1-1 grippers; URDF built by scripts/g1d/build_asset.py.
     return ArticulationCfg(
@@ -83,6 +87,7 @@ def get_robot_config():
             asset_path=f"{ROBOTS_PATH}/g1d/g1d_dex1.urdf",
             usd_dir=f"{ROBOTS_PATH}/g1d/usd",  # converted once, reused while the URDF/config hash matches
             fix_base=True,
+            activate_contact_sensors=True,  # FINGER_PADS
             merge_fixed_joints=False,  # keep d435_link / *_dex1_base_link for cameras and the EE frame
             joint_drive=sim_utils.UrdfConverterCfg.JointDriveCfg(
                 gains=sim_utils.UrdfConverterCfg.JointDriveCfg.PDGainsCfg(stiffness=0.0, damping=0.0)

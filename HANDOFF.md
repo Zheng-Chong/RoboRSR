@@ -10,7 +10,7 @@
 
 - **机器人** G1-D + Dex1-1（带相机版夹爪）：两条 7 自由度手臂加两指夹爪，关节角控制，30 Hz；轮子锁死，升降柱和腰部保持初始值。
   - 头部用双目的左眼 `cam_head`（棋盘格标定 fx≈279.5，宇树合同外参），两个腕部相机 fx≈314；投影到真机画面核对过（误差 0.4–3.6 px）。
-  - 关节驱动参数（刚度 4400、阻尼 40）和夹爪力是拍定的，没做系统辨识。同事把"相机+动作标定工具包"作为 `g1d_calib_toolkit_20261019.zip` 传到了仓库根目录，还没接入。
+  - 关节驱动参数（刚度 4400、阻尼 40）和夹爪力是拍定的，没做系统辨识。夹爪上限是每指 20 N；官方规格（零售商转载）写的是夹持力 5–120 N 可调，是否提高上限待用户决定（见「剩余事项」）。仿真里能读到夹持力：`obs["gripper_force"]`（指垫 ContactSensor，单位 N，不进数据集）。同事把"相机+动作标定工具包"作为 `g1d_calib_toolkit_20261019.zip` 传到了仓库根目录，还没接入。
   - 构建：`python scripts/g1d/build_asset.py`（读 `real2sim/robot/g1d_v4`）。下载官方资产后先跑一次 `utils/update_embodiment_config_path.py`。
 - **场景**（`real2sim/scenes/`）：env 配置 `g1d` 是办公室，`g1d_counter` 是吧台，`g1d_lab` 是公司实验室，`g1d_school` 是学校实验室绿幕桌，`g1d_shenzhen_lab` 是深圳实验室办公桌。前三个从照片拟合，尺度靠先验；学校的来自同事用真机相机画面拟合的 MuJoCo 孪生；深圳实验室是第一个按平台登记、用卷尺定尺度的场景（卷尺三项通过，站位和叠图待做）。其余都没有卷尺实测，都没有叠图验收。状态汇总：`python scripts/scenes/acceptance.py`（目前全部 pending）。新场景先在数采平台登记（≥ 5 张照片 + 卷尺实测，写 `registration.json`），再按 `real2sim/scenes/SKILL.md` 交给 coding agent 建模。新场景先在数采平台「登记场景」（至少 5 张照片 + 卷尺实测，写 `real2sim/scenes/<场景>/registration.json`），再按 `real2sim/scenes/SKILL.md` 建模。
 - **物体**：每件资产的来源和匹配程度看 `real2sim/ASSETS.md`。按数采平台的登记（`real2sim/objects/<id>/spec.json` + 照片）给实物建模，交给 coding agent 时按 `scripts/objects/SKILL.md`；平台物体页生成的「建模任务」文本第一行就指向它。
@@ -32,6 +32,14 @@
   - `5090-2`（8×5090）：仿真环境 `/root/miniconda3/envs/RoboDojo`；导出环境 `robodojo-lerobot`（lerobot 0.4.4，10-19 补装了 h5py 3.16，`pip -i` 用清华镜像）；上传环境 `/data/robodojo-runs/ms-venv`；运行目录在 `/data/robodojo-runs/`。
 
 ## 最近任务
+
+### G1-D 夹爪力反馈（2026-10-21，分支 `chongzheng/robot-g1d-gripper-force`）
+
+- **用户要求**：仿真里要能知道夹爪用了多大力，在三个方案里选了"指垫接触传感器"。
+- **实现**：`robot_config/g1d.py` 新增 `FINGER_PADS`（四个手指关节各自对应的指垫 `*_dex1_finger_link_{1,2}_tip`，即 Link{1,2}_3），并打开 `activate_contact_sensors`。`RobotManager._get_SceneCfg` 发现 `FINGER_PADS` 时，给场景加 `robot{idx}_pads` 这个 ContactSensor。`get_gripper_force()` 返回每个指垫的接触合力大小（N，顺序同 `gripper_joints_name`），`ObsManager` 写进 `obs["gripper_force"][gripper_name]`。没写 `FINGER_PADS` 的机器人（X5、Franka）不受影响。录制器只取 `state_keys`，所以 16 维 state 和数据集格式不变（`CONTRACT.md` 已注明）。
+- **验证**：本机 `scripts/check.sh` 通过（22 passed，1 skipped；契约单测加了 `gripper_force` 断言）。`5090-2` 隔离目录 `/data/robodojo-runs/gripper-force-20261021-142346`（GPU 2），`g1d_beans_collect` 量杯 seed 0：`success_rate` 1.0、`eval_time` 1；张开时力为 0，夹住时每个指垫 15–22 N（最大 22.6）。同一回合把上限改为 120 N、刚度改为 6e4（目录 `…-120n`，GPU 3，只改了服务器上的副本，没提交）：也成功，夹持中位约 24 N、最大 30 N。原因是脚本专家只把夹爪关到指令 0.3，力由刚度乘以剩余行程决定，到不了上限。`g1d_general_pickup` 没测：这份资产副本里没有它的布局。
+- **没做**：上限仍是 20 N；力没有进数据集，也没给策略当输入；真机 Dex1-1 能否读出对应的量没查。
+
 
 ### 深圳实验室场景 `real_scene5_shenzhen_lab`（2026-10-21，[PR #22](https://github.com/Zheng-Chong/RoboRSR/pull/22) 合并进 `main`，已部署）
 
@@ -210,6 +218,7 @@
 - **共享库的倒豆布局过期**：`g1d`、`g1d_counter`、`g1d_lab` 的倒水、杯对杯布局是旧豆子参数（4 mm，`particle_mass` 6e-5），和当前 `build_asset.py`（5.6 mm）不一致；`g1d_shenzhen_lab` 已是新参数。要统一，就在隔离目录重跑 `build_asset.py`，经同意后替换（先备份）。
 - **深圳实验室**：已合并、部署、装共享库；站位卷尺（桌沿到根节点、横向偏移）和三视角叠图后，`acceptance.py` 才能通过。
 - **场景**：除深圳实验室外没有卷尺实测，都没有叠图；`real_scene1` 和 09-21 那次真机运行时的摆放不一样，那批画面不能用来叠图。下次去现场按 `real2sim/scenes/SKILL.md` 一次采齐。
+- **夹爪上限**：仿真每指 20 N，官方写 5–120 N 可调。改上限会改变物理，和已采数据的 env 不再一致（`replay.py` 能看出来），所以要先确认真机实际设的是多少，再决定是否改、是否重采。
 - **真机对齐**：
   - 动力学没做系统辨识；末端位姿动作还不支持（需要 G1-D 的 cuRobo 配置，并且左右臂各用一个 planner）；
   - 真机开环回放的关卡没有工具；
@@ -240,6 +249,7 @@
 
 ## 最近历史
 
+- 2026-10-21：G1-D 夹爪力反馈：指垫 ContactSensor，输出 `obs["gripper_force"]`（N），不进数据集；5090-2 上量杯 seed 0 通过，夹持时每个指垫 15–22 N。
 - 2026-10-21：按平台登记新建深圳实验室场景 `real_scene5_shenzhen_lab`（env 配置 `g1d_shenzhen_lab`），卷尺定尺度，5090-2 上 `build_asset.py` 和脚本演示通过，经用户同意装进共享库（不含量杯任务布局）；修 `build_asset.py` 相对 `--assets` 时的软链接问题。PR #22 合并（`2975b4a`）并部署到 `5090-2`。
 - 2026-10-21：登记任务的评测保留物体改为跟着角色走（用户：每个角色都要有候选和保留，干扰物也要有）：第 2 步每个角色分「训练候选」「评测保留」两个选择框，干扰物分「训练用」「评测保留」，去掉单独的「评测保留实例」栏；已是训练候选的物体不能再选为保留，反之亦然（保留的必须是训练里没见过的）。L3 只在选了保留物体时开启（多候选、干扰物只算训练多样性）。「目标布局数」改名「评测布局数」并注明只用于评测、训练数据量看合格回合目标。`registration.json`：角色和 `distractors` 各加 `holdout`，去掉 `holdout_objects`。顺带修复 PR #15 把 PR #14 的两处改回旧版的问题：实现任务文本里的杂物类别、抽屉里的「含杂物库：类别」（登记文件的 `clutter_categories` 一直正确）。验证：`test_server.py`、ruff；本机浏览器：两栏选择、双向互斥提示、L3 依据、评测布局数、实现任务文本和抽屉摘要。PR #21 合并（`d5db8aa`）并部署。
 - 2026-10-21：PR #19 合并（`2944698`）并部署；部署前删掉了部署机上和 `main` 内容一致的未跟踪 `real2sim/tasks/g1d_pour_beans_any_cups/registration.json`（sha256 核对过）。线上第一个场景登记 `real_scene5_shenzhen_lab`（深圳实验室，B5-2L，种政 10-21 12:08 登记：6 张照片、卷尺桌面 75 × 120 × 60 cm、厚 2 cm、四条腿白色圆角桌、储物柜 75×120×45 cm 金属、顶部条形面光源）拷回入库，照片走 LFS。还没建模，没量机器人站位，也没有标定板；部署 PR #21 时已核对一致、挪开后快进并放回真实照片，部署机上现在是跟踪文件。

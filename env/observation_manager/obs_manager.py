@@ -178,6 +178,11 @@ class ObsManager:
                                 obs[env_idx]["state"][f"{robot.arm_name}_joint_state"] = joints[env_idx]
                                 obs[env_idx]["action"][f"{robot.arm_name}_joint_state"] = joints[env_idx]
 
+                    force = self.robot_manager.get_gripper_force(robot, env_idx_list)
+                    if force is not None:
+                        for env_idx in env_idx_list:
+                            obs[env_idx].setdefault("gripper_force", {})[robot.gripper_name] = force[env_idx]
+
                     if self.robot_cfg["world_ee_state"]:
                         endpose = self.robot_manager.get_real_endpose(robot=robot, env_idx_list=env_idx_list)
                         for env_idx in env_idx_list:
