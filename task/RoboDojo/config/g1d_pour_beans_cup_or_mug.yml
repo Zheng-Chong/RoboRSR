@@ -1,0 +1,64 @@
+# G1-D bean pour with the target varied: red beans (100-300) in the tall measuring cup (index 1, source) go into the
+# short measuring cup (index 0) or the white plastic mug (plastic_mug/00000) as the target, among 2-5 Clutter
+# distractors. Collection layouts come from scripts/g1d/prepare_bean_pour_layouts.py; the ranges below only document
+# a default (measuring-cup) layout for the random-layout path.
+Rigid:
+  -
+    common:
+      xlim: [-0.16, -0.10]
+      ylim: [-0.39, -0.31]
+      rotate_rand: False
+      rotate_deg: 0
+      relative_plane: "Table"
+      qpos: [0.92388, 0, 0, 0.38268]
+      margin: 0.04
+
+    category:
+      -
+        name: "measuring_cup"
+        index: [1]
+
+    select_mode:
+      nums: [1]
+      mode: "unique"
+      label: ["source_cup"]
+
+  -
+    common:
+      xlim: [0.10, 0.16]
+      ylim: [-0.39, -0.31]
+      rotate_rand: False
+      rotate_deg: 0
+      relative_plane: "Table"
+      qpos: [0.92388, 0, 0, 0.38268]
+      margin: 0.04
+
+    category:
+      -
+        name: "measuring_cup"
+        index: [0]
+
+    select_mode:
+      nums: [1]
+      mode: "unique"
+      label: ["target_cup"]
+
+Fluid:
+  -
+    common:
+      xlim: [0.0, 0.0]
+      ylim: [0.0, 0.0]
+      zlim: [-0.0435, -0.0435]
+      rotate_rand: False
+      relative_plane: "source_cup"
+      check_mode: "enforce"
+
+    category:
+      -
+        name: "wuliangye"
+        index: [0]
+
+    select_mode:
+      nums: [1]
+      mode: "unique"
+      label: ["beans"]

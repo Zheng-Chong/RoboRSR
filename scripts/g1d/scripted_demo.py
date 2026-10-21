@@ -29,7 +29,10 @@ from scipy.spatial.transform import Rotation, Slerp
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from scripts.objects import measuring_cup_shape as cup_shape  # noqa: E402
+from scripts.objects import (
+    measuring_cup_shape as cup_shape,  # noqa: E402
+    plastic_mug_shape as mug_shape,  # noqa: E402
+)
 
 POLICY = "scripted_demo"
 
@@ -66,11 +69,14 @@ CUP_SLIDE = 0.08  # m the open pads slide along the fingers onto the cup body
 # Cup-to-cup pour (two 9.5 cm plastic cups, as in the real G1D-PourBeansPlus clips, or the 14 / 17 cm measuring
 # cups): pads this far below the rim. Measuring cups: 45 mm keeps the pads clear of the 75 mm flange 12.5 mm down;
 # at 32 mm the 17 cm cup pivoted ~45 deg in the grip (16/18 strict pours at 45 mm, 2 failures one spilled bean each)
-C2C_RIM_DOWN = {"plastic_cup": 0.02, "measuring_cup": 0.045}
-C2C_RAISE, C2C_LIFT = 0.06, {"plastic_cup": 0.12, "measuring_cup": 0.06}  # straight up first; target bottom lifted
+C2C_RIM_DOWN = {"plastic_cup": 0.02, "measuring_cup": 0.045, "plastic_mug": 0.03}  # mug: pads under its handle top
+C2C_RAISE = 0.06  # straight up first
+# target cup bottom lifted, by its kind; the mug's mouth then sits about as high as the short measuring cup's (at 0.12
+# the tall cup's hand could not reach over it)
+C2C_LIFT = {"plastic_cup": 0.12, "measuring_cup": 0.06, "plastic_mug": 0.08}
 # fingers this far below horizontal. The cup tilts by rolling about the fingers, cos(tilt) = sin^2 p + cos^2 p cos(r):
 # at 35 deg the ~100 deg the beans need in the tall measuring cup takes ~140 deg of roll; the arm reaches ~116
-C2C_PITCH = {"plastic_cup": CUP_PITCH, "measuring_cup": 20}
+C2C_PITCH = {"plastic_cup": CUP_PITCH, "measuring_cup": 20, "plastic_mug": CUP_PITCH}  # per cup, by its kind
 # the square measuring cups stand at any yaw: the wrist turns beyond CUP_YAW (deg, outward .. inward) so the pads close
 # across a pair of flats (they repeat every 90 deg); past this window the pads sit off the flats by the rest. Probed at
 # the table centre: 25 deg further inward knocks the cup over, 44 deg outward misses the pour
@@ -344,23 +350,24 @@ def cup_to_cup_actions(env, pour_share=None):
     arms = [Arm(env, r) for r in env.robot_manager.robot_list if r.type == "target"]
     src_arm = min(arms, key=lambda a: abs(a.grasp_point()[0] - src0[0]))
     tgt_arm = next(a for a in arms if a is not src_arm)
-    heights = {}
-    for label in ("source_cup", "target_cup"):
+    heights, kinds, turns, axes = {}, {}, {}, {}
+    for label, out in (("source_cup", side), ("target_cup", -side)):
         name = lm.get_instance_name(0, label)
         bbox = lm.get_instance_bbox_vertices(name, 0)
         heights[label] = bbox[:, 2].max() - bbox[:, 2].min()
-        category = next(c for c in C2C_RIM_DOWN if name.startswith(c))
-        heights[label + "_grip"] = heights[label] - C2C_RIM_DOWN[category]
-    lift, pitch = C2C_LIFT[category], C2C_PITCH[category]
-    turns = dict.fromkeys(("source_cup", "target_cup"), 0.0)
-    if category == "measuring_cup":
-        for label, out in (("source_cup", side), ("target_cup", -side)):
-            turns[label] = flat_turn(from_wxyz(as_np(lm.get_instance_pose(0, label=label)[1])), out)
+        kinds[label] = kind = next(c for c in C2C_RIM_DOWN if name.startswith(c))
+        heights[label + "_grip"] = heights[label] - C2C_RIM_DOWN[kind]
+        rot = from_wxyz(as_np(lm.get_instance_pose(0, label=label)[1]))
+        turns[label] = flat_turn(rot, out) if kind == "measuring_cup" else 0.0
+        circle = (lm.get_instance_metadata(0, label=label) or {}).get("active", {}).get("place", {}).get("up", {})
+        center = circle.get("contact_circle", {}).get("center", (0.0, 0.0))  # cup axis in the cup (bbox centre) frame
+        axes[label] = np.r_[center[0], center[1], 0.0]
+    lift = C2C_LIFT[kinds["target_cup"]]
     s_grip, s_hand, s_rim, s_r, s_open = cup_grasp(
-        lm, side, "source_cup", heights["source_cup_grip"], pitch, turns["source_cup"]
+        lm, side, "source_cup", heights["source_cup_grip"], C2C_PITCH[kinds["source_cup"]], turns["source_cup"]
     )
     t_grip, t_hand, t_rim, t_r, t_open = cup_grasp(
-        lm, -side, "target_cup", heights["target_cup_grip"], pitch, turns["target_cup"]
+        lm, -side, "target_cup", heights["target_cup_grip"], C2C_PITCH[kinds["target_cup"]], turns["target_cup"]
     )
     height, t_height = heights["source_cup"], heights["target_cup"]
     up = heights["source_cup_grip"]  # pads above the cup bottom
@@ -412,14 +419,18 @@ def cup_to_cup_actions(env, pour_share=None):
         return np.asarray(fluid.get_particle_positions()[0]).reshape(-1, 3) + fluid.init_pos
 
     def inside(label):
-        """Per bean: inside the cup (cup frame, origin at the bbox centre): the measuring cups' actual cavity, whose
-        corners reach past the rim cylinder (beans left there read as poured), else the rim cylinder."""
+        """Per bean: inside the cup (cup frame, origin at the bbox centre): the measuring cups' and the mug's actual
+        cavity (measuring-cup corners reach past the rim cylinder: beans left there read as poured), else the rim
+        cylinder."""
         pos, rot = cup(label)
         local = rot.inv().apply(beans() - pos)
         r, h = (s_r, height) if label == "source_cup" else (t_r, t_height)
-        if category == "measuring_cup":
+        if kinds[label] == "measuring_cup":
             return cup_shape.in_cavity(local - cup_shape.origin_shift(h), h)
-        return (np.hypot(local[:, 0], local[:, 1]) < r) & (np.abs(local[:, 2]) < h / 2)
+        if kinds[label] == "plastic_mug":
+            return mug_shape.in_cavity(local - mug_shape.origin_shift())
+        off = local - axes[label]
+        return (np.hypot(off[:, 0], off[:, 1]) < r) & (np.abs(local[:, 2]) < h / 2)
 
     check = env.pour_check()
     step = 0
@@ -461,7 +472,7 @@ def cup_to_cup_actions(env, pour_share=None):
     def steer(theta):
         nonlocal fix
         t_pos, t_rot = cup("target_cup")
-        mouth = t_pos + t_rot.apply([0.0, 0.0, t_height / 2])
+        mouth = t_pos + t_rot.apply(axes["target_cup"] + [0.0, 0.0, t_height / 2])  # on the cup axis, not the bbox
         hand, hand_rot, lip_target = pour(theta, mouth[:2], mouth[2])
         s_pos, s_rot = cup("source_cup")
         fix = np.clip(fix + LIP_GAIN * (lip_target - s_pos - s_rot.apply(lip_c)), -LIP_SLACK, LIP_SLACK)

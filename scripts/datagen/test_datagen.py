@@ -222,6 +222,37 @@ class ContractTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             plugin.audit(privileged, quality)
 
+    def test_cup_or_mug_audit_uses_the_target_cavity(self):
+        from scripts.datagen.plugins import g1d_pour_beans_cup_or_mug as plugin
+        from scripts.objects import measuring_cup_shape, plastic_mug_shape
+
+        hold, n = plugin.HOLD, 120
+        jitter = np.random.default_rng(0).uniform(-0.01, 0.01, (n, 3))
+        # cavity centres in each cup's bbox frame (cups at x = -+0.15, upright)
+        tall = np.array([0, 0, 0.06]) + measuring_cup_shape.origin_shift(0.17) + [-0.15, 0, 0]
+        mug = np.array([0, 0, 0.05]) + plastic_mug_shape.origin_shift() + [0.15, 0, 0]
+        cups = np.tile([[-0.15, 0, 0, 1, 0, 0, 0], [0.15, 0, 0, 1, 0, 0, 0]], (hold, 1, 1))
+        beans = np.tile(mug + jitter, (hold, 1, 1))
+        privileged = dict(
+            initial_particles=tall + jitter,
+            particles=beans,
+            cup_poses=cups,
+            distractor_poses_start=np.zeros((2, 7)),
+            distractor_poses_end=np.zeros((2, 7)),
+        )
+        cup_info = dict(
+            source_cup=dict(kind="measuring_cup", height=0.17), target_cup=dict(kind="plastic_mug", height=0.1)
+        )
+        quality = dict(frames=hold, initial_counts=dict(total=n), cups=cup_info)
+        report = plugin.audit(privileged, quality)
+        self.assertEqual((report["beans"], report["target"]), (n, "plastic_mug"))
+        beans[-1, 0] = mug + [0.045, 0, 0]  # in the mug wall in the last frame
+        with self.assertRaises(AssertionError):
+            plugin.audit(privileged, quality)
+        few = dict(privileged, initial_particles=privileged["initial_particles"][:50], particles=beans[:, :50])
+        with self.assertRaises(AssertionError):
+            plugin.audit(few, dict(quality, initial_counts=dict(total=50)))
+
     def test_registry_entries_are_complete(self):
         registry = json.loads(Path(__file__).with_name("registry.json").read_text())
         required = {
