@@ -55,7 +55,8 @@
 - **环境（5090-2 上新增）**：`openwam-bench`（克隆 `openwam`，再装 vendored OpenWAM；原 `openwam` 指向 G1-D 分叉，给真机服务用，没动）；pi0.5 的 uv 环境在运行目录 `XPolicyLab/policy/Pi_05/openpi/.venv`（JAX 0.5.3，uv 在 `.uvtool/`，依赖经本机 `ssh -R` SOCKS 隧道装，隧道已关）；tokenizer 预置在 `~/.cache/openpi/big_vision/`；conda base 装了 `pyyaml`（Pi_05 服务端脚本用 base python 读 yaml）。Isaac 要 `OMNI_KIT_ACCEPT_EULA=YES`（`smoke_one.sh`、`bench.sh` 已设）。
 - **下载坑**：5090-2 连不上 huggingface.co、GitHub、PyPI。hf-mirror 要 `HF_HUB_DISABLE_XET=1`；`snapshot_download` 和超过 1000 个文件的 `list_repo_tree` 会卡住（分页链接指回 huggingface.co）；git LFS 经镜像全部失败。可行的是按文件列表 `hf_hub_download`（`dl_prefix.py --list`）。
 - **验证**：两个模型 `stack_bowls` 各 1 回合：OpenWAM 成功（314 s），pi0.5 成功（193 s），`_result.json` `eval_time` 1。
-- **全量评测（13:40 启动）**：`bench.sh` → `robodojo.sh benchmark --eval-num native --tasks-file leaderboard_tasks.txt`（54 个任务，去掉 `g1d_*`）。OpenWAM run id `baseline_openwam_20261022`，策略 GPU 0/2/3，仿真 GPU 4/5/6（策略 25 GB，不能和 Isaac 同卡），预计每组约 16 h；pi0.5 run id `baseline_pi05_20261022`，GPU 7 单卡串行，实测 `align_blocks` 50 回合约 25 min，全量约 22 h。汇总在 `smoke_results/<run id>.md`，日志 `logs/bench_*.log`。早期结果：pi0.5 `align_blocks` 0/50、OpenWAM `imitate_sorting_sequence` 0/8（两者都在无数据或难任务上）。GPU 1 是 `owam-server`（另一会话）。
+- **全量评测（13:40 启动）**：`bench.sh` → `robodojo.sh benchmark --eval-num native --tasks-file leaderboard_tasks.txt`（54 个任务，去掉 `g1d_*`）。OpenWAM run id `baseline_openwam_20261022`，策略 GPU 0/2/3，仿真 GPU 4/5/6（策略 25 GB，不能和 Isaac 同卡），预计每组约 16 h；pi0.5 run id `baseline_pi05_20261022`，GPU 7 单卡串行，实测 `align_blocks` 50 回合约 25 min，全量约 22 h。汇总在 `smoke_results/<run id>.md`，日志 `logs/bench_*.log`。GPU 1 是 `owam-server`（另一会话）。
+- **16:35 按用户要求停止**（两个 `bench.sh` 会话组和 4 个残留 Isaac 客户端都已结束，GPU 0、2–7 释放，`owam-server` 未动）。停止时完整跑完的任务（成功率 / 回合）：OpenWAM `imitate_sorting_sequence` 0/50、`pour_by_language` 0/50；pi0.5 `align_blocks` 0/50、`arrange_largest_number` 0/25、`arrange_largest_number_random` 0/25、`build_tower` 0.48/50。中途停下的（`_result.json` 只有部分回合，不能当基线）：OpenWAM `play_tic_tac_toe` 0.1/40、`classify_objects_by_language` 0/30、`play_stacking_toy` 0/20；pi0.5 `classify_objects` 0.1/10。续跑：pi0.5 是串行模式，每个任务写一次 `smoke_results/baseline_pi05_20261022.json`（已有 4 个 PASS），同一 `bench.sh` 加 `--resume` 即可跳过；OpenWAM 是并行模式，summary 只在全部结束时写，停止时没有生成，`--resume` 不起作用，要从 `leaderboard_tasks.txt` 去掉已完成的 2 个任务另做任务列表。中途停下的任务都会整任务重跑。
 
 ### 数采平台：管理员删除场景（2026-10-22，直接推 `main`）
 
@@ -272,7 +273,7 @@
 
 ## 剩余事项与风险
 
-- **榜单基线**：pi0.5 单卡要约 22 h；OpenWAM 跑完后用同一 `bench.sh ... --resume` 把 pi0.5 剩下的任务分到空出的卡上（pi0.5 策略 + Isaac 同卡约 25 GB，一卡一组）。GPU 3 期间被别人短暂占过 8.7 GB。`/data` 剩约 290 GB。官方榜单页面是 JS 渲染，没抓到公开分数，要和自测基线对照需手动查 robodojo-benchmark.com/LeaderBoard。dsw-4 根分区 100% 满（19 GB），训练数据和产出要放 `/mnt/data`。
+- **榜单基线**：10-22 16:35 停止，54 个任务只完成 6 个（见「最近任务」）；是否续跑等用户决定。续跑时 pi0.5 策略 + Isaac 同卡约 25 GB，一卡一组；OpenWAM 策略卡和仿真卡要分开。`/data` 剩约 192 GB（91%），另一会话的 `g1d_green_table/` 占 1.4 TB。官方榜单页面是 JS 渲染，没抓到公开分数，要和自测基线对照需手动查 robodojo-benchmark.com/LeaderBoard。dsw-4 根分区 100% 满（19 GB），训练数据和产出要放 `/mnt/data`。
 
 - **G1-D 移动版**：
   - 共享资产库还没有 `g1d_mobile_dex1.urdf` 和 `Eval_Layout/RoboDojo/g1d_mobile/`，要在隔离目录跑完整的 `build_asset.py` 验证后，经用户同意再装；
@@ -311,7 +312,7 @@
 
 ## 下一会话
 
-0. 榜单：收两份基线（`smoke_results/baseline_*_20261022.md`，核对每个任务 `eval_time >= 1`），按任务对比 OpenWAM / pi0.5 / 有无官方数据；看失败视频做归类；然后开始把 `collect.py` 和插件接口推广到 dual X5，按优先级给无官方数据的任务写专家。
+0. 榜单：基线已停（16:35，用户要求），先问用户是否续跑；续跑后收两份基线（`smoke_results/baseline_*_20261022.md`，核对每个任务 `eval_time >= 1`），按任务对比 OpenWAM / pi0.5 / 有无官方数据；看失败视频做归类；然后开始把 `collect.py` 和插件接口推广到 dual X5，按优先级给无官方数据的任务写专家。
 0. 实现平台登记的 `g1d_pour_beans_any_cups`：在平台任务抽屉复制「实现任务」文本交给 coding agent（输入 `real2sim/tasks/g1d_pour_beans_any_cups/registration.json`）。
 0. 深圳实验室（已合并、部署，共享库待补装）：去现场量站位、拍头部 / 腕部画面做叠图（`overlay.py --env-cfg g1d_shenzhen_lab`）。
 1. 先看 `git log`、本文件和 `scripts/datagen/CONTRACT.md`。主工作区里还有物体建模 SKILL 会话没提交的改动（见"最近任务"里的"并行会话"）；拉取新的 `main` 前，先让那个会话提交，或者先 stash。
