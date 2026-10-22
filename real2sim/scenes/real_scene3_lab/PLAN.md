@@ -113,7 +113,7 @@ uv run --no-project --python 3.11 --with usd-core --with trimesh --with numpy --
   - 本机拷贝：`output/lab_render/`（视频、关键帧、`compare_p3.jpg`）。
 
 - **2026-10-22，家具 v2 的 Isaac RTX 渲染**：在 `5090-2` 的隔离目录 `/data/robodojo-runs/lab-furniture-20261022-003901/`（GPU 4，只拷了场景目录和 `scripts/scenes/render_scenes.py`）只载场景跑 `render_scenes.py`：退出码 0，日志没有报错；桌椅柜正常渲染，有投影。
-- **2026-10-22，装共享库前的验证**：在 `5090-2` 的隔离目录 `lab-furniture-install-20261022-085858` 里跑 `build_asset.py`，然后用 `g1d_lab` 跑 `scripted_demo` 的 seed 0：拾取、叠块、量杯倒豆三个任务都是 `success_rate` 1.0、`eval_time` 1。五路相机画面正常，头部相机里能看到立体的桌椅柜。之后装进共享库。
+- **2026-10-22，装共享库前的验证**：在 `5090-2` 的隔离目录 `lab-furniture-install-20261022-085858` 里跑 `build_asset.py`，然后用 `g1d_lab` 跑 `scripted_demo` 的 seed 0：拾取、叠块、量杯倒豆三个任务都是 `success_rate` 1.0、`eval_time` 1。五路相机画面正常，头部相机里能看到立体的桌椅柜。之后装进共享库 `5090-2:/data/robodojo-assets/Assets`。
 
 ## 未覆盖
 

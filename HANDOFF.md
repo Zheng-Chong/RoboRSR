@@ -52,7 +52,8 @@
 - **装共享库**（用户 10-22 同意：先验证再替换）：
   - 隔离目录 `5090-2:/data/robodojo-runs/lab-furniture-install-20261022-085858/`：资产复制自 `shenzhen-lab-20261021-125246`，积木、小车和三类杂物从 21196 经本机中转。在里面跑 `build_asset.py`（退出码 0），再用 `g1d_lab` 跑 `scripted_demo` 的 seed 0：拾取、叠块、量杯倒豆都是 `success_rate` 1.0、`eval_time` 1，五路相机画面正常。
   - 踩坑：起初拾取、叠块的 34 个 seed 全部判为不稳定。用旧房间、办公室场景对照，结果一样，说明和家具无关：复制来的资产里 `block`、`car` 只有元数据，没有 `object.usdz`。**5090-2 上的运行目录资产不全，跑别的任务前先确认 `object.usdz` 在。**
-  - 只替换了共享库的 `Assets/Room/real_scene3/`（13 个文件，sha256 和验证产物逐个一致），布局没动。旧版备份在 `21196:/data2/tmp/robodojo/backup-shared-20261022-093503.tgz`。
+  - 只替换了共享库 `5090-2:/data/robodojo-assets/Assets` 的 `Room/real_scene3/`（`diff -r` 和验证产物一致），布局没动。旧版备份在 `/data/robodojo-assets/backups/backup-shared-20261022-101545.tgz`。
+  - 第一次误装进了 21196 的旧库：`main` 上的文档还写着共享库在 21196。已用当时的备份（`21196:/data2/tmp/robodojo/backup-shared-20261022-093503.tgz`）还原，21196 的 `real_scene3` 回到 10-16 版。
 - **没做**：桌上的显示器、笔记本、机器人、三脚架、杯子仍压平在墙上。家具没有卷尺实测。
 
 ### G1-D 桌面版 / 移动版（2026-10-21，[PR #17](https://github.com/Zheng-Chong/RoboRSR/pull/17) 合并进 `main`）
@@ -248,6 +249,7 @@
   - 真机升降是速度接口，部署端要按官方 PD 示例把 `lift_joint_state` 换成 `HeightAdjust`；真机 `rt/hispeed_state` 高度的零点和仿真 0（最低）是否一致没核对；底盘加减速、腰和升降的动力学都没做辨识。
 
 - **主工作区里未提交的改动**（10-20 晚核对）：`CLAUDE.md`、`HANDOFF.md`、`README.md`、`real2sim/scenes/SKILL.md`、`scripts/g1d/export_office_beans.py`，主要是「服务器切到 5090-2」那次的文档改动；主工作区的本地 `main` 还停在 `a694da5`，落后 `origin/main`。物体 SKILL 已随 PR #5 合并。
+- **共享资产库位置的文档没跟上**：10-20 晚，共享库已整体迁到 `5090-2:/data/robodojo-assets/Assets`（39 GB），21196 上的改成只读冷备份。但写这件事的文档改动（README、`HANDOFF.md`「服务器」、两个 SKILL、`ASSETS.md`）至今没提交，还在 worktree `.claude/worktrees/object-wizard` 里，所以 `main` 上这些文档仍写着 21196。两边已经分叉：10-21 装的 `Room/real_scene5` 和 `Eval_Layout/RoboDojo/g1d_shenzhen_lab` 只在 21196 上，5090-2 的共享库里没有。
 - **采集配置下的严格判据有方差**：同一组动作回放，2 条里有 1 条最后差 1 颗豆子。评估策略时，严格成功率要在同一布局上重复多次才有意义。
 - **物体运行时随机还没有任务打开**：要用就在 `build_asset.py` 的 `RANDOMIZE` 加任务和标签，在隔离目录重新生成布局、跑脚本专家，先问用户（会改那个任务的评测布局）。打开前确认任务和脚本专家只从缩放后的包围盒取尺寸；`cup_grasp` 的 `contact_circle`、量杯腔体计数都没按缩放修正。
 - **XPolicyLab 注册**：`XPolicyLab/utils/robot/_robot_info.json` 里还没有 `g1d*`，用 XPolicyLab 的 `train.sh` 会拿不到动作维度。要给 XPolicyLab 提 PR（子模块不在本仓库里改）。
