@@ -38,6 +38,7 @@
 - **用户要求**：场景重建里加删除，只有管理员能删。
 - **做法**：`DELETE /api/items?kind=scene` 非管理员回 403；未建模的场景整目录删除（`registration.json`、照片、预览一起删，原来只删 `registration.json`，照片目录留着，下次扫描又冒出来）；已建模的场景（有 `*.usd` / `usd/`，或在 `build_asset.SCENES` 里）回 409，提示在仓库里删。场景抽屉的「删除场景」按钮只对管理员、且对未建模场景显示（已登记未建模和只有照片的都有）；原来人人可见的「删除登记」去掉了。
 - **验证**：`test_server.py` 新增成员 403、已建模 409、整目录删除三条；本机 `check.sh`（ruff 0.11.7 经 `uvx`）35 passed；页面脚本 `node --check`。
+- **部署**（13:22）：`5090-2:/root/RoboDojo` 从 `4f8cccf` 快进到 `fafb475` 并重启服务。部署机上有另一会话（杨开元）未提交的「研究资产 / prototype」平台改动、学校场景改动和 HANDOFF、ASSETS 笔记：平台两文件三方合并无冲突；`HANDOFF.md` 两边段落都留，`ASSETS.md` 实验室、深圳行取主线、学校行取部署机版本；仍是未提交状态，等那边入库。合并前的四个文件备份在 `.cache/deploy-overlap-20261022-132146/`，全部未提交改动的 patch 在 `.cache/deploy-dirty-20261022-132106.patch`。没用 `git stash`：部署机跳过 LFS smudge，stash 回来会把 `real_scene4.usd` 写成指针。新提交里 7 张实验室贴图（LFS）从本机 rsync 了实体。部署机上用系统 python 跑 `test_server.py` 6 项通过，研究资产 7 项仍在。
 - **注意**：部署机上删除的是工作区文件；已入库的场景（如 `real_scene5_shenzhen_lab` 的登记和照片）被删后部署机检出会变脏，需要入库同步。
 
 ### 深圳实验室倒豆 500 条（2026-10-22，`chongzheng/datagen-shenzhen-beans` 快进进 `main`，已上传 ModelScope）
