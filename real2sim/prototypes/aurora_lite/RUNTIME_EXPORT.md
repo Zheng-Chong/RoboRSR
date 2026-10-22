@@ -1,6 +1,6 @@
 # 指垫 runtime 的实际导出条件
 
-2026-10-22。可以由 agent 读取设备并导出，用户不必手动操作 GUI。入口 `scripts/prototypes/export_xense_runtime.py`。只读取当前标定，不调用 `calibrateSensor`、写 Flash、驱动夹爪或运动机器人。
+2026-10-22。用户已确认暂时没有实物，因此本轮不执行设备导出，也不继续查找连接主机。现阶段使用官方 G1-WS 通用 FEM 和仿真光学配置；这些不是某一真实指垫的标定。设备到位后可以由 agent 读取并导出，用户不必手动操作 GUI。入口 `scripts/prototypes/export_xense_runtime.py`。只读取当前标定，不调用 `calibrateSensor`、写 Flash、驱动夹爪或运动机器人。
 
 检查传入的软件包后：
 

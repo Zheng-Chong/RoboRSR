@@ -1,0 +1,56 @@
+{
+  "backend": "IsaacLab PhysX FEM MeshCuboidCfg",
+  "dimensions_m": [
+    0.1,
+    0.1,
+    0.1
+  ],
+  "dimensions_source": "user specified",
+  "mass_kg_candidate": 0.03,
+  "real_material_calibrated": false,
+  "finite": true,
+  "passed": true,
+  "scope": "gravity drop and floor contact; not material calibration or robot grasp",
+  "acceptance": {
+    "minimum_center_drop_m": 0.05,
+    "center_height_range_m": [
+      0.04,
+      0.06
+    ],
+    "minimum_node_z_limit_m": -0.003
+  },
+  "center_drop_m": 0.09965331852436066,
+  "maximum_centered_node_displacement_m": 0.0020685589406639338,
+  "initial_extent_m": [
+    0.10011773556470871,
+    0.10011321306228638,
+    0.10011251270771027
+  ],
+  "final_extent_m": [
+    0.10031970590353012,
+    0.10029373317956924,
+    0.09837935864925385
+  ],
+  "steps": 180,
+  "sim_nodes": 1331,
+  "initial_center_z_m": 0.1480570137500763,
+  "final_center_z_m": 0.04840368032455444,
+  "minimum_z_m": -0.0005180691950954497,
+  "engine_equivalence_to_mujoco_verified": false,
+  "provenance": {
+    "date": "2026-10-22",
+    "isaac_sim_version": "5.1.0",
+    "python_version": "3.11",
+    "gpu_physical_index": 2,
+    "source_sha256": "0ce11988fd08d1048aef3b2724c182e1e6c3daa0c01f8f91712d574eadd31a72",
+    "exit_code": 0,
+    "shutdown": "SimulationApp.close(skip_cleanup=True)",
+    "log_notes": [
+      "legacy extension deprecations",
+      "audio fallback",
+      "shared key-value cache lock",
+      "Requests dependency warning logged on stderr",
+      "PhysX external forces option warning"
+    ]
+  }
+}

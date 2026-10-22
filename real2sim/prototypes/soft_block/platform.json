@@ -7,7 +7,7 @@
     "MuJoCo": "100mm v2压缩、压板、通用夹持数值检查有限且无警告",
     "受控加载": "0.3N均布加载压缩约0.150mm；仅候选参数结果",
     "材料": "20 kPa / 泊松比 0.3 候选值，非实测",
-    "Isaac 体积软体与机器人抓取": "官方MeshCuboidCfg候选已配置100mm；启动器许可确认待完成，未报告运行通过",
+    "Isaac 体积软体与机器人抓取": "100mm PhysX FEM：1331节点/180步落地与形变检查通过；尚未接入机器人抓取，材料未标定",
     "平指夹持基线": "通用夹具114→83.3mm，抬升约48.8mm、相对滑移约0.81mm；100mm整块超出极光Lite85mm初始开口",
     "接触压板基线": "110mm方压板，候选参数峰值约9.98N；实物未标定"
   },
@@ -34,6 +34,7 @@
     "validation/fresh_sync_check.json",
     "MATERIAL_TESTS.md",
     "validation/material_bench.json",
-    "v2_100mm/isaac_candidate.json"
+    "v2_100mm/isaac_candidate.json",
+    "validation/isaac_100mm.json"
   ]
 }
