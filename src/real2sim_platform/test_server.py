@@ -27,6 +27,14 @@ def test_repo_scan():
     assert scenes["real_scene3_lab"]["configs"] == ["g1d_lab"] and scenes["real_scene3_lab"]["checks_total"] > 0
     tasks = server.scan_tasks(Path(tempfile.mkdtemp()))
     assert tasks["g1d_stack_blocks"]["step_lim"] == 660
+    bench = server.scan_benchmark_scenes(tasks)  # env_cfg/scene/*.yml, picked per task by _task.yml scene_config
+    assert bench["robodojo_default"]["top_z"] == 0.765 and bench["robodojo_default"]["size"] == [1.4, 1.1]
+    default = bench["robodojo_default"]
+    assert default["room"] == "Simple_Room_nolight" and "stack_bowls" in default["tasks"]
+    conveyor = bench["robodojo_conveyor"]
+    assert conveyor["tasks"] == ["match_and_pick_from_conveyor", "pick_from_conveyor_by_image"]
+    assert conveyor["top_z"] is None and conveyor["room_random"] is False  # "random: False" is a bool, not a string
+    assert not any(t.startswith("g1d_") for s in bench.values() for t in s["tasks"])
     custom = {k: t for k, t in tasks.items() if t["dimension"] == "custom"}
     objects = server.scan_objects(Path(tempfile.mkdtemp()), custom, ["Rigid/../00001"])
     assert objects["Rigid/measuring_cup/00001"]["generator"] == "scripts/objects/make_plastic_cups.py"
@@ -266,6 +274,7 @@ def test_http():
         modeled.mkdir()
         (modeled / "room.usd").write_bytes(b"usd")
         assert request("DELETE", "/api/items?kind=scene&id=real_scene8_lab")[0] == 409  # lives in code and git
+        assert request("DELETE", "/api/items?kind=scene&id=robodojo_default")[0] == 409  # env_cfg/scene/default.yml
         assert request("DELETE", scene)[0] == 200
         assert not (tmp / "scenes/real_scene9_kitchen").exists()  # registration, photos and previews
 

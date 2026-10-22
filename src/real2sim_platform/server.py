@@ -2,6 +2,7 @@
 
 Stdlib only (any python3 >= 3.10, no Isaac). On start, and on "从项目同步" in the page, it scans:
     real2sim/scenes/<dir>/                reference photos, camera fit, USD, check_report.json, previews, render, GLB
+    env_cfg/scene/<name>.yml              the benchmark's own scenes (robodojo_<name>) and the tasks that load them
     task/RoboDojo/config/<task>.yml       tasks (scripts/internal/task_inventory.py), objects of the G1-D tasks
     <assets>/Object/RoboDojo/<id>/        metadata.json / description.json of those objects
     <assets>/Eval_Layout/RoboDojo/<cfg>/  eval layouts per task and env config
@@ -56,6 +57,9 @@ VIDEO_RE = re.compile(r"episode_(\d+)_cam_(.+)_(success|fail)\.mp4")
 SKIP_DIRS = {".git", "_stream", "Assets", "third_party", "XPolicyLab", "__pycache__"}
 OBJECTS_DIR = ROOT / "real2sim" / "objects"  # <id>/reference/: real-object photos (git LFS); <id>/preview/: renders
 SCENE_ID = re.compile(r"real_scene\d+_[a-z0-9_]+")  # directory under real2sim/scenes/, e.g. real_scene5_kitchen
+SCENE_CFG_DIR = ROOT / "env_cfg" / "scene"  # the benchmark's own scenes, shown as robodojo_<name>
+BENCH_SCENES_DIR = ROOT / "real2sim" / "benchmark_scenes"  # <name>/preview/render/: their card renders
+BENCH_SCENE_NAMES = {"default": "RoboDojo 默认桌面", "conveyor": "RoboDojo 传送带"}
 TASKS_DIR = ROOT / "real2sim" / "tasks"  # <task>/registration.json: a task registered on the platform
 TASK_ID = re.compile(r"[A-Za-z]\w*")  # task module name; new G1-D tasks are g1d_<name>
 EMBODIMENTS_DIR = ROOT / "real2sim" / "embodiments"  # <id>/registration.json and reference/ photos of a robot body
@@ -259,6 +263,55 @@ def scan_scenes():
             # real_scene1 has SfM cameras from a video instead of a photo fit
             "fit_views": len(views) or len(load_json(d / "reference" / "cameras_scene.json") or {}),
             "fit_max_px": max(residuals) if residuals else None,
+        }
+    return found
+
+
+def yml_sections(path):
+    """{section: {key: value}} of a flat two-level yml such as env_cfg/scene/default.yml; deeper keys are skipped."""
+    # ponytail: line reader (PyYAML only exists in the sim env); yaml.safe_load if scene configs grow nesting
+    sections, current = {}, None
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.split("#")[0].rstrip()
+        if m := re.fullmatch(r"(\w+):", line):
+            current = sections.setdefault(m[1], {})
+        elif (m := re.fullmatch(r"  (\w+):\s*(.+)", line)) and current is not None:
+            try:
+                current[m[1]] = json.loads(m[2].lower() if m[2].lower() in ("true", "false") else m[2])
+            except ValueError:
+                current[m[1]] = m[2].strip("'\"")
+    return sections
+
+
+def scan_benchmark_scenes(tasks):
+    """The benchmark's scenes (env_cfg/scene/*.yml) and the upstream tasks that load each, per _task.yml."""
+    index = ROOT / "task" / "RoboDojo" / "config" / "_task.yml"
+    default = yml_sections(index).get("common", {}).get("scene_config", "default")
+    picked, task = {}, None  # tasks: <task>: scene_config: <name>, as utils/pipeline_utils.process_config reads it
+    for raw in index.read_text(encoding="utf-8").splitlines():
+        if m := re.fullmatch(r"  (\w+):\s*", raw.split("#")[0]):
+            task = m[1]
+        elif (m := re.fullmatch(r"    scene_config:\s*['\"]?(\w+)['\"]?\s*", raw.split("#")[0])) and task:
+            picked[task] = m[1]
+    found = {}
+    for path in sorted(SCENE_CFG_DIR.glob("*.yml")):
+        cfg, name = yml_sections(path), path.stem
+        room, table, background = cfg.get("Room", {}), cfg.get("Table"), cfg.get("Background", {})
+        scale, pos = (table or {}).get("scale") or [None] * 3, (table or {}).get("default_pos") or [None] * 3
+        upstream = (t for t, info in tasks.items() if info["dimension"] != "custom")
+        users = sorted(t for t in upstream if picked.get(t, default) == name)
+        found[f"robodojo_{name}"] = {
+            "source": "robodojo",
+            "name": BENCH_SCENE_NAMES.get(name, f"RoboDojo {name}"),
+            "path": str(path),
+            "room": room.get("default"),
+            "room_random": bool(room.get("random")),
+            "table_material": (table or {}).get("default"),
+            "background": background.get("default"),
+            "top_z": round(pos[2] + scale[2] / 2, 3) if table and None not in (pos[2], scale[2]) else None,
+            "size": scale[:2] if table else [None, None],
+            "tasks": users,
+            "renders": images(BENCH_SCENES_DIR / name / "preview" / "render"),
         }
     return found
 
@@ -675,7 +728,7 @@ def scan(store, assets, eval_roots):
     keep = [d["id"] for d in store.list("object") if set(d) - {"id", "auto"}]
     keep += [str(p.relative_to(OBJECTS_DIR)) for p in OBJECTS_DIR.glob("*/*/*") if p.is_dir()]  # have photos or renders
     found = {
-        "scene": scan_scenes(),
+        "scene": scan_scenes() | scan_benchmark_scenes(tasks),
         "task": tasks,
         "object": scan_objects(assets, custom, keep),
         "episode": scan_episodes(eval_roots),
@@ -897,6 +950,8 @@ class Handler(BaseHTTPRequestHandler):
         if kind == "scene":  # admins only; removes the whole scene directory: registration and photos
             if not self.user["admin"]:
                 return self.send_json({"error": "只有管理员可以删除场景"}, 403)
+            if (SCENE_CFG_DIR / f"{id_.removeprefix('robodojo_')}.yml").is_file() and id_.startswith("robodojo_"):
+                return self.send_json({"error": "RoboDojo 自带场景在 env_cfg/scene/ 里，请在仓库里改"}, 409)
             folder = build_asset.SCENES_DIR / id_
             if SCENE_ID.fullmatch(id_) and folder.is_dir():
                 in_code = id_ in {scene for scene, *_ in build_asset.SCENES.values()}

@@ -5,8 +5,13 @@ Loads real2sim/scenes/<dir>/usd/scene.usda alone (no robot) and frames everythin
 preview opens with; the camera is kept inside the room. Writes <dir>/preview/render/sim.jpg (preview/ is not in git;
 sync it to the platform machine's checkout). One scene per process: each room brings its own dome light.
 
+A benchmark scene config (env_cfg/scene/<name>.yml) is spawned with the env's own Room, Table and Background classes
+from Assets/, framed on the table (or the room centre at table height when it has none), and written to
+real2sim/benchmark_scenes/<name>/preview/render/sim.jpg.
+
 Usage (GPU server):
     OMNI_KIT_ACCEPT_EULA=YES python scripts/scenes/render_scenes.py real2sim/scenes/real_scene5_shenzhen_lab
+    OMNI_KIT_ACCEPT_EULA=YES python scripts/scenes/render_scenes.py env_cfg/scene/default.yml
 """
 
 import argparse
@@ -14,7 +19,7 @@ import argparse
 from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser(description="Render a scene twin for its platform card.")
-parser.add_argument("scene", help="scene directory, e.g. real2sim/scenes/real_scene3_lab")
+parser.add_argument("scene", help="scene directory, e.g. real2sim/scenes/real_scene3_lab, or env_cfg/scene/<name>.yml")
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 args.headless = True
@@ -35,6 +40,7 @@ from pxr import Gf, Usd, UsdGeom  # noqa: E402
 
 VIEW = np.array([0.55, -1.0, 0.6]) / np.linalg.norm([0.55, -1.0, 0.6])  # front-right, above; the robot stands at -y
 MARGIN = 0.15  # m the camera keeps from the walls and the ceiling
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def look_at(eye, target):
@@ -56,11 +62,47 @@ def bounds(prims):
     return np.array(box.GetMin()), np.array(box.GetMax())
 
 
+def benchmark_scene(sim, path):
+    """Spawn env_cfg/scene/<name>.yml as a task would; returns (focus box, room box, output image)."""
+    sys.path.insert(0, str(ROOT))
+    import yaml
+
+    from env.global_configs import ASSETS_PATH
+    from env.scene_manager.objects.background import Background
+    from env.scene_manager.objects.room import Room
+    from env.scene_manager.objects.table import Table
+
+    cfg, assets = yaml.safe_load(path.read_text(encoding="utf-8")), Path(ASSETS_PATH)
+    room_dir = assets / "Room" / cfg["Room"]["default"]
+    Room("/World/Room/room", str(next(room_dir.glob("*.usd"))), dict(cfg["Room"]))
+    if bg := cfg.get("Background"):
+        hdr = str(assets / "Background" / bg["default"])
+        Background("/World/Background", {"intensity": bg["intensity"], "texture_path": hdr})
+    focus = None
+    if table := cfg.get("Table"):
+        mdl = next((assets / "Material" / table["default"]).glob("*.mdl"))
+        Table("/World/Table/table", str(mdl), dict(table), mdl_name=mdl.stem)
+        focus = bounds([sim.stage.GetPrimAtPath("/World/Table/table")])
+    room_box = bounds([sim.stage.GetPrimAtPath("/World/Room/room")])
+    if focus is None:  # no table: a 1 m box at table height in the middle of the room
+        c = np.array([*(room_box[0][:2] + room_box[1][:2]) / 2, 0.75])
+        focus = (c - 0.5, c + 0.5)
+    return focus, room_box, ROOT / "real2sim" / "benchmark_scenes" / path.stem / "preview" / "render" / "sim.jpg"
+
+
 def main():
     scene_dir = Path(args.scene).resolve()
     render = sim_utils.RenderCfg(enable_reflections=True, enable_global_illumination=True, rendering_mode="quality")
     carb.settings.get_settings().set_float("/rtx/translucency/worldEps", 0.0)
     sim = sim_utils.SimulationContext(sim_utils.SimulationCfg(dt=1 / 60, device=args.device, render=render))
+    if scene_dir.suffix == ".yml":
+        (lo, hi), (room_lo, room_hi), out = benchmark_scene(sim, scene_dir)
+        centre, size = (lo + hi) / 2, float(np.linalg.norm(hi - lo))
+        eye = centre + VIEW * (1.1 * size + 0.8)
+        eye[:2] = np.clip(eye[:2], room_lo[:2] + MARGIN, room_hi[:2] - MARGIN)
+        eye[2] = min(eye[2], room_hi[2] - MARGIN)
+        shoot(sim, eye, centre, lo, hi, out)
+        return
     room = sim.stage.DefinePrim("/World/Scene", "Xform")
     room.GetReferences().AddReference(str(scene_dir / "usd" / "scene.usda"))
     parts = {p.GetName(): p for p in room.GetChildren()}
@@ -76,6 +118,10 @@ def main():
         room_top = bounds([parts["Background"]])[1][2]
         eye[:2] = np.clip(eye[:2], room_lo[:2] + MARGIN, room_hi[:2] - MARGIN)
         eye[2] = min(eye[2], room_top - MARGIN)
+    shoot(sim, eye, centre, lo, hi, scene_dir / "preview" / "render" / "sim.jpg")
+
+
+def shoot(sim, eye, centre, lo, hi, out):
     cam = Camera(prim_path="/World/camera", resolution=(1280, 720))
     UsdGeom.Camera(sim.stage.GetPrimAtPath("/World/camera")).GetFocalLengthAttr().Set(16.0)  # ~66 deg horizontal
     sim.reset()
@@ -84,7 +130,6 @@ def main():
     print(f"focus {np.round(lo, 2).tolist()} .. {np.round(hi, 2).tolist()}, camera at {np.round(eye, 2).tolist()}")
     for _ in range(60):  # let RTX accumulate
         sim.render()
-    out = scene_dir / "preview" / "render" / "sim.jpg"
     out.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(cam.get_rgba()[:, :, :3]).save(out, quality=90)
     print(f"image: {out}")

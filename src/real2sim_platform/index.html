@@ -768,7 +768,7 @@ function moduleCard(step, title, href, stages, docs) {
     <span class="sp"></span><a class="small" href="${href}">查看 ${ic('arrow-r', 'ic-sm')}</a></div><div class="card-b">${rows}</div></section>`;
 }
 function viewOverview() {
-  const scenes = live(S.scene), objs = live(S.object), eps = live(S.episode);
+  const scenes = twinScenes(), objs = live(S.object), eps = live(S.episode);
   const tasks = live(S.task).filter((t) => t.auto.dimension === 'custom');
   const qa = group(eps, (e) => e.qa || 'pending'), sr = simReal(eps), done = scenes.filter((d) => allOk(SCENE_STAGES, d)).length;
   const kpi = (icon, label, value, meta, href, ratio) => `<a class="card kpi" href="${href}"><div class="k-label">${ic(icon)}${label}</div><div class="k-value num">${value}</div>
@@ -814,12 +814,15 @@ function viewOverview() {
 }
 
 // ---------- scenes ----------
+const isBench = (d) => d.auto?.source === 'robodojo';  // the benchmark's own env_cfg/scene/*.yml, not a twin
+const twinScenes = () => live(S.scene).filter((d) => !isBench(d));
 const sceneDims = (d) => {
   const a = d.auto, r = d.reg || {};
+  if (isBench(d) && !num(a.top_z)) return '无桌面，台面和传送带由任务生成';
   if (num(a.top_z)) return `桌面 ${a.size.map((v) => v ?? '?').join(' × ')} m · 高 ${a.top_z} m`;
   return num(r.top_z_cm) ? `实测桌面 ${r.length_cm ?? '?'} × ${r.width_cm ?? '?'} cm · 高 ${r.top_z_cm} cm · 还没建模` : '没有 build_params.json';
 };
-const sceneName = (d) => d.reg?.name || d.id;
+const sceneName = (d) => d.reg?.name || d.auto?.name || d.id;
 const SCENE_WIZ = [
   ['名称与照片', `围着桌子拍至少 ${MIN_SCENE_PHOTOS} 张不同角度的照片，定好场景目录名。`],
   ['桌面与站位', '卷尺量到 0.5 cm。桌面三项必填，是建模的尺度依据；机器人站位在机器人停在工作位置时量。'],
@@ -834,7 +837,17 @@ const sceneDatalists = () => `<datalist id="dl-scene-types">${SCENE_TYPES.map((t
   <datalist id="dl-supports">${SUPPORTS.map((t) => `<option value="${esc(t)}">`).join('')}</datalist>`;
 const g1dTasks = () => live(S.task).filter((t) => t.auto.dimension === 'custom').map((t) => t.id).sort();
 function viewScenes() {
-  const cardsHtml = S.scene.map((d) => {
+  const twins = twinScenes(), bench = S.scene.filter(isBench).sort((x, y) => (y.auto.tasks?.length || 0) - (x.auto.tasks?.length || 0));
+  const benchHtml = bench.map((d) => {
+    const a = d.auto, cover = sceneImage(d);
+    return `<article class="card mcard" data-open="scene" data-id="${esc(d.id)}" tabindex="0" role="button" aria-label="打开场景 ${esc(d.id)}">
+      <div class="media r169">${cover ? `<img loading="lazy" decoding="async" src="${file(cover)}" alt="">` : ic('image', 'ic-lg')}
+        <div class="pills"><span class="pill">RoboDojo</span><span class="pill">${esc(rel(a.path))}</span></div></div>
+      <div class="mcard-b"><div class="mcard-t"><b>${esc(sceneName(d))}</b></div>
+        <div class="small muted">${esc(sceneDims(d))} · 房间 ${esc(a.room || '—')}</div>
+        <div class="small muted">${a.tasks?.length || 0} 个基准任务在用</div></div></article>`;
+  }).join('');
+  const cardsHtml = twins.map((d) => {
     const a = d.auto, rs = evalStages(SCENE_STAGES, d), cover = sceneImage(d);
     return `<article class="card mcard" data-open="scene" data-id="${esc(d.id)}" tabindex="0" role="button" aria-label="打开场景 ${esc(d.id)}">
       <div class="media r169">${cover ? `<img loading="lazy" decoding="async" src="${file(cover)}" alt="">` : ic('image', 'ic-lg')}
@@ -843,9 +856,11 @@ function viewScenes() {
         ${d.reg?.name ? `<div class="small muted mono" style="margin-top:-4px">${esc(d.id)}</div>` : ''}
         <div class="small muted">${esc(sceneDims(d))} · 照片 ${a.photos?.length || 0} · 预览 ${a.previews?.length || 0}</div>${progress(rs)}${stageChips(rs)}</div></article>`;
   }).join('');
-  return `<div class="page">${pageHead('场景重建', `real2sim/scenes/ 下 ${S.scene.length} 个场景 · 目标 7 个（3 个孪生 + 2 个训练用泛化 + 2 个 L4 保留）。新场景先登记：至少 ${MIN_SCENE_PHOTOS} 张照片加卷尺实测`,
+  return `<div class="page">${pageHead('场景重建', `real2sim/scenes/ 下 ${twins.length} 个孪生场景 · 目标 7 个（3 个孪生 + 2 个训练用泛化 + 2 个 L4 保留）。新场景先登记：至少 ${MIN_SCENE_PHOTOS} 张照片加卷尺实测`,
     `<button class="btn btn-primary" type="button" onclick="openNewScene(this)">${ic('plus')}登记场景</button>`)}
-    ${S.scene.length ? `<div class="grid scene-grid">${cardsHtml}</div>` : `<div class="card">${empty('scan', '还没有场景', '点「登记场景」新建，或在 real2sim/scenes/ 下建场景目录后点「同步项目数据」')}</div>`}</div>`;
+    ${twins.length ? `<div class="grid scene-grid">${cardsHtml}</div>` : `<div class="card">${empty('scan', '还没有场景', '点「登记场景」新建，或在 real2sim/scenes/ 下建场景目录后点「同步项目数据」')}</div>`}
+    ${bench.length ? `<h2 class="section-title">${ic('layers')}RoboDojo 基准场景 <span class="muted small">env_cfg/scene/ · 任务按 _task.yml 的 scene_config 选用，不是真实场景孪生</span></h2>
+      <div class="grid scene-grid">${benchHtml}</div>` : ''}</div>`;
 }
 const cmText = (v, suffix = ' cm') => (num(v) ? `${v}${suffix}` : null);
 function sceneBrief(d) {  // the task for a coding agent that builds this scene twin; skipped fields are left out
@@ -909,7 +924,22 @@ function scenePhotos(d, kind = 'scene', min = MIN_SCENE_PHOTOS) {
     <div class="strip">${photos.map((p, i) => `<div class="item"><button class="gthumb" type="button" data-lb="${esc(key)}" data-i="${i}" aria-label="查看 ${esc(base(p))}"><img loading="lazy" src="${file(p)}" alt=""></button>
     <button class="del" type="button" data-path="${esc(p)}" onclick="deletePhoto(this.dataset.path)" aria-label="删除 ${esc(base(p))}">${ic('trash', 'ic-sm')}</button></div>`).join('')}</div>`;
 }
+function drawerBenchScene(d) {
+  const a = d.auto, cfg = rel(a.path), name = base(a.path).replace(/\.yml$/, '');
+  return {
+    title: sceneName(d), sub: `${cfg} · ${sceneDims(d)}`,
+    body: `${a.renders?.length ? sec(`${ic('image')}仿真渲染`, gallery(`scene-renders-${d.id}`, a.renders), ' <span class="muted small">Isaac RTX · scripts/scenes/render_scenes.py</span>') : ''}
+    ${sec('场景配置', `<dl class="kv"><dt>配置文件</dt><dd><a target="_blank" rel="noopener" href="${file(a.path)}" class="mono">${esc(cfg)}</a></dd>
+      <dt>房间</dt><dd class="mono">Assets/Room/${esc(a.room || '—')}${a.room_random ? '（随机房间）' : ''}</dd>
+      <dt>桌子</dt><dd>${a.table_material ? `${esc(sceneDims(d))} · 材质 <span class="mono">${esc(a.table_material)}</span>` : '无'}</dd>
+      <dt>背景</dt><dd class="mono">${esc(a.background || '—')}</dd></dl>
+      <p class="hint">RoboDojo 自带场景，不是真实场景孪生，没有照片和验收；要改就改仓库里的配置文件。</p>`)}
+    ${sec(`${ic('list')}使用这个场景的基准任务`, `<p class="small">${(a.tasks || []).map((t) => link('task', t)).join('、') || '—'}</p>`, ` <span class="muted small">${a.tasks?.length || 0} 个 · task/RoboDojo/config/_task.yml 的 scene_config</span>`)}
+    ${sec(`${ic('terminal')}重新渲染封面`, code(`# GPU 服务器、带 Assets/ 的隔离目录\nOMNI_KIT_ACCEPT_EULA=YES python scripts/scenes/render_scenes.py env_cfg/scene/${name}.yml\n# 再把 real2sim/benchmark_scenes/${name}/preview/ 同步到平台部署机`))}`,
+  };
+}
 function drawerScene(d) {
+  if (isBench(d)) return drawerBenchScene(d);
   const a = d.auto, dir = rel(a.path), rs = evalStages(SCENE_STAGES, d);
   // modeled scenes live in code and git (USD, build_asset.py SCENES, env configs): the server refuses to delete them
   const actions = ME?.admin && !a.configs?.length && !a.rooms?.length
@@ -1723,7 +1753,7 @@ const PICK = {
       <div class="small muted">${Object.keys(x.auto.layouts || {}).length ? `评测布局：${esc(Object.entries(x.auto.layouts).map(([c, n]) => `${c} ${n}`).join('、'))}` : '资产库里没有布局'}</div>`,
   },
   scene: {
-    all: () => live(S.scene).sort((x, y) => Number(Boolean(y.auto.configs?.length)) - Number(Boolean(x.auto.configs?.length)) || x.id.localeCompare(y.id)),
+    all: () => twinScenes().sort((x, y) => Number(Boolean(y.auto.configs?.length)) - Number(Boolean(x.auto.configs?.length)) || x.id.localeCompare(y.id)),
     get: (id) => S.scene.find((x) => x.id === id), name: sceneName, img: sceneImage, icon: 'scan',
     text: (s) => `${s.id} ${sceneName(s)} ${s.reg?.name_en || ''} ${s.reg?.scene_type || ''} ${(s.auto.configs || []).join(' ')}`,
     empty: '没有匹配的场景；新场景先在「场景重建」登记',

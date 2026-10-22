@@ -35,6 +35,13 @@
 
 ## 最近任务
 
+### 数采平台：RoboDojo 自带场景（2026-10-22，直接推 `main`）
+
+- **用户要求**：把 RoboDojo 自身的场景也放进场景重建页。
+- **做法**：`scan_benchmark_scenes` 读 `env_cfg/scene/*.yml`（标准库逐行解析），记为 `robodojo_default`、`robodojo_conveyor`（`auto.source = "robodojo"`）：房间、桌子尺寸 / 高度 / 材质、HDR 背景，以及按 `_task.yml` 的 `scene_config` 选用它的上游任务（default 52 个，conveyor 2 个）。场景页在孪生卡片下面单列「RoboDojo 基准场景」，抽屉只读（配置、任务链接、重渲染命令），没有验收和删除（服务端 409）。总览的验收计数和 G1-D 任务向导的场景选择器不含它们。
+- **封面**：`render_scenes.py` 现在也接受 `env_cfg/scene/<name>.yml`，用环境自己的 `Room` / `Table` / `Background` 类从 `Assets/` 生成，输出 `real2sim/benchmark_scenes/<name>/preview/render/sim.jpg`（`preview/` 不入库）。`5090-2` 隔离目录 `/data/robodojo-runs/bench-scene-render-20261022-1359/`（GPU 6，资产软链共享库只读）两个都退出码 0；default 是悬空桌板（上游桌子本来就只有桌面），conveyor 是空房间（传送带由任务生成）。
+- **验证**：`test_server.py` 新增扫描断言（桌高 0.765、`random: False` 解析成布尔、conveyor 两个任务、无 G1-D 任务）和删除 409；本机 `check.sh` 35 passed；本机起服务用浏览器看了场景页和抽屉。
+
 ### 榜单基线：OpenWAM、pi0.5 官方 checkpoint 全量评测（2026-10-22，进行中，没改仓库代码）
 
 - **20 天计划**：① 基线 + 失败归类；② 把 `scripts/datagen` 推广到 dual X5（CONTRACT 补 X5 语义），Coding Agent 按"差距 × 好写程度"给任务写专家（特权状态 + cuRobo，验收严于 `run_reward`）；③ 第 1 轮数据 → dsw-4 微调 → 内部验证集评测；④ 两轮对抗：训练分布内大范围采样找失败、聚类、在失败附近生成难例，加 DAgger 式恢复数据；⑤ 官方 seed 终评。官方评测布局（`Eval_Layout/RoboDojo/arx_x5/0`）只在基线和终评各用一次，迭代看内部留出集。
