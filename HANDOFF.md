@@ -27,9 +27,9 @@
   - 固定朝向的一份，已上传 ModelScope 私有仓库；
   - 随机左右手、随机朝向、大范围位置的一份，也已上传 ModelScope 私有仓库（单独的仓库）。
 - **数采平台** `src/real2sim_platform/`：部署在 `5090-2`，经阿里云反向隧道对外访问。场景卡片封面是 RTX 渲染图，抽屉里有 3D 预览（见「最近历史」10-21）。
-- **服务器**：
-  - `21196`（4090）：共享资产库 `/data2/zhongzheng/Project/RoboDojo_assets/Assets`；环境用 `source /data2/zhongzheng/Project/robodojo_env.sh`；隔离目录放在 `/data2/tmp/robodojo/agent-remote-runs/`。
-  - `5090-2`（8×5090）：仿真环境 `/root/miniconda3/envs/RoboDojo`；导出环境 `robodojo-lerobot`（lerobot 0.4.4，10-19 补装了 h5py 3.16，`pip -i` 用清华镜像）；上传环境 `/data/robodojo-runs/ms-venv`；运行目录在 `/data/robodojo-runs/`。
+- **服务器**：只用 `5090-2`（8×5090）。
+  - 共享资产库：`/data/robodojo-assets/Assets`（10-20 整体迁来，39 GB）。改它要先征得同意，备份放 `/data/robodojo-assets/backups/`。运行目录的 `Assets/` 覆盖目录里，不改的部分直接从它软链接或拷贝。数采平台现在读的还是手动刷新的元数据镜像 `/root/RoboDojo_assets/Assets`，不是这个库。
+  - 仿真环境 `/root/miniconda3/envs/RoboDojo`；导出环境 `robodojo-lerobot`（lerobot 0.4.4，10-19 补装了 h5py 3.16，`pip -i` 用清华镜像）；上传环境 `/data/robodojo-runs/ms-venv`；运行目录在 `/data/robodojo-runs/`。
 
 ## 最近任务
 
@@ -50,11 +50,9 @@
 - **验证**：`check_scene.py` 24/24。新增 5 项：碰撞体 ≤ 64 点、家具落地、不进墙、离 G1-D 根节点 1 m 以上且离操作台 0.3 m 以上、家具之间不重叠；原来的站位等检查改成只看操作台。`preview.py` 的叠图用绿色画家具边线：p1、p3、p4 误差约 10 px，p2 约 20 px。本机 `check.sh` 29 passed 1 skipped；`export_glb.py` 输出 205 个网格、2.9 MB。`5090-2` 隔离目录 `/data/robodojo-runs/lab-furniture-20261022-003901/`（GPU 4）只载场景跑 `render_scenes.py`：退出码 0，没有报错，家具正常渲染、有投影。带机器人的脚本演示见下面「装共享库」。
 - **平台**：`fbdb323` 已推到 `main`。部署机 `/root/RoboDojo` 只替换了这个场景的 `preview/scene.glb` 和 `preview/render/sim.jpg`，旧文件备份在 `.cache/lab-preview-before-furniture-20261022-004331/`。部署机的检出仍停在 `4f8cccf`：上面有别的会话没提交的 `HANDOFF.md`、`airpods` 的 `spec.json`，以及未跟踪的 `real2sim/scenes/g1d_green_table/`，所以没有快进；下次部署时一起快进。
 - **装共享库**（用户 10-22 同意：先验证再替换）：
-  - 隔离目录 `5090-2:/data/robodojo-runs/lab-furniture-install-20261022-085858/`：资产复制自 `shenzhen-lab-20261021-125246`，积木、小车和三类杂物从 21196 经本机中转。在里面跑 `build_asset.py`（退出码 0），再用 `g1d_lab` 跑 `scripted_demo` 的 seed 0：拾取、叠块、量杯倒豆都是 `success_rate` 1.0、`eval_time` 1，五路相机画面正常。
+  - 隔离目录 `5090-2:/data/robodojo-runs/lab-furniture-install-20261022-085858/`：资产复制自 `shenzhen-lab-20261021-125246`，缺的积木、小车和三类杂物另外补进来。在里面跑 `build_asset.py`（退出码 0），再用 `g1d_lab` 跑 `scripted_demo` 的 seed 0：拾取、叠块、量杯倒豆都是 `success_rate` 1.0、`eval_time` 1，五路相机画面正常。
   - 踩坑：起初拾取、叠块的 34 个 seed 全部判为不稳定。用旧房间、办公室场景对照，结果一样，说明和家具无关：复制来的资产里 `block`、`car` 只有元数据，没有 `object.usdz`。**5090-2 上的运行目录资产不全，跑别的任务前先确认 `object.usdz` 在。**
-  - 只替换了共享库 `5090-2:/data/robodojo-assets/Assets` 的 `Room/real_scene3/`（`diff -r` 和验证产物一致），布局没动。旧版备份在 `/data/robodojo-assets/backups/backup-shared-20261022-101545.tgz`。
-  - 第一次误装进了 21196 的旧库：`main` 上的文档还写着共享库在 21196。已用当时的备份（`21196:/data2/tmp/robodojo/backup-shared-20261022-093503.tgz`）还原，21196 的 `real_scene3` 回到 10-16 版。
-- **没做**：桌上的显示器、笔记本、机器人、三脚架、杯子仍压平在墙上。家具没有卷尺实测。
+  - 只替换了共享库 `5090-2:/data/robodojo-assets/Assets` 的 `Room/real_scene3/`（`diff -r` 和验证产物一致），布局没动。旧版备份在 `/data/robodojo-assets/backups/backup-shared-20261022-101545.tgz`。- **没做**：桌上的显示器、笔记本、机器人、三脚架、杯子仍压平在墙上。家具没有卷尺实测。
 
 ### G1-D 桌面版 / 移动版（2026-10-21，[PR #17](https://github.com/Zheng-Chong/RoboRSR/pull/17) 合并进 `main`）
 
@@ -86,8 +84,7 @@
   - 本机：`scripts/check.sh` 通过（22 passed，1 skipped）；新场景脚本单独跑过 ruff 0.11.7；`test_scenes.py` 加了 `g1d_shenzhen_lab` 的期望站位。
   - `5090-2` 隔离目录 `/data/robodojo-runs/shenzhen-lab-20261021-125246`（GPU 3）：资产 = 学校场景运行目录的 `Assets` + 平台镜像的 `arx_x5` 布局和物体元数据；`unitree_ros` 里唯一需要的 URDF 在本机下载后放进 `.cache/unitree_ros`（5090-2 上不了 GitHub）。`build_asset.py --assets Assets` 退出 0，`g1d_shenzhen_lab` 739 个布局。`scripted_demo --env_cfg_type g1d_shenzhen_lab --task_name g1d_pour_beans_measuring_cups --seed 0`：success_rate 1.0、eval_time 1，四路相机正常；`cam_third` 换到 4916 / 4913 位姿又各跑一次（也都 1.0），运行目录的相机配置已还原。
   - 对比图在场景目录 `preview/`（不入库）：`compare_photo.jpg`（几何叠线）、`compare_isaac.jpg`（照片 vs Isaac）、`robot_cameras_isaac.jpg`（四路相机）；已拷到 `5090-2:/root/RoboDojo/real2sim/scenes/real_scene5_shenzhen_lab/preview/` 给平台显示。
-- **共享库**（用户同意后，2026-10-21 13:5x，按 README「改服务器共享资产库」五步）：新目录 `Room/real_scene5`（8 个文件）和 `Eval_Layout/RoboDojo/g1d_shenzhen_lab`（574 个布局，0/1/2 三组），没有覆盖任何东西，所以没做备份。
-  - 来源是上面隔离目录里验证过的产物，经本机中转拷到共享库临时目录再改名到位；Room 和提交的文件 sha256 一致；拷入后 582 个文件和验证产物的 sha256 逐个一致；目录权限对齐为组可写（同 `real_scene3`）。
+- **共享库**（用户同意后，2026-10-21 13:5x）：`Room/real_scene5`（8 个文件）和 `Eval_Layout/RoboDojo/g1d_shenzhen_lab`（574 个布局，0/1/2 三组）装进的是迁移前的旧资产库，**`5090-2:/data/robodojo-assets/Assets` 里没有**，要从上面隔离目录的验证产物补装（见「剩余事项」）。
   - **去掉了 `g1d_pour_beans_measuring_cups_*`（165 个）**：共享库没有 `measuring_cup`，其他配置也没有这个任务的布局。
   - 生成输入核对：同一次运行生成的 `g1d_lab` 和共享库的 `g1d_lab` 比，拾取、叠块逐字节相同；倒水、杯对杯只有豆子参数不同，因为**共享库里 `g1d`、`g1d_counter`、`g1d_lab` 的这两个任务布局还是旧的 4 mm 豆子参数**，当前代码是 5.6 mm。`g1d_shenzhen_lab` 按当前代码生成，所以和旧配置在这两个任务上不一致（见「剩余事项」）。
   - 平台：`5090-2` 的元数据镜像补了同样的 574 个布局 json（整体重刷镜像时会从共享库带上）。
@@ -191,14 +188,14 @@
 - **验证**：
   - **本机**：`bash scripts/check.sh` 通过，共 23 个单测（采集 7、场景 5、量杯 6、平台 5）、ruff 0.11.7、任务清单检查和 `git diff --check`。
   - **CPU 单测上服务器**：在 `5090-2` 的仿真环境里跑了 17 个单测，用的是 OpenCV 4.11，包括 ChArUco 检测和"XPolicyLab 读取器读回我们写的 HDF5"。
-  - **GPU 验证**：在 `21196` 的隔离目录 `datagen-20261019-225252` 里跑（资产是 100 条那一轮的同一份，共享库没动）：
+  - **GPU 验证**：在隔离目录 `datagen-20261019-225252` 里跑（资产是 100 条那一轮的同一份，共享库没动）：
     - 脚本专家走新的 `--policy_module` 入口，`g1d` 下量杯 seed 0：`success_rate` 1.0，`eval_time` 1；
     - `run_batch.py` 用 2 张卡、分片 300 和 301 各 2 个布局：4 次尝试 4 次合格，每条 672 颗豆子全部进矮杯；夹持时夹爪 state（实测）是 0.75，action（指令）是 0；
     - 在 seed 300 上不加 `--allow_train_layouts` 跑评估，被拒绝；
     - 开环回放见上面"数据契约"一节和 CONTRACT（采集配置下偏差 ≤ 1e-4 rad，1/300 s 下洒出约 9%）。
   - **导出和审计**：在 `5090-2` 的隔离目录 `datagen-pipeline-20261019-223558` 里跑：官方转换器转了 2/2 个文件，每臂 8 维，AV1；`export.py` 逐回合核对通过（810 帧）；`audit.py` 输出 validated。
-  - 两个隔离目录都保留着，`21196` 上的原始数据已删除。本机留档在 `output/datagen_validation_20261019/`（报告、日志、质检单、数据集元数据、两帧图像）。
-  - **合并 `a1b6db5` 之后在 `21196` 复跑**：
+  - 原始数据已删除。本机留档在 `output/datagen_validation_20261019/`（报告、日志、质检单、数据集元数据、两帧图像）。
+  - **合并 `a1b6db5` 之后复跑**：
     - 脚本专家跑量杯 seed 0：`success_rate` 1.0；
     - 采集探针（候选布局 7）：录制正常，但这一回合撒了 1 颗（671/672），没通过严格验收。同一个布局在 100 条那一轮里 392 帧就合格了；`a1b6db5` 改了倒豆循环的计数，会把杯角的豆子也倒完，这次倒了 452 帧。
   - **验证中发现并已修复**：`pour` 参数和函数内部的 `pour()` 重名；官方转换器在软链接目录下把根目录解析错了；只设 `CUDA_VISIBLE_DEVICES=1` 时渲染和计算不在同一张卡上，取相机数据失败（改成 `--device cuda:1 --device_id 1`）。
@@ -249,7 +246,7 @@
   - 真机升降是速度接口，部署端要按官方 PD 示例把 `lift_joint_state` 换成 `HeightAdjust`；真机 `rt/hispeed_state` 高度的零点和仿真 0（最低）是否一致没核对；底盘加减速、腰和升降的动力学都没做辨识。
 
 - **主工作区里未提交的改动**（10-20 晚核对）：`CLAUDE.md`、`HANDOFF.md`、`README.md`、`real2sim/scenes/SKILL.md`、`scripts/g1d/export_office_beans.py`，主要是「服务器切到 5090-2」那次的文档改动；主工作区的本地 `main` 还停在 `a694da5`，落后 `origin/main`。物体 SKILL 已随 PR #5 合并。
-- **共享资产库位置的文档没跟上**：10-20 晚，共享库已整体迁到 `5090-2:/data/robodojo-assets/Assets`（39 GB），21196 上的改成只读冷备份。但写这件事的文档改动（README、`HANDOFF.md`「服务器」、两个 SKILL、`ASSETS.md`）至今没提交，还在 worktree `.claude/worktrees/object-wizard` 里，所以 `main` 上这些文档仍写着 21196。两边已经分叉：10-21 装的 `Room/real_scene5` 和 `Eval_Layout/RoboDojo/g1d_shenzhen_lab` 只在 21196 上，5090-2 的共享库里没有。
+- **共享库缺 10-20 之后装的东西**：`/data/robodojo-assets/Assets` 是 10-20 的快照，之后装的内容没进来，缺 `Room/real_scene4`、`Room/real_scene5`，以及 `Eval_Layout/RoboDojo/` 下的 `g1d_school`、`g1d_shenzhen_lab`、`g1d_mobile`。要用这几个场景，先在隔离目录跑 `build_asset.py` 验证，经同意后补装。worktree `.claude/worktrees/object-wizard` 里还有一份没提交的同类文档改动，已被这次提交取代，不要再合。
 - **采集配置下的严格判据有方差**：同一组动作回放，2 条里有 1 条最后差 1 颗豆子。评估策略时，严格成功率要在同一布局上重复多次才有意义。
 - **物体运行时随机还没有任务打开**：要用就在 `build_asset.py` 的 `RANDOMIZE` 加任务和标签，在隔离目录重新生成布局、跑脚本专家，先问用户（会改那个任务的评测布局）。打开前确认任务和脚本专家只从缩放后的包围盒取尺寸；`cup_grasp` 的 `contact_circle`、量杯腔体计数都没按缩放修正。
 - **XPolicyLab 注册**：`XPolicyLab/utils/robot/_robot_info.json` 里还没有 `g1d*`，用 XPolicyLab 的 `train.sh` 会拿不到动作维度。要给 XPolicyLab 提 PR（子模块不在本仓库里改）。
@@ -257,7 +254,7 @@
 - **新流水线还没跑过整批**：collection_v3 是用旧采集器采的，下一批数据应该改用 `scripts/datagen/run_batch.py`。
 - **学校场景**：桌面高度和底盘偏航都依赖假设（零升降、12 号电机即躯干偏航），要用卷尺和叠图核对；从 sys01 拷真机头部和腕部画面（`outputs/g1d-real2sim`）做叠图。杯盘要在数采平台登记实测后，按 `scripts/objects/SKILL.md` 重建。
 - **共享库的倒豆布局过期**：`g1d`、`g1d_counter`、`g1d_lab` 的倒水、杯对杯布局是旧豆子参数（4 mm，`particle_mass` 6e-5），和当前 `build_asset.py`（5.6 mm）不一致；`g1d_shenzhen_lab` 已是新参数。要统一，就在隔离目录重跑 `build_asset.py`，经同意后替换（先备份）。
-- **深圳实验室**：已合并、部署、装共享库；站位卷尺（桌沿到根节点、横向偏移）和三视角叠图后，`acceptance.py` 才能通过。
+- **深圳实验室**：已合并、部署；5090-2 的共享库里还没有；站位卷尺（桌沿到根节点、横向偏移）和三视角叠图后，`acceptance.py` 才能通过。
 - **场景**：除深圳实验室外没有卷尺实测，都没有叠图；`real_scene1` 和 09-21 那次真机运行时的摆放不一样，那批画面不能用来叠图。下次去现场按 `real2sim/scenes/SKILL.md` 一次采齐。
 - **真机对齐**：
   - 动力学没做系统辨识；末端位姿动作还不支持（需要 G1-D 的 cuRobo 配置，并且左右臂各用一个 planner）；
@@ -275,13 +272,12 @@
 - **零碎**：
   - 旧批次 `office-beans-100-20261019` 的 final-audit 进程还在等一个不会完成的导出，需要手动结束；
   - 服务器的 `/usr/local/bin/ffmpeg` 不带 libx264，新建环境要在仿真环境的 `bin` 里链接系统的 `ffmpeg`；
-  - 指定了 `robot_config`/`scene_config` 的 `_task.yml` 会覆盖 g1d 的机器人或场景；
-  - `21196` 的 `/data2` 已用 96%，只剩约 317 GB。
+  - 指定了 `robot_config`/`scene_config` 的 `_task.yml` 会覆盖 g1d 的机器人或场景。
 
 ## 下一会话
 
 0. 实现平台登记的 `g1d_pour_beans_any_cups`：在平台任务抽屉复制「实现任务」文本交给 coding agent（输入 `real2sim/tasks/g1d_pour_beans_any_cups/registration.json`）。
-0. 深圳实验室（已合并、部署、装共享库）：去现场量站位、拍头部 / 腕部画面做叠图（`overlay.py --env-cfg g1d_shenzhen_lab`）。
+0. 深圳实验室（已合并、部署，共享库待补装）：去现场量站位、拍头部 / 腕部画面做叠图（`overlay.py --env-cfg g1d_shenzhen_lab`）。
 1. 先看 `git log`、本文件和 `scripts/datagen/CONTRACT.md`。主工作区里还有物体建模 SKILL 会话没提交的改动（见"最近任务"里的"并行会话"）；拉取新的 `main` 前，先让那个会话提交，或者先 stash。
 2. 下一批数据用新流水线采集。先跑单回合探针，确认 `joint_names`、夹爪 state 和图像都正常，再按 `scripts/datagen/SKILL.md` 批量采集、导出、审计、回放，最后登记。
 3. 去现场按 `real2sim/scenes/SKILL.md` 采集（ChArUco 标定板照片、卷尺、灯光、机器人相机画面），在平台「登记场景」录入，回来跑 `overlay.py` 和 `acceptance.py`。
@@ -303,12 +299,12 @@
 - 2026-10-21：场景卡片改用 Isaac RTX 渲染图做封面，场景抽屉顶部加可拖拽旋转的 3D 预览（用户：卡片放渲染的场景图，网页端 3D 预览）。新脚本 `scripts/scenes/export_glb.py`（只要 usd-core + numpy，本机可跑）把 `usd/scene.usda` 的可见网格（跳过 guide 碰撞体）连同 UsdPreviewSurface 材质和贴图转成 `preview/scene.glb`（Y 轴向上，节点名是 USD 路径）；`scripts/scenes/render_scenes.py`（GPU）只载场景、用场景自带灯光，从机器人一侧斜上方对准 `/World/Background`、`/Lights` 以外的部分（桌子和桌上物体），相机限制在地面范围内、天花板以下，写 `preview/render/sim.jpg`。平台扫描 `renders`、`model`，`/file` 放行 `.glb`；卡片封面优先渲染图，有模型的卡片带「3D」标记；抽屉用 three.js 0.169（浏览器按需从 `registry.npmmirror.com` 加载，importmap，不进仓库）+ OrbitControls：左键旋转、右键平移、滚轮缩放，不能转到地板以下，「隐藏房间」（墙、天花板、背景家具，地面保留）、「重置视角」、「全屏」；墙和天花板单面朝内，从房间外看自动剖开。抽屉每次重绘时把活的查看器节点放回原位，关抽屉或切走时释放 WebGL。`5090-2` 隔离目录 `/data/robodojo-runs/scene-render-20261021-222151`（GPU 5，只拷了场景目录和脚本）渲出 5 个场景，逐张看过；GLB 0.03–2.7 MB。验证：`check.sh`（29 passed 1 skipped，新增 `GlbTests` 和场景 `renders`/`model` 扫描、`.glb` 下载）、新脚本 ruff；本机浏览器 5 个场景都加载、贴图和透明材质正常、模拟拖拽能转、隐藏房间、切换场景后只剩一个画布、关抽屉后画布释放。`real2sim/scenes/SKILL.md`「接入和登记」和平台建模任务文本加了这两步。`e4552a2` 直接快进推 `main` 并部署：`5090-2` 从 `01e50fe` 快进（推临时分支再 `--ff-only`，部署机 `HANDOFF.md` 的另一会话改动先存 `.cache/handoff-local-20261021-222905.patch` 再放回），5 个场景的 `scene.glb` 和 `render/sim.jpg` 拷到部署机同一路径，重启后扫描到模型和渲染图，未登录 `/api/info` 401。没有登录线上页面看（没有账号密码）。
 - 2026-10-21：登记向导（物体、场景、任务、本体、评测）误关不再丢内容（用户：点到左边区域填的都没了）。抽屉关闭或切走时（点遮罩、Esc、关闭按钮、点别的行、换页面），如果表单相对刚打开时有改动、选了照片或物体 / 场景 / 任务，就把抽屉节点和向导状态（当前步骤、照片、各选择框的列表）暂存在页面内存里，并提示已暂存；再点同一个登记按钮原样恢复，顶部提示「已恢复上次没提交的内容」和「清空重填」。提交成功后清掉暂存。只存在当前页面，刷新浏览器就没了。验证：ruff；本机浏览器：物体向导填两步后点遮罩、重开恢复（步骤、名称、质量、类别），换页面后仍能恢复，清空重填得到空表；没改动的表单关闭不暂存；任务向导选了物体后按 Esc、重开恢复，提交后暂存清空。
 - 2026-10-21：数采平台新增「模型评测」选项卡（用户：提交评测任务，给定模型、部署代码和要测的任务，负责 Real2Sim 的同学交给 coding agent 部署和评测）。提交向导三步：① 模型名称、版本、框架、checkpoint 位置、部署代码（必填）、训练数据，接口（本体、动作空间、图像输入、指令语言）、推理环境、显存、动作块；提示仓库公开、不要填凭据；② 任务（带预览的搜索框，至少一个）、可选限定场景、泛化等级（默认 L0、L1）、每个任务 × env 配置的布局数（默认 50）和重复次数（默认 3）、是否加脚本专家对照；③ 截止、优先级、评测负责人（可空，等认领）。编号 = 模型名 slug + 日期，同时是 eval_result 里的策略名。写 `real2sim/evals/<编号>/request.json`；提交人由服务端按登录账号写，后续更新不能改，新申请状态为「待受理」。抽屉：部署与评测任务文本（隔离目录、凭据不落盘、XPolicyLab 服务或 `--policy_module` 适配器、按 CONTRACT 对齐、冒烟后全量、颗粒任务用 `g1d_beans_collect`、同步 `eval_result/`、写 `result.json` 的格式、更新状态），受理（状态、评测负责人、评测记录），结果（`result.json` 的总成功率、按任务 × env 配置 × 等级的成功率 / 区间 / 专家对照、问题；以及 eval_result 里同名策略的回合，可跳质检），申请内容。datagen SKILL 补了这条流程。验证：`test_server.py`（申请写入、提交人不可伪造、状态和负责人更新、`result.json` 扫描、坏 id、删除）、ruff；本机浏览器：成员账号提交（校验、编号、任务搜索和预览）、模拟 `result.json` 后结果表和列表成功率、改状态为已完成。
-- 2026-10-21：本体卡片加仿真渲染图。新脚本 `scripts/embodiments/render_embodiments.py`：按 `env/robot_manager/robot_config/<robot_name>.py` 把每个本体单独放在地面上（最低网格点落地，固定底座所以和臂姿无关），初始化并保持默认关节角后，按连杆实际位置加边距取景（`set_world_pose`，初始化前的 USD 包围盒和稳定后的姿态对不上，Franka 第一版被裁掉），写 `real2sim/embodiments/<id>/preview/sim.png`（不入库）。平台扫描 `preview/`：卡片封面优先用渲染图，抽屉分「仿真渲染」「实拍照片」。`5090-2` 隔离目录 `/data/robodojo-runs/embodiment-render-20261021-144517`（GPU 4；G1-D 资产复制自 `g1d-mobile-20261021`，X5 / Franka 从 21196 共享库经本机中转，共享库未改；要设 `OMNI_KIT_ACCEPT_EULA=YES`）渲出 g1d、g1d_mobile、x5、franka 四张，拷到部署机同一路径。两版 G1-D 外观相同（移动版只多底盘自由度），靠「变体」区分。验证：`test_server.py`（renders 扫描）、ruff；四张图逐张看过。
+- 2026-10-21：本体卡片加仿真渲染图。新脚本 `scripts/embodiments/render_embodiments.py`：按 `env/robot_manager/robot_config/<robot_name>.py` 把每个本体单独放在地面上（最低网格点落地，固定底座所以和臂姿无关），初始化并保持默认关节角后，按连杆实际位置加边距取景（`set_world_pose`，初始化前的 USD 包围盒和稳定后的姿态对不上，Franka 第一版被裁掉），写 `real2sim/embodiments/<id>/preview/sim.png`（不入库）。平台扫描 `preview/`：卡片封面优先用渲染图，抽屉分「仿真渲染」「实拍照片」。`5090-2` 隔离目录 `/data/robodojo-runs/embodiment-render-20261021-144517`（GPU 4；G1-D 资产复制自 `g1d-mobile-20261021`，X5 / Franka 从共享库拷贝，共享库未改；要设 `OMNI_KIT_ACCEPT_EULA=YES`）渲出 g1d、g1d_mobile、x5、franka 四张，拷到部署机同一路径。两版 G1-D 外观相同（移动版只多底盘自由度），靠「变体」区分。验证：`test_server.py`（renders 扫描）、ruff；四张图逐张看过。
 - 2026-10-21：经用户同意，本会话把 PR #17（G1-D 桌面版 / 移动版，另一会话）合并进 `main`（`33c7157`）：在 `1d110fb` 上合并当时的 `main`，冲突在 `HANDOFF.md`、`README.md`、`_robot_info.json`、`CONTRACT.md`，都是两边各加内容，全部保留（CONTRACT 夹爪那条改为七个 G1-D 配置，HANDOFF 里桌面版配置数改为六个）；`check.sh` 27 passed 1 skipped（含 `test_g1d_body.py`）。直接推 `main`，PR #17 自动标为已合并。部署到 `5090-2`：平台服务用系统 Python 导入新 `build_asset.py` 正常，本体页出现 `g1d_mobile`（共 4 个本体）；部署机上和 `main` 一致的 `real2sim/embodiments/g1d/registration.json` 先挪开、快进后核对一致。另一会话的 worktree `../RoboDojo-g1d-mobile` 还停在 `1d110fb`。
 - 2026-10-21：G1-D 分为桌面版 `g1d`（腰、升降可选动作键）和移动版 `g1d_mobile`（加差速底盘 `base_velocity`，虚拟平面关节），接口按官方 unitree_sdk2；`5090-2` 上两版 `body_probe.py` 和量杯回归通过（分支 `chongzheng/robot-g1d-tabletop-mobile`）。
 - 2026-10-21：在线上平台代填 G1-D（`g1d`）的本体信息，内容全部取自本文件和配置：Unitree G1-D 桌面版、双臂 7 + 夹爪 1、Dex1-1 带相机夹爪、头部左眼 + 两腕部相机、30 Hz、`real2sim/robot/g1d_v4`；标定只有相机标为已完成（fx≈279.5 / 314，误差 0.4–3.6 px），关节零位无记录，夹爪和动力学未做，记录里写明原因和标定工具包未接入。署名「种政（agent 代填）」，负责人 chongzheng；`real2sim/embodiments/g1d/registration.json` 拷回入库。从这次起，按用户要求不再开 PR：仍在 worktree 短分支上改、本机跑检查、变基到最新 `origin/main` 后快进推送（不强推）。
 - 2026-10-21：数采平台新增「本体管理」选项卡（用户：G1-D 至少有桌面版和移动版两个本体了）。本体 = `env/robot_manager/robot_config/` 里的每个 robot_name（现在 g1d、x5、franka；PR #17 合并后 g1d_mobile 自动出现），加平台登记的本体；同一本体在各场景的站位配置（`env_cfg/robot/*.yml`）算一个，列出站位、臂 / 末端维度（`_robot_info.json`）、根节点位置、加载它的 env 配置和场景、有布局的任务和采集回合。抽屉可传照片，填名称、型号、变体、负责人（账号）、自由度、末端执行器、相机、控制频率、URDF 来源、真机、备注，以及相机 / 关节零位 / 夹爪 / 动力学四项标定状态和记录；流程 = 仿真接入、站位配置加四项标定。录入写 `real2sim/embodiments/<id>/registration.json`。「登记本体」两步向导给还没接入仿真的本体用，生成接入任务文本（URDF 转 USD、robot_config / robot_class / env_cfg/robot / `_robot_info.json`、对齐 CONTRACT、5090-2 关节探针）。顺带修复：抽屉里连续改两个字段时，第二次保存基于旧数据覆盖了第一次（`onFieldChange` 先在本地记录生效再保存）。验证：`test_server.py`（新增 `test_embodiments`、本体登记 / 照片 / 删除）、ruff；本机浏览器：三张本体卡片、G1-D 抽屉的 5 个站位、连续改三个字段都保存、登记新本体生成接入任务。PR #23 合并（`31ef96a`）并部署。
-- 2026-10-21：按平台登记新建深圳实验室场景 `real_scene5_shenzhen_lab`（env 配置 `g1d_shenzhen_lab`），卷尺定尺度，5090-2 上 `build_asset.py` 和脚本演示通过，经用户同意装进共享库（不含量杯任务布局）；修 `build_asset.py` 相对 `--assets` 时的软链接问题。PR #22 合并（`2975b4a`）并部署到 `5090-2`。
+- 2026-10-21：按平台登记新建深圳实验室场景 `real_scene5_shenzhen_lab`（env 配置 `g1d_shenzhen_lab`），卷尺定尺度，5090-2 上 `build_asset.py` 和脚本演示通过，经用户同意装库（不含量杯任务布局；装进的是迁移前的旧库，5090-2 共享库待补）；修 `build_asset.py` 相对 `--assets` 时的软链接问题。PR #22 合并（`2975b4a`）并部署到 `5090-2`。
 - 2026-10-21：登记任务的评测保留物体改为跟着角色走（用户：每个角色都要有候选和保留，干扰物也要有）：第 2 步每个角色分「训练候选」「评测保留」两个选择框，干扰物分「训练用」「评测保留」，去掉单独的「评测保留实例」栏；已是训练候选的物体不能再选为保留，反之亦然（保留的必须是训练里没见过的）。L3 只在选了保留物体时开启（多候选、干扰物只算训练多样性）。「目标布局数」改名「评测布局数」并注明只用于评测、训练数据量看合格回合目标。`registration.json`：角色和 `distractors` 各加 `holdout`，去掉 `holdout_objects`。顺带修复 PR #15 把 PR #14 的两处改回旧版的问题：实现任务文本里的杂物类别、抽屉里的「含杂物库：类别」（登记文件的 `clutter_categories` 一直正确）。验证：`test_server.py`、ruff；本机浏览器：两栏选择、双向互斥提示、L3 依据、评测布局数、实现任务文本和抽屉摘要。PR #21 合并（`d5db8aa`）并部署。
 - 2026-10-21：PR #19 合并（`2944698`）并部署；部署前删掉了部署机上和 `main` 内容一致的未跟踪 `real2sim/tasks/g1d_pour_beans_any_cups/registration.json`（sha256 核对过）。线上第一个场景登记 `real_scene5_shenzhen_lab`（深圳实验室，B5-2L，种政 10-21 12:08 登记：6 张照片、卷尺桌面 75 × 120 × 60 cm、厚 2 cm、四条腿白色圆角桌、储物柜 75×120×45 cm 金属、顶部条形面光源）拷回入库，照片走 LFS。还没建模，没量机器人站位，也没有标定板；部署 PR #21 时已核对一致、挪开后快进并放回真实照片，部署机上现在是跟踪文件。
 - 2026-10-21：登记任务的泛化等级不再手动勾选，按前面的选择自动开启（用户：干扰物、换物体、选场景本身就是泛化，最后一步重复）：L0 始终开；L1 = 第 4 步勾了位置或朝向；L2 = 第 3 步新加的「外观随机」（灯光、纹理、相机扰动）勾了任一项；L3 = 某角色候选物体多于 1 个、有干扰物或选了保留实例（保留实例挪到第 2 步）；L4 = 选了保留场景。第 4 步只显示各级开没开和依据，开启的级可改范围和目标布局数。`registration.json` 新增 `appearance`。另外三个登记向导对管理员不再强制「填完才能下一步」：跳过的项在底栏列出；提交前仍检查 ID（物体类别和编号、场景目录名、任务 ID），对管理员也生效；普通成员不变。验证：`test_server.py`、ruff；本机浏览器：管理员空表跳到最后一步、空后缀提交被拦、等级随选择开关、取消位置和朝向后 L1 关闭、L4 目标改 80 写进登记；场景向导管理员可跳；普通成员三个向导都被拦在第 1 步。

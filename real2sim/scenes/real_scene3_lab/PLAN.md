@@ -105,7 +105,7 @@ uv run --no-project --python 3.11 --with usd-core --with trimesh --with numpy --
 
 ## 验证记录
 
-- **2026-10-14，Isaac RTX 渲染**：在服务器 `21196` 的隔离目录 `/data2/tmp/robodojo/agent-remote-runs/lab-render-*` 中，以 Room=real_scene3 运行 `scripted_demo.py`（任务 `g1d_pour_water_into_cup`，seed 0，GPU 0）。倒水布局的物体整体 +0.069 m，升降柱两节各 0.0345 m，`cam_third` 换成 p3 的拟合位姿。退出码 0，5 路视频正常。
+- **2026-10-14，Isaac RTX 渲染**：在隔离目录 `lab-render-*` 中，以 Room=real_scene3 运行 `scripted_demo.py`（任务 `g1d_pour_water_into_cup`，seed 0，GPU 0）。倒水布局的物体整体 +0.069 m，升降柱两节各 0.0345 m，`cam_third` 换成 p3 的拟合位姿。退出码 0，5 路视频正常。
   - 第三视角与 p3 照片对比，桌子形状、斜腿、地毯纹理一致；桌面没有过曝。
   - v1 偏黄。v2 加了天花板，改为 6500 K、强度 24000，地毯亮度 ×0.67：第三视角下桌面 RGB (235, 234, 232)，R/B 1.01（照片 243/236/232，1.05）；地毯 R/B 1.10（照片 1.06）；桌面与地毯的亮度比 1.98（照片 2.03）。对比图 `output/lab_render/compare_light.jpg`，五路拼接视频 `output/lab_render/lab_render_grid_v2.mp4`。
   - 亮度标定的参照是手机照片，手机有自动曝光和白平衡；真机头部相机的曝光可能不同。

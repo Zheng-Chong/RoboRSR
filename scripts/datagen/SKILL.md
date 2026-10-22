@@ -104,7 +104,7 @@ description: 在 RoboDojo 里用脚本专家批量生成 G1-D 仿真示教数据
 
 ## 常见坑
 
-- 选卡：`collect.py` 和 `replay.py` 都要用 `--device cuda:N --device_id N`，并且让 0 到 N 号卡都可见（`main.py` 已经禁止参数缩写，避免 AppLauncher 预解析时把两个参数混淆）。不要只设 `CUDA_VISIBLE_DEVICES=N`：这两个入口关闭了多卡渲染，渲染会落在 Vulkan 的 0 号卡上，而物理计算在 N 号卡，取相机数据时 replicator 会返回 None（10-19 在 21196 上回放时遇到过）。别人的卡显存快满时，用 `CUDA_VISIBLE_DEVICES=0,...,N` 把可见范围限制在自己用的卡上。
+- 选卡：`collect.py` 和 `replay.py` 都要用 `--device cuda:N --device_id N`，并且让 0 到 N 号卡都可见（`main.py` 已经禁止参数缩写，避免 AppLauncher 预解析时把两个参数混淆）。不要只设 `CUDA_VISIBLE_DEVICES=N`：这两个入口关闭了多卡渲染，渲染会落在 Vulkan 的 0 号卡上，而物理计算在 N 号卡，取相机数据时 replicator 会返回 None（10-19 回放时遇到过）。别人的卡显存快满时，用 `CUDA_VISIBLE_DEVICES=0,...,N` 把可见范围限制在自己用的卡上。
 - 每个 worker 的 `ROBODOJO_RUN_ID` 要唯一（`run_batch.py` 已经处理了）。否则同一秒启动的评测会写进同一个 `eval_result` 时间戳目录，互相删掉对方的临时视频。
 - 一个采集进程最多跑任务的 `eval_nums` 个布局（默认 50），剩下的由 `run_batch.py` 自动续跑。
 - 官方转换器会把输入目录里的所有 `.hdf5` 都转换进去，并且会先删掉同名的输出目录。所以只能通过 `export.py` 调用它：它只暂存选中的回合，输出目录已存在时直接拒绝。

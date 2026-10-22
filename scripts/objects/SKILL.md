@@ -16,7 +16,7 @@ description: 按 Real2Sim 数采平台的物体登记（real2sim/objects/<id>/sp
 | 生成结果 | `Assets/Object/RoboDojo/<id>/`（`object.usdz`、`metadata.json`、`description.json`） | 不入库 | 只由脚本写，不手改；不要往 `Assets/` 放要入库的文件 |
 | 渲染预览和检查结果 | `real2sim/objects/<id>/preview/sim.png`、`check.json` | 不入库 | `check_object.py --image-dir` 生成，同步到部署机：平台据此显示渲染图，并在资产装进共享库之前就推进「建模」「尺寸核对」「物理检验」 |
 | 验证 | `5090-2` 的隔离目录 `/data/robodojo-runs/<名称>-<时间>/` | 不入库 | 生成到隔离目录的覆盖目录里再检查 |
-| 共享资产库 | 21196 的 `/data2/zhongzheng/Project/RoboDojo_assets/Assets`（只当资产来源，不在 21196 上跑） | 不入库 | 只有用户同意后，按 README「改服务器共享资产库」装 |
+| 共享资产库 | `5090-2:/data/robodojo-assets/Assets` | 不入库 | 只有用户同意后，按 README「改服务器共享资产库」装 |
 | 登记表 | `real2sim/ASSETS.md`、README「快速开始」第 4 步、`HANDOFF.md` | 入库 | 更新 |
 
 不在这一步改：任务配置和布局（`task/RoboDojo/`、`scripts/g1d/build_asset.py` 的 `G1D_TASKS`），除非用户要求；子模块 `XPolicyLab/`、`third_party/`。
@@ -142,7 +142,7 @@ python -m py_compile scripts/objects/<脚本>.py
 
 ### 6. GPU 服务器隔离目录：生成 + 落地检查
 
-- 服务器：一律用 `5090-2`（Isaac Sim 5.1），隔离目录放 `/data/robodojo-runs/<类别>-<YYYYMMDD-HHMMSS>/`；**不要再在 21196 上跑**。环境怎么激活看 `HANDOFF.md`「服务器」和本机 `.agent/remote-validation.local.toml` 的 `[environment]`。这个文件不入库，连接信息也不要写进仓库。共享资产库只在 21196，需要的官方资产按 `HANDOFF.md` 里的命令从本机中转进隔离目录的 `Assets/`。
+- 服务器：一律用 `5090-2`（Isaac Sim 5.1），隔离目录放 `/data/robodojo-runs/<类别>-<YYYYMMDD-HHMMSS>/`。环境怎么激活看 `HANDOFF.md`「服务器」和本机 `.agent/remote-validation.local.toml` 的 `[environment]`。这个文件不入库，连接信息也不要写进仓库。共享资产库也在 `5090-2`（`/data/robodojo-assets/Assets`），隔离目录要用的官方资产直接从它软链接或拷贝。
 - 把当前工作树传进隔离目录，排除 `Assets/`、`.git/`、`output/`、`eval_result/`；子模块不要上传，改成软链接到 `5090-2` 上现成的副本（位置见本机 `.agent/remote-validation.local.toml`）。生成结果写到隔离目录的 `ovl/` 里，**不要直接写共享资产库**。`check_object.py` 只需要物体目录本身；要跑任务或脚本演示，才按 README「改服务器共享资产库」第 1 步建完整的 `Assets/` 覆盖目录。
 - 用 `nvidia-smi` 挑一张空闲的卡：
 

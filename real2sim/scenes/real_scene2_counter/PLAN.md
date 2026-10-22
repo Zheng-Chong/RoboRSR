@@ -99,7 +99,7 @@ uv run --no-project --python 3.11 --with usd-core --with trimesh --with numpy --
 
 ## 验证记录
 
-- **2026-10-14，v0 场景（只依据第一张照片）**：服务器 `21196` 上用隔离目录跑了 `scripted_demo.py`，任务 `g1d_pour_water_into_cup`，seed 0。渲染正常，抓壶、举起、倾倒、回正都完成了；倒出约 7%，判据要求 ≥20%，和办公室场景一样失败。
+- **2026-10-14，v0 场景（只依据第一张照片）**：在隔离目录里跑了 `scripted_demo.py`，任务 `g1d_pour_water_into_cup`，seed 0。渲染正常，抓壶、举起、倾倒、回正都完成了；倒出约 7%，判据要求 ≥20%，和办公室场景一样失败。
 - **v1 场景**：同一套流程，第三视角相机换成第一张照片的拟合位姿，可以和照片直接对比。
 
 ## 未覆盖（需要在 Isaac Sim 里验收）

@@ -20,7 +20,7 @@ Usage:
     python3 src/real2sim_platform/server.py --add-user alice --name 张三 --admin   # asks for the password
     python3 src/real2sim_platform/server.py         # http://127.0.0.1:8765
     python3 src/real2sim_platform/server.py --assets /path/to/shared/Assets \
-        --eval-root eval_result --eval-root /data2/tmp/robodojo/agent-remote-runs
+        --eval-root eval_result --eval-root /data/robodojo-runs
 """
 
 import argparse
