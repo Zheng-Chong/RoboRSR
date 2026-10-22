@@ -234,6 +234,34 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
 .thumb { display: grid; place-items: center; width: 56px; height: 42px; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--faint); }
 .thumb img { width: 100%; height: 100%; object-fit: cover; }
 .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: 8px; }
+.ra-group { margin-bottom: 26px; }
+.ra-group-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: 0 0 10px; }
+.ra-group-h h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.ra-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 14px; }
+.ra-card { display: flex; flex-direction: column; width: 100%; min-width: 0; padding: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: inherit; font: inherit; text-align: left; }
+.ra-card:focus-visible { outline: 3px solid var(--primary-line); outline-offset: 2px; }
+.ra-cover { position: relative; display: grid; place-items: center; aspect-ratio: 4 / 3; overflow: hidden; border-bottom: 1px solid var(--border); background: #F1F5F9; }
+.ra-cover img { width: 100%; height: 100%; object-fit: contain; }
+.ra-cover .pills { position: absolute; top: 8px; left: 8px; display: flex; gap: 4px; }
+.ra-cover.is-empty { aspect-ratio: auto; height: 84px; }
+.ra-empty { display: grid; justify-items: center; gap: 6px; color: var(--faint); font-size: 12px; }
+.ra-body { display: flex; flex: 1; flex-direction: column; gap: 8px; padding: 12px 14px 14px; }
+.ra-body h3 { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.4; }
+.ra-status { color: var(--text-2); font-size: 12px; line-height: 1.5; }
+.ra-sum { display: -webkit-box; overflow: hidden; color: var(--muted); font-size: 12px; line-height: 1.6; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.ra-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+.ra-meta span { display: inline-flex; align-items: center; gap: 4px; }
+.ra-checks { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ra-checks li { display: grid; grid-template-columns: 20px minmax(96px, 30%) 1fr; gap: 8px; align-items: start; font-size: 13px; line-height: 1.55; }
+.ra-checks li .ic { margin-top: 3px; }
+.ra-checks .done .ic { color: var(--ok); }
+.ra-checks .open .ic { color: var(--todo); }
+.ra-checks b { font-weight: 500; }
+.ra-videos { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.ra-videos figure { margin: 0; }
+.ra-videos video { display: block; width: 100%; border: 1px solid var(--border); border-radius: 8px; background: #0F172A; }
+.ra-videos figcaption { margin-top: 4px; color: var(--muted); font: 12px var(--mono); }
+
 .gthumb { position: relative; display: block; aspect-ratio: 4 / 3; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); cursor: zoom-in; }
 .gthumb img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .2s; }
 .gthumb:hover img { transform: scale(1.03); }
@@ -514,10 +542,10 @@ const base = (p) => String(p).split('/').pop();
 const opts = (options, value) => Object.entries(options).map(([k, l]) => `<option value="${esc(k)}" ${k === String(value ?? '') ? 'selected' : ''}>${esc(l)}</option>`).join('');
 const ic = (name, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
-const KINDS = ['scene', 'object', 'task', 'episode', 'embodiment', 'evaluation'];
-const TAB_OF = {scene: 'scenes', object: 'objects', task: 'tasks', episode: 'qa', embodiment: 'robots', evaluation: 'evals'};
-const KIND_LABEL = {scene: '场景', object: '物体', task: '任务', episode: '回合', embodiment: '本体', evaluation: '评测'};
-const S = {scene: [], object: [], task: [], episode: [], embodiment: [], evaluation: []};
+const KINDS = ['scene', 'object', 'task', 'episode', 'embodiment', 'evaluation', 'prototype'];
+const TAB_OF = {scene: 'scenes', object: 'objects', task: 'tasks', episode: 'qa', embodiment: 'robots', evaluation: 'evals', prototype: 'prototypes'};
+const KIND_LABEL = {scene: '场景', object: '物体', task: '任务', episode: '回合', embodiment: '本体', evaluation: '评测', prototype: '研究资产'};
+const S = {scene: [], object: [], task: [], episode: [], embodiment: [], evaluation: [], prototype: []};
 const UI = {
   tab: 'overview', drawer: null, ep: null, taskDim: 'custom', taskQ: '', sel: new Set(), loaded: false, syncing: false, syncedAt: '',
   obj: {q: '', src: '', photo: false, view: localStorage.objView || 'cards'},
@@ -647,7 +675,7 @@ const experts = (eps) => eps.filter((e) => e.auto.policy === 'scripted_demo');
 const rate = (eps) => (eps.length ? eps.filter((e) => e.auto.success).length / eps.length : null);
 const qualified = (eps) => eps.filter((e) => e.qa === 'pass' && e.auto.success);
 const TASK_STAGES = [
-  ['config', '任务配置', (d) => (d.auto.runnable ? ok(`step_lim ${d.auto.step_lim ?? '继承'}`)
+  ['config', '任务配置', (d) => (d.implementation?.engine ? ok(`${d.implementation.engine} 独立实现；平台统一接口待接入`) : d.auto.runnable ? ok(`step_lim ${d.auto.step_lim ?? '继承'}`)
     : !d.auto.module ? todo('已登记，交给 coding agent 按实现任务实现') : bad('缺配置或导出类'))],
   ['instructions', '语言指令', (d) => {
     const want = d.reg?.instructions, got = d.auto.instructions || {};
@@ -744,6 +772,7 @@ function renderNav() {
     ['scenes', '场景重建', 'scan', S.scene.length],
     ['objects', '物体资产', 'box', live(S.object).length],
     ['robots', '本体管理', 'bot', live(S.embodiment).length],
+    ['prototypes', '研究资产', 'layers', live(S.prototype).length],
     ['tasks', '任务采集', 'list', live(S.task).filter((t) => t.auto.dimension === 'custom').length],
     ['qa', '数据质检', 'clipboard', pending],
     ['evals', '模型评测', 'compare', live(S.evaluation).filter((d) => !['done', 'failed', 'cancelled'].includes(d.status)).length],
@@ -759,6 +788,69 @@ function renderNav() {
     <span class="me-name"><b>${esc(ME.name)}</b><small>${esc(ME.username)}</small></span><span class="sp"></span>
     <button class="btn btn-icon btn-ghost" type="button" data-open="account" aria-label="修改密码" title="修改密码">${ic('key')}</button>
     <button class="btn btn-icon btn-ghost" type="button" onclick="logout()" aria-label="退出登录" title="退出登录">${ic('logout')}</button>` : '';
+}
+
+// ---------- research assets: never offered as task objects ----------
+// groups follow platform.json "kind"; a check whose finding says not done / pending / candidate counts as open
+const RA_GROUPS = [
+  ['ref', '官方外形参考', /外形参考/, 'cube', '厂商 CAD 的静态外形，用来核对尺寸和安装位置；不含运动、接触和触觉。'],
+  ['proto', '柔性数值原型', /数值原型/, 'layers', '在 MuJoCo / Isaac 里单独跑过数值测试的柔性体；材料参数还没用实物标定。'],
+  ['real', '待建模实物', /实物参考/, 'camera', '只记录了照片里能看到的结构和要测的量，还没有几何或物理模型。'],
+  ['other', '其他', /.*/, 'box', ''],
+];
+const raGroup = (d) => RA_GROUPS.find(([, , re]) => re.test(d.auto.kind || ''));
+const raOpen = (finding) => /未|待|无|候选|不同|非实测|不确定/.test(finding);
+const raChecks = (d) => Object.entries(d.auto.capabilities || {}).map(([k, v]) => ({k, v: String(v), open: raOpen(String(v))}));
+function raCard(d) {
+  const a = d.auto, g = raGroup(d), checks = raChecks(d), cover = a.renders?.[0];
+  const done = checks.filter((c) => !c.open).length;
+  return `<button type="button" class="card mcard ra-card" data-open="prototype" data-id="${esc(d.id)}" aria-label="打开研究资产 ${esc(a.name || d.id)}">
+    <div class="ra-cover${cover ? '' : ' is-empty'}">${cover ? `<img loading="lazy" decoding="async" src="${file(cover)}" alt="">`
+      : `<div class="ra-empty">${ic(g[3], 'ic-lg')}<span>还没有模型或图片</span></div>`}
+      <div class="pills">${a.model ? `<span class="pill">${ic('cube', 'ic-sm')}3D</span>` : ''}${a.videos?.length ? `<span class="pill">${ic('video', 'ic-sm')}${a.videos.length}</span>` : ''}</div></div>
+    <div class="ra-body"><h3>${esc(a.name || d.id)}</h3>
+      <div>${st(g[0] === 'real' ? 'todo' : 'ok', g[1])}</div>
+      <div class="ra-status">${esc(a.status || '待核对')}</div>
+      <div class="ra-sum">${esc(a.summary || '')}</div>
+      <div class="ra-meta"><span>${ic('check', 'ic-sm')}已核对 ${done}</span><span>${ic('circle', 'ic-sm')}待完成 ${checks.length - done + (a.limits || []).length}</span>
+        ${a.evidence?.length ? `<span>${ic('file', 'ic-sm')}记录 ${a.evidence.length}</span>` : ''}</div></div></button>`;
+}
+function viewPrototypes() {
+  const f = UI.ra || (UI.ra = {group: '', q: ''}), all = live(S.prototype);
+  const q = f.q.trim().toLowerCase();
+  const shown = all.filter((d) => (!f.group || raGroup(d)[0] === f.group)
+    && (!q || `${d.id} ${d.auto.name} ${d.auto.kind} ${d.auto.status} ${d.auto.summary}`.toLowerCase().includes(q)));
+  const count = (key) => all.filter((d) => raGroup(d)[0] === key).length;
+  const groups = RA_GROUPS.filter(([key]) => count(key));
+  const sections = groups.map(([key, label, , , note]) => {
+    const docs = shown.filter((d) => raGroup(d)[0] === key);
+    return docs.length ? `<section class="ra-group" aria-labelledby="ra-${key}"><div class="ra-group-h"><h2 id="ra-${key}">${label}</h2>
+      <span class="muted small">${docs.length} 项${note ? ` · ${note}` : ''}</span></div><div class="ra-grid">${docs.map(raCard).join('')}</div></section>` : '';
+  }).join('');
+  return `<div class="page">${pageHead('研究资产', '官方外形参考、柔性数值原型和待建模实物。都还没接入机器人任务，也不会出现在任务登记的物体候选里；每项分别列出已核对和没做的部分。')}
+    <div class="toolbar filters" style="margin-bottom:18px">${searchBox('ra-q', f.q, 'UI.ra.q', '搜索名称、状态或说明')}
+      <div class="segctl" role="group" aria-label="按类别筛选">
+        <button type="button" aria-pressed="${!f.group}" onclick="UI.ra.group = ''; render()">全部 ${all.length}</button>
+        ${groups.map(([key, label]) => `<button type="button" aria-pressed="${f.group === key}" onclick="UI.ra.group = '${key}'; render()">${label} ${count(key)}</button>`).join('')}</div></div>
+    ${sections || `<div class="card">${empty('search', '没有匹配的研究资产', '换个关键词或类别')}</div>`}</div>`;
+}
+function drawerPrototype(d) {
+  const a = d.auto, g = raGroup(d), checks = raChecks(d);
+  const list = (items) => `<ul class="ra-checks">${items.map((c) => `<li class="${c.open ? 'open' : 'done'}">${ic(c.open ? 'circle' : 'check', 'ic-sm')}<b>${esc(c.k)}</b><span>${esc(c.v)}</span></li>`).join('')}</ul>`;
+  const model = a.model ? sec(`${ic('cube')}3D 外形`, `<div class="m3d" data-compact="true" data-model="${esc(file(a.model))}"><canvas aria-label="${esc(a.name || d.id)} 3D 外形，拖拽旋转"></canvas><div class="m3d-status">加载中…</div><div class="m3d-hint">拖拽旋转 · 滚轮缩放</div><div class="m3d-bar"><button class="btn" type="button" onclick="VIEWER?.reset()">重置视角</button></div></div>`) : '';
+  const links = (a.sources || []).filter((x) => /^https?:\/\//.test(x.url));
+  return {title: a.name || d.id, sub: `${a.kind || g[1]} · real2sim/prototypes/${d.id}`,
+    body: `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">${st(g[0] === 'real' ? 'todo' : 'ok', g[1])}<span class="small">${esc(a.status || '')}</span></div>
+      <p style="margin:0 0 4px;line-height:1.7">${esc(a.summary || '')}</p>
+      ${model}
+      ${a.renders?.length ? sec(`${ic('image')}预览与参考画面`, gallery(`prototype-${d.id}`, a.renders), ` <span class="muted small">${a.renders.length} 张</span>`) : ''}
+      ${a.videos?.length ? sec(`${ic('video')}数值测试视频`, `<div class="ra-videos">${a.videos.map((p) => `<figure><video controls preload="metadata" src="${file(p)}"></video><figcaption>${esc(base(p))}</figcaption></figure>`).join('')}</div>`) : ''}
+      ${checks.some((c) => !c.open) ? sec(`${ic('check')}已核对`, list(checks.filter((c) => !c.open)), ` <span class="muted small">${checks.filter((c) => !c.open).length} 项</span>`) : ''}
+      ${checks.some((c) => c.open) ? sec(`${ic('circle')}未完成 / 待核对`, list(checks.filter((c) => c.open)), ` <span class="muted small">${checks.filter((c) => c.open).length} 项</span>`) : ''}
+      ${a.limits?.length ? sec(`${ic('list')}接下来要做`, `<ol style="margin:0;padding-left:20px;line-height:1.75">${a.limits.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>`) : ''}
+      ${links.length ? sec(`${ic('external')}来源`, `<ul style="margin:0;padding-left:18px;line-height:1.9">${links.map((x) => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title)}</a></li>`).join('')}</ul>`) : ''}
+      ${a.evidence?.length ? sec(`${ic('file')}检查记录`, `<div class="toolbar">${a.evidence.map((p) => `<a class="btn" target="_blank" rel="noopener noreferrer" href="${file(p)}">${ic('file')}${esc(base(p))}</a>`).join('')}</div>`) : ''}
+      <p class="hint">研究资产没有装进共享资产库，也不会作为任务登记的物体候选。</p>`};
 }
 
 // ---------- overview ----------
@@ -825,6 +917,7 @@ const isBench = (d) => d.auto?.source === 'robodojo';  // the benchmark's own en
 const twinScenes = () => live(S.scene).filter((d) => !isBench(d));
 const sceneDims = (d) => {
   const a = d.auto, r = d.reg || {};
+  if (a.source === 'imported_simulation') return `${a.engine} · ${a.status}`;
   if (isBench(d) && !num(a.top_z)) return '无桌面，台面和传送带由任务生成';
   if (num(a.top_z)) return `桌面 ${a.size.map((v) => v ?? '?').join(' × ')} m · 高 ${a.top_z} m`;
   return num(r.top_z_cm) ? `实测桌面 ${r.length_cm ?? '?'} × ${r.width_cm ?? '?'} cm · 高 ${r.top_z_cm} cm · 还没建模` : '没有 build_params.json';
@@ -855,10 +948,10 @@ function viewScenes() {
         <div class="small muted">${a.tasks?.length || 0} 个基准任务在用</div></div></article>`;
   }).join('');
   const cardsHtml = twins.map((d) => {
-    const a = d.auto, rs = evalStages(SCENE_STAGES, d), cover = sceneImage(d);
+    const a = d.auto, rs = a.source === 'imported_simulation' ? importedSceneStages(d) : evalStages(SCENE_STAGES, d), cover = sceneImage(d);
     return `<article class="card mcard" data-open="scene" data-id="${esc(d.id)}" tabindex="0" role="button" aria-label="打开场景 ${esc(d.id)}">
       <div class="media r169">${cover ? `<img loading="lazy" decoding="async" src="${file(cover)}" alt="">` : ic('image', 'ic-lg')}
-        <div class="pills">${(a.configs || []).map((c) => `<span class="pill">${esc(c)}</span>`).join('')}${a.model ? `<span class="pill" title="可在详情里 3D 预览">${ic('cube', 'ic-sm')}3D</span>` : ''}</div></div>
+        <div class="pills">${a.engine ? `<span class="pill">${esc(a.engine)}</span>` : ''}${(a.configs || []).map((c) => `<span class="pill">${esc(c)}</span>`).join('')}${a.model ? `<span class="pill" title="可在详情里 3D 预览">${ic('cube', 'ic-sm')}3D</span>` : ''}</div></div>
       <div class="mcard-b"><div class="mcard-t"><b>${esc(sceneName(d))}</b>${d.registered ? '<span class="tag">已登记</span>' : ''}${missingBadge(d)}</div>
         ${d.reg?.name ? `<div class="small muted mono" style="margin-top:-4px">${esc(d.id)}</div>` : ''}
         <div class="small muted">${esc(sceneDims(d))} · 照片 ${a.photos?.length || 0} · 预览 ${a.previews?.length || 0}</div>${progress(rs)}${stageChips(rs)}</div></article>`;
@@ -1042,7 +1135,30 @@ function drawerBenchScene(d) {
     ${sec(`${ic('terminal')}重新渲染封面`, code(`# GPU 服务器、带 Assets/ 的隔离目录\nOMNI_KIT_ACCEPT_EULA=YES python scripts/scenes/render_scenes.py env_cfg/scene/${name}.yml\n# 再把 real2sim/benchmark_scenes/${name}/preview/ 同步到平台部署机`))}`,
   };
 }
+function importedSceneStages(d) {
+  const a = d.auto;
+  return [
+    {k: 'model', label: '模型文件', ...(a.built ? ok('已有模型') : bad('模型路径缺失'))},
+    {k: 'validation', label: a.engine === 'MuJoCo' ? '短步进验证' : '静态 RTX 渲染',
+      ...(a.validation?.passed ? ok(a.validation.scope) : todo('待验证'))},
+    {k: 'real', label: '本机实物对齐', ...todo('未验收')},
+  ];
+}
+function drawerImportedScene(d) {
+  const a = d.auto, rs = importedSceneStages(d);
+  const links = (a.evidence || []).map((p) => `<a class="btn" target="_blank" rel="noopener" href="${file(p)}">${esc(base(p))}</a>`).join('');
+  return {
+    title: sceneName(d), sub: `${a.engine} · ${a.status}`, actions: '',
+    body: `${sec('场景说明', `<p>${esc(a.summary)}</p>`)}
+      ${sec('验证范围', `${progress(rs)}${stageList(rs)}<p>${esc(a.validation?.scope || '')}</p>`)}
+      ${sec('使用限制', `<ul>${(a.limits || []).map((v) => `<li>${esc(v)}</li>`).join('')}</ul>`)}
+      ${a.renders?.length ? sec(a.engine === 'MuJoCo' ? 'MuJoCo 三路相机预览' : 'Isaac RTX 静态预览', gallery(`scene-renders-${d.id}`, a.renders)) : ''}
+      ${sec('来源与启动入口', `<p>模型：<code>${esc(a.entry_path)}</code></p><p>${a.includes_robot ? '完整场景已包含机器人。' : ''}</p>${code(a.launch_command || '')}`)}
+      ${sec('验证报告', `<div class="toolbar">${links}</div>`)}`,
+  };
+}
 function drawerScene(d) {
+  if (d.auto.source === 'imported_simulation') return drawerImportedScene(d);
   if (isBench(d)) return drawerBenchScene(d);
   const a = d.auto, dir = rel(a.path), rs = evalStages(SCENE_STAGES, d);
   // modeled scenes live in code and git (USD, build_asset.py SCENES, env configs): the server refuses to delete them
@@ -1748,7 +1864,7 @@ function viewTasks() {
   ${docs.map((d) => {
     const eps = EP_BY_TASK[d.id] || [], e = experts(eps), q2 = qualified(eps).length, target = d.target || d.reg?.target || 500, layouts = Object.entries(d.auto.layouts || {});
     return `<tr data-open="task" data-id="${esc(d.id)}" tabindex="0" class="${UI.drawer?.id === d.id ? 'sel' : ''}">
-      <td><div class="t-main mono">${esc(d.id)}${d.registered ? ` <span class="tag">${d.auto.module ? '已登记' : '待实现'}</span>` : ''}</div><div class="t-sub">${d.reg?.name ? `${esc(d.reg.name)} · ` : ''}${esc(DIMS[d.auto.dimension] || d.auto.dimension || '—')} · step_lim ${d.auto.step_lim ?? '继承'}${d.owner || d.reg?.owner ? ` · ${esc(memberName(d.owner || d.reg.owner))}` : ''}</div></td>
+      <td><div class="t-main mono">${esc(d.id)}${d.registered ? ` <span class="tag">${d.implementation?.engine ? `${esc(d.implementation.engine)} 已实现` : d.auto.module ? '已登记' : '待实现'}</span>` : ''}</div><div class="t-sub">${d.reg?.name ? `${esc(d.reg.name)} · ` : ''}${esc(DIMS[d.auto.dimension] || d.auto.dimension || '—')} · step_lim ${d.auto.step_lim ?? '继承'}${d.owner || d.reg?.owner ? ` · ${esc(memberName(d.owner || d.reg.owner))}` : ''}</div>${d.implementation?.progress ? `<div class="t-sub">${esc(d.implementation.progress)}</div>` : ''}</td>
       <td><div class="chips">${layouts.map(([c, n]) => `<span class="tag">${esc(c)} ${n}</span>`).join('') || '<span class="muted small">—</span>'}</div></td>
       <td class="num">${eps.length}</td><td class="num">${pct(rate(eps))}</td><td class="num ${e.length && rate(e) < 0.8 ? 'txt-bad' : ''}">${e.length ? pct(rate(e)) : '—'}</td>
       <td><div class="progress-row"><div class="bar" style="flex:1"><i class="ok" style="width:${Math.min(100, (q2 / target) * 100)}%"></i></div><span class="small mono">${q2}/${target}</span></div></td>
@@ -1760,15 +1876,15 @@ function drawerTask(d) {
   const runs = group(eps, (e) => `${e.auto.config}\u0000${e.auto.policy}`);
   const sceneCfgs = [...new Set(S.scene.flatMap((s) => s.auto.configs || []))];
   const cfgs = Object.keys(a.layouts || {}).length ? Object.keys(a.layouts) : sceneCfgs;
-  const cmds = a.dimension === 'custom'
+  const cmds = d.implementation?.command ? [d.implementation.command] : a.dimension === 'custom'
     ? cfgs.map((c) => `CUDA_VISIBLE_DEVICES=0 PYTHONPATH=.:XPolicyLab EVAL_NUM=1 python scripts/g1d/scripted_demo.py --env_cfg_type ${c} --task_name ${d.id} --seed 0`)
     : [`bash scripts/robodojo.sh eval --policy-dir XPolicyLab/policy/<POLICY> --task ${d.id} --ckpt <CKPT> --policy-env <ENV> --eval-num 1`];
   const objects = Object.entries(a.objects || {});
   return {
     title: d.reg?.name ? `${d.reg.name} · ${d.id}` : d.id,
-    sub: a.module ? `${DIMS[a.dimension] || a.dimension} · ${a.module} · ${a.config}` : `平台登记，还没实现 · real2sim/tasks/${d.id}/registration.json`,
+    sub: d.implementation?.engine ? `${d.implementation.engine} 独立实现 · 平台统一任务接口待接入` : a.module ? `${DIMS[a.dimension] || a.dimension} · ${a.module} · ${a.config}` : `平台登记，还没实现 · real2sim/tasks/${d.id}/registration.json`,
     actions: d.registered ? `<button class="btn" type="button" data-id="${esc(d.id)}" onclick="unregisterTask(this.dataset.id)">${ic('trash')}删除登记</button>` : '',
-    body: `${d.registered ? taskRegSection(d) : ''}${sec('流程', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
+    body: `${d.implementation ? sec('自主数采与训练进展', `<p>${esc(d.implementation.progress)}</p><p>${esc(d.implementation.detail)}</p><p>实现入口：<code>${esc(d.implementation.path)}</code></p><div class="toolbar">${(d.implementation.evidence || []).map((p) => `<a class="btn" target="_blank" rel="noopener" href="${file(p)}">${esc(base(p))}</a>`).join('')}</div>`) : ''}${d.registered ? taskRegSection(d) : ''}${sec('流程', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
     ${sec('采集计划', `<div class="form">${row('负责人', 'owner', sel(d, 'owner', memberOpts(d.owner)), '从平台账号里选')}
       ${row('合格回合目标', 'target', inp(d, 'target', 'number', 'min="0" placeholder="500"'))}${row('备注', 'notes', area(d, 'notes'))}</div>`)}
     ${sec('分级泛化评测集', `<p class="hint" style="margin:0 0 10px">每一级只改变一个因素，其余与 L0 相同；布局预先生成为固定 JSON，并先用 scripted_demo 过滤，L0–L3 专家成功率目标 ≥ 80%。</p>
@@ -2172,7 +2288,7 @@ function taskRegSection(d) {
   const r = d.reg || {}, t = (f, label) => row(label, `reg.${f}`, area(d, `reg.${f}`));
   const scenes = (use) => live(S.scene).filter((s) => r.scenes?.[s.id] === use).map((s) => link('scene', s.id, sceneName(s))).join('、') || '—';
   const levels = Object.entries(r.levels || {});
-  return `${sec(`${ic('terminal')}${r.existing ? '泛化方案' : '实现任务'}（给 coding agent）`, `<p class="hint" style="margin:0 0 8px">登记信息已写入
+  return `${d.implementation ? '' : sec(`${ic('terminal')}${r.existing ? '泛化方案' : '实现任务'}（给 coding agent）`, `<p class="hint" style="margin:0 0 8px">登记信息已写入
       <a target="_blank" rel="noopener" href="${file(`${INFO.root}/real2sim/tasks/${d.id}/registration.json`)}">real2sim/tasks/${esc(d.id)}/registration.json</a>。把下面这段交给 coding agent；实现后同步，流程自动推进。</p>${code(taskBrief(d))}`)}
     ${sec('语言指令', instructionList(d))}
     ${sec('登记的方案', `<dl class="kv"><dt>物体角色</dt><dd>${(r.roles || []).map((x) => `<div><b class="mono">${esc(x.label)}</b> × ${x.count}：${x.candidates.map((o) => link('object', o, objLabel(o))).join('、')}${x.holdout?.length ? `<div class="small muted">评测保留：${x.holdout.map((o) => link('object', o, objLabel(o))).join('、')}</div>` : ''}</div>`).join('') || '—'}</dd>
@@ -2865,7 +2981,7 @@ function renderDrawer() {
   if ((wizard || x.kind === 'account') && dr.dataset.k === key) return;  // keep typed input
   const d = S[x.kind]?.find((y) => y.id === x.id);
   const view = x.kind === 'new-object' ? drawerNewObject() : x.kind === 'new-scene' ? drawerNewScene() : x.kind === 'new-task' ? drawerNewTask() : x.kind === 'new-robot' ? drawerNewRobot() : x.kind === 'new-eval' ? drawerNewEval() : x.kind === 'account' ? drawerAccount()
-    : d ? {scene: drawerScene, object: drawerObject, task: drawerTask, embodiment: drawerRobot, evaluation: drawerEval}[x.kind](d) : {title: '记录不存在', body: ''};
+    : d ? {scene: drawerScene, object: drawerObject, task: drawerTask, embodiment: drawerRobot, evaluation: drawerEval, prototype: drawerPrototype}[x.kind](d) : {title: '记录不存在', body: ''};
   const scroll = dr.dataset.k === key ? $('#drawer .dr-b')?.scrollTop : 0;
   dr.innerHTML = `<div class="dr-h"><div style="min-width:0;flex:1"><h2 id="drawer-title">${esc(view.title)}</h2>${view.sub ? `<p>${esc(view.sub)}</p>` : ''}</div>
     ${view.actions || ''}<button class="btn btn-icon dr-close" type="button" aria-label="关闭（Esc）" onclick="closeDrawer()">${ic('close')}</button></div>
@@ -2920,7 +3036,7 @@ function startViewer(el) {
       controls.screenSpacePanning = true;
       controls.maxPolarAngle = 0.49 * Math.PI;  // stay above the floor
       v.reset = () => {  // front-right, above: the robot stands at -y in USD, which is +z here
-        camera.position.copy(centre).addScaledVector(new THREE.Vector3(0.55, 0.6, 1).normalize(), 1.1 * size + 0.8);
+        camera.position.copy(centre).addScaledVector(new THREE.Vector3(0.55, 0.6, 1).normalize(), el.dataset.compact ? 1.6 * size : 1.1 * size + 0.8);
         controls.target.copy(centre);
         controls.update();
       };
@@ -3091,7 +3207,7 @@ function onClick(ev) {
 }
 
 // ---------- render ----------
-const VIEWS = {overview: viewOverview, scenes: viewScenes, objects: viewObjects, robots: viewRobots, tasks: viewTasks, qa: viewQA, evals: viewEvals, users: viewUsers};
+const VIEWS = {overview: viewOverview, scenes: viewScenes, objects: viewObjects, robots: viewRobots, tasks: viewTasks, qa: viewQA, evals: viewEvals, prototypes: viewPrototypes, users: viewUsers};
 function render() {
   EP_BY_TASK = group(live(S.episode), (e) => e.auto.task);
   renderNav();

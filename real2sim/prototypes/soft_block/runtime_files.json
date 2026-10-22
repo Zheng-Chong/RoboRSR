@@ -1,0 +1,14 @@
+{
+  "private_server_directory": "/data/robodojo-assets/research/yangkaiyuan-20261022/soft_block",
+  "files": {
+    "soft_block/asset.json": {
+      "sha256": "183b71b2ae5ed04cf7bb79984a2b7361ce139a10f5f688b63fc64bec22bceda3",
+      "bytes": 1055
+    },
+    "soft_block/model.xml": {
+      "sha256": "c28261ee9028632c974d3289edc0c499dae6b59e240314fd33e4bc2798b4c4df",
+      "bytes": 591
+    }
+  },
+  "shared_task_ready": false
+}

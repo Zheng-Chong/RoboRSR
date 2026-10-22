@@ -1,0 +1,8 @@
+{
+  "user_volume_mm3": 34702.026579230405,
+  "official_volume_mm3": 34702.026579230405,
+  "user_minus_official_mm3": 0.0,
+  "official_minus_user_mm3": 0.0,
+  "geometric_solid_equivalent_at_same_frame": true,
+  "scope": "BRep solid symmetric-difference volume; does not establish G1-D fit or tolerances."
+}

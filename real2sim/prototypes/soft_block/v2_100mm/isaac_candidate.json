@@ -1,0 +1,13 @@
+{
+  "backend": "IsaacLab PhysX FEM",
+  "spawner": "isaaclab.sim.MeshCuboidCfg",
+  "dimensions_m": [0.1, 0.1, 0.1],
+  "dimensions_source": "user specified",
+  "mass_kg_candidate": 0.03,
+  "young_pa_candidate": 20000,
+  "poisson_candidate": 0.3,
+  "real_material_calibrated": false,
+  "entrypoint": "scripts/prototypes/check_isaac_soft_cube.py",
+  "official_reference": "https://isaac-sim.github.io/IsaacLab/v2.3.0/source/tutorials/01_assets/run_deformable_object.html",
+  "runtime_status": "launcher requested NVIDIA Omniverse EULA confirmation; not accepted by agent"
+}

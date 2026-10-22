@@ -1,0 +1,229 @@
+{
+  "checked_on": "2026-10-22",
+  "source_check": {
+    "retrieved": "2026-10-22",
+    "page": "https://docs.xenserobotics.com/en/docs/latest/hardware/gripper-models/",
+    "source_url": "https://docs.xenserobotics.com/assets/models/aurora-lite-gripper.STEP",
+    "bytes": 79988664,
+    "sha256": "658e5e2a175d455655a2990ceaf0e69fad48df6c1bba04d2eabdf7a6b4909c59",
+    "local_source_sha256": "658e5e2a175d455655a2990ceaf0e69fad48df6c1bba04d2eabdf7a6b4909c59",
+    "matches_local": true
+  },
+  "official_ws_cad": {
+    "url": "https://docs.xenserobotics.com/assets/models/ws-sensor-model.stp",
+    "bytes": 445803,
+    "sha256": "b37e8b980eadb34677909947fc26811545d9bdb354c89beead025c788d139e72",
+    "product_labels": [
+      [
+        "01_G1-WS_DVT_BASE_6_4",
+        "01_G1-WS_DVT_BASE_6_4"
+      ],
+      [
+        "01_G1-WS_DVT_SHEET_33_2_4",
+        "01_G1-WS_DVT_SHEET_33_2_4"
+      ],
+      [
+        "00_G1-WS_SOLID_20250407_ASM_8_A_ASM",
+        "00_G1-WS_SOLID_20250407_ASM_8_A_ASM"
+      ]
+    ]
+  },
+  "embedded_sensor_product_labels": [
+    "00_g1-ws_dvt_20250420_v4.step",
+    "01_G1-WS_DVT_BASE.step",
+    "01_G1-WS_DVT_SHEET_37.step",
+    "01_G1-WS_DVT_TOUCH_ASM_34_ASM.step",
+    "02_G1-WS_DVT_SILICON_108.step"
+  ],
+  "conclusion": "Official Aurora Lite CAD source matches byte-for-byte. Converted static geometry is not a functional gripper or calibrated optical tactile sensor.",
+  "cad_geometry_dimensions_mm": [
+    149.2,
+    62.0,
+    163.8
+  ],
+  "official_product_nominal_dimensions_mm": [
+    150,
+    60,
+    152
+  ],
+  "nominal_dimension_match_accepted": false,
+  "dimension_note": "CAD assembly envelope differs from nominal product dimensions; pose, adapters, measurement envelope and revision require verification. Do not rescale the CAD to hide the difference.",
+  "conversion": {
+    "source_sha256": "658e5e2a175d455655a2990ceaf0e69fad48df6c1bba04d2eabdf7a6b4909c59",
+    "source_pin_verified": true,
+    "vertices": 222326,
+    "triangles": 444258,
+    "topology_preserved": true,
+    "max_coordinate_roundtrip_error_m": 3.6954879711892374e-09,
+    "max_cad_boundary_error_m": 5.87238165039583e-09,
+    "dimensions_m": [
+      0.14919999241828918,
+      0.06200000271201134,
+      0.16380000114440918
+    ],
+    "usd_parsed": true,
+    "physics_api_authored": false,
+    "articulated": false,
+    "hardware_mount_verified": false,
+    "tactile_simulated": false
+  },
+  "missing_faces": {
+    "count": 48,
+    "area_mm2": 5.207955333415847,
+    "fine_retry_still_missing": 38,
+    "fine_retry_missing_area_mm2": 4.122964770042893
+  },
+  "sensor_alignment": {
+    "embedded_family": "G1-WS CAD assembly labels",
+    "standalone_official_ws_revision": "00_G1-WS_SOLID_20250407_ASM_8_A_ASM",
+    "gripper_embedded_revision": "00_g1-ws_dvt_20250420_v4.step",
+    "exact_revision_equivalence_confirmed": false,
+    "device_model": null,
+    "serial_number": null,
+    "sdk_version": null,
+    "per_sensor_calibration_present": false,
+    "gel_optical_model_present": false,
+    "tactile_images_simulated": false,
+    "note": "Related family names are not a serial-specific calibration or exact-revision match."
+  },
+  "capabilities": {
+    "articulated": false,
+    "robot_mount_calibrated": false,
+    "collision_pads_validated": false,
+    "force_calibrated": false,
+    "shared_task_ready": false
+  },
+  "sources": [
+    {
+      "title": "官方夹爪 CAD",
+      "url": "https://docs.xenserobotics.com/en/docs/latest/hardware/gripper-models/"
+    },
+    {
+      "title": "官方传感器 CAD",
+      "url": "https://docs.xenserobotics.com/en/docs/latest/hardware/sensor-models/"
+    },
+    {
+      "title": "官方极光 Lite 产品参数",
+      "url": "https://xenserobotics.com/product/385222/detail/17"
+    },
+    {
+      "title": "官方 XenseSDK 数据与标定接口",
+      "url": "https://docs.xenserobotics.com/en/docs/1.0.0/sdk/xensesdk/overview/"
+    }
+  ],
+  "current_model_readback": {
+    "usd_sha256": "af33217204f93a45a3ee07dcbe84c6833be8efa916259c1a2a0072ff9a4844fe",
+    "vertices": 222326,
+    "triangles": 444258,
+    "dimensions_mm": [
+      149.1999969482422,
+      62.000003814697266,
+      163.8000030517578
+    ],
+    "physics_or_joint_schemas": []
+  },
+  "mounting_interface": {
+    "provided_files": [
+      {
+        "source_file": "机械臂通用转接法兰.STEP",
+        "local": "universal_flange.STEP",
+        "bytes": 845575,
+        "sha256": "e18116f37010f33c07c20d7554f650de5e9a0ad14e1a49a1b63e863a450b1399"
+      },
+      {
+        "source_file": "机械臂通用转接法兰.pdf",
+        "local": "universal_flange.pdf",
+        "bytes": 291447,
+        "sha256": "4cca7d7ce634e3cf11ec66b638d550f39e05fb49ef87262f760605926f740f1c"
+      },
+      {
+        "source_file": "千觉机器人产品手册中文版（1229）.pdf",
+        "local": "product_manual.pdf",
+        "bytes": 10373136,
+        "sha256": "b6012cbf1fba4c5ba89cfd9cf7fd93566fa881916c96ef57b34530274f1913a2"
+      }
+    ],
+    "official_comparison": [
+      {
+        "url": "https://docs.xenserobotics.com/assets/models/Universal_Flange.STEP",
+        "bytes": 838087,
+        "sha256": "3166e127463e6bd28c43bcdbb81a9ee89c7133962361df568aa4c683e4d00df1",
+        "matches_user_flange": false
+      },
+      {
+        "url": "https://docs.xenserobotics.com/assets/models/Four-hole-base.STEP",
+        "bytes": 349269,
+        "sha256": "4044c591f36d4ede7f9b41fa3a5a55f273b11f3805439e6bba56b0b67ffd63a5",
+        "matches_user_flange": false
+      }
+    ],
+    "geometry_comparison": {
+      "user_volume_mm3": 34702.026579230405,
+      "official_volume_mm3": 34702.026579230405,
+      "user_minus_official_mm3": 0.0,
+      "official_minus_user_mm3": 0.0,
+      "geometric_solid_equivalent_at_same_frame": true,
+      "scope": "BRep solid symmetric-difference volume; does not establish G1-D fit or tolerances."
+    },
+    "flange_geometry": {
+      "source_sha256": "e18116f37010f33c07c20d7554f650de5e9a0ad14e1a49a1b63e863a450b1399",
+      "bounds_mm": [
+        -34.0000001,
+        -34.0000001,
+        -13.5000001,
+        34.0000001,
+        34.0000001,
+        9.000000100000001
+      ],
+      "dimensions_mm": [
+        68.0000002,
+        68.0000002,
+        22.500000200000002
+      ],
+      "volume_mm3": 34702.026579230405,
+      "centre_of_mass_mm": [
+        -0.0029517897379989022,
+        -3.7830267088795505e-06,
+        -2.3821678765443473
+      ],
+      "conversion": {
+        "vertices": 4655,
+        "triangles": 9358,
+        "bounds_m": [
+          [
+            -0.033999820709228516,
+            -0.034,
+            -0.0135
+          ],
+          [
+            0.034,
+            0.034,
+            0.009000000000000001
+          ]
+        ],
+        "mesh_chunks": 1,
+        "cad_to_metre_scale": 0.001,
+        "articulated": false,
+        "collision_enabled": false,
+        "tactile_simulated": false,
+        "mounting_frame_verified": false,
+        "cad_origin_preserved": true
+      },
+      "g1d_mating_interface_verified": false,
+      "mount_transform_calibrated": false,
+      "scope": "User-provided universal flange, converted static geometry only. Wrist bolt-pattern and drawing match remain separate."
+    },
+    "drawing_values_mm": {
+      "outer_diameter": 68,
+      "thickness": 22.5,
+      "axial_holes_diameter": 7,
+      "axial_holes_pitch_circle_diameter": 50,
+      "centre_bore_diameter": 15,
+      "radial_holes": 8,
+      "radial_hole_diameter": 3.5
+    },
+    "g1d_mounting_verified": false,
+    "g1d_wrist_to_flange_transform": null,
+    "existing_dex1_mount_not_reused": true
+  }
+}

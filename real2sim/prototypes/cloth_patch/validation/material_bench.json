@@ -1,0 +1,151 @@
+{
+  "schema": "robodojo.material_bench.v1",
+  "engine": "3.16.0",
+  "real_material_calibrated": false,
+  "real_measurements_used": false,
+  "source_sha256": {
+    "real2sim/prototypes/soft_block/v1/model.xml": "c28261ee9028632c974d3289edc0c499dae6b59e240314fd33e4bc2798b4c4df",
+    "real2sim/prototypes/cloth_patch/v1/model.xml": "7fafddb55b9aa6ede717a8d4e5bf9b9d2a6e70ff94f240d421ddb933f6441851"
+  },
+  "tests": {
+    "compression_0.1N": {
+      "passed": true,
+      "force_n": 0.1,
+      "top_vertices": 16,
+      "baseline_height_m": 0.02386470055918066,
+      "loaded_height_m": 0.023767208579782085,
+      "released_height_m": 0.023857408668333305,
+      "compression_m": 9.749197939857429e-05,
+      "recovery_error_m": 7.291890847353766e-06,
+      "max_floor_penetration_m": 0.000347722939258869,
+      "finite": true,
+      "warnings": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "engine": "3.16.0",
+      "model_sha256": "c28261ee9028632c974d3289edc0c499dae6b59e240314fd33e4bc2798b4c4df",
+      "real_material_calibrated": false,
+      "tactile_simulated": false,
+      "scope": "qualitative candidate compression and recovery only"
+    },
+    "compression_0.3N": {
+      "passed": true,
+      "force_n": 0.3,
+      "top_vertices": 16,
+      "baseline_height_m": 0.02386470055918066,
+      "loaded_height_m": 0.023573548383839953,
+      "released_height_m": 0.02385212697561817,
+      "compression_m": 0.0002911521753407066,
+      "recovery_error_m": 1.257358356248836e-05,
+      "max_floor_penetration_m": 0.000347722939258869,
+      "finite": true,
+      "warnings": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "engine": "3.16.0",
+      "model_sha256": "c28261ee9028632c974d3289edc0c499dae6b59e240314fd33e4bc2798b4c4df",
+      "real_material_calibrated": false,
+      "tactile_simulated": false,
+      "scope": "qualitative candidate compression and recovery only"
+    },
+    "compression_1N": {
+      "passed": true,
+      "force_n": 1.0,
+      "top_vertices": 16,
+      "baseline_height_m": 0.02386470055918066,
+      "loaded_height_m": 0.02283898323238538,
+      "released_height_m": 0.023844167763707652,
+      "compression_m": 0.0010257173267952807,
+      "recovery_error_m": 2.0532795473007098e-05,
+      "max_floor_penetration_m": 0.000347722939258869,
+      "finite": true,
+      "warnings": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "engine": "3.16.0",
+      "model_sha256": "c28261ee9028632c974d3289edc0c499dae6b59e240314fd33e4bc2798b4c4df",
+      "real_material_calibrated": false,
+      "tactile_simulated": false,
+      "scope": "qualitative candidate compression and recovery only"
+    },
+    "platen": {
+      "finite": true,
+      "warnings": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "fixture": "46mm square kinematic platen; settle, approach, descend 10mm in 1s, hold .3s, unload; includes flex radius",
+      "peak_normal_force_n": 4.72438029937171
+    },
+    "suspension": {
+      "finite": true,
+      "warnings": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "fixture": "one full edge fixed; gravity suspension; no fitted bending law",
+      "pin_vertex_ids": [
+        0,
+        9,
+        18,
+        27,
+        36,
+        45,
+        54,
+        63,
+        72
+      ],
+      "final": {
+        "time_s": 1.9901999999998135,
+        "free_edge_drop_m": 0.11377740782594414,
+        "pin_drift_m": 0.0,
+        "free_edge_span_m": 0.13742885284841788
+      }
+    },
+    "grasp": {
+      "finite": true,
+      "warnings": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "fixture": "dynamic flat-jaw slide servos, kp1500/kv10; target gap50\u219230mm, lift50mm; NOT Aurora controller",
+      "peak_jaw_vertical_speed_m_s": 0.10876067022213377,
+      "lift_m": 0.049022985927695766,
+      "relative_slip_m": 0.0006606022058901137,
+      "held_above_floor": true
+    }
+  }
+}

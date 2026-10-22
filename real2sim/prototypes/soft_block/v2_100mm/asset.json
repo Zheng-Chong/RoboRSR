@@ -1,0 +1,25 @@
+{
+  "id": "soft_block",
+  "version": "v2_100mm",
+  "model": "model.xml",
+  "dimensions_m": [
+    0.1,
+    0.1,
+    0.1
+  ],
+  "dimensions_source": "User specified 10 cm cube on 2026-10-22; not independently measured",
+  "mass_kg": 0.03,
+  "mass_source": "Retained numerical candidate from v1, not a measurement",
+  "implied_density_kg_m3": 30,
+  "young_pa": 20000,
+  "poisson": 0.3,
+  "elastic_damping_s": 0.01,
+  "real_material_calibrated": false,
+  "model_sha256": "4e533059acc39899e09cfd3defd24e2ca3af8ce88e9c96f9a43d46edb1c48882",
+  "grid": [
+    6,
+    6,
+    6
+  ],
+  "source": "procedural candidate; geometry updated only; v1 retained as historical fixture"
+}

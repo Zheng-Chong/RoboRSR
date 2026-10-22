@@ -1,0 +1,25 @@
+{
+  "schema": "robodojo.vendor_reference.v1",
+  "id": "aurora_lite",
+  "version": "v1",
+  "vendor": "Xense Robotics / \u5343\u89c9",
+  "source_page": "https://docs.xenserobotics.com/docs/latest/hardware/gripper-models/",
+  "source_url": "https://docs.xenserobotics.com/assets/models/aurora-lite-gripper.STEP",
+  "source_sha256": "658e5e2a175d455655a2990ceaf0e69fad48df6c1bba04d2eabdf7a6b4909c59",
+  "source_bytes": 79988664,
+  "source_cad_units": "mm:33 LENGTH_UNIT declarations with SI_UNIT(.MILLI.,.METRE.)",
+  "source_scope": "Vendor external-shape reference for layout/installation/interference. Not calibrated inertial, collision, kinematic or tactile model.",
+  "kinematics_verified": false,
+  "g1d_mount_calibrated": false,
+  "tactile_image_model_available": false,
+  "physical_parameters_measured": false,
+  "label": "\u6781\u5149 Lite \u00b7 \u5b98\u65b9\u9759\u6001\u5916\u5f62\u53c2\u8003",
+  "units": "m,kg,s,rad; source CAD in mm",
+  "status": "visual-only CAD reference; no joints, collision or tactile simulation",
+  "redistribution_license": "Not established; vendor CAD, derived meshes and previews are not redistributed.",
+  "backends": [
+    "usd_visual_reference",
+    "mujoco_visual_reference"
+  ],
+  "isaac_sim_runtime_supported": false
+}

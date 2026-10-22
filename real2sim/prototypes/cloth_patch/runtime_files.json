@@ -1,0 +1,22 @@
+{
+  "private_server_directory": "/data/robodojo-assets/research/yangkaiyuan-20261022/cloth_patch",
+  "files": {
+    "cloth_patch/asset.json": {
+      "sha256": "88c494249d4b45a96d2a9d25ba6b906ddd9f4741867ec9b686318f0c3265cd59",
+      "bytes": 1111
+    },
+    "cloth_patch/geometry.usda": {
+      "sha256": "f0b3e8bf3935d4c815bd562a532844187d12d55c1b77eebdb83c4511197b35da",
+      "bytes": 4807
+    },
+    "cloth_patch/isaac_instance.json": {
+      "sha256": "6df1c69018e7da89b2f3dbf97b5d7969132b3789250badcc5bef748b8478ca32",
+      "bytes": 781
+    },
+    "cloth_patch/model.xml": {
+      "sha256": "7fafddb55b9aa6ede717a8d4e5bf9b9d2a6e70ff94f240d421ddb933f6441851",
+      "bytes": 607
+    }
+  },
+  "shared_task_ready": false
+}

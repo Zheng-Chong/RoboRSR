@@ -1,0 +1,63 @@
+{
+  "name": "极光 Lite 夹爪",
+  "kind": "官方静态外形参考",
+  "status": "CAD 关节与官方 FEM 独立验证通过；实机待标定",
+  "summary": "从官方 STEP 分出机身、滑块与胶体，85/42.5/0 mm 运动学检查通过；官方 G1-WS FEM 已输出压入图像、节点力和 Marker，尚未与实机及机器人闭环对齐。",
+  "capabilities": {
+    "官方原件": "SHA256 一致",
+    "运动与安装": "未对齐",
+    "传感器型号/版本": "发现 G1-WS 家族名称；实机与精确版本待确认",
+    "视触觉模型": "无逐传感器标定、凝胶光学和触觉帧接口",
+    "尺寸": "CAD 装配包围盒与官网标称值不同，待核对",
+    "转接法兰": "用户 STEP 与官方通用法兰实体几何一致；G1-D 侧孔位/安装变换未确认",
+    "CAD 运动学": "两个相向滑动关节 + 同步约束；85/42.5/0 mm 几何检查通过",
+    "指垫碰撞": "独立 CAD 胶体网格凸包候选；胶体形变/摩擦未标定",
+    "官方触觉 FEM": "Linux Python 3.10 / bundled SDK 1.6.8，0/0.1/0.2 mm 合成压入输出有限",
+    "离线 SDK 图像链路": "已准备 rectify_image 适配脚本；缺本机指垫 runtime_<SN>，尚未端到端运行",
+    "标定导出": "已准备读取现有标定的导出脚本；sys01设备扫描为空，等待实机连接位置"
+  },
+  "limits": [
+    "运动连杆、开合耦合、85 mm 行程与安装变换待验证",
+    "指垫接触、实测惯量、夹力和光学触觉尚未建模",
+    "48 个小面未三角化；CAD/标称尺寸差异待核对",
+    "G1-D 腕端接口图、孔位/螺纹与安装变换待确认；没有直接套用 Dex1 安装变换"
+  ],
+  "sources": [
+    {
+      "title": "官方夹爪 CAD",
+      "url": "https://docs.xenserobotics.com/en/docs/latest/hardware/gripper-models/"
+    },
+    {
+      "title": "官方传感器 CAD",
+      "url": "https://docs.xenserobotics.com/en/docs/latest/hardware/sensor-models/"
+    },
+    {
+      "title": "官方极光 Lite 产品参数",
+      "url": "https://xenserobotics.com/product/385222/detail/17"
+    },
+    {
+      "title": "官方 XenseSDK 数据与标定接口",
+      "url": "https://docs.xenserobotics.com/en/docs/1.0.0/sdk/xensesdk/overview/"
+    },
+    {
+      "title": "官方转接法兰适配资料",
+      "url": "https://docs.xenserobotics.com/en/docs/latest/hardware/adapters/"
+    },
+    {
+      "title": "XENSE SIM 官方触觉仿真器介绍",
+      "url": "https://www.xenserobotics.com/about/371"
+    }
+  ],
+  "evidence": [
+    "source.json",
+    "alignment_audit.json",
+    "AUDIT.md",
+    "runtime_files.json",
+    "static_compile_check.json",
+    "INTEGRATION.md",
+    "validation/cad_joint_sweep.json",
+    "validation/xense_fem_smoke.json",
+    "XENSE_PACKAGE_AUDIT.md",
+    "RUNTIME_EXPORT.md"
+  ]
+}

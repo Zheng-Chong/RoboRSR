@@ -1,0 +1,29 @@
+{
+  "engine": "3.16.0",
+  "model_sha256": "7fafddb55b9aa6ede717a8d4e5bf9b9d2a6e70ff94f240d421ddb933f6441851",
+  "steps": 2500,
+  "simulated_seconds": 0.4999999999999776,
+  "passed_numerical_smoke": true,
+  "finite": true,
+  "warnings": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "floor_contact_seen": true,
+  "mean_drop_m": 0.09950001560807374,
+  "max_absolute_edge_strain": 0.0,
+  "max_floor_penetration_m": 0.0003995641792401551,
+  "thresholds": {
+    "max_absolute_edge_strain": 0.05,
+    "max_floor_penetration_m": 0.002
+  },
+  "real_material_calibrated": false,
+  "grasp_validated": false,
+  "self_collision_validated": false,
+  "tactile_sensor_integrated": false
+}

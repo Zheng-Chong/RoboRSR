@@ -1,0 +1,48 @@
+{
+  "source_sha256": "e18116f37010f33c07c20d7554f650de5e9a0ad14e1a49a1b63e863a450b1399",
+  "bounds_mm": [
+    -34.0000001,
+    -34.0000001,
+    -13.5000001,
+    34.0000001,
+    34.0000001,
+    9.000000100000001
+  ],
+  "dimensions_mm": [
+    68.0000002,
+    68.0000002,
+    22.500000200000002
+  ],
+  "volume_mm3": 34702.026579230405,
+  "centre_of_mass_mm": [
+    -0.0029517897379989022,
+    -3.7830267088795505e-06,
+    -2.3821678765443473
+  ],
+  "conversion": {
+    "vertices": 4655,
+    "triangles": 9358,
+    "bounds_m": [
+      [
+        -0.033999820709228516,
+        -0.034,
+        -0.0135
+      ],
+      [
+        0.034,
+        0.034,
+        0.009000000000000001
+      ]
+    ],
+    "mesh_chunks": 1,
+    "cad_to_metre_scale": 0.001,
+    "articulated": false,
+    "collision_enabled": false,
+    "tactile_simulated": false,
+    "mounting_frame_verified": false,
+    "cad_origin_preserved": true
+  },
+  "g1d_mating_interface_verified": false,
+  "mount_transform_calibrated": false,
+  "scope": "User-provided universal flange, converted static geometry only. Wrist bolt-pattern and drawing match remain separate."
+}

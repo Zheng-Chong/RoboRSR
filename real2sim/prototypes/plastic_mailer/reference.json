@@ -1,0 +1,41 @@
+{
+  "schema": "g1d.deformable_reference.v1",
+  "id": "plastic_mailer",
+  "name_zh": "塑料包装袋",
+  "status": "reference_only_pending_reconstruction",
+  "source": {
+    "type": "user_chat_attachment",
+    "received_date": "2026-10-22",
+    "attachment_order": 2,
+    "image_file": null,
+    "sha256": null,
+    "file_storage_status": "pending_original_file",
+    "observations_from": "image_visible_in_conversation"
+  },
+  "visible_features": [
+    "白灰色薄膜外观，明显折皱与反光",
+    "表面有印刷图文",
+    "边缘不规则，局部疑似开口或撕裂"
+  ],
+  "unknowns": [
+    "尺寸、厚度、质量、聚合物与印刷层参数",
+    "开口/封口边界、前后层连接、是否含内装物",
+    "薄膜拉伸、弯曲、摩擦及撕裂响应"
+  ],
+  "measurements": {
+    "dimensions_m": null,
+    "mass_kg": null,
+    "thickness_or_diameter_m": null
+  },
+  "reconstruction_plan": [
+    "先确认开口与层间拓扑，再建薄膜双层及封边",
+    "区分未建模撕裂与已有开口，验证折叠与层间接触"
+  ],
+  "readiness": {
+    "geometry_reconstructed": false,
+    "material_calibrated": false,
+    "collision_validated": false,
+    "task_validated": false,
+    "roborsr_runtime_registered": false
+  }
+}

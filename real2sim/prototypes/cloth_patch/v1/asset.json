@@ -1,0 +1,49 @@
+{
+  "schema": "g1d.textile_fixture.v1",
+  "id": "cloth_patch",
+  "version": "v1",
+  "kind": "standalone_deformable_test_fixture",
+  "model": "model.xml",
+  "status": "prototype_not_real_calibrated",
+  "units": "m,kg,s",
+  "config": {
+    "width_m": 0.16,
+    "length_m": 0.16,
+    "nx": 9,
+    "ny": 9,
+    "areal_density_kg_m2": 0.2,
+    "thickness_m": 0.001,
+    "height_m": 0.1,
+    "friction": 0.5,
+    "edge_damping": 0.01,
+    "timestep_s": 0.0002
+  },
+  "mass_kg": 0.00512,
+  "model_sha256": "7fafddb55b9aa6ede717a8d4e5bf9b9d2a6e70ff94f240d421ddb933f6441851",
+  "constitutive_model": "triangulated edge-length constraints; no calibrated bending response",
+  "material_axes": {
+    "warp": "+x",
+    "weft": "+y",
+    "anisotropy_implemented": false
+  },
+  "real_identification": {
+    "warp_stretch": null,
+    "weft_stretch": null,
+    "shear": null,
+    "bending": null,
+    "damping": null,
+    "cloth_cloth_static_dynamic_friction": null,
+    "cloth_pad_static_dynamic_friction": null
+  },
+  "real_material_calibrated": false,
+  "robot_integrated": false,
+  "tactile_sensor_integrated": false,
+  "backend": "mujoco",
+  "provenance": "Procedural uncalibrated research fixture; no captured robot data or vendor geometry.",
+  "isaac_sim_integration": {
+    "status": "generated_USD_and_explicit_instance_GarmentObject_smoke_passed",
+    "material_equivalence_validated": false,
+    "task_registered": false,
+    "robot_grasp_validated": false
+  }
+}

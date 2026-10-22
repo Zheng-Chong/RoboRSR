@@ -1,0 +1,67 @@
+{
+  "schema": "robodojo.research_prototypes.v1",
+  "runtime_task_registered": false,
+  "assets": [
+    {
+      "id": "aurora_lite",
+      "kind": "vendor_static_visual_reference",
+      "source": "aurora_lite/source.json",
+      "generator": "scripts/prototypes/import_aurora_lite.py",
+      "outputs": [
+        "geometry.usda",
+        "reference.xml"
+      ],
+      "vendor_geometry_bundled": false
+    },
+    {
+      "id": "aurora_flange",
+      "kind": "vendor_universal_adapter_static_reference",
+      "metadata": "aurora_flange/platform.json",
+      "runtime_ready": false
+    },
+    {
+      "id": "cloth_patch",
+      "kind": "uncalibrated_2d_flex_fixture",
+      "model": "cloth_patch/v1/model.xml",
+      "metadata": "cloth_patch/v1/asset.json",
+      "generator": "scripts/prototypes/textile_fixture.py",
+      "outputs": [
+        "geometry.usda",
+        "model.xml",
+        "asset.json"
+      ]
+    },
+    {
+      "id": "soft_block",
+      "kind": "uncalibrated_3d_elastic_fixture",
+      "model": "soft_block/v1/model.xml",
+      "metadata": "soft_block/v1/asset.json",
+      "backend": "mujoco"
+    }
+  ],
+  "planned_not_implemented": [
+    "calibrated_silk",
+    "sewn_clothes",
+    "open_bag",
+    "aurora_articulation",
+    "optical_tactile_images"
+  ],
+  "reference_candidates": [
+    {
+      "id": "long_zip_bag",
+      "metadata": "references/long_zip_bag/reference.json",
+      "runtime_ready": false
+    },
+    {
+      "id": "plastic_mailer",
+      "metadata": "references/plastic_mailer/reference.json",
+      "runtime_ready": false
+    },
+    {
+      "id": "cable",
+      "metadata": "references/cable/reference.json",
+      "runtime_ready": false
+    }
+  ],
+  "platform_metadata": "Each */platform.json is scanned into the separate prototype kind; none are task-ready."
+}

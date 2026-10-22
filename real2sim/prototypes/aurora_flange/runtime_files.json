@@ -1,0 +1,38 @@
+{
+  "private_server_directory": "/data/robodojo-assets/research/yangkaiyuan-20261022/aurora_flange",
+  "files": {
+    "aurora_flange/geometry.usda": {
+      "sha256": "86ca720e005fc027fd60816d4c4640295007f5f16665917dc43710b84a35d2ac",
+      "bytes": 465075
+    },
+    "aurora_flange/meshes/part_000.stl": {
+      "sha256": "3456056b21f8e3d62eea57f8c9ed7fcee2ddab975aa510553d27ebbfba6e1647",
+      "bytes": 467984
+    },
+    "aurora_flange/reference.xml": {
+      "sha256": "8899d4c1245b51ce5ddfa0fb4559bbd503c5f2fac1ca6d03dc5e77b81ccfbe3a",
+      "bytes": 272
+    },
+    "aurora_flange/source/files.json": {
+      "sha256": "744155a9ecd7e4e9c2287eeaf5eb6b657f056bde085fc29c06e86b452ed19080",
+      "bytes": 630
+    },
+    "aurora_flange/source/official_universal_flange.STEP": {
+      "sha256": "3166e127463e6bd28c43bcdbb81a9ee89c7133962361df568aa4c683e4d00df1",
+      "bytes": 838087
+    },
+    "aurora_flange/source/product_manual.pdf": {
+      "sha256": "b6012cbf1fba4c5ba89cfd9cf7fd93566fa881916c96ef57b34530274f1913a2",
+      "bytes": 10373136
+    },
+    "aurora_flange/source/universal_flange.STEP": {
+      "sha256": "e18116f37010f33c07c20d7554f650de5e9a0ad14e1a49a1b63e863a450b1399",
+      "bytes": 845575
+    },
+    "aurora_flange/source/universal_flange.pdf": {
+      "sha256": "4cca7d7ce634e3cf11ec66b638d550f39e05fb49ef87262f760605926f740f1c",
+      "bytes": 291447
+    }
+  },
+  "shared_task_ready": false
+}

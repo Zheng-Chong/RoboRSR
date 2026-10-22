@@ -1,0 +1,34 @@
+{
+  "id": "soft_block",
+  "version": "v1",
+  "kind": "volumetric_deformable_test_fixture",
+  "model": "model.xml",
+  "status": "prototype_not_real_calibrated",
+  "mass_kg": 0.03,
+  "young_pa": 20000,
+  "poisson": 0.3,
+  "elastic_damping_s": 0.01,
+  "units": "m,kg,s,rad,Pa",
+  "geometry": "4x4x3 grid,12mm spacing",
+  "scope": "Standalone flex material fixture with test floor; not supported by rigid asset composer and not a reconstructed mango",
+  "real_identification": {
+    "compression_force_displacement": null,
+    "relaxation": null,
+    "friction": null,
+    "density": null
+  },
+  "backend": "mujoco",
+  "isaac_sim_runtime_supported": false,
+  "provenance": "Procedural uncalibrated research fixture; no captured robot data or vendor geometry.",
+  "model_sha256": "c28261ee9028632c974d3289edc0c499dae6b59e240314fd33e4bc2798b4c4df",
+  "contact_solver_tuning": {
+    "floor_and_flex_solref_s": 0.001,
+    "solimp": [
+      0.99,
+      0.999,
+      0.001
+    ],
+    "material_parameters_changed": false,
+    "real_contact_calibrated": false
+  }
+}

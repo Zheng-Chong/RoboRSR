@@ -1,0 +1,10 @@
+{
+  "private_server_directory": "/data/robodojo-assets/research/yangkaiyuan-20261022/cable",
+  "files": {
+    "cable/reference.json": {
+      "sha256": "dba2beed200796a602edfd50a974e9003f6000f726fb56c14ae97afef1e3bf71",
+      "bytes": 1386
+    }
+  },
+  "shared_task_ready": false
+}

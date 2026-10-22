@@ -76,6 +76,22 @@ def test_appearance_settings():
     assert roles["real_scene3_lab/wall/wall_north"] == ["wall"] and "floor" not in roles["mdl/material_0110"]  # plaster
 
 
+def test_prototypes():
+    found = server.scan_prototypes()  # real2sim/prototypes/<id>/platform.json; previews are not in git
+    assert {"aurora_lite", "cloth_patch", "cable"} <= set(found)
+    assert not any(p["runtime_ready"] for p in found.values())  # never offered as task objects
+    assert all(Path(e).is_relative_to(server.PROTOTYPES_DIR) for p in found.values() for e in p["evidence"])
+    tmp = Path(tempfile.mkdtemp())
+    (tmp / "Bad-Name").mkdir()
+    (tmp / "Bad-Name/platform.json").write_text("{}")
+    (tmp / "ok").mkdir()
+    (tmp / "ok/platform.json").write_text(json.dumps({"name": "x", "evidence": ["../../etc/passwd", "a.md"]}))
+    (tmp / "ok/a.md").write_text("x")
+    assert list(server.scan_prototypes(tmp)) == ["ok"] and server.scan_prototypes(tmp)["ok"]["evidence"] == [
+        str((tmp / "ok/a.md").resolve())
+    ]
+
+
 def test_embodiments():
     bodies = server.scan_embodiments()  # robot_config modules; per-scene stands of one body count as one
     assert {"g1d", "x5", "franka"} <= set(bodies) and bodies["g1d"]["in_code"]

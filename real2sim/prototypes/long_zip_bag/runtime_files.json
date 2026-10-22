@@ -1,0 +1,10 @@
+{
+  "private_server_directory": "/data/robodojo-assets/research/yangkaiyuan-20261022/long_zip_bag",
+  "files": {
+    "long_zip_bag/reference.json": {
+      "sha256": "4cc87173f3a28d94875ea55c9de5f04891869b099cca430523be7892cfee44fa",
+      "bytes": 1262
+    }
+  },
+  "shared_task_ready": false
+}

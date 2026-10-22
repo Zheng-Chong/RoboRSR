@@ -1,0 +1,29 @@
+{
+  "name": "极光 Lite 通用转接法兰",
+  "kind": "官方通用法兰外形参考",
+  "status": "几何核对通过；G1-D 安装待核",
+  "summary": "来自 kaiyuan2 的 STEP 与官方通用法兰实体几何一致；外径 68 mm、厚 22.5 mm，暂未验证 G1-D 腕端匹配。",
+  "capabilities": {
+    "官方几何对应": "原坐标系双向实体布尔差体积均为零",
+    "图纸外形": "外径 68 mm / 厚 22.5 mm",
+    "孔位": "4×直径7 mm，分布圆直径50 mm；中心孔直径15 mm",
+    "G1-D 腕端固定变换": "未确认，尚未挂载"
+  },
+  "limits": [
+    "尚未取得 G1-D 腕端接口图、螺纹与定位要求",
+    "未验证左右手安装方向、运动干涉和负载惯量",
+    "独立静态外形，不替换默认 Dex1 或注册任务"
+  ],
+  "sources": [
+    {
+      "title": "官方机器人转接件资料",
+      "url": "https://docs.xenserobotics.com/en/docs/latest/hardware/adapters/"
+    }
+  ],
+  "evidence": [
+    "cad_audit.json",
+    "official_geometry_comparison.json",
+    "runtime_files.json",
+    "static_compile_check.json"
+  ]
+}

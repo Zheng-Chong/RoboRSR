@@ -1,0 +1,5 @@
+# Optional numerical fixture environment; independent of the Isaac stack.
+mujoco==3.16.0
+numpy>=1.26
+# STEP conversion is separate: cadquery-ocp==7.7.2 (CPython 3.12).
+# USD parsing/validation, optional: usd-core

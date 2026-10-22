@@ -1,0 +1,38 @@
+{
+  "private_server_directory": "/data/robodojo-assets/research/yangkaiyuan-20261022/aurora_lite",
+  "files": {
+    "aurora_lite/conversion.json": {
+      "sha256": "7850b35fcd484babfc122c62a1892021585c0fdc537f094c719f775f9706f710",
+      "bytes": 448
+    },
+    "aurora_lite/geometry.usda": {
+      "sha256": "af33217204f93a45a3ee07dcbe84c6833be8efa916259c1a2a0072ff9a4844fe",
+      "bytes": 25127547
+    },
+    "aurora_lite/meshes/part_000.stl": {
+      "sha256": "772f538ba2f783df381d4dd59f03e55bb553227ca9724a81e6ae4478951e44c4",
+      "bytes": 7500084
+    },
+    "aurora_lite/meshes/part_001.stl": {
+      "sha256": "aa5eb4b4c9f95d264a09d0de56d1f1562a0d65e000f349a60114222a75879cc5",
+      "bytes": 7500084
+    },
+    "aurora_lite/meshes/part_002.stl": {
+      "sha256": "aa0445d5e5c0a01d4cfd8c0811ecd20bc97cd199a2c993aab02de2a62bcea45c",
+      "bytes": 7212984
+    },
+    "aurora_lite/reference.xml": {
+      "sha256": "6fc8c07923587ecaac71e99de21e87dbb36045c41e6ac38d2dfe39e83867bbf5",
+      "bytes": 554
+    },
+    "aurora_lite/source/aurora-lite-gripper.STEP": {
+      "sha256": "658e5e2a175d455655a2990ceaf0e69fad48df6c1bba04d2eabdf7a6b4909c59",
+      "bytes": 79988664
+    },
+    "aurora_lite/source/official-ws.STP": {
+      "sha256": "b37e8b980eadb34677909947fc26811545d9bdb354c89beead025c788d139e72",
+      "bytes": 445803
+    }
+  },
+  "shared_task_ready": false
+}

@@ -1,0 +1,39 @@
+{
+  "name": "柔性软块",
+  "kind": "三维弹性数值原型",
+  "status": "数值原型；实物材料未标定",
+  "summary": "按用户指定更新为10×10×10 cm立方体、216个节点；质量30g和20kPa刚度为未测候选，当前模型不代表已标定材料。",
+  "capabilities": {
+    "MuJoCo": "100mm v2压缩、压板、通用夹持数值检查有限且无警告",
+    "受控加载": "0.3N均布加载压缩约0.150mm；仅候选参数结果",
+    "材料": "20 kPa / 泊松比 0.3 候选值，非实测",
+    "Isaac 体积软体与机器人抓取": "官方MeshCuboidCfg候选已配置100mm；启动器许可确认待完成，未报告运行通过",
+    "平指夹持基线": "通用夹具114→83.3mm，抬升约48.8mm、相对滑移约0.81mm；100mm整块超出极光Lite85mm初始开口",
+    "接触压板基线": "110mm方压板，候选参数峰值约9.98N；实物未标定"
+  },
+  "limits": [
+    "没有注册为可采集任务或替换默认机器人",
+    "材料、接触与实机行为尚未标定",
+    "定性压缩恢复不能作为实测材料辨识",
+    "需要压缩力—位移、加载速度、保持与卸载数据，辨识非线性和黏弹性；当前线弹性候选未覆盖这些行为",
+    "100mm整块大于极光Lite85mm开口，通用夹具成功不表示可直接由极光Lite整面夹持"
+  ],
+  "sources": [
+    {
+      "title": "IsaacLab官方FEM立方体示例",
+      "url": "https://isaac-sim.github.io/IsaacLab/v2.3.0/source/tutorials/01_assets/run_deformable_object.html"
+    }
+  ],
+  "evidence": [
+    "v2_100mm/asset.json",
+    "validation/material_100mm.json",
+    "v1/asset.json",
+    "validation/soft_block_after.json",
+    "validation/soft_block_load.json",
+    "runtime_files.json",
+    "validation/fresh_sync_check.json",
+    "MATERIAL_TESTS.md",
+    "validation/material_bench.json",
+    "v2_100mm/isaac_candidate.json"
+  ]
+}

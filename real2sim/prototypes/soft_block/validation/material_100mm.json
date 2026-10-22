@@ -1,0 +1,154 @@
+{
+  "schema": "robodojo.material_bench.v1",
+  "engine": "3.16.0",
+  "real_material_calibrated": false,
+  "real_measurements_used": false,
+  "source_sha256": {
+    "real2sim/prototypes/soft_block/v2_100mm/model.xml": "4e533059acc39899e09cfd3defd24e2ca3af8ce88e9c96f9a43d46edb1c48882",
+    "real2sim/prototypes/cloth_patch/v1/model.xml": "7fafddb55b9aa6ede717a8d4e5bf9b9d2a6e70ff94f240d421ddb933f6441851"
+  },
+  "tests": {
+    "compression_0.1N": {
+      "passed": true,
+      "force_n": 0.1,
+      "top_vertices": 36,
+      "baseline_height_m": 0.09992889146506333,
+      "loaded_height_m": 0.09987892218854709,
+      "released_height_m": 0.09992834541034129,
+      "compression_m": 4.996927651623739e-05,
+      "recovery_error_m": 5.460547220365042e-07,
+      "max_floor_penetration_m": 0.0005192436775387139,
+      "finite": true,
+      "warnings": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "engine": "3.16.0",
+      "model_sha256": "4e533059acc39899e09cfd3defd24e2ca3af8ce88e9c96f9a43d46edb1c48882",
+      "real_material_calibrated": false,
+      "tactile_simulated": false,
+      "scope": "qualitative candidate compression and recovery only"
+    },
+    "compression_0.3N": {
+      "passed": true,
+      "force_n": 0.3,
+      "top_vertices": 36,
+      "baseline_height_m": 0.09992889146506333,
+      "loaded_height_m": 0.09977912424824732,
+      "released_height_m": 0.09992785364160225,
+      "compression_m": 0.0001497672168160047,
+      "recovery_error_m": 1.0378234610725068e-06,
+      "max_floor_penetration_m": 0.0005192436775387139,
+      "finite": true,
+      "warnings": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "engine": "3.16.0",
+      "model_sha256": "4e533059acc39899e09cfd3defd24e2ca3af8ce88e9c96f9a43d46edb1c48882",
+      "real_material_calibrated": false,
+      "tactile_simulated": false,
+      "scope": "qualitative candidate compression and recovery only"
+    },
+    "compression_1N": {
+      "passed": true,
+      "force_n": 1.0,
+      "top_vertices": 36,
+      "baseline_height_m": 0.09992889146506333,
+      "loaded_height_m": 0.09942710378697425,
+      "released_height_m": 0.0999274125755519,
+      "compression_m": 0.0005017876780890745,
+      "recovery_error_m": 1.4788895114220546e-06,
+      "max_floor_penetration_m": 0.0005192436775387139,
+      "finite": true,
+      "warnings": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "engine": "3.16.0",
+      "model_sha256": "4e533059acc39899e09cfd3defd24e2ca3af8ce88e9c96f9a43d46edb1c48882",
+      "real_material_calibrated": false,
+      "tactile_simulated": false,
+      "scope": "qualitative candidate compression and recovery only"
+    },
+    "platen": {
+      "finite": true,
+      "warnings": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "fixture": "size-adapted kinematic platen; settle, approach, descend10mm in1s, hold.3s, unload; includes flex radius",
+      "peak_normal_force_n": 9.978565025213499
+    },
+    "suspension": {
+      "finite": true,
+      "warnings": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "fixture": "one full edge fixed; gravity suspension; no fitted bending law",
+      "pin_vertex_ids": [
+        0,
+        9,
+        18,
+        27,
+        36,
+        45,
+        54,
+        63,
+        72
+      ],
+      "final": {
+        "time_s": 1.9901999999998135,
+        "free_edge_drop_m": 0.11377740782594414,
+        "pin_drift_m": 0.0,
+        "free_edge_span_m": 0.13742885284841788
+      }
+    },
+    "grasp": {
+      "finite": true,
+      "warnings": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "fixture": "dynamic flat-jaw slide servos, kp1500/kv10; lift50mm; NOT Aurora controller",
+      "start_gap_m": 0.114,
+      "target_gap_m": 0.08333333333333333,
+      "full_width_fits_aurora_85mm": false,
+      "peak_jaw_vertical_speed_m_s": 0.10882744946859116,
+      "lift_m": 0.04878174783113242,
+      "relative_slip_m": 0.0008139332296648386,
+      "held_above_floor": true
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "柔性布片",
+  "kind": "二维柔性数值原型",
+  "status": "数值原型；实物材料未标定",
+  "summary": "16×16 cm、9×9 网格的不可伸长边长约束原型；平铺落地没有验证真实布料的悬垂、弯曲和折叠。",
+  "capabilities": {
+    "MuJoCo": "2500 步落地数值检查通过",
+    "Isaac 5.1": "180 步 / 1.5 s 独立 GarmentObject 检查通过",
+    "实物材料": "未标定",
+    "机器人夹持/多层自接触": "未验证",
+    "悬垂基线": "固定一边，2s 自由边平均下垂约 113.8 mm；非静态材料验收"
+  },
+  "limits": [
+    "没有注册为可采集任务或替换默认机器人",
+    "材料、接触与实机行为尚未标定",
+    "不是丝绸、缝制衣物或开口袋的实物孪生",
+    "网格边长受等式约束；缺少实测经纬向拉伸、剪切、弯曲与摩擦辨识",
+    "应增加悬垂、悬臂、折叠和夹持测试，并检查网格与时间步收敛"
+  ],
+  "sources": [
+    {
+      "title": "IsaacLab官方FEM软体示例及后端说明",
+      "url": "https://isaac-sim.github.io/IsaacLab/v2.3.0/source/tutorials/01_assets/run_deformable_object.html"
+    }
+  ],
+  "evidence": [
+    "v1/asset.json",
+    "validation/cloth_check.json",
+    "validation/isaac_cloth_check.json",
+    "runtime_files.json",
+    "validation/fresh_sync_check.json",
+    "MATERIAL_TESTS.md",
+    "validation/material_bench.json",
+    "SIMULATOR_ASSETS.md"
+  ]
+}

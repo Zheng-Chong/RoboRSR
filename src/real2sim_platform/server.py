@@ -51,7 +51,8 @@ import appearance  # a scene's surface materials and desk height -> layouts
 import build_asset  # SCENES: env config -> real2sim scene
 import task_inventory
 
-KINDS = ("scene", "object", "task", "episode", "embodiment", "evaluation")
+KINDS = ("scene", "object", "task", "episode", "embodiment", "evaluation", "prototype")
+PROTOTYPES_DIR = ROOT / "real2sim" / "prototypes"
 OBJECT_ID = re.compile(r"\w+/\w[\w-]*/\d+")  # <type>/<category>/<index>, e.g. Rigid/measuring_cup/00001
 EXPECTED_CAMERAS = {"head", "left_wrist", "right_wrist"}  # same acceptance as scripts/internal/summarize_result.py
 VIDEO_RE = re.compile(r"episode_(\d+)_cam_(.+)_(success|fail)\.mp4")
@@ -248,6 +249,49 @@ def scan_scenes():
         configs.setdefault(scene_dir, []).append(config)
     found = {}
     for d in sorted(p for p in build_asset.SCENES_DIR.iterdir() if p.is_dir()):
+        imported = load_json(d / "platform.json") or {}
+        if imported.get("source") == "imported_simulation":
+            entry = Path(imported.get("entry_path") or "")
+            evidence = [str(p) for p in sorted((d / "evidence").glob("*.json")) if p.is_file()]
+            found[d.name] = {
+                **{
+                    k: imported.get(k)
+                    for k in (
+                        "name",
+                        "engine",
+                        "status",
+                        "summary",
+                        "limits",
+                        "entry_path",
+                        "launch_command",
+                        "validation",
+                        "includes_robot",
+                        "attribution",
+                        "source_scene",
+                    )
+                },
+                "source": "imported_simulation",
+                "path": str(d),
+                "configs": [],
+                "rooms": [],
+                "built": entry.is_file(),
+                "registered": True,
+                "scripts": [],
+                "docs": sorted(str(p) for p in d.glob("*.md")),
+                "photos": [],
+                "previews": [],
+                "renders": images(d / "preview" / "render"),
+                "model": None,
+                "top_z": None,
+                "size": [],
+                "parts": None,
+                "checks_total": 0,
+                "checks_failed": [],
+                "fit_views": 0,
+                "fit_max_px": None,
+                "evidence": evidence,
+            }
+            continue
         table = (load_json(d / "usd" / "build_params.json") or {}).get("table", {})
         checks = (load_json(d / "check_report.json") or {}).get("checks", [])
         views = [v for v in (load_json(d / "fit_photo.json") or {}).values() if isinstance(v, dict) and "point_px" in v]
@@ -626,6 +670,7 @@ def write_task_registration(doc, names=None):
     reg = {
         "task": doc["id"],
         "existing": r.get("existing"),  # registers a generalization plan for a task already in task/RoboDojo
+        "implementation": doc.get("implementation"),  # independent-engine implementation, not a native task module
         "name": r.get("name"),
         "name_en": r.get("name_en"),
         "definition": r.get("definition"),  # in Chinese; the coding agent writes the instructions from it
@@ -789,6 +834,33 @@ def write_eval_request(doc, names=None):
     path.write_text(json.dumps(compact(body), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def scan_prototypes(root=None):
+    """Research references and fixtures, kept outside task-selectable objects and robot embodiments."""
+    root = Path(root) if root is not None else PROTOTYPES_DIR
+    found = {}
+    for path in sorted(root.glob("*/platform.json")):
+        d = path.parent
+        if not re.fullmatch(r"[a-z][a-z0-9_]*", d.name):
+            continue
+        meta = load_json(path) or {}
+        if not meta:
+            continue
+        evidence = []
+        for name in meta.get("evidence", []):
+            p = (d / name).resolve()
+            if p.is_relative_to(d.resolve()) and p.is_file() and p.suffix in {".json", ".md"}:
+                evidence.append(str(p))
+        found[d.name] = {
+            **{k: meta.get(k) for k in ("name", "kind", "status", "summary", "limits", "sources", "capabilities")},
+            "runtime_ready": False,  # research registration never makes an asset task-ready
+            "renders": images(d / "preview"),
+            "videos": sorted(str(p) for p in (d / "preview").glob("*.mp4")),
+            "model": str(d / "preview/model.glb") if (d / "preview/model.glb").is_file() else None,
+            "evidence": evidence,
+        }
+    return found
+
+
 def scan(store, assets, eval_roots):
     tasks = scan_tasks(assets)
     custom = {name: t for name, t in tasks.items() if t["dimension"] == "custom"}
@@ -801,6 +873,7 @@ def scan(store, assets, eval_roots):
         "episode": scan_episodes(eval_roots),
         "embodiment": scan_embodiments(),
         "evaluation": scan_evaluations(),
+        "prototype": scan_prototypes(),
     }
     for kind, items in found.items():
         store.sync(kind, items)

@@ -1,0 +1,10 @@
+<mujoco model="cloth_patch_prototype_v1">
+  <option timestep="0.0002" integrator="implicitfast" />
+  <worldbody>
+    <geom name="floor" type="plane" size="1 1 .01" friction="0.5 .005 .0001" solref=".001 1" solimp=".99 .999 .001" />
+    <flexcomp name="cloth" type="grid" dim="2" count="9 9 1" spacing="0.02 0.02 1" mass="0.00512" radius="0.0005" pos="0 0 0.1" rgba=".3 .6 .8 1">
+      <edge equality="true" damping="0.01" solref=".001 1" solimp=".99 .999 .001" />
+      <contact selfcollide="auto" friction="0.5 .005 .0001" solref=".001 1" solimp=".99 .999 .001" />
+    </flexcomp>
+  </worldbody>
+</mujoco>

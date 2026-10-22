@@ -1,0 +1,78 @@
+{
+  "synthetic_input": true,
+  "real_runtime_used": false,
+  "real_alignment_validated": false,
+  "sdk_version": "1.6.8",
+  "vendor_resource_sha256": {
+    "g1-ws_table.npz": "2cd8f3b989f70d56965cdf70325f0ab2285986af8c72229253661f61a3948b8b",
+    "g1-ws.npz": "3fd053c7046999bce2bbdfc21f9d0fbe09071e3a3d6246c4f682097c469b5b51"
+  },
+  "results": [
+    {
+      "indentation_mm": 0.0,
+      "seconds": 0.1914963722229004,
+      "shapes": {
+        "image": [
+          700,
+          400,
+          3
+        ],
+        "force": [
+          700,
+          3
+        ],
+        "marker": [
+          20,
+          11,
+          3
+        ]
+      },
+      "finite": true,
+      "node_force_array_norm": 0.0
+    },
+    {
+      "indentation_mm": 0.1,
+      "seconds": 0.11173653602600098,
+      "shapes": {
+        "image": [
+          700,
+          400,
+          3
+        ],
+        "force": [
+          700,
+          3
+        ],
+        "marker": [
+          20,
+          11,
+          3
+        ]
+      },
+      "finite": true,
+      "node_force_array_norm": 0.1372421767947306
+    },
+    {
+      "indentation_mm": 0.2,
+      "seconds": 0.12421703338623047,
+      "shapes": {
+        "image": [
+          700,
+          400,
+          3
+        ],
+        "force": [
+          700,
+          3
+        ],
+        "marker": [
+          20,
+          11,
+          3
+        ]
+      },
+      "finite": true,
+      "node_force_array_norm": 0.28203770011572205
+    }
+  ]
+}

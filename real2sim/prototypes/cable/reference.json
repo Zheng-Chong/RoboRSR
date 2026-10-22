@@ -1,0 +1,49 @@
+{
+  "schema": "g1d.deformable_reference.v1",
+  "id": "cable",
+  "name_zh": "浅灰线缆",
+  "status": "reference_only_pending_reconstruction",
+  "source": {
+    "type": "user_chat_attachment",
+    "received_date": "2026-10-22",
+    "attachment_order": 3,
+    "image_file": null,
+    "sha256": null,
+    "file_storage_status": "pending_original_file",
+    "observations_from": "image_visible_in_conversation",
+    "reported_original_resolution_px": [
+      4096,
+      782
+    ],
+    "conversation_display_resolution_px": [
+      2048,
+      391
+    ]
+  },
+  "visible_features": [
+    "浅灰色近圆截面外观",
+    "画面内中心线呈缓弯，表面有黑色标记",
+    "两端及连接器均不在画面内"
+  ],
+  "unknowns": [
+    "真实直径、总长度、端部与连接器类型",
+    "护套/内部结构、线密度、弯曲/扭转刚度及摩擦",
+    "相机透视与平面尺度"
+  ],
+  "measurements": {
+    "dimensions_m": null,
+    "mass_kg": null,
+    "thickness_or_diameter_m": null
+  },
+  "reconstruction_plan": [
+    "以中心线和截面建立杆/绳模型，避免直接套用布片",
+    "验证弯曲、夹持滑移、自接触及端部边界条件"
+  ],
+  "readiness": {
+    "geometry_reconstructed": false,
+    "material_calibrated": false,
+    "collision_validated": false,
+    "task_validated": false,
+    "roborsr_runtime_registered": false
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "engine": "3.16.0",
+  "joints": 2,
+  "coupling_constraints": 1,
+  "actuators": 0,
+  "pad_collision_geoms": [
+    "left_pad_0",
+    "right_pad_0"
+  ],
+  "sweep": [
+    {
+      "requested_gap_m": 0.085,
+      "site_gap_m": 0.085,
+      "qpos_m": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "requested_gap_m": 0.0425,
+      "site_gap_m": 0.0425,
+      "qpos_m": [
+        0.02125,
+        0.02125
+      ]
+    },
+    {
+      "requested_gap_m": 0.0,
+      "site_gap_m": 0.0,
+      "qpos_m": [
+        0.0425,
+        0.0425
+      ]
+    }
+  ],
+  "kinematics_passed": true,
+  "real_dynamics_validated": false
+}

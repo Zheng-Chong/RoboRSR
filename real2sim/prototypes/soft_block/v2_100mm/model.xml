@@ -1,0 +1,11 @@
+<mujoco model="soft_block_100mm_candidate">
+ <option timestep="0.0005" integrator="discrete"/>
+ <worldbody>
+  <geom name="floor" type="plane" size=".4 .4 .01" friction=".7 .005 .0001" solref=".001 1" solimp=".99 .999 .001"/>
+  <flexcomp name="soft_block" type="grid" count="6 6 6" spacing=".02 .02 .02" dim="3" mass=".03" radius=".0015" pos="0 0 .1" rgba=".2 .7 .7 1">
+   <edge equality="false"/>
+   <elasticity young="20000" poisson=".3" damping=".01"/>
+   <contact selfcollide="none" friction=".7 .005 .0001" solref=".001 1" solimp=".99 .999 .001"/>
+  </flexcomp>
+ </worldbody>
+</mujoco>

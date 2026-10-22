@@ -1,0 +1,41 @@
+{
+  "schema": "g1d.deformable_reference.v1",
+  "id": "long_zip_bag",
+  "name_zh": "长条拉链布袋",
+  "status": "reference_only_pending_reconstruction",
+  "source": {
+    "type": "user_chat_attachment",
+    "received_date": "2026-10-22",
+    "attachment_order": 1,
+    "image_file": null,
+    "sha256": null,
+    "file_storage_status": "pending_original_file",
+    "observations_from": "image_visible_in_conversation"
+  },
+  "visible_features": [
+    "黑色长条袋体及褶皱",
+    "长拉链、织带提手/束带、两处插扣",
+    "可见拼接与缝线"
+  ],
+  "unknowns": [
+    "平铺尺寸、质量、厚度、裁片与背面结构",
+    "织物成分、经纬方向及拉伸/弯曲/摩擦响应",
+    "拉链开闭状态和约束、织带连接与承载响应"
+  ],
+  "measurements": {
+    "dimensions_m": null,
+    "mass_kg": null,
+    "thickness_or_diameter_m": null
+  },
+  "reconstruction_plan": [
+    "建立裁片与缝合拓扑；袋口、织带和扣具单独建模",
+    "验证空袋夹起、提带承载、滑移及多层自接触"
+  ],
+  "readiness": {
+    "geometry_reconstructed": false,
+    "material_calibrated": false,
+    "collision_validated": false,
+    "task_validated": false,
+    "roborsr_runtime_registered": false
+  }
+}

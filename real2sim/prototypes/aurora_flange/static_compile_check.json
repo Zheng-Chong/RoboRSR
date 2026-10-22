@@ -1,0 +1,11 @@
+{
+  "engine": "3.16.0",
+  "compiled": true,
+  "model_sha256": "8899d4c1245b51ce5ddfa0fb4559bbd503c5f2fac1ca6d03dc5e77b81ccfbe3a",
+  "nmesh": 1,
+  "ngeom": 1,
+  "njnt": 0,
+  "nsensor": 0,
+  "collision_enabled": false,
+  "static_visual_only": true
+}
