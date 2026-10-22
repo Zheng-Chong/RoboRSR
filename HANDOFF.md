@@ -2,7 +2,9 @@
 
 更新时间：2026-10-22
 当前分支：`main`。G1-D 桌面版 / 移动版（[PR #17](https://github.com/Zheng-Chong/RoboRSR/pull/17)）已于 2026-10-21 合并进 `main`。深圳实验室场景（[PR #22](https://github.com/Zheng-Chong/RoboRSR/pull/22)）已于 2026-10-21 合并（`2975b4a`）并部署到数采平台。更早：流水线规范化（[PR #1](https://github.com/Zheng-Chong/RoboRSR/pull/1)）和学校场景接入（[PR #2](https://github.com/Zheng-Chong/RoboRSR/pull/2)）都已于 2026-10-20 合并，短分支已删除。
-当前目标：把 G1-D 的三条流水线规范化：Real2Sim 采集（物体、场景）、仿真数据生成，以及本仓库内的仿真评估。训练在仓库外。
+当前目标：
+- **榜单冲分（2026-10-22 起，20 天）**：用本平台做多轮 Coding Agent 仿真数据 → 评测 → 对抗式（找失败、补难例和恢复数据）迭代，提高 OpenWAM、pi0.5 在上游 RoboDojo 榜单（54 个 dual X5 任务）上的成功率。用户确认：榜单允许用自生成数据训练；训练在 dsw-4（一轮 ≤ 1 天）。见「最近任务」第一节。
+- 把 G1-D 的三条流水线规范化：Real2Sim 采集（物体、场景）、仿真数据生成，以及本仓库内的仿真评估。训练在仓库外。
 
 本文件只记录当前状态。逐次实验的细节（相机拟合、抓取调参、倒豆参数扫描、各次服务器验证）见 `git show 4fb9290:HANDOFF.md`。数采平台的运维细节（端口、账号、隧道、重启方法）已移到本机 `.agent/ops.local.md`，不入库，因为仓库是公开的。
 
@@ -32,6 +34,20 @@
   - 仿真环境 `/root/miniconda3/envs/RoboDojo`；导出环境 `robodojo-lerobot`（lerobot 0.4.4，10-19 补装了 h5py 3.16，`pip -i` 用清华镜像）；上传环境 `/data/robodojo-runs/ms-venv`；运行目录在 `/data/robodojo-runs/`。
 
 ## 最近任务
+
+### 榜单基线：OpenWAM、pi0.5 官方 checkpoint 全量评测（2026-10-22，进行中，没改仓库代码）
+
+- **20 天计划**：① 基线 + 失败归类；② 把 `scripts/datagen` 推广到 dual X5（CONTRACT 补 X5 语义），Coding Agent 按"差距 × 好写程度"给任务写专家（特权状态 + cuRobo，验收严于 `run_reward`）；③ 第 1 轮数据 → dsw-4 微调 → 内部验证集评测；④ 两轮对抗：训练分布内大范围采样找失败、聚类、在失败附近生成难例，加 DAgger 式恢复数据；⑤ 官方 seed 终评。官方评测布局（`Eval_Layout/RoboDojo/arx_x5/0`）只在基线和终评各用一次，迭代看内部留出集。
+- **关键事实**：
+  - 官方训练数据 = HF 数据集 `RoboDojo-Benchmark/RoboDojo` 的 `data/RoboDojo/<任务>/arx_x5/data/`，34 个基础任务各 100 条（单任务 28–46 GB，共约 1.3 TB）；dsw-4 已有完整副本 `/mnt/data/datasets/RoboDojo`（另有 `RoboDojo_ee_lerobot`）。
+  - **54 个榜单任务里 20 个没有官方数据**：12 个 `_random` 变体，加 `align_blocks`、`classify_objects_by_language`、`general_pickup`、`pick_from_conveyor_by_image`、`pour_by_language`、`solve_equation`、`stack_blocks_by_language`、`store_tools_in_toolbox`。这是自生成数据最大的抓手。
+  - 官方 checkpoint 也在同一 HF 数据集的 `ckpt/RoboDojo/<模型>/`：pi0.5 是 `Pi_05/RoboDojo-sim-arx_x5-joint-{0,1,2}/59999`（joint）；OpenWAM 是模型仓库 `OpenWAM/OpenWAM-Alpha-Sim-RoboDojo`（`checkpoint_step_60000`，24.8 GB，ee）。
+  - 仓库里没有任何榜单任务的脚本专家，只有 `env/planner_manager/curobo_planner.py`。
+- **运行目录** `5090-2:/data/robodojo-runs/leaderboard-baseline-20261022/`：代码是本机 `a694da5` 的 `git archive`（`REVISION`）加本机 XPolicyLab `53c5da5`（rsync），`third_party` 软链接到 `office-beans-random-20261019`。`Assets/` 是 HF 官方 Assets 的干净副本（15365 个文件，经 hf-mirror 逐文件下载，最后 521 个从 dsw-4 经本机中转），不是 `/data/robodojo-assets` 共享库（那份有 G1-D 改动）；下载后跑过 `utils/update_embodiment_config_path.py`（不跑会缺 `Robots/x5/curobo.yml`，而 `robodojo.sh eval` 照样返回 0）。checkpoint 在 `ckpt/`，软链接进两个策略的 `checkpoints/`。
+- **环境（5090-2 上新增）**：`openwam-bench`（克隆 `openwam`，再装 vendored OpenWAM；原 `openwam` 指向 G1-D 分叉，给真机服务用，没动）；pi0.5 的 uv 环境在运行目录 `XPolicyLab/policy/Pi_05/openpi/.venv`（JAX 0.5.3，uv 在 `.uvtool/`，依赖经本机 `ssh -R` SOCKS 隧道装，隧道已关）；tokenizer 预置在 `~/.cache/openpi/big_vision/`；conda base 装了 `pyyaml`（Pi_05 服务端脚本用 base python 读 yaml）。Isaac 要 `OMNI_KIT_ACCEPT_EULA=YES`（`smoke_one.sh`、`bench.sh` 已设）。
+- **下载坑**：5090-2 连不上 huggingface.co、GitHub、PyPI。hf-mirror 要 `HF_HUB_DISABLE_XET=1`；`snapshot_download` 和超过 1000 个文件的 `list_repo_tree` 会卡住（分页链接指回 huggingface.co）；git LFS 经镜像全部失败。可行的是按文件列表 `hf_hub_download`（`dl_prefix.py --list`）。
+- **验证**：两个模型 `stack_bowls` 各 1 回合：OpenWAM 成功（314 s），pi0.5 成功（193 s），`_result.json` `eval_time` 1。
+- **全量评测（13:40 启动）**：`bench.sh` → `robodojo.sh benchmark --eval-num native --tasks-file leaderboard_tasks.txt`（54 个任务，去掉 `g1d_*`）。OpenWAM run id `baseline_openwam_20261022`，策略 GPU 0/2/3，仿真 GPU 4/5/6（策略 25 GB，不能和 Isaac 同卡），预计每组约 16 h；pi0.5 run id `baseline_pi05_20261022`，GPU 7 单卡串行，实测 `align_blocks` 50 回合约 25 min，全量约 22 h。汇总在 `smoke_results/<run id>.md`，日志 `logs/bench_*.log`。早期结果：pi0.5 `align_blocks` 0/50、OpenWAM `imitate_sorting_sequence` 0/8（两者都在无数据或难任务上）。GPU 1 是 `owam-server`（另一会话）。
 
 ### 数采平台：管理员删除场景（2026-10-22，直接推 `main`）
 
@@ -248,6 +264,8 @@
 
 ## 剩余事项与风险
 
+- **榜单基线**：pi0.5 单卡要约 22 h；OpenWAM 跑完后用同一 `bench.sh ... --resume` 把 pi0.5 剩下的任务分到空出的卡上（pi0.5 策略 + Isaac 同卡约 25 GB，一卡一组）。GPU 3 期间被别人短暂占过 8.7 GB。`/data` 剩约 290 GB。官方榜单页面是 JS 渲染，没抓到公开分数，要和自测基线对照需手动查 robodojo-benchmark.com/LeaderBoard。dsw-4 根分区 100% 满（19 GB），训练数据和产出要放 `/mnt/data`。
+
 - **G1-D 移动版**：
   - 共享资产库还没有 `g1d_mobile_dex1.urdf` 和 `Eval_Layout/RoboDojo/g1d_mobile/`，要在隔离目录跑完整的 `build_asset.py` 验证后，经用户同意再装；
   - 录制（`collect.py` 的 `state_keys`）、LeRobot 导出和 XPolicyLab 的 `_robot_info.json` 都只认 16 维，要采带身体自由度的数据，先定契约再改录制器和转换器；
@@ -285,6 +303,7 @@
 
 ## 下一会话
 
+0. 榜单：收两份基线（`smoke_results/baseline_*_20261022.md`，核对每个任务 `eval_time >= 1`），按任务对比 OpenWAM / pi0.5 / 有无官方数据；看失败视频做归类；然后开始把 `collect.py` 和插件接口推广到 dual X5，按优先级给无官方数据的任务写专家。
 0. 实现平台登记的 `g1d_pour_beans_any_cups`：在平台任务抽屉复制「实现任务」文本交给 coding agent（输入 `real2sim/tasks/g1d_pour_beans_any_cups/registration.json`）。
 0. 深圳实验室（已合并、部署，共享库待补装）：去现场量站位、拍头部 / 腕部画面做叠图（`overlay.py --env-cfg g1d_shenzhen_lab`）。
 1. 先看 `git log`、本文件和 `scripts/datagen/CONTRACT.md`。主工作区里还有物体建模 SKILL 会话没提交的改动（见"最近任务"里的"并行会话"）；拉取新的 `main` 前，先让那个会话提交，或者先 stash。
@@ -296,6 +315,7 @@
 
 ## 最近历史
 
+- 2026-10-22：启动榜单冲分（20 天）：5090-2 建基线运行目录，拉齐官方 Assets、OpenWAM / pi0.5 官方 checkpoint 和两套推理环境，冒烟通过后启动两个模型 54 个任务的全量基线评测；确认 20 个榜单任务没有官方训练数据。
 - 2026-10-22：深圳实验室倒豆 500 条（矮量杯或马克杯、300–600 豆、2–5 干扰物、严格整回合验收）采完、审计、上传 ModelScope 私有仓库 `ChongZheng/g1d_shenzhen_pour_beans_cup_or_mug_500`。
 - 2026-10-22：实验室场景 `real_scene3_lab` 的工位桌、网椅、活动柜、文件柜、边桌、圆桌建成立体模型（`/Background/Furniture`），从墙面照片里抠掉；隔离目录里三个脚本演示通过后，经用户同意换进共享库（见「最近任务」）。
 - 2026-10-21：物体的颜色、尺寸泛化改为仿真里按布局随机，不建新资产；形状、材质等仍建变体资产，平台上收进本体卡片（用户：泛化放到一个卡片下；能不能在仿真里随机改尺寸和颜色而不是新建资产；用户选定两个都做、随机值写进布局）。
