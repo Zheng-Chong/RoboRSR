@@ -1,0 +1,120 @@
+{
+ "scene": "real_scene1_office",
+ "room": "real_scene1",
+ "top_z": 0.68,
+ "roles": {
+  "floor": {
+   "parts": [
+    {
+     "path": "Background/Floor",
+     "material": "carpet",
+     "uv_m": 0.5
+    }
+   ],
+   "materials": [
+    {
+     "name": "carpet",
+     "color": null,
+     "texture": "real2sim/scenes/real_scene1_office/usd/textures/carpet_tile.png",
+     "roughness": 0.95,
+     "metallic": 0.0,
+     "tile_m": 0.5
+    }
+   ]
+  },
+  "wall": {
+   "parts": [
+    {
+     "path": "Background/WallE/solid_south",
+     "material": "wall_light",
+     "uv_m": null
+    }
+   ],
+   "materials": [
+    {
+     "name": "wall_light",
+     "color": [
+      0.66,
+      0.66,
+      0.64
+     ],
+     "texture": null,
+     "roughness": 0.8,
+     "metallic": 0.0,
+     "tile_m": null
+    }
+   ]
+  },
+  "tabletop": {
+   "parts": [
+    {
+     "path": "Table/Top",
+     "material": "table_white",
+     "uv_m": null
+    }
+   ],
+   "materials": [
+    {
+     "name": "table_white",
+     "color": [
+      0.78,
+      0.78,
+      0.76
+     ],
+     "texture": null,
+     "roughness": 0.45,
+     "metallic": 0.0,
+     "tile_m": null
+    }
+   ]
+  }
+ },
+ "lift": {
+  "top_z": 0.68,
+  "split_z": 0.34,
+  "range": [
+   0.62,
+   1.27
+  ],
+  "move": [
+   "Table/Top",
+   "Table/Frame/beam",
+   "Table/Frame/crossbar_n",
+   "Table/Frame/crossbar_p",
+   "Table/Colliders/top"
+  ],
+  "stretch": [
+   [
+    "Table/Frame/column_upper_n",
+    0.33,
+    0.625
+   ],
+   [
+    "Table/Frame/column_lower_n",
+    0.035,
+    0.365
+   ],
+   [
+    "Table/Frame/column_upper_p",
+    0.33,
+    0.625
+   ],
+   [
+    "Table/Frame/column_lower_p",
+    0.035,
+    0.365
+   ],
+   [
+    "Table/Colliders/column_n",
+    0.0,
+    0.625
+   ],
+   [
+    "Table/Colliders/column_p",
+    0.0,
+    0.625
+   ]
+  ]
+ },
+ "fixed_reason": null
+}

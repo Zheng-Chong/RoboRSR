@@ -28,6 +28,7 @@ import json
 from pathlib import Path
 import random
 import shutil
+import sys
 import urllib.request
 import xml.etree.ElementTree as ET
 
@@ -497,8 +498,14 @@ def build_layouts(assets):
     """Per scene config: the G1-D task layouts; the office one (g1d) also gets every arx_x5 layout."""
     src = assets / "Eval_Layout" / "RoboDojo" / "arx_x5"
     files = sorted(src.rglob("*.json"), key=_layout_sort_key)
-    for config, (_, room, room_pos, shift) in SCENES.items():
+    sys.path.insert(0, str(ROOT / "scripts" / "scenes"))
+    import appearance
+
+    for config, (scene, room, room_pos, shift) in SCENES.items():
         table_top = json.loads((assets / "Room" / room / "usd" / "build_params.json").read_text())["table"]["top_z"]
+        # the platform's fixed materials / desk height of the scene (appearance.json), if set; random pools are for
+        # datagen layouts (scripts/scenes/appearance.py --randomize)
+        looks = appearance.load(SCENES_DIR / scene) if (SCENES_DIR / scene / "appearance.json").is_file() else None
         dst = assets / "Eval_Layout" / "RoboDojo" / config
         for old in dst.rglob("g1d_*_*.json"):
             old.unlink()
@@ -527,6 +534,8 @@ def build_layouts(assets):
                         randomize_objects(shifted, RANDOMIZE[task], table_top, assets, seed)
                     if shifted is not None:
                         shift_objects(shifted, (*shift, 0.0))
+                        if looks:
+                            appearance.apply(shifted, SCENES_DIR / scene, loaded=looks)
                         (out.parent / f"{task}_{seq}.json").write_text(json.dumps(shifted, indent=4))
                         counts[key] = seq + 1
         print(f"wrote {sum(counts.values())} G1-D task layouts to {dst}")

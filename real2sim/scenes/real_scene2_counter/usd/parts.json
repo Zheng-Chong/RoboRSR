@@ -1,0 +1,84 @@
+{
+ "scene": "real_scene2_counter",
+ "room": "real_scene2",
+ "top_z": 0.833,
+ "roles": {
+  "floor": {
+   "parts": [
+    {
+     "path": "Background/Floor",
+     "material": "terrazzo",
+     "uv_m": 0.8
+    }
+   ],
+   "materials": [
+    {
+     "name": "terrazzo",
+     "color": null,
+     "texture": "real2sim/scenes/real_scene2_counter/usd/textures/terrazzo.png",
+     "roughness": 0.45,
+     "metallic": 0.0,
+     "tile_m": 0.8
+    }
+   ]
+  },
+  "wall": {
+   "parts": [
+    {
+     "path": "Background/WallBack",
+     "material": "wall_paint",
+     "uv_m": null
+    },
+    {
+     "path": "Background/WallW",
+     "material": "wall_paint",
+     "uv_m": null
+    },
+    {
+     "path": "Background/WallE",
+     "material": "wall_paint",
+     "uv_m": null
+    }
+   ],
+   "materials": [
+    {
+     "name": "wall_paint",
+     "color": [
+      0.72,
+      0.71,
+      0.68
+     ],
+     "texture": null,
+     "roughness": 0.85,
+     "metallic": 0.0,
+     "tile_m": null
+    }
+   ]
+  },
+  "tabletop": {
+   "parts": [
+    {
+     "path": "Counter/Top",
+     "material": "quartz",
+     "uv_m": null
+    }
+   ],
+   "materials": [
+    {
+     "name": "quartz",
+     "color": [
+      0.8,
+      0.8,
+      0.79
+     ],
+     "texture": null,
+     "roughness": 0.3,
+     "metallic": 0.0,
+     "tile_m": null
+    }
+   ]
+  }
+ },
+ "lift": null,
+ "fixed_reason": "落地吧台柜，不是升降桌"
+}

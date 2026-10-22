@@ -46,7 +46,8 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-sys.path[:0] = [str(ROOT / "scripts" / "internal"), str(ROOT / "scripts" / "g1d")]
+sys.path[:0] = [str(ROOT / "scripts" / "internal"), str(ROOT / "scripts" / "g1d"), str(ROOT / "scripts" / "scenes")]
+import appearance  # a scene's surface materials and desk height -> layouts
 import build_asset  # SCENES: env config -> real2sim scene
 import task_inventory
 
@@ -211,6 +212,14 @@ class Store:
             self._put(kind, doc)
         return doc
 
+    def set_auto(self, kind, id_, key, value):
+        """Refresh one scanned field of a doc, for a file the server itself just rewrote."""
+        with self.lock, self.db:
+            doc = self._get(kind, id_) or {"id": id_, "auto": {}}
+            doc.setdefault("auto", {})[key] = value
+            self._put(kind, doc)
+        return doc
+
     def delete(self, kind, id_):
         with self.lock, self.db:
             self.db.execute("DELETE FROM items WHERE kind = ? AND id = ?", (kind, id_))
@@ -263,8 +272,59 @@ def scan_scenes():
             # real_scene1 has SfM cameras from a video instead of a photo fit
             "fit_views": len(views) or len(load_json(d / "reference" / "cameras_scene.json") or {}),
             "fit_max_px": max(residuals) if residuals else None,
+            "parts": parts_summary(load_json(d / "usd" / "parts.json")),  # scripts/scenes/scene_parts.py
+            "appearance": load_json(d / "appearance.json"),
         }
     return found
+
+
+def parts_summary(parts):
+    """What the platform uses of usd/parts.json: per role its meshes (path, uv_m) and materials, and the desk's lift;
+    the 3D preview swaps materials and moves the desk on the same meshes."""
+    if not parts:
+        return None
+    return {k: parts.get(k) for k in ("top_z", "roles", "lift", "fixed_reason")}
+
+
+def material_library():
+    """real2sim/materials/library.json with each entry's thumbnail (preview/<id>.jpg, not in git), if made."""
+    entries = load_json(appearance.LIBRARY) or []
+    for e in entries:
+        thumb = appearance.LIBRARY.parent / "preview" / f"{e['id'].replace('/', '__')}.jpg"
+        e["thumb"] = str(thumb) if thumb.is_file() else None
+    return entries
+
+
+def write_appearance(scene, settings):
+    """Check the platform's appearance settings against the scene's parts and the library, then write
+    real2sim/scenes/<scene>/appearance.json (removed when nothing is set); returns an error message or None."""
+    scene_dir = build_asset.SCENES_DIR / scene
+    if not (scene_dir / "usd" / "parts.json").is_file():
+        return "这个场景还没有 usd/parts.json：先跑 scripts/scenes/scene_parts.py"
+    parts, _, library = appearance.load(scene_dir)
+    fixed, pools = settings.get("fixed") or {}, settings.get("random") or {}
+    ids = [fixed.get(r) for r in appearance.ROLES] + [m for r in appearance.ROLES for m in pools.get(r) or []]
+    unknown = [m for m in ids if m and m != appearance.ORIGINAL and m not in library]
+    if unknown:
+        return f"材质库里没有 {'、'.join(unknown)}"
+    span = pools.get("table_top_z") or []
+    heights = [z for z in [fixed.get("table_top_z"), *span] if z is not None]
+    if not all(isinstance(z, int | float) for z in heights):
+        return "桌高要填数字（米）"
+    if span and (len(span) != 2 or None in span or span[0] > span[1]):
+        return "随机桌高范围要填最低和最高两个值"
+    lift = parts.get("lift")
+    if heights and not lift:
+        return f"这个场景的桌子不能升降：{parts.get('fixed_reason') or '没有升降结构'}"
+    if heights and not all(lift["range"][0] <= z <= lift["range"][1] for z in heights):
+        return f"桌高要在升降行程 {lift['range'][0]}–{lift['range'][1]} m 内"
+    body = compact({"fixed": fixed, "random": {k: v for k, v in pools.items() if v}})
+    path = scene_dir / "appearance.json"
+    if body:
+        path.write_text(json.dumps(body, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    else:
+        path.unlink(missing_ok=True)
+    return None
 
 
 def yml_sections(path):
@@ -848,6 +908,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json([{"username": u["username"], "name": u["name"]} for u in self.store.users()])
         elif url.path == "/api/info":
             self.send_json(self.info)
+        elif url.path == "/api/materials":
+            self.send_json(material_library())
         elif url.path == "/api/clutter":
             self.send_json(clutter_categories(self.scan_args[0]))
         elif url.path == "/api/object-indices":
@@ -908,6 +970,14 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_error(400)
         if kind == "scene" and fields.get("registered") and not SCENE_ID.fullmatch(id_):
             return self.send_error(400)
+        if kind == "scene" and "appearance" in fields:
+            if not SCENE_ID.fullmatch(id_) or not isinstance(fields["appearance"], dict):
+                return self.send_error(400)
+            if error := write_appearance(id_, fields.pop("appearance")):
+                return self.send_json({"error": error}, 400)
+            self.store.update(kind, id_, fields, by=self.user["name"])  # stamps who changed it
+            looks = load_json(build_asset.SCENES_DIR / id_ / "appearance.json")
+            return self.send_json(self.store.set_auto(kind, id_, "appearance", looks))
         if (kind == "task" and not TASK_ID.fullmatch(id_)) or (
             kind == "embodiment" and not EMBODIMENT_ID.fullmatch(id_)
         ):

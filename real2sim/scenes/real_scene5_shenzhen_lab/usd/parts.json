@@ -1,0 +1,132 @@
+{
+ "scene": "real_scene5_shenzhen_lab",
+ "room": "real_scene5",
+ "top_z": 0.75,
+ "roles": {
+  "floor": {
+   "parts": [
+    {
+     "path": "Background/Floor",
+     "material": "carpet",
+     "uv_m": 0.3
+    }
+   ],
+   "materials": [
+    {
+     "name": "carpet",
+     "color": null,
+     "texture": "real2sim/scenes/real_scene5_shenzhen_lab/usd/textures/carpet.png",
+     "roughness": 0.95,
+     "metallic": 0.0,
+     "tile_m": 0.3
+    }
+   ]
+  },
+  "wall": {
+   "parts": [
+    {
+     "path": "Background/Walls/back",
+     "material": "wall",
+     "uv_m": null
+    },
+    {
+     "path": "Background/Walls/front",
+     "material": "wall",
+     "uv_m": null
+    },
+    {
+     "path": "Background/Walls/left",
+     "material": "wall",
+     "uv_m": null
+    },
+    {
+     "path": "Background/Walls/right",
+     "material": "wall",
+     "uv_m": null
+    }
+   ],
+   "materials": [
+    {
+     "name": "wall",
+     "color": [
+      0.6105,
+      0.5841,
+      0.5395
+     ],
+     "texture": null,
+     "roughness": 0.9,
+     "metallic": 0.0,
+     "tile_m": null
+    }
+   ]
+  },
+  "tabletop": {
+   "parts": [
+    {
+     "path": "Table/Top/slab",
+     "material": "laminate",
+     "uv_m": null
+    }
+   ],
+   "materials": [
+    {
+     "name": "laminate",
+     "color": [
+      0.7758,
+      0.7758,
+      0.7379
+     ],
+     "texture": null,
+     "roughness": 0.35,
+     "metallic": 0.0,
+     "tile_m": null
+    }
+   ]
+  }
+ },
+ "lift": {
+  "top_z": 0.75,
+  "split_z": 0.45,
+  "range": [
+   0.62,
+   1.27
+  ],
+  "move": [
+   "Table/Top/slab",
+   "Table/Colliders/top",
+   "Table/Colliders/Legs_pos_rail",
+   "Table/Colliders/Legs_pos_upper",
+   "Table/Colliders/Legs_neg_rail",
+   "Table/Colliders/Legs_neg_upper",
+   "Table/Colliders/Frame_beam",
+   "Table/Legs/pos/rail",
+   "Table/Legs/pos/upper",
+   "Table/Legs/neg/rail",
+   "Table/Legs/neg/upper",
+   "Table/Frame/beam"
+  ],
+  "stretch": [
+   [
+    "Table/Colliders/Legs_pos_lower",
+    0.035,
+    0.45
+   ],
+   [
+    "Table/Colliders/Legs_neg_lower",
+    0.035,
+    0.45
+   ],
+   [
+    "Table/Legs/pos/lower",
+    0.035,
+    0.45
+   ],
+   [
+    "Table/Legs/neg/lower",
+    0.035,
+    0.45
+   ]
+  ]
+ },
+ "fixed_reason": null
+}

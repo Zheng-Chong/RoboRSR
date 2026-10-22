@@ -1,0 +1,164 @@
+{
+ "scene": "real_scene3_lab",
+ "room": "real_scene3",
+ "top_z": 0.749,
+ "roles": {
+  "floor": {
+   "parts": [
+    {
+     "path": "Background/Floor",
+     "material": "carpet",
+     "uv_m": 0.6
+    }
+   ],
+   "materials": [
+    {
+     "name": "carpet",
+     "color": null,
+     "texture": "real2sim/scenes/real_scene3_lab/usd/textures/carpet.png",
+     "roughness": 0.95,
+     "metallic": 0.0,
+     "tile_m": 0.6
+    }
+   ]
+  },
+  "wall": {
+   "parts": [
+    {
+     "path": "Background/Walls/south",
+     "material": "wall_south",
+     "uv_m": 6.2
+    },
+    {
+     "path": "Background/Walls/north",
+     "material": "wall_north",
+     "uv_m": 6.2
+    },
+    {
+     "path": "Background/Walls/west",
+     "material": "wall_west",
+     "uv_m": 6.25
+    },
+    {
+     "path": "Background/Walls/east",
+     "material": "wall_east",
+     "uv_m": 6.25
+    }
+   ],
+   "materials": [
+    {
+     "name": "wall_south",
+     "color": null,
+     "texture": "real2sim/scenes/real_scene3_lab/usd/textures/wall_south.png",
+     "roughness": 0.8,
+     "metallic": 0.0,
+     "tile_m": 6.2
+    },
+    {
+     "name": "wall_north",
+     "color": null,
+     "texture": "real2sim/scenes/real_scene3_lab/usd/textures/wall_north.png",
+     "roughness": 0.8,
+     "metallic": 0.0,
+     "tile_m": 6.2
+    },
+    {
+     "name": "wall_west",
+     "color": null,
+     "texture": "real2sim/scenes/real_scene3_lab/usd/textures/wall_west.png",
+     "roughness": 0.8,
+     "metallic": 0.0,
+     "tile_m": 6.25
+    },
+    {
+     "name": "wall_east",
+     "color": null,
+     "texture": "real2sim/scenes/real_scene3_lab/usd/textures/wall_east.png",
+     "roughness": 0.8,
+     "metallic": 0.0,
+     "tile_m": 6.25
+    }
+   ]
+  },
+  "tabletop": {
+   "parts": [
+    {
+     "path": "Table/Top/slab",
+     "material": "edge_band",
+     "uv_m": null
+    },
+    {
+     "path": "Table/Top/surface",
+     "material": "laminate",
+     "uv_m": 1.082
+    }
+   ],
+   "materials": [
+    {
+     "name": "edge_band",
+     "color": [
+      0.62,
+      0.61,
+      0.59
+     ],
+     "texture": null,
+     "roughness": 0.45,
+     "metallic": 0.0,
+     "tile_m": null
+    },
+    {
+     "name": "laminate",
+     "color": null,
+     "texture": "real2sim/scenes/real_scene3_lab/usd/textures/tabletop.png",
+     "roughness": 0.35,
+     "metallic": 0.0,
+     "tile_m": 1.082
+    }
+   ]
+  }
+ },
+ "lift": {
+  "top_z": 0.749,
+  "split_z": 0.374,
+  "range": [
+   0.62,
+   1.27
+  ],
+  "move": [
+   "Table/Top/slab",
+   "Table/Top/surface",
+   "Table/Colliders/top",
+   "Table/Colliders/panel",
+   "Table/Colliders/beam",
+   "Table/Colliders/bracket_pos",
+   "Table/Colliders/bracket_neg",
+   "Table/Panel/board",
+   "Table/Frame/beam",
+   "Table/Legs/pos/bracket",
+   "Table/Legs/neg/bracket"
+  ],
+  "stretch": [
+   [
+    "Table/Colliders/column_pos",
+    0.075,
+    0.728
+   ],
+   [
+    "Table/Colliders/column_neg",
+    0.075,
+    0.728
+   ],
+   [
+    "Table/Legs/pos/column",
+    0.075,
+    0.728
+   ],
+   [
+    "Table/Legs/neg/column",
+    0.075,
+    0.728
+   ]
+  ]
+ },
+ "fixed_reason": null
+}

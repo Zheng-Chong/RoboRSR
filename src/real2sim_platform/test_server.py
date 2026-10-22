@@ -42,6 +42,36 @@ def test_repo_scan():
     assert not any(".." in oid for oid in objects)
 
 
+def test_appearance_settings():
+    tmp, scenes_dir = Path(tempfile.mkdtemp()), server.build_asset.SCENES_DIR
+    for scene in ("real_scene3_lab", "real_scene2_counter"):
+        (tmp / scene / "usd").mkdir(parents=True)
+        (tmp / scene / "usd/parts.json").write_text((scenes_dir / scene / "usd/parts.json").read_text())
+    server.build_asset.SCENES_DIR = tmp
+    try:
+        lab = {"fixed": {"floor": "mdl/material_0124", "wall": None, "table_top_z": 0.9}}
+        lab["random"] = {"tabletop": ["original", "real_scene1_office/tabletop/table_white"]}
+        lab["random"]["table_top_z"] = [0.7, 0.95]
+        assert server.write_appearance("real_scene3_lab", lab) is None
+        written = json.loads((tmp / "real_scene3_lab/appearance.json").read_text())
+        assert written == {"fixed": {"floor": "mdl/material_0124", "table_top_z": 0.9}, "random": lab["random"]}
+        assert "没有 nope" in server.write_appearance("real_scene3_lab", {"fixed": {"floor": "nope"}})
+        assert "行程" in server.write_appearance("real_scene3_lab", {"fixed": {"table_top_z": 1.5}})
+        assert "两个值" in server.write_appearance("real_scene3_lab", {"random": {"table_top_z": [0.9, None]}})
+        assert "数字" in server.write_appearance("real_scene3_lab", {"fixed": {"table_top_z": "0.9"}})
+        assert "不能升降" in server.write_appearance("real_scene2_counter", {"fixed": {"table_top_z": 0.9}})
+        assert server.write_appearance("real_scene2_counter", {"fixed": {"tabletop": "mdl/material_0083"}}) is None
+        assert server.write_appearance("real_scene3_lab", {"fixed": {}, "random": {}}) is None
+        assert not (tmp / "real_scene3_lab/appearance.json").exists()  # nothing set: the twin as built
+        assert "parts.json" in server.write_appearance("real_scene9_x", {})
+    finally:
+        server.build_asset.SCENES_DIR = scenes_dir
+    summary = server.parts_summary(json.loads((scenes_dir / "real_scene3_lab/usd/parts.json").read_text()))
+    assert set(summary["roles"]) == {"floor", "wall", "tabletop"} and summary["lift"]["range"] == [0.62, 1.27]
+    library = server.material_library()
+    assert len(library) > 500 and all("thumb" in m for m in library)
+
+
 def test_embodiments():
     bodies = server.scan_embodiments()  # robot_config modules; per-scene stands of one body count as one
     assert {"g1d", "x5", "franka"} <= set(bodies) and bodies["g1d"]["in_code"]

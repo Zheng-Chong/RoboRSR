@@ -329,6 +329,13 @@ table.plain th, table.plain td { position: static; padding: 7px 8px; background:
 .tag-x { display: inline-grid; place-items: center; margin-left: 4px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; opacity: .6; }
 .tag-x:hover { opacity: 1; }
 .obj-chip img { width: 18px; height: 18px; margin-right: 5px; border-radius: 4px; object-fit: cover; vertical-align: -4px; }
+.v3d { margin-top: 10px; }
+.v3d-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.v3d input[type=range] { width: 100%; }
+.ap-role { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.ap-h { display: flex; gap: 10px; align-items: baseline; margin-bottom: 6px; }
+.ap-h b { white-space: nowrap; }
+.swatch { display: inline-block; width: 14px; height: 14px; margin: 0 4px 0 2px; border: 1px solid #0002; border-radius: 3px; background-size: cover; vertical-align: -2px; }
 .opick { position: relative; }
 .opick > input { width: 100%; }
 .opick-list { position: absolute; z-index: 5; top: calc(100% + 4px); left: 0; right: 0; max-height: 300px; overflow: auto; padding: 4px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow-3); }
@@ -924,6 +931,103 @@ function scenePhotos(d, kind = 'scene', min = MIN_SCENE_PHOTOS) {
     <div class="strip">${photos.map((p, i) => `<div class="item"><button class="gthumb" type="button" data-lb="${esc(key)}" data-i="${i}" aria-label="查看 ${esc(base(p))}"><img loading="lazy" src="${file(p)}" alt=""></button>
     <button class="del" type="button" data-path="${esc(p)}" onclick="deletePhoto(this.dataset.path)" aria-label="删除 ${esc(base(p))}">${ic('trash', 'ic-sm')}</button></div>`).join('')}</div>`;
 }
+let MATS = [];  // real2sim/materials/library.json entries, each with its thumbnail (scripts/scenes/scene_parts.py)
+const MAT_CATS = {scene: '场景提取', wood: '木材', tile: '瓷砖', stone: '石材', fabric: '织物', metal: '金属', plastic: '塑料',
+  paint: '涂料', paper: '纸', outdoor: '室外', glass: '玻璃', other: '其他'};
+const SURFACES = {floor: '地板', wall: '墙面', tabletop: '桌面'};
+// the open scene's appearance editor: picker lists mt-fix-<role> (at most one) and mt-rnd-<role>, "original" kept in
+// the random pool, fixed / random desk heights; written to real2sim/scenes/<scene>/appearance.json on save
+let AP = null;
+function apState(d) {
+  if (AP?.id === d.id) return AP;
+  const s = d.auto.appearance || {}, f = s.fixed || {}, r = s.random || {}, roles = Object.keys(SURFACES);
+  AP = {id: d.id, fix: Object.fromEntries(roles.map((k) => [k, f[k] && f[k] !== 'original' ? [f[k]] : []])),
+    rnd: Object.fromEntries(roles.map((k) => [k, (r[k] || []).filter((m) => m !== 'original')])),
+    orig: Object.fromEntries(roles.map((k) => [k, (r[k] || []).includes('original')])),
+    z: f.table_top_z ?? '', zlo: r.table_top_z?.[0] ?? '', zhi: r.table_top_z?.[1] ?? '',
+    // the 3D preview's own choice (mt-v3d-<role>), lighting and desk height; preview only until copied into fix / z
+    v3d: Object.fromEntries(roles.map((k) => [k, []])), light: {...LIGHT0}, vz: null};
+  return AP;
+}
+const LIGHT0 = {k: 1, temp: 6500, az: 34};
+function v3dControls(d) {
+  const p = d.auto.parts, ap = apState(d), lift = p?.lift;
+  const slider = (label, path, min, max, step, value, unit) => `<div class="fld"><label>${label} <span class="mono small" id="v3d-${path}">${value}${unit}</span></label>
+    <input type="range" min="${min}" max="${max}" step="${step}" value="${value}" oninput="v3dSet('${path}', +this.value, '${unit}')"></div>`;
+  const roles = p ? Object.entries(SURFACES).map(([k, label]) => `<div class="fld"><label>${label}</label>${picker(`mt-v3d-${k}`, `换${label}材质`)}</div>`).join('') : '';
+  return `<div class="v3d"><div class="wz-grid v3d-grid">${roles}
+      ${lift ? slider('桌高', 'vz', lift.range[0], lift.range[1], 0.01, ap.vz ?? p.top_z, ' m') : ''}
+      ${slider('灯光亮度', 'light.k', 0.2, 2.5, 0.05, ap.light.k, '×')}${slider('色温', 'light.temp', 2700, 9000, 100, ap.light.temp, ' K')}
+      ${slider('主光方向', 'light.az', 0, 360, 5, ap.light.az, '°')}</div>
+    <div class="toolbar" style="margin-top:8px">${p ? `<button class="btn" type="button" onclick="v3dFromFixed()">载入固定设置</button>
+      <button class="btn" type="button" onclick="v3dToFixed()">设为固定设置</button>` : ''}<button class="btn" type="button" onclick="v3dReset()">复原</button>
+      <span class="small muted">${p ? '预览里换的材质和桌高点「设为固定设置」后，到下方「外观与桌高」保存才写进场景。' : '这个场景还没有 usd/parts.json，只能调灯光。'}
+        MDL 材质用缩略图近似；灯光只影响预览，仿真用场景 USD 里的灯。</span></div></div>`;
+}
+function v3dSet(path, value, unit) {
+  const [a, b] = path.split('.');
+  if (b) AP[a][b] = value; else AP[a] = value;
+  $(`#v3d-${CSS.escape(path)}`).textContent = `${value}${unit}`;
+  VIEWER?.sync?.();
+}
+function v3dFromFixed() {
+  for (const k of Object.keys(SURFACES)) AP.v3d[k] = [...AP.fix[k]];
+  AP.vz = AP.z === '' ? null : Number(AP.z);
+  render();
+  VIEWER?.sync?.();
+}
+function v3dToFixed() {
+  const top = S.scene.find((x) => x.id === AP.id)?.auto.parts?.top_z;
+  for (const k of Object.keys(SURFACES)) AP.fix[k] = [...AP.v3d[k]];
+  AP.z = AP.vz == null || Math.abs(AP.vz - top) < 1e-6 ? '' : AP.vz;
+  render();
+  toast('已填进「外观与桌高」的固定设置，记得保存');
+}
+function v3dReset() {
+  for (const k of Object.keys(SURFACES)) AP.v3d[k] = [];
+  AP.light = {...LIGHT0};
+  AP.vz = null;
+  render();
+  VIEWER?.sync?.();
+}
+const swatch = (m) => `<span class="swatch" title="${esc(m.name)}" style="${m.texture ? `background-image:url('${file(`${INFO.root}/${m.texture}`)}')`
+  : m.color ? `background:rgb(${m.color.map((c) => Math.round(255 * Math.min(1, c) ** (1 / 2.2))).join(',')})` : ''}"></span>`;
+function appearanceSection(d) {
+  const p = d.auto.parts, ap = apState(d), lift = p.lift, dir = rel(d.auto.path);
+  const roles = Object.entries(SURFACES).map(([k, label]) => {
+    const info = p.roles[k] || {parts: [], materials: []};
+    return `<div class="ap-role"><div class="ap-h"><b>${label}</b><span class="small muted">原材质 ${info.materials.map((m) => `${swatch(m)}${esc(m.name)}`).join(' ') || '—'} · ${info.parts.length} 个网格</span></div>
+      <div class="wz-grid"><div class="fld wide"><label>固定替换 <span class="opt">留空保持原样</span></label>${picker(`mt-fix-${k}`, '搜索材质：名称或类别（木材、石材、织物…）')}</div>
+      <div class="fld wide"><label>数据生成随机池 <span class="opt">每个布局从中抽一个</span></label>${picker(`mt-rnd-${k}`, '加入随机池')}
+        <label class="check"><input type="checkbox" ${ap.orig[k] ? 'checked' : ''} onchange="AP.orig.${k} = this.checked">随机池包含原材质</label></div></div></div>`;
+  }).join('');
+  const zIn = (f, ph) => `<input type="number" step="0.01" min="${lift?.range[0]}" max="${lift?.range[1]}" value="${esc(ap[f])}" placeholder="${ph}" oninput="AP.${f} = this.value">`;
+  const table = lift ? `<div class="ap-role"><div class="ap-h"><b>升降桌</b><span class="small muted">原高度 ${p.top_z} m · 行程 ${lift.range.join('–')} m · 升降时上移 ${lift.move.length} 个、拉伸 ${lift.stretch.length} 个网格</span></div>
+      <div class="wz-grid"><div class="fld"><label>固定桌高 (m) <span class="opt">留空为原高度</span></label>${zIn('z', String(p.top_z))}</div>
+      <div class="fld"><label>随机桌高 最低 (m)</label>${zIn('zlo', '')}</div><div class="fld"><label>随机桌高 最高 (m)</label>${zIn('zhi', '')}</div></div>
+      <p class="hint">物体跟着桌面上下移动；机器人站位和升降柱不变，桌子变高变低就是不同的够取高度。</p></div>`
+    : `<div class="callout">${ic('alert')}<div>桌子不能升降：${esc(p.fixed_reason || '没有升降结构')}；材质照常可换。</div></div>`;
+  return sec(`${ic('layers')}外观与桌高`, `${roles}${table}
+    <div class="toolbar" style="margin-top:10px"><button class="btn btn-primary" type="button" onclick="saveAppearance('${esc(d.id)}')">${ic('check')}保存外观设置</button>
+      <span class="small muted">${d.auto.appearance ? `已写入 ${esc(dir)}/appearance.json` : '还没有设置，场景按重建原样使用'}</span></div>
+    <p class="hint">固定设置在重新生成评测布局（scripts/g1d/build_asset.py）时写进本场景的布局；随机池用于数据生成，见下面命令。材质库 ${MATS.length} 个：场景提取 + 资产库 MDL。</p>
+    ${code(`# 把设置写进一批布局（固定设置；--randomize 时有随机池的部分每个布局重新抽取）\npython scripts/scenes/appearance.py ${dir} <布局目录> [--randomize --seed 0]`)}`);
+}
+async function saveAppearance(id) {
+  const n = (v) => (v === '' || v == null ? null : Number(v)), fixed = {table_top_z: n(AP.z)}, random = {};
+  Object.keys(SURFACES).forEach((k) => {
+    fixed[k] = AP.fix[k][0] || null;
+    const pool = [...AP.rnd[k], ...(AP.orig[k] ? ['original'] : [])];
+    if (pool.length) random[k] = pool;
+  });
+  if (n(AP.zlo) != null || n(AP.zhi) != null) random.table_top_z = [n(AP.zlo), n(AP.zhi)];
+  try {
+    const doc = await api(`/api/items?kind=scene&id=${encodeURIComponent(id)}`, {method: 'PUT', body: JSON.stringify({appearance: {fixed, random}})});
+    S.scene[S.scene.findIndex((x) => x.id === id)] = doc;
+    toast(doc.auto.appearance ? '已保存到 appearance.json' : '已清空，场景按原样使用');
+    render();
+  } catch (err) { toast(`保存失败：${err.message}`, true); }
+}
 function drawerBenchScene(d) {
   const a = d.auto, cfg = rel(a.path), name = base(a.path).replace(/\.yml$/, '');
   return {
@@ -961,10 +1065,10 @@ function drawerScene(d) {
     + '# 装入 Assets/Room/ 并为各场景配置生成 G1-D 布局（改共享库前先在隔离目录验证、征得同意并备份）\npython scripts/g1d/build_asset.py';
   return {
     title: sceneName(d), sub: `${dir} · ${sceneDims(d)} · env 配置 ${(a.configs || []).join('、') || '—'}`, actions,
-    body: `${a.model ? sec(`${ic('cube')}3D 预览`, `<div class="m3d" data-model="${esc(file(a.model))}"><canvas aria-label="场景 3D 模型，拖拽旋转"></canvas>
+    body: `${a.model ? sec(`${ic('cube')}3D 预览`, `<div class="m3d" data-model="${esc(file(a.model))}" data-scene="${esc(d.id)}"><canvas aria-label="场景 3D 模型，拖拽旋转"></canvas>
       <div class="m3d-status">加载中…</div><div class="m3d-hint">左键拖拽旋转 · 右键拖拽平移 · 滚轮缩放</div>
       <div class="m3d-bar"><button class="btn" type="button" onclick="VIEWER?.toggleRoom(this)" title="墙、天花板和背景家具，地面保留">隐藏房间</button><button class="btn" type="button" onclick="VIEWER?.reset()">重置视角</button>
-      <button class="btn" type="button" onclick="VIEWER?.el.requestFullscreen?.()">全屏</button></div></div>`, ' <span class="muted small">preview/scene.glb · scripts/scenes/export_glb.py</span>') : ''}
+      <button class="btn" type="button" onclick="VIEWER?.el.requestFullscreen?.()">全屏</button></div></div>${v3dControls(d)}`, ' <span class="muted small">preview/scene.glb · scripts/scenes/export_glb.py</span>') : ''}
     ${a.renders?.length ? sec(`${ic('image')}仿真渲染`, gallery(`scene-renders-${d.id}`, a.renders), ' <span class="muted small">Isaac RTX · scripts/scenes/render_scenes.py</span>') : ''}
     ${sec('验收进度', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
     ${a.checks_failed?.length ? `<div class="callout bad" style="margin-top:12px">${ic('alert')}<div><b>未通过的离线检查</b><br>${a.checks_failed.map(esc).join('<br>')}</div></div>` : ''}
@@ -977,6 +1081,7 @@ function drawerScene(d) {
       ${row('Isaac 渲染', 'isaac', inp(d, 'isaac', 'checkbox'), '与真机头部相机画面对比过')}
       ${row('共享资产库', 'shared', inp(d, 'shared', 'checkbox'), '已装入服务器共享 Assets/Room/')}
       ${row('备注', 'notes', area(d, 'notes'))}</div>`)}
+    ${a.parts ? appearanceSection(d) : ''}
     ${d.registered ? sec('登记信息', sceneRegForm(d)) : ''}
     ${sec(`${ic('camera')}参考照片`, gallery(`scene-photos-${d.id}`, a.photos), ` <span class="muted small">${a.photos?.length || 0} 张</span>`)}
     ${sec(`${ic('image')}预览与对比`, gallery(`scene-previews-${d.id}`, a.previews), ` <span class="muted small">${a.previews?.length || 0} 张</span>`)}
@@ -1725,7 +1830,8 @@ function renderLevels() {
 }
 const newRole = (label = '', candidates = []) => ({label, candidates, holdout: [], count: 1});
 // picker keys: r<i> / h<i> = role i's training candidates / held-out objects, dis / dish = distractors, sc-* = scenes
-const ntList = (key) => (key === 'tk-eval' ? NE.tasks : key === 'sc-eval' ? NE.scenes : null) || ({dis: NT.dis.candidates, dish: NT.dis.holdout, 'sc-train': NT.scenes.train, 'sc-holdout': NT.scenes.holdout})[key]
+const ntList = (key) => (key.startsWith('mt-') ? AP[key.split('-')[1]][key.split('-')[2]] : null)
+  || (key === 'tk-eval' ? NE.tasks : key === 'sc-eval' ? NE.scenes : null) || ({dis: NT.dis.candidates, dish: NT.dis.holdout, 'sc-train': NT.scenes.train, 'sc-holdout': NT.scenes.holdout})[key]
   || NT.roles[Number(key.slice(1))][key[0] === 'h' ? 'holdout' : 'candidates'];
 const trainObjects = () => new Set([...NT.roles.flatMap((r) => r.candidates), ...NT.dis.candidates]);
 const heldObjects = () => new Set([...NT.roles.flatMap((r) => r.holdout), ...NT.dis.holdout]);
@@ -1752,6 +1858,14 @@ const PICK = {
     card: (x) => `<div class="small">${esc(DIMS[x.auto.dimension] || x.auto.dimension || '')}${x.auto.module ? '' : ' · 还没实现'}</div>
       <div class="small muted">${Object.keys(x.auto.layouts || {}).length ? `评测布局：${esc(Object.entries(x.auto.layouts).map(([c, n]) => `${c} ${n}`).join('、'))}` : '资产库里没有布局'}</div>`,
   },
+  mat: {
+    all: () => MATS.slice().sort((x, y) => Number(y.category === 'scene') - Number(x.category === 'scene') || x.name.localeCompare(y.name)),
+    get: (id) => MATS.find((m) => m.id === id), name: (m) => m.name, img: (m) => m?.thumb, icon: 'image',
+    text: (m) => `${m.id} ${m.name} ${MAT_CATS[m.category] || ''} ${m.category}`,
+    empty: '没有匹配的材质；材质库是 real2sim/materials/library.json',
+    card: (m) => `<div class="small">${esc(MAT_CATS[m.category] || m.category)} · ${m.kind === 'mdl' ? 'MDL（资产库 Material/）' : `从 ${esc(m.source)} 提取`}</div>
+      <div class="small muted">${m.kind === 'mdl' ? '按世界坐标投影，每 1 m 重复一次' : m.texture ? `贴图，原尺寸每 ${m.tile_m ?? '?'} m 重复` : '纯色'}</div>`,
+  },
   scene: {
     all: () => twinScenes().sort((x, y) => Number(Boolean(y.auto.configs?.length)) - Number(Boolean(x.auto.configs?.length)) || x.id.localeCompare(y.id)),
     get: (id) => S.scene.find((x) => x.id === id), name: sceneName, img: sceneImage, icon: 'scan',
@@ -1761,7 +1875,7 @@ const PICK = {
       <div class="small muted">${s.auto.configs?.length ? `env 配置 ${esc(s.auto.configs.join('、'))}` : '还没建模'} · 照片 ${s.auto.photos?.length || 0}</div>`,
   },
 };
-const pickSrc = (key) => PICK[key.startsWith('sc-') ? 'scene' : key.startsWith('tk-') ? 'task' : 'obj'];
+const pickSrc = (key) => PICK[key.startsWith('sc-') ? 'scene' : key.startsWith('tk-') ? 'task' : key.startsWith('mt-') ? 'mat' : 'obj'];
 const pickLabel = (key, id) => { const x = pickSrc(key).get(id), n = x && pickSrc(key).name(x); return n && n !== id ? `${n} · ${id}` : id; };
 const picker = (key, ph = '搜索物体名称、类别或 id') => `<div class="chips" id="nt-chips-${key}">${ntChips(key)}</div>
   <div class="opick"><input type="search" placeholder="${ph}" autocomplete="off" aria-label="${ph}" aria-controls="opick-${key}" aria-expanded="false"
@@ -1808,7 +1922,8 @@ function opickKey(ev, key) {
   next.scrollIntoView({block: 'nearest'});
 }
 function pickObjId(key, id) {
-  if (!/^(sc|tk)-/.test(key)) {
+  if (/^mt-(fix|v3d)-/.test(key)) ntList(key).splice(0);  // one fixed / previewed material per role
+  if (!/^(sc|tk|mt)-/.test(key)) {
     const clash = isHoldKey(key) ? trainObjects().has(id) && '已经是训练候选，评测保留的必须是训练里没见过的物体'
       : heldObjects().has(id) && '已经选为评测保留物体，不能再进训练';
     if (clash) return toast(`${pickLabel(key, id)} ${clash}`, true);
@@ -1821,10 +1936,15 @@ function pickObjId(key, id) {
     $(`#nt-chips-${other}`).innerHTML = ntChips(other);
   }
   $(`#nt-chips-${key}`).innerHTML = ntChips(key);
+  if (key.startsWith('mt-v3d-')) VIEWER?.sync?.();
   const input = $(`#opick-${key}`)?.previousElementSibling;
   if (input && document.activeElement === input) { input.value = ''; opickOpen(key, input); }
 }
-function unpickObj(key, i) { ntList(key).splice(i, 1); $(`#nt-chips-${key}`).innerHTML = ntChips(key); }
+function unpickObj(key, i) {
+  ntList(key).splice(i, 1);
+  $(`#nt-chips-${key}`).innerHTML = ntChips(key);
+  if (key.startsWith('mt-v3d-')) VIEWER?.sync?.();
+}
 function addBuiltScenes() { live(S.scene).filter((s) => s.auto.configs?.length).forEach((s) => pickObjId('sc-train', s.id)); }
 function pickPreview(anchor, key, id) {  // a card beside `anchor`, or hidden without arguments
   const card = $('#obj-preview'), s = key && pickSrc(key), x = id && s.get(id);
@@ -2298,7 +2418,8 @@ async function deleteUser(username) {
   } catch (err) { toast(`删除失败：${err.message}`, true); }
 }
 async function load() {
-  await Promise.all([...KINDS.map(async (k) => { S[k] = await api(`/api/items?kind=${k}`); }), api('/api/members').then((m) => { MEMBERS = m; })]);
+  await Promise.all([...KINDS.map(async (k) => { S[k] = await api(`/api/items?kind=${k}`); }), api('/api/members').then((m) => { MEMBERS = m; }),
+    api('/api/materials').then((m) => { MATS = m; })]);
   UI.loaded = true;
   UI.syncedAt = new Date().toLocaleTimeString('zh-CN', {hour12: false});
   render();
@@ -2806,6 +2927,94 @@ function startViewer(el) {
         for (const o of v.room) o.visible = show;
         btn.textContent = show ? '隐藏房间' : '显示房间';
       };
+      // material swaps, lighting and desk height from the drawer's AP state, on the usd/parts.json meshes (GLB nodes
+      // are named by USD path, positions baked in metres with Y up)
+      const hemi = scene.children.find((o) => o.isHemisphereLight), byPath = new Map(), made = new Map();
+      for (const o of meshes) {
+        const name = o.userData.name || o.parent?.userData.name;
+        if (name) byPath.set(name, [...(byPath.get(name) || []), o]);
+        o.userData.orig = {material: o.material, y: o.position.y, sy: o.scale.y};
+      }
+      const at = (rel) => byPath.get(`/World/${rel}`) || [];
+      // decor standing on the desk that only the preview model has (the sim Room leaves it out): rises with the top
+      const desk = (() => {
+        const p = S.scene.find((x) => x.id === el.dataset.scene)?.auto.parts;
+        if (!p?.lift) return [];
+        const top = new THREE.Box3(), lifted = new Set([...p.lift.move, ...p.lift.stretch.map((s) => s[0])].map((r) => `/World/${r}`));
+        for (const part of p.roles.tabletop.parts) for (const o of at(part.path)) top.expandByObject(o);
+        if (top.isEmpty()) return [];
+        return meshes.filter((o) => {
+          if (lifted.has(o.userData.name)) return false;
+          const b = new THREE.Box3().setFromObject(o), c = b.getCenter(new THREE.Vector3());
+          return b.min.y > p.top_z - 0.005 && b.min.y < p.top_z + 0.03 && c.x > top.min.x && c.x < top.max.x && c.z > top.min.z && c.z < top.max.z;
+        });
+      })();
+      const boxUv = (g) => {  // world-metre UVs projected along each vertex's main normal axis, for meshes without st
+        if (g.attributes.uv || !g.attributes.normal) return;
+        const p = g.attributes.position, n = g.attributes.normal, uv = new Float32Array(p.count * 2);
+        for (let i = 0; i < p.count; i++) {
+          const ax = [Math.abs(n.getX(i)), Math.abs(n.getY(i)), Math.abs(n.getZ(i))];
+          const [u, w] = ax[0] >= ax[1] && ax[0] >= ax[2] ? [p.getZ(i), p.getY(i)] : ax[1] >= ax[2] ? [p.getX(i), p.getZ(i)] : [p.getX(i), p.getY(i)];
+          uv[2 * i] = u;
+          uv[2 * i + 1] = w;
+        }
+        g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      };
+      const material = (m, repeat) => {  // MDLs are approximated by their base-colour thumbnail, 1 m per repeat
+        const key = `${m.id}@${repeat}`;
+        if (made.has(key)) return made.get(key);
+        const mat = new THREE.MeshStandardMaterial({roughness: m.roughness ?? 0.6, metalness: m.metallic ?? (m.category === 'metal' ? 0.7 : 0)});
+        const url = m.kind === 'preview' ? m.texture && file(`${INFO.root}/${m.texture}`) : m.thumb && file(m.thumb);
+        if (url) {
+          mat.map = new THREE.TextureLoader().load(url);
+          mat.map.colorSpace = THREE.SRGBColorSpace;
+          mat.map.wrapS = mat.map.wrapT = THREE.RepeatWrapping;
+          mat.map.repeat.set(repeat, repeat);
+        } else if (m.color) mat.color.setRGB(...m.color, THREE.LinearSRGBColorSpace);
+        else mat.color.set(0x9ca3af);
+        made.set(key, mat);
+        return mat;
+      };
+      const kelvin = (k) => {  // approximate blackbody colour (Tanner Helland), 1000-40000 K
+        const t = k / 100, c = (x) => Math.min(255, Math.max(0, x)) / 255;
+        const r = t <= 66 ? 1 : c(329.7 * (t - 60) ** -0.1332);
+        const g = t <= 66 ? c(99.47 * Math.log(t) - 161.12) : c(288.12 * (t - 60) ** -0.0755);
+        const b = t >= 66 ? 1 : t <= 19 ? 0 : c(138.52 * Math.log(t - 10) - 305.04);
+        return new THREE.Color(r, g, b);
+      };
+      v.sync = () => {
+        const ap = AP?.id === el.dataset.scene ? AP : null, parts = S.scene.find((x) => x.id === el.dataset.scene)?.auto.parts;
+        const light = ap?.light || LIGHT0;
+        sun.intensity = light.k;
+        hemi.intensity = 0.5 * light.k;
+        scene.environmentIntensity = light.k;
+        sun.color.copy(kelvin(light.temp));
+        hemi.color.copy(kelvin(light.temp));
+        const az = (light.az * Math.PI) / 180;
+        sun.position.set(centre.x + 6 * Math.cos(az), centre.y + 6, centre.z + 6 * Math.sin(az));
+        if (!parts) return;
+        for (const [role, info] of Object.entries(parts.roles)) {
+          const m = MATS.find((x) => x.id === ap?.v3d[role]?.[0]);
+          for (const part of info.parts) {
+            for (const o of at(part.path)) {
+              if (!m) { o.material = o.userData.orig.material; continue; }
+              if (!o.geometry.attributes.uv) boxUv(o.geometry);
+              const uvM = part.uv_m ?? 1, tile = m.kind === 'mdl' ? 1 : m.tile_m ?? uvM;
+              o.material = material(m, Math.round((100 * uvM) / tile) / 100);
+            }
+          }
+        }
+        const lift = parts.lift, dz = lift && ap?.vz != null ? ap.vz - parts.top_z : 0;
+        for (const o of [...(lift?.move || []).flatMap(at), ...desk]) o.position.y = o.userData.orig.y + dz;
+        for (const [rel, base, top] of lift?.stretch || []) {
+          const s = (top - base + dz) / (top - base);
+          for (const o of at(rel)) {
+            o.scale.y = o.userData.orig.sy * s;
+            o.position.y = o.userData.orig.y + base * (1 - s);
+          }
+        }
+      };
+      v.sync();
       const resize = () => {
         const w = el.clientWidth, h = el.clientHeight;
         if (!w || !h) return;
@@ -2820,6 +3029,8 @@ function startViewer(el) {
       renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
       status.hidden = true;
       v.free = () => {
+        for (const mat of made.values()) { mat.map?.dispose(); mat.dispose(); }
+        for (const o of meshes) o.material = o.userData.orig.material;
         renderer.setAnimationLoop(null);
         observer.disconnect();
         controls.dispose();

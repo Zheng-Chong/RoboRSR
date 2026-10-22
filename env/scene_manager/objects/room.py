@@ -47,3 +47,9 @@ class Room(SingleGeometryPrim):
                 self.set_local_pose(translation=pos, orientation=rot)
                 scale = instance_config.get("scale", [1.0, 1.0, 1.0])
                 self.set_local_scale(scale)
+                if instance_config.get("appearance") or instance_config.get("table_lift"):
+                    from isaacsim.core.utils.stage import get_current_stage
+
+                    from env.scene_manager.objects.room_overrides import apply_room_overrides
+
+                    apply_room_overrides(get_current_stage(), prim_path, instance_config)

@@ -1,0 +1,125 @@
+{
+ "scene": "real_scene4_school",
+ "room": "real_scene4",
+ "top_z": 0.7628,
+ "roles": {
+  "floor": {
+   "parts": [
+    {
+     "path": "Background/Floor",
+     "material": "m0",
+     "uv_m": null
+    }
+   ],
+   "materials": [
+    {
+     "name": "m0",
+     "color": [
+      0.4,
+      0.4,
+      0.4
+     ],
+     "texture": null,
+     "roughness": 0.9,
+     "metallic": null,
+     "tile_m": null
+    }
+   ]
+  },
+  "wall": {
+   "parts": [
+    {
+     "path": "Background/Wall_left",
+     "material": "m2",
+     "uv_m": null
+    },
+    {
+     "path": "Background/Wall_right",
+     "material": "m2",
+     "uv_m": null
+    },
+    {
+     "path": "Background/Wall_back",
+     "material": "m2",
+     "uv_m": null
+    },
+    {
+     "path": "Background/Wall_front",
+     "material": "m2",
+     "uv_m": null
+    }
+   ],
+   "materials": [
+    {
+     "name": "m2",
+     "color": [
+      0.75,
+      0.75,
+      0.73
+     ],
+     "texture": null,
+     "roughness": 0.9,
+     "metallic": null,
+     "tile_m": null
+    }
+   ]
+  },
+  "tabletop": {
+   "parts": [
+    {
+     "path": "Table/Top",
+     "material": "m0",
+     "uv_m": null
+    }
+   ],
+   "materials": [
+    {
+     "name": "m0",
+     "color": [
+      0.4563,
+      0.3371,
+      0.1726
+     ],
+     "texture": null,
+     "roughness": 0.55,
+     "metallic": null,
+     "tile_m": null
+    }
+   ]
+  }
+ },
+ "lift": {
+  "top_z": 0.7628,
+  "split_z": 0.381,
+  "range": [
+   0.62,
+   1.27
+  ],
+  "move": [
+   "Table/Top"
+  ],
+  "stretch": [
+   [
+    "Table/Leg_nn",
+    0.0,
+    0.7471
+   ],
+   [
+    "Table/Leg_np",
+    0.0,
+    0.7471
+   ],
+   [
+    "Table/Leg_pn",
+    0.0,
+    0.7471
+   ],
+   [
+    "Table/Leg_pp",
+    0.0,
+    0.7471
+   ]
+  ]
+ },
+ "fixed_reason": null
+}

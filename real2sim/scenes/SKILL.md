@@ -62,4 +62,13 @@ python scripts/scenes/overlay.py --env-cfg <配置> --labels view1.json --image 
 3. 平台的卡片封面和 3D 预览（都在 `preview/`，不入库，同步到部署机的同一路径；重建场景后重跑）：
    - `uv run --no-project --with usd-core --with numpy python scripts/scenes/export_glb.py real2sim/scenes/<场景>`：本机就能跑，把 `usd/scene.usda` 转成 `preview/scene.glb`，抽屉里可拖拽旋转。墙和天花板是单面朝内的，从房间外看会自动剖开；背景物体要放在 `/World/Background` 下，平台据此取景和「隐藏房间」。
    - `OMNI_KIT_ACCEPT_EULA=YES python scripts/scenes/render_scenes.py real2sim/scenes/<场景> --device cuda:<卡>`：GPU 服务器上用场景自带灯光的 RTX 渲染，写 `preview/render/sim.jpg`，平台优先用它当卡片封面。
-4. 更新 `real2sim/ASSETS.md` 的场景行、`scene_spec.json`、`PLAN.md` 和 `HANDOFF.md`，一起提交。
+4. 跑 `uv run --no-project --python 3.11 --with usd-core python scripts/scenes/scene_parts.py real2sim/scenes/<场景>`，写 `usd/parts.json`（地板、墙面、桌面的网格和材质，升降桌哪些网格上移、哪些拉伸），看一眼输出的计数和列表对不对；新场景的材质要进材质库时，在 GPU 服务器的带 `Assets/` 的目录里跑 `scene_parts.py --library --assets Assets real2sim/scenes/real_scene*`，提交 `real2sim/materials/library.json`，`preview/` 同步到部署机。
+5. 更新 `real2sim/ASSETS.md` 的场景行、`scene_spec.json`、`PLAN.md` 和 `HANDOFF.md`，一起提交。
+
+## 换材质和升降桌
+
+- 场景抽屉的「外观与桌高」里给地板、墙面、桌面选固定替换材质和数据生成用的随机池，设固定桌高和随机桌高范围，保存为 `appearance.json`。材质库（`real2sim/materials/library.json`）= 各场景提取的材质 + 资产库 `Material/` 的 504 个 MDL；MDL 按世界坐标投影（每 1 m 重复），场景贴图按原贴图的真实重复尺寸换算 UV。
+- 生效方式：生成布局时写进每个布局的 Room（`appearance`、`table_lift`、`appearance_choice`、新的 `table_height`），物体跟着桌面平移；仿真加载 Room 后照布局换绑材质、移动和拉伸桌子网格（`env/scene_manager/objects/room_overrides.py`），不改 Room 资产。`build_asset.py` 重新生成评测布局时自动用固定设置；采集布局生成后跑 `python scripts/scenes/appearance.py real2sim/scenes/<场景> <布局目录> [--randomize --seed N]`。
+- 机器人站位和升降柱不随桌高变（用户 10-22 决定）：桌子变高变低就是不同的够取高度，脚本专家按原桌高调的，换高度后成功率会变。升降行程按常见双电机升降桌取 0.62–1.27 m；吧台（`real_scene2_counter`）是落地柜，不升降，只能换材质。
+- 贴图材质换到没有 UV 的网格上（办公室桌面）只会显示一种颜色，这种网格选 MDL。
+- 抽屉 3D 预览下方可以先试：换三类表面材质、拖桌高、调灯光亮度 / 色温 / 方向，满意后「设为固定设置」再到「外观与桌高」保存。预览里 MDL 用底色缩略图近似；灯光只在预览里，不进仿真。
