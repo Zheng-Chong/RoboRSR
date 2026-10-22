@@ -36,6 +36,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import shutil
 import sqlite3
 import sys
 import threading
@@ -893,11 +894,19 @@ class Handler(BaseHTTPRequestHandler):
         kind, id_ = self.target()
         if not kind:
             return self.send_error(400)
+        if kind == "scene":  # admins only; removes the whole scene directory: registration and photos
+            if not self.user["admin"]:
+                return self.send_json({"error": "只有管理员可以删除场景"}, 403)
+            folder = build_asset.SCENES_DIR / id_
+            if SCENE_ID.fullmatch(id_) and folder.is_dir():
+                in_code = id_ in {scene for scene, *_ in build_asset.SCENES.values()}
+                if in_code or (folder / "usd").exists() or any(folder.glob("*.usd")):
+                    error = "已建模的场景由代码管理（USD、build_asset.py 的 SCENES、env 配置），请在仓库里删除"
+                    return self.send_json({"error": error}, 409)
+                shutil.rmtree(folder)
         self.store.delete(kind, id_)
         if kind == "object" and OBJECT_ID.fullmatch(id_):
             (OBJECTS_DIR / id_ / "spec.json").unlink(missing_ok=True)
-        elif kind == "scene" and SCENE_ID.fullmatch(id_):
-            (build_asset.SCENES_DIR / id_ / "registration.json").unlink(missing_ok=True)
         elif kind == "task" and TASK_ID.fullmatch(id_):
             (TASKS_DIR / id_ / "registration.json").unlink(missing_ok=True)
         elif kind == "embodiment" and EMBODIMENT_ID.fullmatch(id_):

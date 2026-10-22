@@ -911,10 +911,12 @@ function scenePhotos(d, kind = 'scene', min = MIN_SCENE_PHOTOS) {
 }
 function drawerScene(d) {
   const a = d.auto, dir = rel(a.path), rs = evalStages(SCENE_STAGES, d);
+  // modeled scenes live in code and git (USD, build_asset.py SCENES, env configs): the server refuses to delete them
+  const actions = ME?.admin && !a.configs?.length && !a.rooms?.length
+    ? `<button class="btn" type="button" data-id="${esc(d.id)}" onclick="removeScene(this.dataset.id)">${ic('trash')}删除场景</button>` : '';
   if (d.registered && !a.built) {
     return {
-      title: sceneName(d), sub: `${dir} · ${sceneDims(d)}`,
-      actions: `<button class="btn" type="button" data-id="${esc(d.id)}" onclick="removeDoc('scene', this.dataset.id)">${ic('trash')}删除登记</button>`,
+      title: sceneName(d), sub: `${dir} · ${sceneDims(d)}`, actions,
       body: `${sec(`${ic('terminal')}建模任务（给 coding agent）`, `<p class="hint" style="margin:0 0 8px">登记信息已写入
         <a target="_blank" rel="noopener" href="${file(`${a.path}/registration.json`)}">${esc(dir)}/registration.json</a>，和照片在同一目录。把下面这段交给 coding agent；建好后同步，验收进度自动更新。</p>${code(sceneBrief(d))}`)}
       ${sec(`${ic('camera')}参考照片`, scenePhotos(d))}
@@ -928,7 +930,7 @@ function drawerScene(d) {
     + `    sh -c "${steps.map((s) => `python ${s}`).join(' && ')}"\n\n`
     + '# 装入 Assets/Room/ 并为各场景配置生成 G1-D 布局（改共享库前先在隔离目录验证、征得同意并备份）\npython scripts/g1d/build_asset.py';
   return {
-    title: sceneName(d), sub: `${dir} · ${sceneDims(d)} · env 配置 ${(a.configs || []).join('、') || '—'}`,
+    title: sceneName(d), sub: `${dir} · ${sceneDims(d)} · env 配置 ${(a.configs || []).join('、') || '—'}`, actions,
     body: `${a.model ? sec(`${ic('cube')}3D 预览`, `<div class="m3d" data-model="${esc(file(a.model))}"><canvas aria-label="场景 3D 模型，拖拽旋转"></canvas>
       <div class="m3d-status">加载中…</div><div class="m3d-hint">左键拖拽旋转 · 右键拖拽平移 · 滚轮缩放</div>
       <div class="m3d-bar"><button class="btn" type="button" onclick="VIEWER?.toggleRoom(this)" title="墙、天花板和背景家具，地面保留">隐藏房间</button><button class="btn" type="button" onclick="VIEWER?.reset()">重置视角</button>
@@ -2297,6 +2299,15 @@ async function removeDoc(kind, id) {
   S[kind] = S[kind].filter((x) => x.id !== id);
   closeDrawer();
   toast('已删除');
+}
+async function removeScene(id) {
+  if (!confirm(`删除场景 ${id}？登记信息和 real2sim/scenes/${id}/ 下的照片会一起删除，不能恢复。`)) return;
+  try {
+    await api(`/api/items?kind=scene&id=${encodeURIComponent(id)}`, {method: 'DELETE'});
+  } catch (err) { return toast(`删除失败：${err.message}`, true); }
+  S.scene = S.scene.filter((x) => x.id !== id);
+  closeDrawer();
+  toast(`已删除场景 ${id}`);
 }
 let NEW_PHOTOS = [], WIZ_AT = 0, WZ = null;  // the open registration wizard: photos picked so far, current step, {steps, check}
 async function openNewObject(btn) {

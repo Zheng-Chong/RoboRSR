@@ -258,8 +258,16 @@ def test_http():
         status, body, _ = request("GET", f"/file?path={preview / 'scene.glb'}")
         assert status == 200 and body == b"glTF"
         assert request("DELETE", f"/api/photo?path={found['photos'][0]}")[0] == 200
+        store.add_user("dave", "password1")
+        member = login("dave", "password1")[2]
+        assert request("DELETE", scene, headers={"Cookie": member})[0] == 403  # admins only
+        store.remove_user("dave")
+        modeled = tmp / "scenes/real_scene8_lab"
+        modeled.mkdir()
+        (modeled / "room.usd").write_bytes(b"usd")
+        assert request("DELETE", "/api/items?kind=scene&id=real_scene8_lab")[0] == 409  # lives in code and git
         assert request("DELETE", scene)[0] == 200
-        assert not (tmp / "scenes/real_scene9_kitchen/registration.json").exists()
+        assert not (tmp / "scenes/real_scene9_kitchen").exists()  # registration, photos and previews
 
         for inst in ("cup/00000", "cup/00001", "ball/00000"):  # the Clutter library, as in the asset mirror
             (tmp / "Object/RoboDojo/Clutter" / inst).mkdir(parents=True)
