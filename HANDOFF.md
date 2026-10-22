@@ -33,14 +33,27 @@
 
 ## 最近任务
 
+### 深圳实验室倒豆 500 条（2026-10-22，`chongzheng/datagen-shenzhen-beans` 快进进 `main`，已上传 ModelScope）
+
+- **用户要求**：深圳实验室场景；高量杯倒进矮量杯或白色塑料马克杯；2–5 个无关干扰物；500 条；多卡并行。看过首批视频后改为：红豆 300–600（原 100–300）、抓取要稳、两杯不能碰。
+- **数据集** `g1d_shenzhen_pour_beans_cup_or_mug_500`：500 回合、199697 帧、30 Hz，XPolicyLab 官方转换器出的 LeRobot v3.0；目标矮量杯 257、马克杯 243；豆数 320–594；干扰物 2/3/4/5 个各 140/123/119/118 回合。私有仓库 `ChongZheng/g1d_shenzhen_pour_beans_cup_or_mug_500`。registry 已登记。
+- **代码**：任务 `g1d_pour_beans_cup_or_mug`（指令按目标说 “…into the short measuring cup / the white mug.”）；插件 `scripts/datagen/plugins/g1d_pour_beans_cup_or_mug.py`，验收 `all_beans_retained_any_target_v2`：结尾 30 帧全部豆子在目标杯腔内、两杯 ≤ 15°；整回合两杯杯身不接触（圆柱采样 + 马克杯把手）、目标杯 ≤ 15°、干扰物位移 ≤ 2 cm，违规即结束回合；`scripts/objects/plastic_mug_shape.py`（马克杯尺寸、原点偏移、杯腔）；`scripted_demo.cup_to_cup_actions` 按杯种取夹持高度、下倾角、杯腔，源杯先在原地升到倒豆高度再横移（旧版 43% 回合在搬运时擦碰）；布局 `scripts/g1d/prepare_bean_pour_layouts.py`（复用办公室采样器；马克杯把手朝持杯手指方向 ±40°；豆数目标 350–630，因颗粒网格采样实际 320–594；干扰物从 19 类 Clutter 直立放在桌后部和两侧，离杯 ≥ 0.16 m）；env 配置 `g1d_shenzhen_lab_beans_collect`；`run_batch.py --per-gpu N`，以及进程位多于分片时空队列 pop 崩溃的修复。
+- **运行** `5090-2:/data/robodojo-runs/shenzhen-beans-20261021`，`output/datagen/shenzhen-beans-v2`，代码 `1d39c9d`（rebase 前的提交号，内容同 `main` 上的对应提交）。GPU 0/6/7 每卡 3 进程，6.3 小时，751 回合 505 合格（67%；矮量杯 262/372、马克杯 243/379；左手 246/364、右手 259/387）。不合格：结尾条件 143、目标杯倾斜 87、两杯接触 15、干扰物被碰 1。100–300 豆的 v1 批次（199 回合 156 合格）已弃用。
+- **验证**：导出读回 500/199697；`audit.py` 500/500 重算验收通过，布局互不相同（`final_validation.json`、`sha256.json`、`coverage.png`）；开环回放 seed500、seed509 各 4 条：手臂状态偏差 ≤ 2e-3 rad，6/8 复现合格，1 条豆子落点不同（190 颗留在源杯，颗粒物理开环发散），1 条稳定帧 29/30；上传后 `upload.py verify` 逐文件核对 sha256。本机 `check.sh`。
+- **没做**：55 N 夹爪 A/B（另一会话 `c575c8e`）合格率同为 16/28，没合入；指令只有一种英文说法。
+
 ### 实验室场景 `real_scene3_lab` 的家具建成立体模型（2026-10-22）
 
 - **用户要求**：实验室场景要把桌子、椅子、柜子也重建出来，而不是只贴图。原来只有操作台是几何体，房间里的家具都压平在四面墙的照片上。
 - **做法**：相机沿用 `fit_photo.json`，在照片上手标落地点（桌脚、椅脚、柜底边），反投影到地面；p1、p4 都拍到的铁皮柜做三角化。尺寸取常见规格，再用照片核对。`build_scene.py` 新增 `FURNITURE`（15 件：北排 3 张工位桌 + 4 把网椅，西侧 2 张工位桌 + 2 把网椅，活动柜带纸箱，两门文件柜，木面边桌，圆咖啡桌）和六种参数化模型，放在 `background.usda` 的 `/Background/Furniture/`。这样 Room 入口、`render_scenes.py` 的取景（只对准 Background、Lights 以外的部分）和平台的「隐藏房间」都不用改。碰撞体都是盒体或 ≤ 50 点的凸包。墙面贴图把家具的投影区域膨胀 21 px 后抠掉，按行中值补色；操作台那块原来用 Telea 修补，也改成按行补色。
 - **照片之间的矛盾**（写进了 `PLAN.md`）：p2 的相机在画面边缘外推不准，按它算西墙转了约 13°，远处高度也偏低约 5 cm，所以西侧家具按与墙平行摆放。北排最右那张桌子按 p3 摆在 y≈3.05，p4 却要求 y≈2.45，相差 0.6 m；p4 左缘这一块用 `HAND_MASK` 手标多边形抠掉。圆桌只在 p4 出现，高度按 0.75 m 假设。
-- **验证**：`check_scene.py` 24/24。新增 5 项：碰撞体 ≤ 64 点、家具落地、不进墙、离 G1-D 根节点 1 m 以上且离操作台 0.3 m 以上、家具之间不重叠；原来的站位等检查改成只看操作台。`preview.py` 的叠图用绿色画家具边线：p1、p3、p4 误差约 10 px，p2 约 20 px。本机 `check.sh` 29 passed 1 skipped；`export_glb.py` 输出 205 个网格、2.9 MB。`5090-2` 隔离目录 `/data/robodojo-runs/lab-furniture-20261022-003901/`（GPU 4）只载场景跑 `render_scenes.py`：退出码 0，没有报错，家具正常渲染、有投影。**没有带机器人跑 `scripted_demo`**。
+- **验证**：`check_scene.py` 24/24。新增 5 项：碰撞体 ≤ 64 点、家具落地、不进墙、离 G1-D 根节点 1 m 以上且离操作台 0.3 m 以上、家具之间不重叠；原来的站位等检查改成只看操作台。`preview.py` 的叠图用绿色画家具边线：p1、p3、p4 误差约 10 px，p2 约 20 px。本机 `check.sh` 29 passed 1 skipped；`export_glb.py` 输出 205 个网格、2.9 MB。`5090-2` 隔离目录 `/data/robodojo-runs/lab-furniture-20261022-003901/`（GPU 4）只载场景跑 `render_scenes.py`：退出码 0，没有报错，家具正常渲染、有投影。带机器人的脚本演示见下面「装共享库」。
 - **平台**：`fbdb323` 已推到 `main`。部署机 `/root/RoboDojo` 只替换了这个场景的 `preview/scene.glb` 和 `preview/render/sim.jpg`，旧文件备份在 `.cache/lab-preview-before-furniture-20261022-004331/`。部署机的检出仍停在 `4f8cccf`：上面有别的会话没提交的 `HANDOFF.md`、`airpods` 的 `spec.json`，以及未跟踪的 `real2sim/scenes/g1d_green_table/`，所以没有快进；下次部署时一起快进。
-- **没做**：共享资产库里的 `Assets/Room/real_scene3/` 还是 10-16 的版本（没有立体家具），按规定要用户同意才能更新。桌上的显示器、笔记本、机器人、三脚架、杯子仍压平在墙上。家具没有卷尺实测。
+- **装共享库**（用户 10-22 同意：先验证再替换）：
+  - 隔离目录 `5090-2:/data/robodojo-runs/lab-furniture-install-20261022-085858/`：资产复制自 `shenzhen-lab-20261021-125246`，积木、小车和三类杂物从 21196 经本机中转。在里面跑 `build_asset.py`（退出码 0），再用 `g1d_lab` 跑 `scripted_demo` 的 seed 0：拾取、叠块、量杯倒豆都是 `success_rate` 1.0、`eval_time` 1，五路相机画面正常。
+  - 踩坑：起初拾取、叠块的 34 个 seed 全部判为不稳定。用旧房间、办公室场景对照，结果一样，说明和家具无关：复制来的资产里 `block`、`car` 只有元数据，没有 `object.usdz`。**5090-2 上的运行目录资产不全，跑别的任务前先确认 `object.usdz` 在。**
+  - 只替换了共享库的 `Assets/Room/real_scene3/`（13 个文件，sha256 和验证产物逐个一致），布局没动。旧版备份在 `21196:/data2/tmp/robodojo/backup-shared-20261022-093503.tgz`。
+- **没做**：桌上的显示器、笔记本、机器人、三脚架、杯子仍压平在墙上。家具没有卷尺实测。
 
 ### G1-D 夹爪力反馈（2026-10-21，分支 `chongzheng/robot-g1d-gripper-force`）
 
@@ -252,9 +265,8 @@
 - **学校场景**：桌面高度和底盘偏航都依赖假设（零升降、12 号电机即躯干偏航），要用卷尺和叠图核对；从 sys01 拷真机头部和腕部画面（`outputs/g1d-real2sim`）做叠图。杯盘要在数采平台登记实测后，按 `scripts/objects/SKILL.md` 重建。
 - **共享库的倒豆布局过期**：`g1d`、`g1d_counter`、`g1d_lab` 的倒水、杯对杯布局是旧豆子参数（4 mm，`particle_mass` 6e-5），和当前 `build_asset.py`（5.6 mm）不一致；`g1d_shenzhen_lab` 已是新参数。要统一，就在隔离目录重跑 `build_asset.py`，经同意后替换（先备份）。
 - **深圳实验室**：已合并、部署、装共享库；站位卷尺（桌沿到根节点、横向偏移）和三视角叠图后，`acceptance.py` 才能通过。
-- **实验室场景家具**：共享库的 `real_scene3` 还没换成带家具的新版。更新流程：在隔离目录跑 `build_asset.py`，跑一次 `g1d_lab` 的 `scripted_demo`，看四路相机，经用户同意后替换（先备份）。
 - **场景**：除深圳实验室外没有卷尺实测，都没有叠图；`real_scene1` 和 09-21 那次真机运行时的摆放不一样，那批画面不能用来叠图。下次去现场按 `real2sim/scenes/SKILL.md` 一次采齐。
-- **夹爪参数**：10-21 按下面的估算改成每指刚度 3.6e4 N/m、上限 55 N（之前 1e4、20 N）。**已有的两份 100 条量杯数据是在旧参数下采的**，现在的 env 和它们不再完全一致；评估用这两份数据训练的策略时，要知道夹爪变了（夹持时的开度不变，力变大）。
+- **夹爪参数**：10-21 按下面的估算改成每指刚度 3.6e4 N/m、上限 55 N（之前 1e4、20 N）。**已有的两份 100 条量杯数据和 10-22 的深圳 500 条杯或马克杯数据（`g1d_shenzhen_pour_beans_cup_or_mug_500`）都是在旧参数下采的**，现在的 env 和它们不再完全一致；评估用这两份数据训练的策略时，要知道夹爪变了（夹持时的开度不变，力变大）。
   - **真机设定**（10-21 在 `ssh unitree` 上只读查看）：遥操作采集（`~/g1d_infra/teleop/robot_control/robot_arm.py`）、策略评测客户端（`~/client/jepa_g1d_client/g1d_jepa_client.py`、`motus_client`），以及 unitree_lerobot 官方的 `Dex1_1_Gripper_Controller`，用的都是电机层 PD：`kp=5.0`、`kd=0.05`、`tau=0`，读数 q 范围 0（闭合）到 5.36（张开）。每步指令都裁到当前位置附近：遥操作 ±0.18 rad（再加平滑滤波），评测客户端闭合时最多超前 0.3 rad（`GRIP_SQUEEZE`）。没有显式的力矩上限，真正决定夹持力的是 kp 乘以这个误差上限：遥操作最多约 0.9 N·m，评测最多约 1.5 N·m。
   - **换算成指尖力（估计，没实测）**：假设 q 和指尖行程成线性（每指 44.5 mm 对应 5.36 rad，约 8.3 mm/rad），一个电机同时推两指，那么每指的力约等于 60 × τ：遥操作约 55 N，评测约 90 N；每指的等效刚度约 3.6e4 N/m（仿真是 1e4）。没算传动效率和摩擦，实际会低一些。线性假设本身也没标定过（见下面的「真机对齐」）。
   - **要定准**：在真机上夹一个已知宽度的硬物，读电机 31、33 在 `rt/lowstate` 里的 `tau_est`，或者夹测力计直接量。
@@ -290,7 +302,8 @@
 
 ## 最近历史
 
-- 2026-10-22：实验室场景 `real_scene3_lab` 的工位桌、网椅、活动柜、文件柜、边桌、圆桌建成立体模型（`/Background/Furniture`），从墙面照片里抠掉；共享库未更新（见「最近任务」）。
+- 2026-10-22：深圳实验室倒豆 500 条（矮量杯或马克杯、300–600 豆、2–5 干扰物、严格整回合验收）采完、审计、上传 ModelScope 私有仓库 `ChongZheng/g1d_shenzhen_pour_beans_cup_or_mug_500`。
+- 2026-10-22：实验室场景 `real_scene3_lab` 的工位桌、网椅、活动柜、文件柜、边桌、圆桌建成立体模型（`/Background/Furniture`），从墙面照片里抠掉；隔离目录里三个脚本演示通过后，经用户同意换进共享库（见「最近任务」）。
 - 2026-10-21：G1-D 夹爪力反馈：指垫 ContactSensor，输出 `obs["gripper_force"]`（N），不进数据集；5090-2 上量杯 seed 0 通过，夹持时每个指垫 15–22 N。
 - 2026-10-21：查了真机 Dex1-1（kp=5、kd=0.05、tau=0，每步超前 0.18–0.3 rad），估算每指约 55 N；仿真夹爪改成刚度 3.6e4、上限 55 N，量杯 seed 0/100/101 回归通过。
 - 2026-10-21：物体的颜色、尺寸泛化改为仿真里按布局随机，不建新资产；形状、材质等仍建变体资产，平台上收进本体卡片（用户：泛化放到一个卡片下；能不能在仿真里随机改尺寸和颜色而不是新建资产；用户选定两个都做、随机值写进布局）。

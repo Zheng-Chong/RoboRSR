@@ -36,7 +36,7 @@
 ## 仿真配置
 
 - 每个回合都把 env 配置名写在 `additional_info/env_cfg`、质检单和数据集卡片里。**用这份数据训练出的策略，评估时必须用同一个 env 配置**。XPolicyLab 的 checkpoint 目录名里带 `env_cfg_type`，配置用错时会找不到 checkpoint。
-- 物理步长：`g1d`、`g1d_counter`、`g1d_lab`、`g1d_school`、`g1d_shenzhen_lab` 是 1/300 s；`g1d_beans_collect` 是 1/600 s，专门给颗粒任务用。颗粒任务不要在 1/300 s 下评估：每步最大位移 8.3 mm，已经超过“豆径 + 杯底厚”的 7.6 mm（判据见 `env_cfg/sim/g1d_beans_collect_sim.yml` 的注释）。
+- 物理步长：`g1d`、`g1d_counter`、`g1d_lab`、`g1d_school`、`g1d_shenzhen_lab` 是 1/300 s；`g1d_beans_collect`（办公室）和 `g1d_shenzhen_lab_beans_collect`（深圳实验室，布局和结果目录同 `g1d_shenzhen_lab`）是 1/600 s，专门给颗粒任务用。颗粒任务不要在 1/300 s 下评估：每步最大位移 8.3 mm，已经超过“豆径 + 杯底厚”的 7.6 mm（判据见 `env_cfg/sim/g1d_beans_collect_sim.yml` 的注释）。
   - 2026-10-19 用 `replay.py` 实测：在 `g1d_beans_collect` 下重放两条录制的量杯回合，机械臂 state 的最大偏差 ≤ 1e-4 rad；同一组动作放到 `g1d` 下，两条各洒出 57–59 颗豆子（约 9%），连任务自身的判据都不通过。
 - 环境是否一致，用 `replay.py` 检查：把录下的动作在目标 env 配置里原样重放，对比 state 偏差和验收结果。
 - 颗粒仿真不是逐位可复现的：同一配置、同一组动作，上面两条回放里有一条最后剩 1 颗豆子在源杯，没通过 100% 的严格验收（另一条通过）。判断环境是否一致，要看 state 偏差和豆子计数；严格判据本身的方差，要靠同一布局重复评估来估计。

@@ -2,6 +2,25 @@
   "about": "Every generated dataset: what it is, how it was made, where it lives. One entry per release or abandoned batch; status released | superseded | incomplete. Update it in the same commit as the HANDOFF entry. location.host is an SSH alias from the maintainers' ~/.ssh/config.",
   "datasets": [
     {
+      "name": "g1d_shenzhen_pour_beans_cup_or_mug_500",
+      "status": "released",
+      "created": "2026-10-22",
+      "task": "g1d_pour_beans_cup_or_mug",
+      "scene": "real_scene5_shenzhen_lab (ShenZhen lab desk)",
+      "env_cfg": "g1d_shenzhen_lab_beans_collect (physics 1/600 s, actions 30 Hz)",
+      "episodes": 500,
+      "frames": 199697,
+      "fps": 30,
+      "format": "LeRobot v3.0 from scripts/datagen/export.py (XPolicyLab converter); instruction names the target: short measuring cup or white mug",
+      "acceptance": "all_beans_retained_any_target_v2 (300-600 beans; whole episode: cups never touch, target <= 15 deg, distractors move <= 2 cm; last 30 frames all beans in the target, both cups <= 15 deg); 505 of 751 attempts; targets 257 measuring cup / 243 mug",
+      "assets": "measuring cups measured 2026-10-19, plastic_mug generated on 5090-2, 5.6 mm PBD beans, 2-5 distractors from 19 Clutter categories (read-only copy of the shared library)",
+      "code": "1d39c9d (branch commit before the rebase onto main)",
+      "layouts": "1100 candidates in g1d_shenzhen_lab/10 from scripts/g1d/prepare_bean_pour_layouts.py (random hand, both yaws, mug handle toward the holding fingers +-40 deg, bean targets 350-630), sharded into seeds 500-521, split=train",
+      "location": {"host": "5090-2", "run": "/data/robodojo-runs/shenzhen-beans-20261021", "path": "output/datagen/shenzhen-beans-v2/lerobot/g1d_shenzhen_pour_beans_cup_or_mug_500"},
+      "published": "ModelScope dataset ChongZheng/g1d_shenzhen_pour_beans_cup_or_mug_500 (private), 50 data files checked against local size and sha256",
+      "validation": "export read-back 500 / 199697; audit.py recomputed acceptance for 500/500, distinct layouts; open-loop replay of 8 episodes: arm state within 2e-3 rad, 6 reaccepted, 2 diverged in the granular beans"
+    },
+    {
       "name": "g1d_office_pour_beans_random_hand_yaw_100",
       "status": "released",
       "created": "2026-10-19",

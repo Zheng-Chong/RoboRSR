@@ -34,18 +34,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import make_pitcher as mp  # noqa: E402  (shared USD helpers; starts Kit when pxr needs it)
 from make_pitcher import Sdf, Usd, UsdGeom, UsdPhysics, UsdShade  # noqa: E402
 import measuring_cup_shape as shape  # noqa: E402
+import plastic_mug_shape  # noqa: E402
+from plastic_mug_shape import MUG  # noqa: E402
 
 RIGID_DIR = Path(__file__).resolve().parents[2] / "Assets/Object/RoboDojo/Rigid"
 N_THETA = shape.N_THETA
 STAVE_TOL = 0.0003  # max collision-wall intrusion into the cavity
 BOTTOM_SIDES = 24  # bottom slab polygon: PhysX GPU convexes (particle contacts) take <= 64 vertices, <= 32 per face
 
-# measured: 100 mm tall straight cylinder, 80 mm inside diameter, 2 mm wall, 89 g; handle 70 mm tall, 35 mm out from
-# the wall, 5 mm thick (outer extents; handle centreline sits T/2 inside them). Bottom thickness, strap width: guesses
-MUG = dict(
-    H=0.100, R0=0.042, R1=0.042, T_WALL=0.002, T_BOTTOM=0.004, FILLET=0.003, MASS=0.089,
-    HANDLE_TOP=0.0825, HANDLE_BOT=0.0175, HANDLE_OUT=0.0325, BEND=0.010, HANDLE_W=0.013, HANDLE_T=0.005,
-)  # fmt: skip
+# plastic mug: dimensions in plastic_mug_shape.py (measured)
 WHITE_PP = (0.90, 0.89, 0.85)
 
 CLEAR_PP = (0.94, 0.95, 0.96)
@@ -415,6 +412,8 @@ def save(rigid_dir, category, idx, c, material, mass, desc_fn):
 def main(rigid_dir):
     mug = build_mug()
     self_check(mug)
+    lo, hi = mug["pts"].min(0), mug["pts"].max(0)
+    assert np.allclose(-(lo + hi) / 2, plastic_mug_shape.origin_shift(), atol=2e-4), "bbox differs from origin_shift()"
     d, meta = save(rigid_dir, "plastic_mug", 0, mug, white_pp, MUG["MASS"], lambda u: mug_description(u, mug["ml"]))
     print(f"{d}: {mug['ml']:.0f} ml, size {meta['physics']['size']}, {len(mug['hulls'])} collision hulls")
 

@@ -18,7 +18,6 @@ CONFIG_DIR = ROOT_DIR / "task" / BENCHMARK / "config"
 sys.path.insert(0, str(ROOT_DIR))
 from task.RoboDojo import task_registry  # noqa: E402
 
-
 # Canonical capability groups from https://robodojo-benchmark.com/doc/sim-tasks/.
 # Generalization tasks also have runnable ``*_random`` configurations; those
 # inherit the dimension of their base task in _task_records().
@@ -80,6 +79,7 @@ DIMENSION_TASKS: dict[str, tuple[str, ...]] = {
         "g1d_pour_water_into_cup",
         "g1d_pour_beans_cup_to_cup",
         "g1d_pour_beans_measuring_cups",
+        "g1d_pour_beans_cup_or_mug",
         "g1d_general_pickup",
         "g1d_stack_blocks",
     ),
@@ -243,10 +243,7 @@ def _print_dimensions(inventory: dict[str, Any], output_format: str) -> None:
             )
     else:
         for row in rows:
-            print(
-                f"{row['dimension']} ({row['canonical_count']} canonical, "
-                f"{row['runnable_count']} runnable configs)"
-            )
+            print(f"{row['dimension']} ({row['canonical_count']} canonical, {row['runnable_count']} runnable configs)")
             for task in row["runnable_tasks"]:
                 print(f"  {task}")
 
@@ -303,12 +300,8 @@ def main() -> int:
     else:
         if selected_dimensions:
             inventory = dict(inventory)
-            inventory["tasks"] = [
-                task for task in inventory["tasks"] if task["dimension"] in selected_dimensions
-            ]
-            inventory["counts"] = _inventory_counts(
-                inventory["tasks"], inventory["config_only"]
-            )
+            inventory["tasks"] = [task for task in inventory["tasks"] if task["dimension"] in selected_dimensions]
+            inventory["counts"] = _inventory_counts(inventory["tasks"], inventory["config_only"])
         if args.format == "json":
             print(json.dumps(inventory, indent=2, sort_keys=True))
         elif args.format == "markdown":

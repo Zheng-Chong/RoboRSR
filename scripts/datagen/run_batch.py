@@ -2,8 +2,8 @@
 
 Shards a seed folder of candidate layouts into new seed folders marked as training layouts (split.json; the eval
 client then refuses them without --allow_train_layouts), runs scripts/datagen/collect.py on each shard, one process per
-GPU, and stops once --target episodes are accepted. A shard whose process exits before every layout is recorded is
-queued again (a process records at most the task's eval_nums layouts, 50 by default).
+GPU (--per-gpu N for N per GPU), and stops once --target episodes are accepted. A shard whose process exits before
+every layout is recorded is queued again (a process records at most the task's eval_nums layouts, 50 by default).
 
 Usage (Isaac env python, repo root):
     python scripts/datagen/run_batch.py --task g1d_pour_beans_measuring_cups --env-cfg g1d_beans_collect \
@@ -94,6 +94,11 @@ def make_shards(args):
     return files[: len(shards) * per]
 
 
+def assign(slots, active, queue):
+    """[(slot, seed)] for free (gpu, k) slots in order, popping seeds off the queue until it runs out."""
+    return [(slot, queue.pop(0)) for slot in slots if slot not in active and queue]
+
+
 def accepted_count(raw):
     return sum(json.loads(p.read_text()).get("accepted", False) for p in raw.glob("seed*/episode_*.json"))
 
@@ -113,6 +118,7 @@ def main():
     parser.add_argument("--shards", help="new seed folders for the shards, e.g. 100-107")
     parser.add_argument("--per-shard", type=int, default=50)
     parser.add_argument("--gpus", default="0", help="e.g. 0-7")
+    parser.add_argument("--per-gpu", type=int, default=1, help="worker processes per GPU")
     parser.add_argument("--target", type=int, help="accepted episodes to collect")
     parser.add_argument("--python", default=sys.executable, help="Isaac env interpreter for the workers")
     parser.add_argument("--revision", help="code commit to record when this run dir is not a git checkout")
@@ -148,7 +154,8 @@ def main():
     if stop.exists() and accepted_count(raw) < args.target:
         stop.unlink()
     queue = [s for s in span(args.shards) if remaining(args, s)]
-    gpus, active, exits, status = span(args.gpus), {}, {}, {}
+    slots = [(gpu, k) for k in range(args.per_gpu) for gpu in span(args.gpus)]  # fill every GPU once, then again
+    active, exits, status = {}, {}, {}
     env = dict(os.environ, PYTHONPATH=".:XPolicyLab", OMNI_KIT_ACCEPT_EULA="YES", **THREADS)
     env["ROBODOJO_REVISION"] = json.dumps(config["revision"])
     while queue or active:
@@ -156,8 +163,8 @@ def main():
         if accepted >= args.target:
             stop.touch()
             queue.clear()
-        for gpu in [g for g in gpus if g not in active and queue]:
-            seed = queue.pop(0)
+        for slot, seed in assign(slots, active, queue):
+            gpu = slot[0]
             log = (args.output / f"worker_{seed}.log").open("a")
             cmd = [args.python, "-u", "scripts/datagen/collect.py", "--task", args.task, "--env-cfg", args.env_cfg]
             cmd += ["--seed", str(seed), "--output", str(raw / f"seed{seed}"), "--stop-file", str(stop)]
@@ -166,13 +173,13 @@ def main():
             proc = subprocess.Popen(
                 cmd, cwd=ROOT, env=run_env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True
             )
-            active[gpu] = (seed, proc, log)
+            active[slot] = (seed, proc, log)
             print(f"[run_batch] seed {seed} on GPU {gpu}, pid {proc.pid}", flush=True)
-        for gpu, (seed, proc, log) in list(active.items()):
+        for slot, (seed, proc, log) in list(active.items()):
             if proc.poll() is not None:
                 log.close()
                 exits.setdefault(str(seed), []).append(proc.returncode)
-                del active[gpu]
+                del active[slot]
                 if proc.returncode == 0 and not stop.exists() and remaining(args, seed):
                     queue.append(seed)  # stopped at eval_nums layouts: run the rest
         status = dict(
