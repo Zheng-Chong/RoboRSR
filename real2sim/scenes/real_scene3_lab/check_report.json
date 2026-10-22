@@ -99,8 +99,8 @@
     "top_z": 0.749,
     "top": 0.749,
     "size": [
-     1.369,
-     0.686
+     1.37,
+     0.687
     ]
    }
   },
@@ -133,7 +133,7 @@
    "ok": true,
    "detail": {
     "z": [
-     0.456,
+     0.455,
      0.728
     ],
     "y": 0.285
@@ -150,10 +150,10 @@
    "name": "G1-D stock stance (root 0.13 m behind the edge) clears the legs and the panel",
    "ok": true,
    "detail": {
-    "room_offset_y": -0.257,
+    "room_offset_y": -0.256,
     "root_in_scene": [
      0.0,
-     -0.473
+     -0.474
     ],
     "hits": [],
     "free_under_table_from_front": 0.628
@@ -196,8 +196,8 @@
     "panel.png": 0.0,
     "tabletop.png": 0.0,
     "wall_east.png": 0.0003,
-    "wall_north.png": 0.0006,
-    "wall_south.png": 0.0004,
+    "wall_north.png": 0.0007,
+    "wall_south.png": 0.0005,
     "wall_west.png": 0.0003
    }
   },

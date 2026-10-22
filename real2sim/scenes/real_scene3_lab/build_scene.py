@@ -43,10 +43,9 @@ TABLE = dict(
 )
 GROMMET = dict(x=r3(F["grom_x"]), y=r3(F["grom_y"]), l=r3(F["grom_l"]), w=r3(F["grom_w"]))
 PANEL = dict(half=r3(F["panel_x"]), y=r3(F["panel_y"]), z0=r3(F["panel_z"]), t=0.016)
-# Splayed leg columns (axis x under the top / extrapolated to the floor), V feet in the YZ plane, casters.
+# Vertical leg columns, V feet in the YZ plane, casters.
 LEGS = dict(
-    x_hi=r3(F["col_x_hi"]),
-    x_lo=r3(F["col_x_lo"]),
+    x=r3(F["col_x"]),
     y=r3(F["col_y"]),
     col=(0.05, 0.06),  # column section (x, y)
     hub_z=0.075,
@@ -326,7 +325,7 @@ def table_silhouette(photo, shape):
     """Pixels covered by the table (its bounding box hull) in a photo."""
     t = TABLE
     pts = [
-        (sx * max(t["length"] / 2, LEGS["x_lo"] + 0.05), sy * t["width"] / 2, z)
+        (sx * max(t["length"] / 2, LEGS["x"] + 0.05), sy * t["width"] / 2, z)
         for sx in (-1, 1)
         for sy in (-1, 1)
         for z in (0.0, t["top_z"])
@@ -482,19 +481,16 @@ def add_table(L):
 
     cx, cy = g["col"]
     s = BEAM["section"]
-    beam = box_xyz(-g["x_hi"], g["x_hi"], g["y"] - s / 2, g["y"] + s / 2, z_under - s, z_under)
+    beam = box_xyz(-g["x"], g["x"], g["y"] - s / 2, g["y"] + s / 2, z_under - s, z_under)
     L.mesh("Frame/beam", beam, "frame_black")
     L.collider("Colliders/beam", beam)
     for sx, side in ((1, "pos"), (-1, "neg")):
-        # column: splayed outwards, axis through (x_hi, top_z) and (x_lo, 0); ends at the beam and the foot hub
-        def axis_x(z):
-            return sx * (g["x_lo"] + (g["x_hi"] - g["x_lo"]) * z / top)
-
-        hub = (axis_x(g["hub_z"]), g["y"], g["hub_z"])
-        col = bar((axis_x(z_under), g["y"], z_under), hub, cx, cy)
+        # column from the beam down to the foot hub
+        hub = (sx * g["x"], g["y"], g["hub_z"])
+        col = bar((sx * g["x"], g["y"], z_under), hub, cx, cy)
         L.mesh(f"Legs/{side}/column", col, "frame_black")
         L.collider(f"Colliders/column_{side}", col)
-        bracket = box_xyz(sx * g["x_hi"] - 0.04, sx * g["x_hi"] + 0.04, -hw + 0.06, hw - 0.06, z_under - 0.02, z_under)
+        bracket = box_xyz(sx * g["x"] - 0.04, sx * g["x"] + 0.04, -hw + 0.06, hw - 0.06, z_under - 0.02, z_under)
         L.mesh(f"Legs/{side}/bracket", bracket, "frame_black")
         L.collider(f"Colliders/bracket_{side}", bracket)
         for sy, end in ((1, "pos"), (-1, "neg")):

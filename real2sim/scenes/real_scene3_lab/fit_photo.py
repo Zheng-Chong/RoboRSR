@@ -5,8 +5,9 @@ modesty panel (the robot stands on the open -Y side). p1 is taken from the panel
 (-Y), p2 from the +X end, p4 from the -X end; the grommet box sits near the +Y edge, mid-length.
 
 Nothing in the photos is metric, so absolute scale comes from the tabletop height prior (0.75 m, the standard
-folding training table). "points" are corners; "lines" are pixels on a model edge whose ends are hidden (the leg
-columns). All four photos share the focal length (same phone, same crop). Writes fit_photo.json for build_scene.py.
+folding training table). "points" are corners; "lines" are pixels on a model edge whose ends are hidden (the
+vertical leg columns). All four photos share the focal length (same phone, same crop). Writes fit_photo.json for
+build_scene.py.
 """
 
 import json
@@ -32,8 +33,7 @@ DIMS = {
     "panel_x": (0.55, 0.20),  # half length
     "panel_y": (0.25, 0.10),
     "panel_z": (0.50, 0.15),  # bottom edge height
-    "col_x_hi": (0.55, 0.20),  # leg column axis under the top / at the foot hub: the columns splay outwards
-    "col_x_lo": (0.55, 0.20),
+    "col_x": (0.55, 0.20),  # leg column axis; the columns are vertical (they only look splayed in perspective)
     "col_y": (0.0, 0.10),
     "caster_x": (0.55, 0.20),
     "caster_y": (0.28, 0.10),
@@ -57,12 +57,7 @@ PHOTOS = {
             "caster_pp": (250, 644),
             "caster_mp": (782, 648),
         },
-        "lines": {
-            "col_p_hi": ((252, 521), "col_p_lo", "col_p_hi"),
-            "col_p_lo": ((237, 628), "col_p_lo", "col_p_hi"),
-            "col_m_hi": ((779, 521), "col_m_lo", "col_m_hi"),
-            "col_m_lo": ((790, 628), "col_m_lo", "col_m_hi"),
-        },
+        "lines": {},  # the slanted strips under the panel are the V feet, not the columns
     },
     "p2.jpg": {
         "points": {
@@ -100,7 +95,12 @@ PHOTOS = {
             "caster_mm": (283, 588),
             "caster_pm": (800, 588),
         },
-        "lines": {},
+        "lines": {  # column centre lines above the V feet
+            "col_m_hi": ((285, 360), "col_m_lo", "col_m_hi"),
+            "col_m_lo": ((280, 470), "col_m_lo", "col_m_hi"),
+            "col_p_hi": ((768, 345), "col_p_lo", "col_p_hi"),
+            "col_p_lo": ((764, 430), "col_p_lo", "col_p_hi"),
+        },
     },
     "p4.jpg": {
         "points": {
@@ -136,8 +136,8 @@ def model_points(d):
             out[f"grom_{kx}{ky}"] = (d["grom_x"] + sx * d["grom_l"] / 2, d["grom_y"] + sy * d["grom_w"] / 2, d["top_z"])
             out[f"caster_{kx}{ky}"] = (sx * d["caster_x"], sy * d["caster_y"], 0.0)
         out[f"panel_{kx}"] = (sx * d["panel_x"], d["panel_y"], d["panel_z"])
-        out[f"col_{kx}_lo"] = (sx * d["col_x_lo"], d["col_y"], 0.0)
-        out[f"col_{kx}_hi"] = (sx * d["col_x_hi"], d["col_y"], d["top_z"])
+        out[f"col_{kx}_lo"] = (sx * d["col_x"], d["col_y"], 0.0)
+        out[f"col_{kx}_hi"] = (sx * d["col_x"], d["col_y"], d["top_z"])
     return out
 
 
