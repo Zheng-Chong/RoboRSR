@@ -41,6 +41,7 @@
 - **做法**：`scan_benchmark_scenes` 读 `env_cfg/scene/*.yml`（标准库逐行解析），记为 `robodojo_default`、`robodojo_conveyor`（`auto.source = "robodojo"`）：房间、桌子尺寸 / 高度 / 材质、HDR 背景，以及按 `_task.yml` 的 `scene_config` 选用它的上游任务（default 52 个，conveyor 2 个）。场景页在孪生卡片下面单列「RoboDojo 基准场景」，抽屉只读（配置、任务链接、重渲染命令），没有验收和删除（服务端 409）。总览的验收计数和 G1-D 任务向导的场景选择器不含它们。
 - **封面**：`render_scenes.py` 现在也接受 `env_cfg/scene/<name>.yml`，用环境自己的 `Room` / `Table` / `Background` 类从 `Assets/` 生成，输出 `real2sim/benchmark_scenes/<name>/preview/render/sim.jpg`（`preview/` 不入库）。`5090-2` 隔离目录 `/data/robodojo-runs/bench-scene-render-20261022-1359/`（GPU 6，资产软链共享库只读）两个都退出码 0；default 是悬空桌板（上游桌子本来就只有桌面），conveyor 是空房间（传送带由任务生成）。
 - **验证**：`test_server.py` 新增扫描断言（桌高 0.765、`random: False` 解析成布尔、conveyor 两个任务、无 G1-D 任务）和删除 409；本机 `check.sh` 35 passed；本机起服务用浏览器看了场景页和抽屉。
+- **部署**（14:05）：`5090-2:/root/RoboDojo` 快进到 `ed49a76`，做法同下面「删除场景」：另一会话未提交的平台改动和 HANDOFF 三方合并无冲突（合并前备份 `.cache/deploy-overlap-20261022-140459/`）；两张封面拷进 `real2sim/benchmark_scenes/`；重启后扫描 8 个场景（含两个基准场景）、研究资产 7 项，部署机 `test_server.py` 6 项通过。
 
 ### 榜单基线：OpenWAM、pi0.5 官方 checkpoint 全量评测（2026-10-22，进行中，没改仓库代码）
 
