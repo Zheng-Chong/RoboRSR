@@ -56,7 +56,8 @@ CATEGORIES = [
         r"metal|steel|alumin|iron|copper|brass|chrom|zinc|gold|silver|bronze|titanium|nickel|platinum|tungsten"
         r"|mercury|diamond_plate|punched|solder",
     ),
-    ("plastic", r"plastic|rubber|vinyl|acrylic|laminate|formica|resin|polymer|caoutchouc|carbon_fiber|tire"),
+    ("other", r"tire|reflector|retroreflective|ui_screen|emblem|water"),  # not a floor, wall or tabletop
+    ("plastic", r"plastic|rubber|vinyl|acrylic|laminate|formica|resin|polymer|caoutchouc|carbon_fiber"),
     ("paint", r"paint|plaster|stucco|wall|drywall|wallpaper|lacquer|enamel"),
     ("paper", r"paper|cardboard"),
     ("outdoor", r"grass|dirt|leaves|mulch|ground"),

@@ -1859,10 +1859,12 @@ const PICK = {
       <div class="small muted">${Object.keys(x.auto.layouts || {}).length ? `评测布局：${esc(Object.entries(x.auto.layouts).map(([c, n]) => `${c} ${n}`).join('、'))}` : '资产库里没有布局'}</div>`,
   },
   mat: {
-    all: () => MATS.slice().sort((x, y) => Number(y.category === 'scene') - Number(x.category === 'scene') || x.name.localeCompare(y.name)),
+    // only the materials that suit the key's surface (mt-<list>-<role>), server-side appearance.fits
+    all: (key) => MATS.filter((m) => (m.roles || []).includes(key.split('-')[2]))
+      .sort((x, y) => Number(y.category === 'scene') - Number(x.category === 'scene') || x.name.localeCompare(y.name)),
     get: (id) => MATS.find((m) => m.id === id), name: (m) => m.name, img: (m) => m?.thumb, icon: 'image',
     text: (m) => `${m.id} ${m.name} ${MAT_CATS[m.category] || ''} ${m.category}`,
-    empty: '没有匹配的材质；材质库是 real2sim/materials/library.json',
+    empty: '没有匹配的材质（只列适合这类表面的：地板不含涂料、墙面不含金属等）',
     card: (m) => `<div class="small">${esc(MAT_CATS[m.category] || m.category)} · ${m.kind === 'mdl' ? 'MDL（资产库 Material/）' : `从 ${esc(m.source)} 提取`}</div>
       <div class="small muted">${m.kind === 'mdl' ? '按世界坐标投影，每 1 m 重复一次' : m.texture ? `贴图，原尺寸每 ${m.tile_m ?? '?'} m 重复` : '纯色'}</div>`,
   },
@@ -1889,7 +1891,7 @@ const ntChips = (key) => ntList(key).map((id, i) => {
 }).join('');
 function opickOpen(key, el) {
   const s = pickSrc(key), q = el.value.trim().toLowerCase(), list = $(`#opick-${key}`), picked = ntList(key);
-  const rows = s.all().filter((x) => !q || s.text(x).toLowerCase().includes(q)).slice(0, 40);
+  const rows = s.all(key).filter((x) => !q || s.text(x).toLowerCase().includes(q)).slice(0, 40);
   list.innerHTML = rows.length ? rows.map((x, i) => `<div class="opick-item${i ? '' : ' on'}" role="option" data-oid="${esc(x.id)}" aria-selected="${picked.includes(x.id)}"
       onmousedown="event.preventDefault(); pickObjId('${key}', this.dataset.oid)" onmouseenter="opickHover(this, '${key}')">
       <span class="thumb">${s.img(x) ? `<img loading="lazy" src="${file(s.img(x))}" alt="">` : ic(s.icon)}</span>

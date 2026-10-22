@@ -56,6 +56,8 @@ def test_appearance_settings():
         written = json.loads((tmp / "real_scene3_lab/appearance.json").read_text())
         assert written == {"fixed": {"floor": "mdl/material_0124", "table_top_z": 0.9}, "random": lab["random"]}
         assert "没有 nope" in server.write_appearance("real_scene3_lab", {"fixed": {"floor": "nope"}})
+        unfit = {"random": {"wall": ["real_scene3_lab/floor/carpet"]}}  # a scene's floor stays a floor
+        assert "不适合" in server.write_appearance("real_scene3_lab", unfit)
         assert "行程" in server.write_appearance("real_scene3_lab", {"fixed": {"table_top_z": 1.5}})
         assert "两个值" in server.write_appearance("real_scene3_lab", {"random": {"table_top_z": [0.9, None]}})
         assert "数字" in server.write_appearance("real_scene3_lab", {"fixed": {"table_top_z": "0.9"}})
@@ -70,6 +72,8 @@ def test_appearance_settings():
     assert set(summary["roles"]) == {"floor", "wall", "tabletop"} and summary["lift"]["range"] == [0.62, 1.27]
     library = server.material_library()
     assert len(library) > 500 and all("thumb" in m for m in library)
+    roles = {m["id"]: m["roles"] for m in library}
+    assert roles["real_scene3_lab/wall/wall_north"] == ["wall"] and "floor" not in roles["mdl/material_0110"]  # plaster
 
 
 def test_embodiments():

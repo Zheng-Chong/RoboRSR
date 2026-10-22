@@ -15,8 +15,8 @@ SCENES = ROOT / "real2sim" / "scenes"
 LIBRARY = {
     "real_scene1_office/floor/carpet": {"id": "real_scene1_office/floor/carpet", "kind": "preview", "color": None}
     | {"texture": "real2sim/scenes/real_scene1_office/usd/textures/carpet_tile.png", "roughness": 0.95}
-    | {"metallic": 0.0, "tile_m": 0.5},
-    "mdl/material_0122": {"id": "mdl/material_0122", "kind": "mdl"}
+    | {"metallic": 0.0, "tile_m": 0.5, "category": "scene", "role": "floor"},
+    "mdl/material_0122": {"id": "mdl/material_0122", "kind": "mdl", "category": "wood"}
     | {"mdl": "$Robodojo_ASSETS/Material/material_0122/Mahogany_Planks.mdl"},
 }
 
@@ -56,6 +56,20 @@ class Appearance(unittest.TestCase):
             appearance.overrides(counter, {"table_top_z": 0.9}, LIBRARY)
         with self.assertRaises(KeyError):
             appearance.overrides(self.parts, {"floor": "nope"}, LIBRARY)
+        with self.assertRaises(ValueError):  # a floor material extracted from a scene stays a floor
+            appearance.overrides(self.parts, {"wall": "real_scene1_office/floor/carpet"}, LIBRARY)
+
+    def test_role_filter(self):
+        library = json.loads(appearance.LIBRARY.read_text())
+        by_name = {m["name"]: m for m in library if m["kind"] == "mdl"}
+        self.assertTrue(appearance.fits(by_name["Oak_Planks"], "floor"))
+        self.assertFalse(appearance.fits(by_name["Tire"], "floor"))
+        self.assertFalse(appearance.fits(by_name["Grass_Cut"], "wall"))
+        self.assertFalse(appearance.fits(by_name["Chromium"], "wall"))  # metal: tabletops only
+        self.assertTrue(appearance.fits(by_name["Chromium"], "tabletop"))
+        self.assertFalse(appearance.fits(by_name["Water"], "tabletop"))
+        for role in appearance.ROLES:
+            self.assertGreater(sum(appearance.fits(m, role) for m in library), 50, role)
 
     def test_choose_and_apply(self):
         settings = {"fixed": {"wall": "original", "table_top_z": 0.8}, "random": {"floor": list(LIBRARY)}}

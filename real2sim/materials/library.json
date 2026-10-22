@@ -2307,7 +2307,7 @@
   "kind": "mdl",
   "name": "Tire_Rubber_Clean",
   "source": "Assets/Material",
-  "category": "plastic",
+  "category": "other",
   "mdl": "$Robodojo_ASSETS/Material/material_0267/Tire_Rubber_Clean.mdl"
  },
  {
@@ -2315,7 +2315,7 @@
   "kind": "mdl",
   "name": "Tire_Rubber_Dirty",
   "source": "Assets/Material",
-  "category": "plastic",
+  "category": "other",
   "mdl": "$Robodojo_ASSETS/Material/material_0268/Tire_Rubber_Dirty.mdl"
  },
  {
@@ -2323,7 +2323,7 @@
   "kind": "mdl",
   "name": "Tire_SUV_01",
   "source": "Assets/Material",
-  "category": "plastic",
+  "category": "other",
   "mdl": "$Robodojo_ASSETS/Material/material_0269/Tire_SUV_01.mdl"
  },
  {
@@ -2331,7 +2331,7 @@
   "kind": "mdl",
   "name": "Tire_SUV_02",
   "source": "Assets/Material",
-  "category": "plastic",
+  "category": "other",
   "mdl": "$Robodojo_ASSETS/Material/material_0270/Tire_SUV_02.mdl"
  },
  {
@@ -2339,7 +2339,7 @@
   "kind": "mdl",
   "name": "Tire_Supercar_01",
   "source": "Assets/Material",
-  "category": "plastic",
+  "category": "other",
   "mdl": "$Robodojo_ASSETS/Material/material_0271/Tire_Supercar_01.mdl"
  },
  {
@@ -2347,7 +2347,7 @@
   "kind": "mdl",
   "name": "Tire_Supercar_02",
   "source": "Assets/Material",
-  "category": "plastic",
+  "category": "other",
   "mdl": "$Robodojo_ASSETS/Material/material_0272/Tire_Supercar_02.mdl"
  },
  {
@@ -2355,7 +2355,7 @@
   "kind": "mdl",
   "name": "Tire_Supercar_03",
   "source": "Assets/Material",
-  "category": "plastic",
+  "category": "other",
   "mdl": "$Robodojo_ASSETS/Material/material_0273/Tire_Supercar_03.mdl"
  },
  {
@@ -2363,7 +2363,7 @@
   "kind": "mdl",
   "name": "Tire_Supercar_04",
   "source": "Assets/Material",
-  "category": "plastic",
+  "category": "other",
   "mdl": "$Robodojo_ASSETS/Material/material_0274/Tire_Supercar_04.mdl"
  },
  {
@@ -2371,7 +2371,7 @@
   "kind": "mdl",
   "name": "Tire_Truck_Jeep_01",
   "source": "Assets/Material",
-  "category": "plastic",
+  "category": "other",
   "mdl": "$Robodojo_ASSETS/Material/material_0275/Tire_Truck_Jeep_01.mdl"
  },
  {
@@ -2379,7 +2379,7 @@
   "kind": "mdl",
   "name": "Tire_Truck_Jeep_02",
   "source": "Assets/Material",
-  "category": "plastic",
+  "category": "other",
   "mdl": "$Robodojo_ASSETS/Material/material_0276/Tire_Truck_Jeep_02.mdl"
  },
  {
@@ -2387,7 +2387,7 @@
   "kind": "mdl",
   "name": "Tire_Truck_Jeep_03",
   "source": "Assets/Material",
-  "category": "plastic",
+  "category": "other",
   "mdl": "$Robodojo_ASSETS/Material/material_0277/Tire_Truck_Jeep_03.mdl"
  },
  {
@@ -2395,7 +2395,7 @@
   "kind": "mdl",
   "name": "Tire_Truck_Jeep_04",
   "source": "Assets/Material",
-  "category": "plastic",
+  "category": "other",
   "mdl": "$Robodojo_ASSETS/Material/material_0278/Tire_Truck_Jeep_04.mdl"
  },
  {
@@ -4027,7 +4027,7 @@
   "kind": "mdl",
   "name": "Tire",
   "source": "Assets/Material",
-  "category": "plastic",
+  "category": "other",
   "mdl": "$Robodojo_ASSETS/Material/material_0509/Tire.mdl"
  },
  {

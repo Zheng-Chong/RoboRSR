@@ -67,7 +67,7 @@ python scripts/scenes/overlay.py --env-cfg <配置> --labels view1.json --image 
 
 ## 换材质和升降桌
 
-- 场景抽屉的「外观与桌高」里给地板、墙面、桌面选固定替换材质和数据生成用的随机池，设固定桌高和随机桌高范围，保存为 `appearance.json`。材质库（`real2sim/materials/library.json`）= 各场景提取的材质 + 资产库 `Material/` 的 504 个 MDL；MDL 按世界坐标投影（每 1 m 重复），场景贴图按原贴图的真实重复尺寸换算 UV。
+- 场景抽屉的「外观与桌高」里给地板、墙面、桌面选固定替换材质和数据生成用的随机池，设固定桌高和随机桌高范围，保存为 `appearance.json`。材质库（`real2sim/materials/library.json`）= 各场景提取的材质 + 资产库 `Material/` 的 504 个 MDL，按表面过滤（`scripts/scenes/appearance.py` 的 `ROLE_CATEGORIES`：墙面没有金属，地板没有涂料，场景提取的材质只用于原表面）；MDL 按世界坐标投影（每 1 m 重复），场景贴图按原贴图的真实重复尺寸换算 UV。
 - 生效方式：生成布局时写进每个布局的 Room（`appearance`、`table_lift`、`appearance_choice`、新的 `table_height`），物体跟着桌面平移；仿真加载 Room 后照布局换绑材质、移动和拉伸桌子网格（`env/scene_manager/objects/room_overrides.py`），不改 Room 资产。`build_asset.py` 重新生成评测布局时自动用固定设置；采集布局生成后跑 `python scripts/scenes/appearance.py real2sim/scenes/<场景> <布局目录> [--randomize --seed N]`。
 - 机器人站位和升降柱不随桌高变（用户 10-22 决定）：桌子变高变低就是不同的够取高度，脚本专家按原桌高调的，换高度后成功率会变。升降行程按常见双电机升降桌取 0.62–1.27 m；吧台（`real_scene2_counter`）是落地柜，不升降，只能换材质。
 - 贴图材质换到没有 UV 的网格上（办公室桌面）只会显示一种颜色，这种网格选 MDL。

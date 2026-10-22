@@ -292,6 +292,7 @@ def material_library():
     for e in entries:
         thumb = appearance.LIBRARY.parent / "preview" / f"{e['id'].replace('/', '__')}.jpg"
         e["thumb"] = str(thumb) if thumb.is_file() else None
+        e["roles"] = [role for role in appearance.ROLES if appearance.fits(e, role)]
     return entries
 
 
@@ -307,6 +308,12 @@ def write_appearance(scene, settings):
     unknown = [m for m in ids if m and m != appearance.ORIGINAL and m not in library]
     if unknown:
         return f"材质库里没有 {'、'.join(unknown)}"
+    picked = [(r, fixed.get(r)) for r in appearance.ROLES] + [
+        (r, m) for r in appearance.ROLES for m in pools.get(r) or []
+    ]
+    unfit = [f"{m}（{r}）" for r, m in picked if m and m != appearance.ORIGINAL and not appearance.fits(library[m], r)]
+    if unfit:
+        return f"材质不适合这类表面：{'、'.join(unfit)}"
     span = pools.get("table_top_z") or []
     heights = [z for z in [fixed.get("table_top_z"), *span] if z is not None]
     if not all(isinstance(z, int | float) for z in heights):
