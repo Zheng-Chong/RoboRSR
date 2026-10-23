@@ -1,0 +1,20 @@
+{
+  "id": "Rigid/ceramic_cup/00000",
+  "name": "陶瓷杯",
+  "name_en": "ceramic cup",
+  "material": "陶瓷",
+  "color": "黑色",
+  "mass_g": 112,
+  "dimensions_mm": "杯口外径73.1mm，杯底58.4mm，杯高92mm",
+  "features": "全杯黑色，有陶瓷反光，杯壁是阶梯状圈层结构",
+  "generalization": {
+    "count": 6,
+    "rt_color": true,
+    "color": true,
+    "material": true,
+    "size": true,
+    "shape": true
+  },
+  "updated_by": "徐鹤鸣",
+  "updated_at": "2026-10-23 17:21:00"
+}

@@ -22,6 +22,7 @@
   - 耳机充电盒 `airpods/00000`：第一件按 `scripts/objects/SKILL.md` 从平台登记建的物体，实测尺寸和质量，已装共享库。
   - 农夫山泉塑料瓶 `Clutter/plastic_bottle/00000` 和 5 个泛化变体：按平台登记建，未装共享库（见「最近任务」）。
   - 金属杯 `Clutter/metal_cup/00000` 和 6 个泛化变体：按平台登记建，未做仿真验证，未装共享库（见「最近任务」）。
+  - 陶瓷杯 `Rigid/ceramic_cup/00000` 和 6 个泛化变体：按平台登记建，`check_object.py` 落地 + 渲染，未装共享库（见「最近任务」）。
   - 自建物体写的 `friction` 不生效：运行时只读 `physics.static_friction` 和 `dynamic_friction`。
 - **任务和脚本专家**（`scripts/g1d/scripted_demo.py`）：
   - 拾取、叠块：三个场景 seed 0 都成功。
@@ -36,6 +37,12 @@
   - 仿真环境 `/root/miniconda3/envs/RoboDojo`；导出环境 `robodojo-lerobot`（lerobot 0.4.4，10-19 补装了 h5py 3.16，`pip -i` 用清华镜像）；上传环境 `/data/robodojo-runs/ms-venv`；运行目录在 `/data/robodojo-runs/`。
 
 ## 最近任务
+
+### 陶瓷杯 `Rigid/ceramic_cup`（2026-10-23，分支 `z/objects-ceramic-cup`）
+
+- 平台建模任务 `real2sim/objects/Rigid/ceramic_cup/00000/spec.json`（徐鹤鸣 10-23 登记）：黑色釉面陶瓷杯，112 g，杯口外径 73.1、杯底 58.4、杯高 92 mm，外壁阶梯状圈层。新脚本 `scripts/objects/make_ceramic_cup.py` 生成本体和 6 个泛化变体 `00001–00006`（`variant_of` 本体；颜色、釉、尺寸、形状都变，宽度 ≤ 80 mm）。
+- 几何：外壁 7 圈往上逐级外扩（台阶边缘倒圆 1.5 mm），内壁光滑锥面，圆唇、圈足、内底圆角；`visual/model` 外壁和杯底，`visual/inside` 杯口、内壁和内底，`visual.color_parts = ["model"]`。碰撞体：实心底座到内底 + 杯壁分片，杯口不封；高度方向容差 1.3 mm，1.2 mm 的小台阶不单独建凸包（本体 37 个凸包）。没有实测摩擦，不写摩擦键。
+- 验证（按用户定的流程：不做抓取等物理检验）：生成脚本几何自检通过，`measurements_mm` 三项误差 0（容积约 219 ml）；`check_object.py --image-dir` 七件全部落地直立（倾角 0°），`sim.png`、`check.json` 已同步到部署机 `real2sim/objects/Rigid/ceramic_cup/0000{0..6}/preview/`。生成结果在 5090-2 `/data/robodojo-runs/ceramic_cup-20261023-172750/ovl/Rigid/ceramic_cup/`，未装共享库。
 
 ### 金属杯 `Clutter/metal_cup`（2026-10-23，分支 `z/objects-metal-cup`，基于 `z/objects-plastic-bottle`）
 
