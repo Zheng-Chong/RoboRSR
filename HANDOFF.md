@@ -20,6 +20,7 @@
   - 共享资产库缺 `measuring_cup`、`plastic_mug`，以及量杯任务的布局。
   - 学校的纸杯 `paper_cup/0000{0,1}`、纸盘 `paper_plate/0000{0,1,2}` 是孪生的拟合几何，没在平台登记，没有实测，未装共享库。平台上能看到它们（10-20 部署，见下面「数采平台」）。
   - 耳机充电盒 `airpods/00000`：第一件按 `scripts/objects/SKILL.md` 从平台登记建的物体，实测尺寸和质量，已装共享库。
+  - 农夫山泉塑料瓶 `Clutter/plastic_bottle/00000` 和 5 个泛化变体：按平台登记建，未装共享库（见「最近任务」）。
   - 自建物体写的 `friction` 不生效：运行时只读 `physics.static_friction` 和 `dynamic_friction`。
 - **任务和脚本专家**（`scripts/g1d/scripted_demo.py`）：
   - 拾取、叠块：三个场景 seed 0 都成功。
@@ -34,6 +35,14 @@
   - 仿真环境 `/root/miniconda3/envs/RoboDojo`；导出环境 `robodojo-lerobot`（lerobot 0.4.4，10-19 补装了 h5py 3.16，`pip -i` 用清华镜像）；上传环境 `/data/robodojo-runs/ms-venv`；运行目录在 `/data/robodojo-runs/`。
 
 ## 最近任务
+
+### 农夫山泉塑料瓶 `Clutter/plastic_bottle`（2026-10-23，分支 `z/objects-plastic-bottle`）
+
+- 平台建模任务 `real2sim/objects/Clutter/plastic_bottle/00000/spec.json`（徐鹤鸣 10-23 登记）。新脚本 `scripts/objects/make_plastic_bottle.py` 生成本体和 5 个泛化变体 `00001–00005`（`metadata.json` 写 `variant_of`），写到 `Assets/Object/RoboDojo/Clutter/plastic_bottle/`。Clutter 物体经同一个 `RigidObject` 加载（`layout_manager.py` 的 `type: cluttered`），所以按 `scripts/objects/SKILL.md` 的刚体流程做。
+- 用户 10-23 补充：总高 227 mm（不含盖）；登记的 328 g 含水，按空瓶 18 g 建模；开口直径指外径。**平台登记里质量还是 328 g**，要在平台改成 18 g 并加「总高」，否则平台的质量核对不过；加了「总高」后在 `save()` 的 `measurements_mm` 里补同名键。
+- 中空开口、无盖：碰撞体是 24 边底板加瓶壁分片直到瓶口（2 mm 厚，从外表面向内），瓶口不封，每个凸包 ≤ 64 点。写 `static_friction` / `dynamic_friction` = 0.35；`visual.color_parts = ["label_bottom"]`，`rt_color` 只换标签主色，瓶身保持透明。磨砂变体按 `clear_pp` 的做法用 OmniSurface（OmniGlass 的 frosting 不会让瓶壁变白）。
+- 验证（5090-2 隔离目录 `/data/robodojo-runs/plastic_bottle-20261023-110249/`）：`measurements_mm` 开口直径 29.8、底部直径 64.7，误差 0；`check_object.py` 六件全部 OK（倾角 0°）；渲染图和 `check.json` 已同步到部署机 `real2sim/objects/Clutter/plastic_bottle/0000{0..5}/preview/`。
+- 未做：装共享资产库（要用户同意）；`rt_scale` ±5%、`rt_color` 要在任务层 `build_asset.py` 的 `RANDOMIZE` 打开，目前没有任务用到这个瓶子。
 
 ### 数采平台：上游榜单任务的泛化随机方案 + X5 布局生成器（2026-10-23，直接推 `main`）
 
