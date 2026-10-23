@@ -1,0 +1,20 @@
+{
+  "id": "Clutter/metal_cup/00000",
+  "name": "金属杯子",
+  "name_en": "metal cup",
+  "material": "铝",
+  "color": "外壁白色，内壁金属色",
+  "mass_g": 65,
+  "dimensions_mm": "开口外径80.2mm，杯底外径57.3mm，杯子高度105.4mm",
+  "features": "外壁和杯底白色，内部为反光的金属色",
+  "generalization": {
+    "count": 6,
+    "rt_color": true,
+    "color": true,
+    "material": true,
+    "size": true,
+    "shape": true
+  },
+  "updated_by": "徐鹤鸣",
+  "updated_at": "2026-10-23 16:41:51"
+}
