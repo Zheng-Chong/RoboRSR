@@ -1,5 +1,6 @@
 {
   "scene": "real_scene1_office",
+  "name": "办公室升降桌",
   "env_cfg": "g1d",
   "photos": ["reference/p*.jpg", "reference/v*.jpg"],
   "reconstruction": "SfM from a 16.5 s phone video and 5 photos (PLAN.md, REPORT.md); build_scene.py, check_scene.py",

@@ -1,5 +1,6 @@
 {
   "scene": "real_scene5_shenzhen_lab",
+  "name": "深圳实验室",
   "env_cfg": "g1d_shenzhen_lab",
   "photos": [
     "reference/IMG_49*.jpeg"

@@ -1,5 +1,6 @@
 {
   "scene": "real_scene2_counter",
+  "name": "茶水间吧台",
   "env_cfg": "g1d_counter",
   "photos": ["reference/photo*.jpg"],
   "reconstruction": "two photos fitted jointly (fit_photo.py), build_scene.py, check_scene.py, preview.py (PLAN.md)",

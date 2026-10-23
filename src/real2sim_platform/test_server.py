@@ -25,6 +25,7 @@ def test_repo_scan():
     scenes = server.scan_scenes()
     assert {"real_scene1_office", "real_scene2_counter", "real_scene3_lab"} <= set(scenes)
     assert scenes["real_scene3_lab"]["configs"] == ["g1d_lab"] and scenes["real_scene3_lab"]["checks_total"] > 0
+    assert all(s["name"] for k, s in scenes.items() if k.startswith("real_scene"))  # Chinese name, scene_spec.json
     tasks = server.scan_tasks(Path(tempfile.mkdtemp()))
     assert tasks["g1d_stack_blocks"]["step_lim"] == 660
     bench = server.scan_benchmark_scenes(tasks)  # env_cfg/scene/*.yml, picked per task by _task.yml scene_config

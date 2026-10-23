@@ -298,6 +298,7 @@ def scan_scenes():
         residuals = [px for v in views for key in ("point_px", "line_px") for px in v.get(key, {}).values()]
         rooms = sorted(p.name for p in d.glob("*.usd"))
         found[d.name] = {
+            "name": (load_json(d / "scene_spec.json") or {}).get("name"),  # Chinese display name
             "path": str(d),
             "configs": configs.get(d.name, []),
             "rooms": rooms,

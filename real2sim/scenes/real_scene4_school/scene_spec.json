@@ -1,5 +1,6 @@
 {
   "scene": "real_scene4_school",
+  "name": "学校实验室绿幕桌",
   "env_cfg": "g1d_school",
   "photos": ["reference/bundle_*.png"],
   "reconstruction": "colleague's MuJoCo twin g1d_food_sorting (sys01, copied to 5090-2:/root/g1d_sim_assets_20261020): tabletop corners fitted from real wrist/head camera frames in the initial torso frame (bundle/environment_manifest.json); build_scene.py moves them to the chassis frame with the recorded torso yaw and fits a rectangle (PLAN.md)",

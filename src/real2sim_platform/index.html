@@ -953,7 +953,7 @@ function viewScenes() {
       <div class="media r169">${cover ? `<img loading="lazy" decoding="async" src="${file(cover)}" alt="">` : ic('image', 'ic-lg')}
         <div class="pills">${a.engine ? `<span class="pill">${esc(a.engine)}</span>` : ''}${(a.configs || []).map((c) => `<span class="pill">${esc(c)}</span>`).join('')}${a.model ? `<span class="pill" title="可在详情里 3D 预览">${ic('cube', 'ic-sm')}3D</span>` : ''}</div></div>
       <div class="mcard-b"><div class="mcard-t"><b>${esc(sceneName(d))}</b>${d.registered ? '<span class="tag">已登记</span>' : ''}${missingBadge(d)}</div>
-        ${d.reg?.name ? `<div class="small muted mono" style="margin-top:-4px">${esc(d.id)}</div>` : ''}
+        ${sceneName(d) !== d.id ? `<div class="small muted mono" style="margin-top:-4px">${esc(d.id)}</div>` : ''}
         <div class="small muted">${esc(sceneDims(d))} · 照片 ${a.photos?.length || 0} · 预览 ${a.previews?.length || 0}</div>${progress(rs)}${stageChips(rs)}</div></article>`;
   }).join('');
   return `<div class="page">${pageHead('场景重建', `real2sim/scenes/ 下 ${twins.length} 个孪生场景 · 目标 7 个（3 个孪生 + 2 个训练用泛化 + 2 个 L4 保留）。新场景先登记：至少 ${MIN_SCENE_PHOTOS} 张照片加卷尺实测`,
@@ -989,7 +989,7 @@ function sceneBrief(d) {  // the task for a coding agent that builds this scene 
     '',
     '验收：',
     `1. 从最接近的已有场景复制目录开始（real_scene3_lab 是照片拟合的最新写法），在 ${dir}/ 下写 fit_photo.py、build_scene.py、check_scene.py、preview.py 和 PLAN.md；${r.charuco ? '先用 scripts/scenes/charuco.py solve 求出每张照片的相机位姿，作为强先验。' : '没有标定板，相机位姿从照片里的桌角和桌沿拟合。'}`,
-    '2. 卷尺实测是硬约束：把 registration.json 的 measurements 原样抄进新建的 scene_spec.json，拟合时把桌高、长、宽固定成实测值；建好后 python scripts/scenes/acceptance.py 里每项误差 < 1 cm。',
+    `2. 卷尺实测是硬约束：把 registration.json 的 measurements 原样抄进新建的 scene_spec.json（同时写 "name": "${sceneName(d)}"，平台按它显示中文名），拟合时把桌高、长、宽固定成实测值；建好后 python scripts/scenes/acceptance.py 里每项误差 < 1 cm。`,
     '3. 灯光按登记的光源和色温建模，房间要有天花板；lighting.status 写 recorded（和头部相机画面比对过才算 matched）。碰撞体每个凸包 ≤ 64 个顶点、单面 ≤ 32 个顶点。',
     `4. 在 scripts/g1d/build_asset.py 的 SCENES 里加一行，新增 env_cfg/g1d_${slug}.yml 和 env_cfg/robot/g1d_${slug}.yml；在 5090-2 的隔离目录跑 build_asset.py 和一次 scripted_demo，检查四路相机画面。和照片对比的渲染图放到 ${dir}/preview/（jpg），平台据此显示；再按 SKILL「接入和登记」跑 scripts/scenes/export_glb.py（3D 预览）和 render_scenes.py（卡片封面），preview/ 同步到部署机。装进共享资产库前先征得同意。`,
     `5. 提交场景目录（含 registration.json、照片、scene_spec.json）、build_asset.py 和 env 配置，更新 real2sim/ASSETS.md 的场景行。`,

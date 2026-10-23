@@ -16,7 +16,7 @@ description: 给真实工位建或更新 RoboDojo 数字孪生场景：现场拍
 | 接入 | `scripts/g1d/build_asset.py` 的 `SCENES`、`env_cfg/g1d_<场景>.yml`、`env_cfg/robot/g1d_<场景>.yml` | 是 |
 | 安装结果 | `Assets/Room/<room>/`、`Assets/Eval_Layout/RoboDojo/<配置>/` | 否，由 `build_asset.py` 生成 |
 
-`scene_spec.json` 只记录人工输入：照片、重建方法、尺度依据、卷尺实测、叠图结果、灯光记录。模型的数值由 `acceptance.py` 从 `usd/build_params.json` 和机器人站位配置里读出来，不要手抄进 spec。
+`scene_spec.json` 只记录人工输入：中文名 `name`（平台场景卡片按它显示，登记过的场景和登记名一致）、照片、重建方法、尺度依据、卷尺实测、叠图结果、灯光记录。模型的数值由 `acceptance.py` 从 `usd/build_params.json` 和机器人站位配置里读出来，不要手抄进 spec。
 
 ## 平台登记
 
