@@ -43,6 +43,39 @@ def test_repo_scan():
     assert not any(".." in oid for oid in objects)
 
 
+def test_randomization_profile():
+    pools = server.instance_pools("stack_bowls_random")  # the base task's instances train, the variant's are held out
+    assert pools["base"] == "stack_bowls" and pools["train"]["bowl"] == [1, 2, 3, 5, 7, 8, 9, 10]
+    assert pools["holdout"] == {"bowl": [11, 12, 13, 14, 15]}
+    assert server.instance_pools("align_blocks")["holdout"] == {}  # no _random variant
+    assets, profiles = Path(tempfile.mkdtemp()), server.rsi_profile.PROFILES_DIR
+    for d in ("Room/Simple_Room_red", "Material/material_0122", "Object/RoboDojo/Clutter/pen/00000"):
+        (assets / d).mkdir(parents=True)
+    (assets / "Object/RoboDojo/Clutter/pen/00000/metadata.json").write_text("{}")
+    (assets / "Background").mkdir()
+    (assets / "Background/studio.hdr").write_text("")
+    server.rsi_profile.PROFILES_DIR = Path(tempfile.mkdtemp())
+    try:
+        profile = {"position": True, "rooms": ["Simple_Room_red"], "tables": ["material_0122"]}
+        profile |= {"background": {"hdrs": ["studio.hdr"], "intensity": [600, 1400]}, "clutter": {"count": [2, 5]}}
+        profile |= {"lights": {"count": [1, 2], "types": ["Sphere"]}, "camera": {"ori_deg": 2}}
+        assert server.write_randomization("stack_bowls", profile, assets) is None
+        path = server.rsi_profile.PROFILES_DIR / "stack_bowls/randomization.json"
+        assert json.loads(path.read_text()) == profile
+        assert "资产库没有" in server.write_randomization("stack_bowls", {"rooms": ["Simple_Room_x"]}, assets)
+        assert "超出范围" in server.write_randomization("stack_bowls", {"clutter": {"count": [5, 2]}}, assets)
+        assert "灯光类型" in server.write_randomization(
+            "stack_bowls", {"lights": {"count": [1, 1], "types": ["Dome"]}}, assets
+        )
+        assert "杂物库" in server.write_randomization(
+            "stack_bowls", {"clutter": {"count": [1, 2], "categories": ["x"]}}, assets
+        )
+        assert "不认识" in server.write_randomization("stack_bowls", {"lighting": True}, assets)
+        assert server.write_randomization("stack_bowls", None, assets) is None and not path.exists()
+    finally:
+        server.rsi_profile.PROFILES_DIR = profiles
+
+
 def test_appearance_settings():
     tmp, scenes_dir = Path(tempfile.mkdtemp()), server.build_asset.SCENES_DIR
     for scene in ("real_scene3_lab", "real_scene2_counter"):

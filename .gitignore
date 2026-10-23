@@ -23,6 +23,10 @@ Dev/
 ignore/
 .cache/
 
+# Head-camera jitter configs written by scripts/datagen/x5_layouts.py
+env_cfg/arx_x5_rsi_*.yml
+env_cfg/camera/rsi_*.yml
+
 # Editor / agent scratch (never committed)
 .cursor/
 .claude/

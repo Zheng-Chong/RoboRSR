@@ -35,6 +35,20 @@
 
 ## 最近任务
 
+### 数采平台：上游榜单任务的泛化随机方案 + X5 布局生成器（2026-10-23，直接推 `main`）
+
+- **用户要求**：把上游引擎已经支持的随机项都在数采平台上实现（RSI 的"课程"要覆盖 RoboDojo `_random` 测的泛化）。实现是另一个会话（不在 Cursor 里，可能是 Codex / Claude 桌面端）在 `../RoboDojo-wt-leaderboard` 里写好、没提交的；用户让本会话接手，本会话审查、修了相机扰动、补测试和 GPU 验证后提交。
+- **RoboDojo `_random` 测的**（统计官方 `arx_x5/0` 全部 12 对布局）：没见过的实例（编号和训练分开）、7–20 个干扰物、11–12 种房间、每 30 个布局 22–30 种桌面 / 地面材质；所有任务都随机位置，部分随机朝向。官方训练数据（34 个基础任务）全是同一房间、同一桌面、无干扰物，所以只用官方数据就是 clean-to-random。榜单不测的：灯光、HDR、相机扰动、指令改写、尺寸、颜色。
+- **代码**：
+  - `scripts/datagen/rsi_profile.py`：方案格式和校验（只用标准库，平台服务端直接导入）。方案写 `real2sim/benchmark_tasks/<任务>/randomization.json`，入库。
+  - `scripts/datagen/x5_layouts.py`：上游引擎只回放布局、没有生成器，这个脚本以官方评测布局为结构模板重抽：位置 / 朝向只在任务配置自己的范围里（配置写死位置的物体不动，从不照抄评测布局）、实例只抽基础任务的训练侧编号（`_random` 独有编号不抽）、干扰物（杂物库、稳定面、±30°）、房间、桌面 / 地面 MDL 材质、HDR 和亮度、额外灯光（类型、数量、亮度、色温）、头部相机角度扰动（生成 git 忽略的 `env_cfg/arx_x5_rsi_<任务>.yml`、`env_cfg/camera/rsi_<任务>.yml`）。写 `split.json`（默认 train）和 `report_<任务>.json`；seed 0 拒绝。
+  - 平台：任务抽屉新增「泛化随机方案」（只对上游任务显示）：物体（位置、朝向、实例，列出训练侧和留出编号）、干扰物、房间与表面（房间、MDL 材质搜索选择）、背景 HDR、灯光、相机扰动；`PUT /api/items?kind=task` 的 `randomization` 字段经校验后写文件；`GET /api/rsi-options` 给选项。`datagen/SKILL.md` 新增「上游榜单任务（dual X5）的随机布局」。CI / `check.sh` 加 `shapely rtree transforms3d`。
+- **本会话改的**：相机扰动去掉平移，只留角度；方案里写 `pos_m` 会被校验拒绝。原因：`stack_bowls_random` 10 个布局开 ±2 cm / ±2° 时第 2、4、6 号并行环境头部相机最后一帧 45–98% 全黑（两次都是这三个）；同样布局不开相机扰动、或只开角度，10/10 正常。没查清平移撞到了什么（相机在 z = 1.308，`camera_stand` 顶部约同高，"只往上抬"也照样黑）。另外：ruff 格式、`.gitignore` 两条、`test_camera_configs`、页面文案。
+- **验证**：本机 `check.sh` 46 passed 1 skipped（含 `test_x5_layouts.py` 4 项、`test_randomization_profile`），页面脚本 `node --check`。`5090-2` 隔离目录 `/data/robodojo-runs/rsi-layouts-20261023/`（另一会话 13:55 建的，本会话沿用；`Assets` 软链接到 `leaderboard-baseline-20261022` 的官方资产，`Eval_Layout` 单独）：
+  - 另一会话已在 seed 901 给 54 个任务各生成 5 个布局；本会话用它的 `rsi_check.py` 复查：留出实例 0 次，干扰物 8–15 个；"和评测布局同位置"的都是配置里写死位置的物体（相机支架、棋盘棋子、麻将槽位等），"超出范围"都是锚点不在原点的槽位物体（检查脚本判得粗，官方布局本身也报）。`play_stacking_toy` 有 2 处足迹重叠没细查。
+  - 端到端：全部随机项（14 个房间中的 Simple_Room、20 种桌面 + 20 种地面材质、HDR 亮度 600–1400、1–3 盏灯含平行光、8–15 个干扰物、相机 ±2°）→ `x5_layouts.py --seed 905 --count 10 --split val` → 保持姿态的策略（`rsi_hold.py`，不带 `--allow_train_layouts`）跑 10 个布局：退出码 0、`eval_time` 10、10/10 无黑块，画面各不相同。
+- **没做**：页面没在浏览器里点过（只有服务端单测和语法检查）；没部署到 `5090-2:/root/RoboDojo`。
+
 ### 真机 Motus 倒豆模型在上海实验室的仿真评测（2026-10-23，`chongzheng/eval-motus-lab-beans`）
 
 - **用户要求**：测 ModelScope `Vincia/WanVlmMask-G1DPourBeansGenEps222-AbsQpos16-30000` 在上海实验室（`g1d_lab`）仿真里倒豆子的成功率，只用量杯，不加干扰物。推理代码在 `rtx5090-180`（端口 34134，内网 `192.168.0.180`）的 `/home/work/wenjj/InferenceMotusV2`。
@@ -320,6 +334,12 @@
 
 ## 剩余事项与风险
 
+- **X5 随机布局**：
+  - 官方资产只有 1 张 HDR，"背景随机"实际只随机亮度；
+  - 灯光亮度倍数 0.5–1.5 加 HDR 1400 加平行光时有几帧明显过曝（桌面发白），默认范围要调低或按画面亮度筛；
+  - 写死位置的任务（`play_tic_tac_toe`、`cover_blocks`、`press_by_number`、`swap_blocks`、两个传送带任务等）位置随机不起作用，只能换实例、外观和干扰物；
+  - 生成的布局还没有专家能解（仓库里没有 X5 脚本专家），现在只能当评测集用；
+  - 页面没在浏览器里验证，平台没部署。
 - **真机模型的仿真评测**：Motus eps222 在上海实验室 0/20，原因还没拆开（起始姿态、仿真画面与真机差异、杯位分布都可能）。要继续，先试双臂下垂的真机起始姿态（`remote_policy.py` 目前不支持设起始姿态），再在同一批布局上跑脚本专家做对照。服务端重启见「最近任务」第一节。
 
 - **榜单基线**：10-22 16:35 停止，54 个任务只完成 6 个（见「最近任务」）；是否续跑等用户决定。续跑时 pi0.5 策略 + Isaac 同卡约 25 GB，一卡一组；OpenWAM 策略卡和仿真卡要分开。`/data` 剩约 192 GB（91%），另一会话的 `g1d_green_table/` 占 1.4 TB。官方榜单页面是 JS 渲染，没抓到公开分数，要和自测基线对照需手动查 robodojo-benchmark.com/LeaderBoard。dsw-4 根分区 100% 满（19 GB），训练数据和产出要放 `/mnt/data`。
@@ -361,6 +381,7 @@
 
 ## 下一会话
 
+0. RSI 随机布局：部署平台后在浏览器里给一个 `_random` 任务保存一份方案；调低灯光 / HDR 默认范围避免过曝；然后给 12 个 `_random` 任务的基础版写 X5 脚本专家，用 `x5_layouts.py` 的训练布局采数据（内部留出集用 `--split val`）。
 0. 榜单：基线已停（16:35，用户要求），先问用户是否续跑；续跑后收两份基线（`smoke_results/baseline_*_20261022.md`，核对每个任务 `eval_time >= 1`），按任务对比 OpenWAM / pi0.5 / 有无官方数据；看失败视频做归类；然后开始把 `collect.py` 和插件接口推广到 dual X5，按优先级给无官方数据的任务写专家。
 0. 实现平台登记的 `g1d_pour_beans_any_cups`：在平台任务抽屉复制「实现任务」文本交给 coding agent（输入 `real2sim/tasks/g1d_pour_beans_any_cups/registration.json`）。
 0. 深圳实验室（已合并、部署，共享库待补装）：去现场量站位、拍头部 / 腕部画面做叠图（`overlay.py --env-cfg g1d_shenzhen_lab`）。
@@ -373,6 +394,7 @@
 
 ## 最近历史
 
+- 2026-10-23：数采平台任务抽屉加「泛化随机方案」，新增 X5 布局生成器 `scripts/datagen/x5_layouts.py`（接手另一会话未提交的实现；相机扰动改为只转角度，平移会让部分环境出图全黑）；`5090-2` 端到端验证 10/10 正常。
 - 2026-10-23：真机 Motus 倒豆模型（ModelScope `Vincia/WanVlmMask-G1DPourBeansGenEps222-AbsQpos16-30000`）在上海实验室仿真量杯倒豆 0/20（夹爪总是夹空）；新增 `g1d_lab_beans_collect`，收入 `scripts/g1d/remote_policy.py`。
 - 2026-10-22：启动榜单冲分（20 天）：5090-2 建基线运行目录，拉齐官方 Assets、OpenWAM / pi0.5 官方 checkpoint 和两套推理环境，冒烟通过后启动两个模型 54 个任务的全量基线评测；确认 20 个榜单任务没有官方训练数据。
 - 2026-10-22：深圳实验室倒豆 500 条（矮量杯或马克杯、300–600 豆、2–5 干扰物、严格整回合验收）采完、审计、上传 ModelScope 私有仓库 `ChongZheng/g1d_shenzhen_pour_beans_cup_or_mug_500`。

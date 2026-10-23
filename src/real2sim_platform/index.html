@@ -1871,6 +1871,72 @@ function viewTasks() {
       <td>${progress(evalStages(TASK_STAGES, d))}</td></tr>`;
   }).join('')}</tbody></table></div>` : `<div class="card">${empty('list', '没有符合条件的任务', '换一个维度或清空搜索')}</div>`}</div>`;
 }
+// an upstream task's randomization profile: real2sim/benchmark_tasks/<task>/randomization.json, read by
+// scripts/datagen/x5_layouts.py. Picker lists rm-rsi (rooms), mt-rsi-tabletop / mt-rsi-floor (MDL materials, picked
+// as library ids "mdl/<dir>", saved as the Material/ dir), hd-rsi (HDRs), cl-rsi (clutter categories).
+let RSI_OPTS = null;  // rsi_profile.options(): rooms, materials, hdrs, clutter, light_types
+let RS = null;
+const RS_LISTS = {'rm-rsi': 'rooms', 'mt-rsi-tabletop': 'tables', 'mt-rsi-floor': 'grounds', 'hd-rsi': 'hdrs', 'cl-rsi': 'cats'};
+const LIGHT_NAMES = {Sphere: '球光', Disk: '圆盘光', Rect: '矩形面光', Cylinder: '柱光', Distant: '平行光'};
+function rsState(d) {
+  if (RS?.id === d.id) return RS;
+  const p = d.auto.randomization || {}, bg = p.background, li = p.lights, cl = p.clutter, cam = p.camera;
+  RS = {id: d.id, position: p.position ?? true, yaw: p.yaw ?? true, instances: p.instances ?? true,
+    rooms: [...(p.rooms || [])], tables: (p.tables || []).map((m) => `mdl/${m}`), grounds: (p.grounds || []).map((m) => `mdl/${m}`),
+    bgOn: Boolean(bg), hdrs: [...(bg?.hdrs || [])], bgLo: bg?.intensity?.[0] ?? '', bgHi: bg?.intensity?.[1] ?? '',
+    liOn: Boolean(li), liN0: li?.count?.[0] ?? 1, liN1: li?.count?.[1] ?? 2, types: li?.types || ['Sphere', 'Disk', 'Rect'],
+    liLo: li?.intensity?.[0] ?? 0.5, liHi: li?.intensity?.[1] ?? 1.5, ctLo: li?.color_temperature?.[0] ?? 3500, ctHi: li?.color_temperature?.[1] ?? 7500,
+    clOn: Boolean(cl), clLo: cl?.count?.[0] ?? 8, clHi: cl?.count?.[1] ?? 15, cats: [...(cl?.categories || [])],
+    camOn: Boolean(cam), camOri: cam?.ori_deg ?? 2};
+  return RS;
+}
+function rsiSection(d) {
+  const r = rsState(d), pools = d.auto.pools || {}, p = d.auto.randomization;
+  const chk = (f, label, rerender = false) => `<label class="check"><input type="checkbox" ${r[f] ? 'checked' : ''} onchange="RS.${f} = this.checked${rerender ? '; render()' : ''}">${label}</label>`;
+  const num = (f, label, step, unit = '') => `<div class="fld"><label>${label}${unit ? ` <span class="opt">${unit}</span>` : ''}</label><input type="number" step="${step}" value="${esc(r[f])}" oninput="RS.${f} = this.value"></div>`;
+  const pool = (m) => Object.entries(m || {}).map(([c, i]) => `<span class="tag">${esc(c)} · ${i.length} 个</span>`).join('') || '<span class="small muted">—</span>';
+  const block = (title, note, body) => `<div class="ap-role"><div class="ap-h"><b>${title}</b><span class="small muted">${note}</span></div>${body}</div>`;
+  const types = (RSI_OPTS?.light_types || Object.keys(LIGHT_NAMES)).map((t) => `<label class="check"><input type="checkbox" ${r.types.includes(t) ? 'checked' : ''}
+    onchange="RS.types = this.checked ? [...new Set([...RS.types, '${t}'])] : RS.types.filter((x) => x !== '${t}')">${LIGHT_NAMES[t] || t}</label>`).join('');
+  const dir = rel(`${INFO.root}/real2sim/benchmark_tasks/${d.id}`), env = r.camOn ? `arx_x5_rsi_${d.id}` : 'arx_x5';
+  return sec(`${ic('layers')}泛化随机方案`, `<p class="hint" style="margin:0 0 10px">生成这个任务的训练布局和内部留出评测布局时打开哪些随机。位置、朝向在任务配置自带的范围里重采样（不沿用官方评测布局的位置）；实例只从基础任务 <code>${esc(pools.base || d.id)}</code> 的训练侧编号里抽${pools.variant ? `，<code>${esc(pools.variant)}</code> 独有的编号（榜单的留出实例）不会出现` : ''}。房间、材质、HDR 留空就保持任务原样。</p>
+    ${block('物体', '每个布局重新抽', `<div class="toolbar">${chk('position', '位置（连续范围内重采样，槽位任务在槽位之间重排）')}${chk('yaw', '朝向（任务配置的 rotate_deg）')}${chk('instances', '实例（同类别、同组）')}</div>
+      <div class="small" style="margin-top:6px">训练侧：<span class="chips" style="display:inline-flex">${pool(pools.train)}</span></div>
+      ${Object.keys(pools.holdout || {}).length ? `<div class="small">留出（不抽）：<span class="chips" style="display:inline-flex">${pool(pools.holdout)}</span></div>` : ''}`)}
+    ${block('干扰物', '杂物库，类别不重复，放在稳定面上，随机朝向 ±30°', `<div class="toolbar">${chk('clOn', '加干扰物', true)}</div>${r.clOn ? `<div class="wz-grid">${num('clLo', '最少', 1, '个')}${num('clHi', '最多', 1, '个')}
+      <div class="fld wide"><label>类别 <span class="opt">留空 = 全部 ${RSI_OPTS?.clutter?.length ?? ''} 类</span></label>${picker('cl-rsi', '搜索杂物类别')}</div></div>` : ''}`)}
+    ${block('房间与表面', '每个布局从池子里抽一个；榜单 _random 换 11–12 种房间、20 多种桌面 / 地面材质', `<div class="wz-grid">
+      <div class="fld wide"><label>房间池 <span class="opt">Assets/Room</span></label>${picker('rm-rsi', '搜索房间，如 Simple_Room_red')}</div>
+      <div class="fld wide"><label>桌面材质池 <span class="opt">MDL</span></label>${picker('mt-rsi-tabletop', '搜索材质：名称或类别')}</div>
+      <div class="fld wide"><label>地面材质池 <span class="opt">MDL</span></label>${picker('mt-rsi-floor', '搜索材质：名称或类别')}</div></div>`)}
+    ${block('背景 HDR', '整个舞台共用一个穹顶：引擎取第一个并行环境的布局', `<div class="toolbar">${chk('bgOn', '随机背景', true)}</div>${r.bgOn ? `<div class="wz-grid">
+      <div class="fld wide"><label>HDR 池 <span class="opt">留空保持原背景；资产库现有 ${RSI_OPTS?.hdrs?.length ?? '?'} 个</span></label>${picker('hd-rsi', '搜索 HDR')}</div>
+      ${num('bgLo', '亮度最低', 50)}${num('bgHi', '亮度最高', 50)}</div>` : ''}`)}
+    ${block('灯光', '在桌子上方 1.6–2.4 m 加灯，朝下 ±20°；亮度是各类型参考值的倍数', `<div class="toolbar">${chk('liOn', '加灯', true)}</div>${r.liOn ? `<div class="toolbar">${types}</div><div class="wz-grid">
+      ${num('liN0', '最少', 1, '盏')}${num('liN1', '最多', 1, '盏')}${num('liLo', '亮度最低', 0.1, '×')}${num('liHi', '亮度最高', 0.1, '×')}${num('ctLo', '色温最低', 100, 'K')}${num('ctHi', '色温最高', 100, 'K')}</div>` : ''}`)}
+    ${block('相机扰动', '只转动头部相机的朝向，不平移（平移 2 cm 就有部分环境出图全黑）；引擎在启动时给每个并行环境抽一次，不是每个回合', `<div class="toolbar">${chk('camOn', '扰动头部相机', true)}</div>${r.camOn ? `<div class="wz-grid">
+      ${num('camOri', '角度 ±', 0.5, '°')}</div><p class="hint">会生成 env 配置 <code>${esc(env)}</code>，布局也放在它下面。</p>` : ''}`)}
+    <div class="toolbar" style="margin-top:10px"><button class="btn btn-primary" type="button" onclick="saveRandomization('${esc(d.id)}')">${ic('check')}保存随机方案</button>
+      ${p ? `<button class="btn" type="button" onclick="saveRandomization('${esc(d.id)}', true)">清除</button>` : ''}
+      <span class="small muted">${p ? `已写入 ${esc(dir)}/randomization.json` : '还没有方案'}</span></div>
+    ${code(`# GPU 服务器的隔离运行目录（带 Assets/），仿真环境的 python；seed 0 是榜单评测集，不能用\npython scripts/datagen/x5_layouts.py --task ${d.id} --seed <训练 seed> --count 100              # split=train，评测客户端拒绝\npython scripts/datagen/x5_layouts.py --task ${d.id} --seed <留出 seed> --count 30 --split val   # 内部留出评测集\n# 布局在 Assets/Eval_Layout/RoboDojo/${env}/<seed>/，每个布局抽到了什么见同目录 report_${d.id}.json`)}`);
+}
+async function saveRandomization(id, clear = false) {
+  const n = (v) => (v === '' || v == null ? null : Number(v)), r = RS, dirOf = (m) => m.replace(/^mdl\//, '');
+  const profile = clear ? null : {position: r.position, yaw: r.yaw, instances: r.instances,
+    rooms: r.rooms, tables: r.tables.map(dirOf), grounds: r.grounds.map(dirOf)};
+  if (profile && r.bgOn) profile.background = {hdrs: r.hdrs, intensity: n(r.bgLo) == null && n(r.bgHi) == null ? null : [n(r.bgLo), n(r.bgHi)]};
+  if (profile && r.liOn) profile.lights = {count: [n(r.liN0), n(r.liN1)], types: r.types, intensity: [n(r.liLo), n(r.liHi)], color_temperature: [n(r.ctLo), n(r.ctHi)]};
+  if (profile && r.clOn) profile.clutter = {count: [n(r.clLo), n(r.clHi)], categories: r.cats};
+  if (profile && r.camOn) profile.camera = {ori_deg: n(r.camOri)};
+  try {
+    const doc = await api(`/api/items?kind=task&id=${encodeURIComponent(id)}`, {method: 'PUT', body: JSON.stringify({randomization: profile})});
+    S.task[S.task.findIndex((x) => x.id === id)] = doc;
+    if (clear) RS = null;
+    toast(doc.auto.randomization ? '已保存到 randomization.json' : '已清除随机方案');
+    render();
+  } catch (err) { toast(`保存失败：${err.message}`, true); }
+}
 function drawerTask(d) {
   const a = d.auto, eps = EP_BY_TASK[d.id] || [], rs = evalStages(TASK_STAGES, d);
   const runs = group(eps, (e) => `${e.auto.config}\u0000${e.auto.policy}`);
@@ -1884,7 +1950,7 @@ function drawerTask(d) {
     title: d.reg?.name ? `${d.reg.name} · ${d.id}` : d.id,
     sub: d.implementation?.engine ? `${d.implementation.engine} 独立实现 · 平台统一任务接口待接入` : a.module ? `${DIMS[a.dimension] || a.dimension} · ${a.module} · ${a.config}` : `平台登记，还没实现 · real2sim/tasks/${d.id}/registration.json`,
     actions: d.registered ? `<button class="btn" type="button" data-id="${esc(d.id)}" onclick="unregisterTask(this.dataset.id)">${ic('trash')}删除登记</button>` : '',
-    body: `${d.implementation ? sec('自主数采与训练进展', `<p>${esc(d.implementation.progress)}</p><p>${esc(d.implementation.detail)}</p><p>实现入口：<code>${esc(d.implementation.path)}</code></p><div class="toolbar">${(d.implementation.evidence || []).map((p) => `<a class="btn" target="_blank" rel="noopener" href="${file(p)}">${esc(base(p))}</a>`).join('')}</div>`) : ''}${d.registered ? taskRegSection(d) : ''}${sec('流程', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
+    body: `${d.implementation ? sec('自主数采与训练进展', `<p>${esc(d.implementation.progress)}</p><p>${esc(d.implementation.detail)}</p><p>实现入口：<code>${esc(d.implementation.path)}</code></p><div class="toolbar">${(d.implementation.evidence || []).map((p) => `<a class="btn" target="_blank" rel="noopener" href="${file(p)}">${esc(base(p))}</a>`).join('')}</div>`) : ''}${d.registered ? taskRegSection(d) : ''}${a.dimension !== 'custom' && a.pools ? rsiSection(d) : ''}${sec('流程', `${progress(rs)}<div style="height:10px"></div>${stageList(rs)}`)}
     ${sec('采集计划', `<div class="form">${row('负责人', 'owner', sel(d, 'owner', memberOpts(d.owner)), '从平台账号里选')}
       ${row('合格回合目标', 'target', inp(d, 'target', 'number', 'min="0" placeholder="500"'))}${row('备注', 'notes', area(d, 'notes'))}</div>`)}
     ${sec('分级泛化评测集', `<p class="hint" style="margin:0 0 10px">每一级只改变一个因素，其余与 L0 相同；布局预先生成为固定 JSON，并先用 scripted_demo 过滤，L0–L3 专家成功率目标 ≥ 80%。</p>
@@ -1946,7 +2012,7 @@ function renderLevels() {
 }
 const newRole = (label = '', candidates = []) => ({label, candidates, holdout: [], count: 1});
 // picker keys: r<i> / h<i> = role i's training candidates / held-out objects, dis / dish = distractors, sc-* = scenes
-const ntList = (key) => (key.startsWith('mt-') ? AP[key.split('-')[1]][key.split('-')[2]] : null)
+const ntList = (key) => (RS_LISTS[key] ? RS[RS_LISTS[key]] : null) || (key.startsWith('mt-') ? AP[key.split('-')[1]][key.split('-')[2]] : null)
   || (key === 'tk-eval' ? NE.tasks : key === 'sc-eval' ? NE.scenes : null) || ({dis: NT.dis.candidates, dish: NT.dis.holdout, 'sc-train': NT.scenes.train, 'sc-holdout': NT.scenes.holdout})[key]
   || NT.roles[Number(key.slice(1))][key[0] === 'h' ? 'holdout' : 'candidates'];
 const trainObjects = () => new Set([...NT.roles.flatMap((r) => r.candidates), ...NT.dis.candidates]);
@@ -1975,8 +2041,9 @@ const PICK = {
       <div class="small muted">${Object.keys(x.auto.layouts || {}).length ? `评测布局：${esc(Object.entries(x.auto.layouts).map(([c, n]) => `${c} ${n}`).join('、'))}` : '资产库里没有布局'}</div>`,
   },
   mat: {
-    // only the materials that suit the key's surface (mt-<list>-<role>), server-side appearance.fits
-    all: (key) => MATS.filter((m) => (m.roles || []).includes(key.split('-')[2]))
+    // only the materials that suit the key's surface (mt-<list>-<role>), server-side appearance.fits; an upstream
+    // task's tabletop and ground (mt-rsi-*) take MDL materials only
+    all: (key) => MATS.filter((m) => (m.roles || []).includes(key.split('-')[2]) && (!key.startsWith('mt-rsi-') || m.kind === 'mdl'))
       .sort((x, y) => Number(y.category === 'scene') - Number(x.category === 'scene') || x.name.localeCompare(y.name)),
     get: (id) => MATS.find((m) => m.id === id), name: (m) => m.name, img: (m) => m?.thumb, icon: 'image',
     text: (m) => `${m.id} ${m.name} ${MAT_CATS[m.category] || ''} ${m.category}`,
@@ -1993,7 +2060,15 @@ const PICK = {
       <div class="small muted">${s.auto.configs?.length ? `env 配置 ${esc(s.auto.configs.join('、'))}` : '还没建模'} · 照片 ${s.auto.photos?.length || 0}</div>`,
   },
 };
-const pickSrc = (key) => PICK[key.startsWith('sc-') ? 'scene' : key.startsWith('tk-') ? 'task' : key.startsWith('mt-') ? 'mat' : 'obj'];
+const plainPick = (list, icon, where, empty) => ({  // a picker over the names in RSI_OPTS[list], no thumbnails
+  all: () => (RSI_OPTS?.[list] || []).map((id) => ({id})), get: (id) => ({id}), name: (x) => x.id, img: () => null, icon,
+  text: (x) => x.id, empty, card: (x) => `<div class="small mono">${esc(where)}/${esc(x.id)}</div>`,
+});
+PICK.room = plainPick('rooms', 'scan', 'Assets/Room', '资产库 Room/ 里没有匹配的房间');
+PICK.hdr = plainPick('hdrs', 'image', 'Assets/Background', '资产库 Background/ 里没有匹配的 HDR');
+PICK.clutter = plainPick('clutter', 'cube', 'Object/RoboDojo/Clutter', '杂物库里没有匹配的类别');
+const PICK_PREFIX = {'sc-': 'scene', 'tk-': 'task', 'mt-': 'mat', 'rm-': 'room', 'hd-': 'hdr', 'cl-': 'clutter'};
+const pickSrc = (key) => PICK[PICK_PREFIX[key.slice(0, 3)] || 'obj'];
 const pickLabel = (key, id) => { const x = pickSrc(key).get(id), n = x && pickSrc(key).name(x); return n && n !== id ? `${n} · ${id}` : id; };
 const picker = (key, ph = '搜索物体名称、类别或 id') => `<div class="chips" id="nt-chips-${key}">${ntChips(key)}</div>
   <div class="opick"><input type="search" placeholder="${ph}" autocomplete="off" aria-label="${ph}" aria-controls="opick-${key}" aria-expanded="false"
@@ -2041,7 +2116,7 @@ function opickKey(ev, key) {
 }
 function pickObjId(key, id) {
   if (/^mt-(fix|v3d)-/.test(key)) ntList(key).splice(0);  // one fixed / previewed material per role
-  if (!/^(sc|tk|mt)-/.test(key)) {
+  if (!/^(sc|tk|mt|rm|hd|cl)-/.test(key)) {
     const clash = isHoldKey(key) ? trainObjects().has(id) && '已经是训练候选，评测保留的必须是训练里没见过的物体'
       : heldObjects().has(id) && '已经选为评测保留物体，不能再进训练';
     if (clash) return toast(`${pickLabel(key, id)} ${clash}`, true);
@@ -2537,7 +2612,7 @@ async function deleteUser(username) {
 }
 async function load() {
   await Promise.all([...KINDS.map(async (k) => { S[k] = await api(`/api/items?kind=${k}`); }), api('/api/members').then((m) => { MEMBERS = m; }),
-    api('/api/materials').then((m) => { MATS = m; })]);
+    api('/api/materials').then((m) => { MATS = m; }), api('/api/rsi-options').then((o) => { RSI_OPTS = o; }).catch(() => {})]);
   UI.loaded = true;
   UI.syncedAt = new Date().toLocaleTimeString('zh-CN', {hour12: false});
   render();

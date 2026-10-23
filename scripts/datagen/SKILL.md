@@ -92,6 +92,16 @@ description: 在 RoboDojo 里用脚本专家批量生成 G1-D 仿真示教数据
 - 判据要比任务的 `run_reward` 更严格，并且只用实际几何（参照 `scripts/objects/measuring_cup_shape.py`，任务代码和插件读同一个形状模块）。
 - 在 `scripts/datagen/test_datagen.py` 加一个用合成数据跑 `audit()` 的用例。
 
+## 上游榜单任务（dual X5）的随机布局
+
+上游引擎只回放已保存的布局，没有生成器。`scripts/datagen/x5_layouts.py` 以任务的官方评测布局（`arx_x5/0`）为结构模板，按随机方案重抽每个布局：
+
+- 随机方案在数采平台任务抽屉的「泛化随机方案」里填，写 `real2sim/benchmark_tasks/<任务>/randomization.json`（格式和校验见 `scripts/datagen/rsi_profile.py`），入库。
+- 可选项：位置和朝向（只在任务配置自己的范围里重采样，从不照抄评测布局；配置里写死位置的物体不动）、实例（只抽基础任务的训练侧编号，`_random` 独有的编号是榜单留出实例，永远不抽）、干扰物（杂物库，类别不重复）、房间池、桌面和地面 MDL 材质池、背景 HDR 和亮度（整个舞台共用一个穹顶，取第一个并行环境的布局）、额外灯光（类型、数量、亮度、色温）、头部相机角度扰动。
+- 相机只扰动角度：平移 2 cm 时 10 个并行环境里有 3 个出图全黑（10-23 在 5090-2 上对照过：只去掉平移就恢复正常）。开了相机扰动会生成 git 忽略的 `env_cfg/arx_x5_rsi_<任务>.yml` 和 `env_cfg/camera/rsi_<任务>.yml`，布局放在这个 env 配置下。
+- 命令（隔离目录、仿真环境的 python；seed 0 是榜单评测集，脚本拒绝写）：`python scripts/datagen/x5_layouts.py --task <任务> --seed <N> --count 100 [--split val]`。输出目录带 `split.json`（默认 train，评测客户端会拒绝）和 `report_<任务>.json`（每个布局抽到了什么）。
+- 生成后要在 Isaac 里看一遍画面再用：用一个只保持姿态的策略模块（`--policy_module`）跑 10 个布局，检查头部相机最后一帧没有大面积黑块、亮度不过曝。
+
 ## 用本仓库评估外部训练的 checkpoint
 
 - 评测申请走数采平台「模型评测」：提交人填 checkpoint、部署代码、接口（本体、动作空间、图像、指令）、任务、场景、泛化等级和回合数，写到 `real2sim/evals/<编号>/request.json`；评测抽屉里有给 coding agent 的部署与评测任务。策略名用评测编号；跑完把运行目录的 `eval_result/` 同步到部署机的 `eval_result/`，并写 `real2sim/evals/<编号>/result.json`（`summary`、`runs`：每个任务 × env 配置 × 等级的回合数、成功率、95% 区间、专家对照，`issues`），平台据此显示结果。凭据不要写进这两个文件。

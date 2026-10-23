@@ -2,7 +2,8 @@
 # CPU checks for every commit, also run by CI (.github/workflows/checks.yml): bash scripts/check.sh [BASE_REF]
 # Lints only the Python files changed since BASE_REF (default origin/main; older files predate the formatter), then
 # runs the unit tests and the task inventory check. Needs ruff==0.11.7 (as .pre-commit-config.yaml), pytest, numpy,
-# scipy, h5py, opencv-python-headless and pyyaml; the XPolicyLab submodule for the trajectory format test.
+# scipy, h5py, opencv-python-headless, pyyaml, shapely, rtree and transforms3d; the XPolicyLab submodule for the
+# trajectory format test.
 # GPU checks (scripted demos, collection, replay) run on a server; see scripts/datagen/SKILL.md.
 set -euo pipefail
 cd "$(dirname "$0")/.."

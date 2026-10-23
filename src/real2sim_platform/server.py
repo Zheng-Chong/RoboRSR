@@ -46,9 +46,10 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-sys.path[:0] = [str(ROOT / "scripts" / "internal"), str(ROOT / "scripts" / "g1d"), str(ROOT / "scripts" / "scenes")]
+sys.path[:0] = [str(ROOT / "scripts" / s) for s in ("internal", "g1d", "scenes", "datagen")]
 import appearance  # a scene's surface materials and desk height -> layouts
 import build_asset  # SCENES: env config -> real2sim scene
+import rsi_profile  # an upstream task's randomization profile -> scripts/datagen/x5_layouts.py
 import task_inventory
 
 KINDS = ("scene", "object", "task", "episode", "embodiment", "evaluation", "prototype")
@@ -428,8 +429,8 @@ def scan_benchmark_scenes(tasks):
     return found
 
 
-def config_objects(path):
-    """{asset id: labels} of a task yml's Rigid/Fluid groups, e.g. {"Rigid/plastic_cup/00000": ["source_cup"]}."""
+def config_objects(path, sections=("Rigid", "Fluid")):
+    """{asset id: labels} of a task yml's object groups, e.g. {"Rigid/plastic_cup/00000": ["source_cup"]}."""
     # ponytail: line reader for the flat task-config layout (PyYAML only exists in the sim env); yaml.safe_load if
     # configs ever use nested flow lists or anchors
     objects, section, group, category = {}, None, [], None
@@ -437,7 +438,7 @@ def config_objects(path):
         line = raw.split("#")[0].rstrip()
         if m := re.match(r"(\w+):", line):
             section = m[1]
-        elif section not in ("Rigid", "Fluid"):
+        elif section not in sections:
             continue
         elif re.match(r"\s{2}-", line):
             group = []
@@ -453,6 +454,41 @@ def config_objects(path):
     return objects
 
 
+RSI_SECTIONS = ("Rigid", "Geometry", "Articulation", "Garment")  # the sections x5_layouts.py swaps instances in
+
+
+def instance_pools(task):
+    """Training and held-out instances of an upstream task: its base task's config, and what only the _random variant
+    adds (the benchmark's unseen instances), as {category: [index]}."""
+    base, variant = rsi_profile.holdout_split(task)
+
+    def by_category(name):
+        path = ROOT / "task" / "RoboDojo" / "config" / f"{name}.yml"
+        found = {}
+        for oid in config_objects(path, RSI_SECTIONS) if path.is_file() else {}:
+            _, category, index = oid.split("/")
+            found.setdefault(category, set()).add(int(index))
+        return found
+
+    train, seen = by_category(base), by_category(variant) if variant else {}
+    held = {c: sorted(i - train.get(c, set())) for c, i in seen.items() if i - train.get(c, set())}
+    return {"base": base, "variant": variant, "train": {c: sorted(i) for c, i in train.items()}, "holdout": held}
+
+
+def write_randomization(task, profile, assets):
+    """Check a profile from the task drawer and write real2sim/benchmark_tasks/<task>/randomization.json (removed when
+    it is null); returns an error message or None."""
+    path = rsi_profile.PROFILES_DIR / task / "randomization.json"
+    if profile is None:
+        path.unlink(missing_ok=True)
+        return None
+    if error := rsi_profile.check(profile, rsi_profile.options(assets)):
+        return error
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(profile, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return None
+
+
 def scan_tasks(assets):
     layout_root = assets / "Eval_Layout" / "RoboDojo"
     layouts = Counter()
@@ -462,7 +498,13 @@ def scan_tasks(assets):
     found = {}
     for t in task_inventory.build_inventory()["tasks"]:
         step = re.search(r"self\.step_lim\s*=\s*(\d+)", (ROOT / t["module"]).read_text(encoding="utf-8"))
+        upstream = t["dimension"] != "custom"
         found[t["name"]] = {
+            # what a generated layout of the task varies (task drawer, scripts/datagen/x5_layouts.py)
+            "randomization": load_json(rsi_profile.PROFILES_DIR / t["name"] / "randomization.json")
+            if upstream
+            else None,
+            "pools": instance_pools(t["name"]) if upstream else None,
             "dimension": t["dimension"],
             "runnable": t["runnable"],
             "module": t["module"],
@@ -993,6 +1035,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(material_library())
         elif url.path == "/api/clutter":
             self.send_json(clutter_categories(self.scan_args[0]))
+        elif url.path == "/api/rsi-options":  # what an upstream task's randomization profile may pick from
+            self.send_json(rsi_profile.options(self.scan_args[0]))
         elif url.path == "/api/object-indices":
             self.send_json(object_indices(self.scan_args[0], self.store))
         elif url.path == "/api/items" and query.get("kind") in KINDS:
@@ -1063,6 +1107,15 @@ class Handler(BaseHTTPRequestHandler):
             kind == "embodiment" and not EMBODIMENT_ID.fullmatch(id_)
         ):
             return self.send_error(400)
+        if kind == "task" and "randomization" in fields:
+            task = next((d for d in self.store.list(kind) if d["id"] == id_), None)
+            if not task or task.get("auto", {}).get("dimension") in (None, "custom"):
+                return self.send_json({"error": "随机方案只给 RoboDojo 上游任务用"}, 400)
+            if error := write_randomization(id_, fields.pop("randomization"), self.scan_args[0]):
+                return self.send_json({"error": error}, 400)
+            self.store.update(kind, id_, fields, by=self.user["name"])
+            profile = load_json(rsi_profile.PROFILES_DIR / id_ / "randomization.json")
+            return self.send_json(self.store.set_auto(kind, id_, "randomization", profile))
         if kind == "evaluation":
             if not EVAL_ID.fullmatch(id_):
                 return self.send_error(400)
