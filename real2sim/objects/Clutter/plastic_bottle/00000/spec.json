@@ -1,0 +1,24 @@
+{
+  "id": "Clutter/plastic_bottle/00000",
+  "name": "塑料瓶-农夫山泉",
+  "name_en": "plastic bottle",
+  "material": "PP 塑料",
+  "color": "透明",
+  "mass_g": 328,
+  "static_friction": 0.35,
+  "dimensions_mm": "开口直径29.8mm，底部直径64.7mm",
+  "features": "透明瓶子，上有盖子，贴有红白标签",
+  "requirements": "中空，盖子要移除，不能做成封闭的",
+  "generalization": {
+    "count": 5,
+    "requirements": "参数由 coding agent 设计，彼此差异明显",
+    "rt_color": true,
+    "rt_scale": 5,
+    "color": true,
+    "material": true,
+    "size": true,
+    "shape": true
+  },
+  "updated_by": "徐鹤鸣",
+  "updated_at": "2026-10-23 10:54:15"
+}
