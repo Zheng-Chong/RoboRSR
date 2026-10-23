@@ -20,6 +20,7 @@
   - 共享资产库缺 `measuring_cup`、`plastic_mug`，以及量杯任务的布局。
   - 学校的纸杯 `paper_cup/0000{0,1}`、纸盘 `paper_plate/0000{0,1,2}` 是孪生的拟合几何，没在平台登记，没有实测，未装共享库。平台上能看到它们（10-20 部署，见下面「数采平台」）。
   - 耳机充电盒 `airpods/00000`：第一件按 `scripts/objects/SKILL.md` 从平台登记建的物体，实测尺寸和质量，已装共享库。
+  - 农夫山泉塑料瓶 `Clutter/plastic_bottle/00000` 和 5 个泛化变体：按平台登记建，带盖、贴图标签；另有能拧盖的 `Articulation/plastic_bottle/0000{0..5}`。都已装共享库（2026-10-23，见「最近任务」）。
   - 自建物体写的 `friction` 不生效：运行时只读 `physics.static_friction` 和 `dynamic_friction`。
 - **任务和脚本专家**（`scripts/g1d/scripted_demo.py`）：
   - 拾取、叠块：三个场景 seed 0 都成功。
@@ -34,6 +35,22 @@
   - 仿真环境 `/root/miniconda3/envs/RoboDojo`；导出环境 `robodojo-lerobot`（lerobot 0.4.4，10-19 补装了 h5py 3.16，`pip -i` 用清华镜像）；上传环境 `/data/robodojo-runs/ms-venv`；运行目录在 `/data/robodojo-runs/`。
 
 ## 最近任务
+
+### 农夫山泉塑料瓶 `plastic_bottle`（2026-10-23，分支 `z/objects-plastic-bottle` → `chongzheng/objects-plastic-bottle-cap`）
+
+- 平台建模任务 `real2sim/objects/Clutter/plastic_bottle/00000/spec.json`（徐鹤鸣 10-23 登记）。脚本 `scripts/objects/make_plastic_bottle.py` 生成本体和 5 个泛化变体 `00001–00005`（`metadata.json` 写 `variant_of`）。Clutter 物体经同一个 `RigidObject` 加载（`layout_manager.py` 的 `type: cluttered`，干扰物也是这样放的），所以 Clutter 版必须是单刚体。
+- 用户 10-23 补充：总高 227 mm（不含盖）；登记的 328 g 含水，按空瓶 18 g 建模（算作含盖）；开口直径指外径。**平台登记里质量还是 328 g**，要在平台改成 18 g 并加「总高」，否则平台的质量核对不过；加了「总高」后在 `save()` 的 `measurements_mm` 里补同名键。
+- **加盖、贴图标签（用户 10-23 下午：瓶身没贴图太假，要盖子，最好能拧）**：
+  - 标签：`scripts/objects/bottle_label.py`（只依赖 numpy + PIL）程序绘制环绕贴图：照实拍的红白版式画品牌字、山水图、成分表、条码、细字、二维码；变体是虚构品牌（清泉、山涧、橙动、汽泡、果园）。贴图打进 usdz（`textures/label.png`），标签网格带 faceVarying UV，OmniPBR `diffuse_texture`。需要中文字体：`5090-2` 系统里没有，用 `apt-get download fonts-noto-cjk && dpkg -x` 解压到运行目录，`CJK_FONT_DIR` 指过去（本次在 `/data/robodojo-runs/plastic-bottle-cap-20261023/fonts/x/usr/share/fonts/opentype/noto`）；Mac 上自动用系统黑体 / 宋体。
+  - 盖子：所有瓶子加竖纹螺旋盖（防盗环、圆角顶），尺寸照片估计（本体外径 33 mm、高 16.4 mm，带盖总高 228.5 mm）。Clutter 版盖子并进瓶身刚体，碰撞体多一个 24 边圆柱；`visual.color_parts` 改成 `["cap"]`，`rt_color` 只换盖子颜色（标签是贴图，换成纯色就白画了）。
+  - 能拧：同一次运行另写 `Assets/Object/RoboDojo/Articulation/plastic_bottle/0000{0..5}`，经 `ArticulationObject` 加载。结构：`/root/body`（挂 ArticulationRootAPI，`fix_root_link` 要求它在第一个连杆上）→ `cap_twist` 旋转关节（0–720°，正向 = 从上看逆时针 = 拧开，阻尼驱动 3e-4 N·m·s/°）→ `nut` 连杆 → `cap_lift` 棱柱关节（PhysxMimicJointAPI 跟随 twist，每圈升 2.7 mm 螺距）→ `/root/cap`。盖子和瓶身碰撞用 FilteredPairs 关掉。拧到 720° 停住，盖子不会脱离瓶身（关节物体里做不到真的拿下来）。`metadata.json` 的 `articulation` 段写了两个关节开 / 关的位置（rad、m）。
+- 验证（`5090-2` 隔离目录 `/data/robodojo-runs/plastic-bottle-cap-20261023/`，`run.sh` 一键重跑；本机 `bash scripts/check.sh` 通过，ruff 0.11.7 三个脚本全过）：
+  - `measurements_mm` 开口直径 29.8、底部直径 64.7，误差 0；
+  - `check_object.py` Clutter 六件全部 OK（倾角 0°）；
+  - 新脚本 `scripts/objects/check_bottle_cap.py`（CPU 物理，和 TaskEnv 默认一致；GPU 管线下 `SingleArticulation.dof_properties` 会报 cuda tensor 转 numpy 的错）：六件自由落地都直立、关节保持 0；固定底座、给 `cap_twist` 速度目标 π rad/s，六件都转到 12.566 rad、`cap_lift` 5.40 mm，反转回到 0；
+  - 新渲染图和 `check.json` 已同步到部署机 `real2sim/objects/Clutter/plastic_bottle/0000{0..5}/preview/`，平台上能看到带盖带标签的样子。
+- **已装共享资产库**（用户 10-23 同意）：把隔离目录 `ovl/` 里验证过的产物拷到 `/data/robodojo-assets/Assets/Object/RoboDojo/{Clutter,Articulation}/plastic_bottle/`，`diff -r` 一致。两处都是新目录，没覆盖任何东西，所以没做备份。12 件的 `metadata.json`、`description.json` 也手动放进了平台镜像 `/root/RoboDojo_assets/Assets` 的同一路径（整体重刷镜像时会被删，重刷要从 `5090-2` 共享库拉，不再从 21196）。没改 `Clutter/clutter.yml`；`prepare_bean_pour_layouts.py` 扫目录选干扰物，以后重新生成布局时这 6 个瓶子会进候选，已有布局不受影响。
+- 未做：`rt_scale`、`rt_color` 要在任务层 `build_asset.py` 的 `RANDOMIZE` 打开；没有拧盖任务，也没验证 Dex1-1 夹爪真能拧动（盖子外径 33 mm，夹爪能夹住，但要靠转腕，阻尼和是否需要摩擦得在任务里调）；登记里「去盖、中空」的要求已被用户新要求取代，平台登记文本没改。
 
 ### 真机 Motus 倒豆模型在上海实验室的仿真评测（2026-10-23，`chongzheng/eval-motus-lab-beans`）
 
@@ -373,6 +390,7 @@
 
 ## 最近历史
 
+- 2026-10-23：农夫山泉塑料瓶和 5 个变体加竖纹螺旋盖、程序绘制的贴图标签；另出能拧盖的 `Articulation/plastic_bottle`（旋转 + mimic 棱柱关节，两圈拧开），新增 `bottle_label.py`、`check_bottle_cap.py`。
 - 2026-10-23：真机 Motus 倒豆模型（ModelScope `Vincia/WanVlmMask-G1DPourBeansGenEps222-AbsQpos16-30000`）在上海实验室仿真量杯倒豆 0/20（夹爪总是夹空）；新增 `g1d_lab_beans_collect`，收入 `scripts/g1d/remote_policy.py`。
 - 2026-10-22：启动榜单冲分（20 天）：5090-2 建基线运行目录，拉齐官方 Assets、OpenWAM / pi0.5 官方 checkpoint 和两套推理环境，冒烟通过后启动两个模型 54 个任务的全量基线评测；确认 20 个榜单任务没有官方训练数据。
 - 2026-10-22：深圳实验室倒豆 500 条（矮量杯或马克杯、300–600 豆、2–5 干扰物、严格整回合验收）采完、审计、上传 ModelScope 私有仓库 `ChongZheng/g1d_shenzhen_pour_beans_cup_or_mug_500`。
