@@ -37,7 +37,7 @@
 
 ### 场景中文名（2026-10-23，直接推 `main`）
 
-- 用户要求所有场景都显示中文名。五个重建场景的 `scene_spec.json` 加 `name`：办公室升降桌、茶水间吧台、公司实验室、学校实验室绿幕桌、深圳实验室（同登记名）；平台扫描读它，卡片标题用中文名、下面一行小字是目录名。显示优先级：登记名 > `scene_spec.json` / 导入场景 `platform.json` / RoboDojo 自带场景的名字 > 目录名。给 coding agent 的建模任务文本和 SKILL 都要求新场景在 `scene_spec.json` 写 `name`。验证：`check.sh` 42 passed（`test_repo_scan` 断言五个场景都有名字）。
+- 用户要求所有场景都显示中文名。五个重建场景的 `scene_spec.json` 加 `name`：办公室升降桌、茶水间吧台、上海实验室（10-23 由公司实验室改名）、学校实验室绿幕桌、深圳实验室（同登记名）；平台扫描读它，卡片标题用中文名、下面一行小字是目录名。显示优先级：登记名 > `scene_spec.json` / 导入场景 `platform.json` / RoboDojo 自带场景的名字 > 目录名。给 coding agent 的建模任务文本和 SKILL 都要求新场景在 `scene_spec.json` 写 `name`。验证：`check.sh` 42 passed（`test_repo_scan` 断言五个场景都有名字）。
 
 ### 研究资产入库 + 界面按 UI UX Pro Max 优化（2026-10-22，直接推 `main`）
 

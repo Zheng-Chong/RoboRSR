@@ -1,6 +1,6 @@
 {
   "scene": "real_scene3_lab",
-  "name": "公司实验室",
+  "name": "上海实验室",
   "env_cfg": "g1d_lab",
   "photos": ["reference/p*.jpg"],
   "reconstruction": "four photos with hand-picked corners and edges, fitted jointly (fit_photo.py), build_scene.py, check_scene.py, preview.py (PLAN.md); room furniture (desks, chairs, pedestal, cabinet, side and round tables) placed by back-projecting floor contacts through the fitted cameras, catalogue sizes",
