@@ -62,7 +62,7 @@ python scripts/objects/make_water_cup.py          # 水杯 water_cup
 python scripts/objects/make_water_cup.py --plastic   # 塑料杯 plastic_cup
 python scripts/objects/make_school_tableware.py   # 学校纸杯 paper_cup、纸盘 paper_plate
 python scripts/objects/make_airpods.py            # 耳机充电盒 airpods
-python scripts/objects/make_plastic_bottle.py     # 塑料瓶 plastic_bottle（写入 Assets/Object/RoboDojo/Clutter/）
+python scripts/objects/make_plastic_bottle.py     # 带盖塑料瓶 plastic_bottle（Clutter/ 刚体，Articulation/ 能拧盖；标签要中文字体，见 bottle_label.py）
 python Assets/Object/RoboDojo/Rigid/format.py
 
 # 5. 构建 G1-D 机器人（读 real2sim/robot/g1d_v4，写 Assets/Robots/g1d/）、红豆材质，

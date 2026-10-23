@@ -1,22 +1,30 @@
 #!/usr/bin/env python3
-"""Open plastic water bottles (cap removed) as RoboDojo `Clutter` assets.
+"""Capped plastic water bottles with printed labels as RoboDojo `Clutter` assets, plus twistable-cap twins as
+`Articulation` assets.
 
 - plastic_bottle/00000: Real2Sim platform registration real2sim/objects/Clutter/plastic_bottle/00000 (spec.json, by
   徐鹤鸣, 2026-10-23 10:54:15): 农夫山泉 550 ml bottle, transparent, red-and-white label, static friction 0.35,
   开口直径 29.8 mm, 底部直径 64.7 mm (measured). The user added on 2026-10-23: 总高 227 mm without cap, empty mass
-  18 g (the registered 328 g included water; modelled empty), 开口直径 is the outer diameter. Shoulder, neck finish,
-  label band and grip grooves are estimated from the four photos. Hollow and open at the mouth; no cap.
+  18 g (the registered 328 g included water; modelled empty, cap included), 开口直径 is the outer diameter. Shoulder,
+  neck finish, label band, grip grooves and the cap are estimated from the four photos. The registration asked for the
+  cap removed; the user asked on 2026-10-23 for a cap that can be twisted, so every bottle now has one.
 - plastic_bottle/00001-00005: generalization variants of 00000 (not measured; colour, material, size and shape differ):
   380 ml mini, 1 L tall, frosted rounded-square, green waisted grip bottle, amber wide-mouth juice bottle.
+- Labels are textures drawn by bottle_label.py (needs a CJK font, see bottle_label.FONT_DIRS); variants carry
+  fictional brands.
 
 Usage:
     python scripts/objects/make_plastic_bottle.py [TYPE_DIR]    # default Assets/Object/RoboDojo/Clutter
     python scripts/objects/check_object.py Assets/Object/RoboDojo/Clutter/plastic_bottle/0000{0,1,2,3,4,5}
-Writes TYPE_DIR/plastic_bottle/<index>/{object.usdz, metadata.json, description.json}. Needs what make_pitcher.py needs.
+    python scripts/objects/check_bottle_cap.py Assets/Object/RoboDojo/Articulation/plastic_bottle/0000{0,1,2,3,4,5}
+Writes TYPE_DIR/plastic_bottle/<index>/ and TYPE_DIR/../Articulation/plastic_bottle/<index>/, each {object.usdz,
+metadata.json, description.json}. Needs what make_pitcher.py needs, and PIL.
 
 Frame: Z up, metres, origin at bbox centre.
-USD:   /root (RigidBodyAPI) -> visual/model (bottle shell), visual/label_bottom, visual/label_top (label bands)
-                            -> collision/hull_NN (bottom slab + wall staves up to the mouth, hollow and open)
+USD (Clutter): /root (RigidBodyAPI) -> visual/model (bottle shell), visual/label (textured band), visual/cap
+                                    -> collision/hull_NN (bottom slab + wall staves up to the mouth, cap cylinder last)
+USD (Articulation): /root (ArticulationRootAPI) -> body (shell, label, bottle colliders), nut, cap (cap and its
+    collider), joints/cap_twist + joints/cap_lift (add_cap_joints); textures/label.png inside the usdz.
 Each bottle is a loft of sections r * ring(b) along Z: b = 1 is the variant's section (circle or rounded square), b = 0
 a circle; the shoulder blends from b = 1 into the round neck.
 """
@@ -30,15 +38,24 @@ import traceback
 import uuid
 
 import numpy as np
+from PIL import ImageChops
 from scipy.spatial import ConvexHull
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import bottle_label  # noqa: E402
 import make_pitcher as mp  # noqa: E402  (shared USD helpers; starts Kit when pxr needs it)
-from make_pitcher import Sdf, Usd, UsdGeom, UsdPhysics, UsdShade  # noqa: E402
-import make_plastic_cups as pc  # noqa: E402  (loft, unit_section, add_collision, metadata)
+from make_pitcher import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade, Vt  # noqa: E402
+import make_plastic_cups as pc  # noqa: E402  (loft, unit_section, metadata)
+from pxr import PhysxSchema  # noqa: E402
 
 TYPE_DIR = Path(__file__).resolve().parents[2] / "Assets/Object/RoboDojo/Clutter"
 CATEGORY = "plastic_bottle"
+LABEL_TEX = "textures/label.png"  # inside the usdz, next to object.usdc
+LABEL_PX, LABEL_MAX_PX = 1024, 4096  # label texture height; width follows the label's perimeter, capped
+LABEL_FRONT_U = 0.57  # artwork roll: its front panel (u 0.38) ends up facing check_object's preview camera (-17 deg)
+NUT_MASS, NUT_INERTIA = 1e-4, 1e-8  # kg, kg m^2: the carrier link between cap_twist and cap_lift
+CAP_DAMPING = 3e-4  # cap_twist drive damping, N m s / deg: a 0.05 N m twist turns the cap ~half a turn per second
+CAP_ARMATURE = 1e-6  # kg m^2 on cap_twist: keeps the light cap and nut stable at the 1/250 s physics step
 N_THETA = pc.N_THETA
 T_WALL = 0.0004  # visual PET wall, estimated (real 550 ml bottles are ~0.25 mm)
 T_COLL = 0.002  # collider wall: thicker than the PET so contacts stay robust; grows inward from the outer surface
@@ -68,25 +85,39 @@ NONGFU = dict(
     LABEL_RGB=((0.42, 0.015, 0.02), (0.90, 0.90, 0.88)),  # bottom (red), top (white); linear RGB
     TINT=(0.97, 0.98, 0.98), FROST=0.0,  # FROST: milky share of a frosted wall, 0 = clear
     MASS=0.018,  # measured empty (2026-10-23, from the user; the registered 328 g was the bottle with water)
+    # screw cap, all estimated from the photos: red, knurled, tamper band on the bead; sits from the support ring up
+    CAP_RGB=(0.50, 0.012, 0.015), CAP_T=0.0016, CAP_TOP=0.0015,  # wall beyond the thread crests, top above the mouth
+    CAP_RIBS=64, RIB_D=0.0003, BAND_H=0.0045,  # knurl count and depth, tamper band height
+    CAP_MASS=0.002, PITCH=0.0027, OPEN_TURNS=2.0,  # part of MASS; thread pitch (28 mm PCO 1881 class); turns to loosen
+    ART=dict(
+        brand="农夫山泉", latin="NONGFU SPRING", tagline="天然水源 · 健康生活", product="饮用天然水", volume="550ml",
+        note="天然弱碱性水", picture="landscape", table="water", trim=(0.01, 0.10, 0.05), ean="6 900000 123457",
+        facts=dict(ingredients="水", shelf="24个月", standard="GB 19298"),
+    ),
     WORDS=dict(
-        color=["transparent", "red and white label", "colourless clear plastic"],
+        color=["transparent", "red and white label", "red cap"],
         material=["plastic", "clear PP", "thin-walled plastic"],
         name=["water bottle", "plastic bottle", "Nongfu Spring bottle"],
-        shape=["round cylindrical body", "rounded shoulder", "narrow open mouth, no cap"],
+        shape=["round cylindrical body", "rounded shoulder", "red screw cap"],
         function=["holding drinking water", "being picked up and placed", "recycling"],
-        look="clear round water bottle with a red and white label",
+        look="clear round water bottle with a red and white label and a red cap",
     ),
 )  # fmt: skip
 
 VARIANTS = [  # generalization variants 00001-00005: overrides of NONGFU, all unmeasured (estimated)
     dict(
         H=0.168, R=0.0290, Z_SH=0.110, GROOVES=(0.007, 0.012), LABEL=(0.030, 0.092, 0.55),
-        LABEL_RGB=((0.02, 0.09, 0.40), (0.90, 0.90, 0.88)),
+        LABEL_RGB=((0.02, 0.09, 0.40), (0.90, 0.90, 0.88)), CAP_RGB=(0.02, 0.10, 0.45),
+        ART=dict(
+            brand="清泉", latin="QING QUAN", tagline="清澈每一天", product="饮用纯净水", volume="380ml",
+            note="多重过滤 纯净安心", picture="landscape", table="water", trim=(0.01, 0.03, 0.15),
+            ean="6 900000 238014", facts=dict(ingredients="水", shelf="18个月", standard="GB 17323"),
+        ),
         WORDS=dict(
-            color=["transparent", "blue and white label", "clear"],
+            color=["transparent", "blue and white label", "blue cap"],
             material=["plastic", "clear PET", "thin plastic"],
             name=["small water bottle", "mini bottle", "380 ml bottle"],
-            shape=["short round body", "rounded shoulder", "narrow open mouth, no cap"],
+            shape=["short round body", "rounded shoulder", "blue screw cap"],
             function=["holding drinking water", "carrying in a bag", "being picked up and placed"],
             look="small clear water bottle with a blue and white label",
         ),
@@ -94,11 +125,17 @@ VARIANTS = [  # generalization variants 00001-00005: overrides of NONGFU, all un
     dict(
         H=0.262, R=0.0375, Z_SH=0.185, SH_P=1.1, GROOVES=(0.010, 0.016, 0.022, 0.028, 0.034),
         LABEL=(0.050, 0.150, 0.50), LABEL_RGB=((0.02, 0.22, 0.06), (0.90, 0.90, 0.88)), TINT=(0.84, 0.92, 0.98),
+        CAP_RGB=(0.03, 0.25, 0.06),
+        ART=dict(
+            brand="山涧", latin="MOUNTAIN BROOK", tagline="源自深山的清冽", product="天然矿泉水", volume="1L",
+            note="低钠 · 含偏硅酸", picture="landscape", table="water", trim=(0.01, 0.06, 0.02),
+            ean="6 900000 410075", facts=dict(ingredients="水", shelf="24个月", standard="GB 8537"),
+        ),
         WORDS=dict(
             color=["light blue tinted", "green and white label", "transparent"],
             material=["plastic", "blue-tinted PET", "thin plastic"],
             name=["large water bottle", "1 litre bottle", "family-size bottle"],
-            shape=["tall round body", "long sloping shoulder", "narrow open mouth, no cap"],
+            shape=["tall round body", "long sloping shoulder", "green screw cap"],
             function=["holding drinking water", "sharing water", "refilling cups"],
             look="tall light blue tinted water bottle with a green and white label",
         ),
@@ -106,11 +143,18 @@ VARIANTS = [  # generalization variants 00001-00005: overrides of NONGFU, all un
     dict(
         H=0.215, R=0.0310, SQ=4.0, Z_SH=0.138, GROOVES=(), LABEL=(0.040, 0.118, 0.50),
         LABEL_RGB=((0.012, 0.012, 0.014), (0.80, 0.22, 0.02)), TINT=(0.95, 0.95, 0.95), FROST=0.35,
+        CAP_RGB=(0.015, 0.015, 0.015),
+        ART=dict(
+            brand="橙动", latin="ORANGE RUSH", tagline="补充电解质", product="运动饮料", volume="500ml",
+            note="运动后适量饮用", picture="stripes", table="nutrition", trim=(0.80, 0.22, 0.02),
+            ean="6 900000 552813",
+            facts=dict(ingredients="水、白砂糖、柠檬酸、食用盐", shelf="12个月", standard="GB/T 10789"),
+        ),
         WORDS=dict(
-            color=["frosted white", "black and orange label", "translucent"],
+            color=["frosted white", "black and orange label", "black cap"],
             material=["plastic", "frosted PET", "matte plastic"],
             name=["square bottle", "frosted drink bottle", "plastic bottle"],
-            shape=["rounded square body", "round neck", "narrow open mouth, no cap"],
+            shape=["rounded square body", "round neck", "black screw cap"],
             function=["holding drinks", "standing on a shelf", "being picked up and placed"],
             look="frosted rounded-square plastic bottle with a black and orange label",
         ),
@@ -118,11 +162,18 @@ VARIANTS = [  # generalization variants 00001-00005: overrides of NONGFU, all un
     dict(
         H=0.230, R=0.0335, Z_SH=0.150, SH_P=1.0, GROOVES=(), WAIST=(0.0045, 0.035, 0.110),
         LABEL=(0.112, 0.146, 0.50), LABEL_RGB=((0.015, 0.03, 0.15), (0.85, 0.60, 0.02)), TINT=(0.66, 0.88, 0.70),
+        CAP_RGB=(0.85, 0.60, 0.02),
+        ART=dict(
+            brand="汽泡", latin="SPARKLE", tagline="清爽气泡", product="柠檬味汽水", volume="500ml",
+            note="冰镇后口感更佳", picture="bubbles", table="nutrition", trim=(0.85, 0.60, 0.02),
+            ean="6 900000 667302",
+            facts=dict(ingredients="水、白砂糖、二氧化碳、柠檬汁", shelf="12个月", standard="GB/T 10792"),
+        ),
         WORDS=dict(
-            color=["green tinted", "blue and yellow label", "transparent green"],
+            color=["green tinted", "blue and yellow label", "yellow cap"],
             material=["plastic", "green PET", "thin plastic"],
             name=["soda bottle", "green plastic bottle", "grip bottle"],
-            shape=["hourglass waist", "rounded shoulder", "narrow open mouth, no cap"],
+            shape=["hourglass waist", "rounded shoulder", "yellow screw cap"],
             function=["holding soft drinks", "being gripped at the waist", "being picked up and placed"],
             look="green tinted soda bottle with an hourglass grip waist",
         ),
@@ -131,11 +182,17 @@ VARIANTS = [  # generalization variants 00001-00005: overrides of NONGFU, all un
         H=0.150, R=0.0340, Z_SH=0.100, SH_P=1.0, R_NECK=0.0205, R_RING=0.0235, FINISH_H=0.013,
         R_THREAD=0.0210, R_CORE=0.0200, R_BORE=0.0185, THREADS=(0.0065, 0.003), GROOVES=(0.008, 0.013),
         LABEL=(0.028, 0.090, 0.60), LABEL_RGB=((0.75, 0.16, 0.01), (0.90, 0.89, 0.84)), TINT=(0.86, 0.60, 0.28),
+        CAP_RGB=(0.85, 0.85, 0.82),
+        ART=dict(
+            brand="果园", latin="ORCHARD", tagline="鲜榨原汁", product="NFC 橙汁", volume="300ml",
+            note="非浓缩还原", picture="fruit", table="nutrition", trim=(0.75, 0.16, 0.01),
+            ean="6 900000 781256", facts=dict(ingredients="橙汁", shelf="6个月", standard="GB/T 31121"),
+        ),
         WORDS=dict(
-            color=["amber tinted", "orange and white label", "translucent brown"],
+            color=["amber tinted", "orange and white label", "white cap"],
             material=["plastic", "amber PET", "thick plastic"],
             name=["juice bottle", "wide-mouth bottle", "amber plastic bottle"],
-            shape=["short wide body", "wide open mouth, no cap", "short shoulder"],
+            shape=["short wide body", "wide white screw cap", "short shoulder"],
             function=["holding juice", "storing small items", "being picked up and placed"],
             look="short amber wide-mouth juice bottle with an orange and white label",
         ),
@@ -239,16 +296,47 @@ class Bottle:
     def loft(self, profile):
         return pc.loft([(0.0, z) if r == 0 else (self.ring(r, b), z) for r, z, b in profile])
 
-    def labels(self):
-        l0, l1, share = self.g["LABEL"]
-        split = l0 + share * (l1 - l0)
-        parts = {}
-        for name, (a, b) in (("label_bottom", (l0, split)), ("label_top", (split, l1))):
-            z = np.linspace(a, b, max(int((b - a) / 0.002), 1) + 1)
-            out = [(self.visual_body(v) + 0.00025, v, 1.0) for v in z]
-            inn = [(self.visual_body(v) + 0.00005, v, 1.0) for v in z[::-1]]
-            parts[name] = self.loft(out + [out[-1]] + inn + [inn[-1], out[0]])
-        return parts
+    def label(self):
+        """Label band (thin closed shell over the recess), its per-face-vertex UVs (u around from +X, v up) and the
+        texture size in pixels that keeps the artwork's aspect on the bottle."""
+        l0, l1, _ = self.g["LABEL"]
+        z = np.linspace(l0, l1, max(int((l1 - l0) / 0.002), 1) + 1)
+        out = [(self.visual_body(v) + 0.00025, v, 1.0) for v in z]
+        inn = [(self.visual_body(v) + 0.00005, v, 1.0) for v in z[::-1]]
+        pts, faces = self.loft(out + [out[-1]] + inn + [inn[-1], out[0]])
+        uv = []
+        for f in faces:  # no poles: vertex i is column i % N_THETA of its ring, rings are uniform by arc length
+            col = np.array(f) % N_THETA
+            if np.ptp(col) > N_THETA / 2:  # the face straddles the seam at +X
+                col[col < N_THETA / 2] += N_THETA
+            uv += [(c / N_THETA, (pts[i, 2] - l0) / (l1 - l0)) for c, i in zip(col, f)]
+        ring = out[len(out) // 2]
+        ring = self.ring(ring[0], 1.0)
+        perimeter = np.linalg.norm(np.diff(np.vstack([ring, ring[:1]]), axis=0), axis=1).sum()
+        w, h = LABEL_PX * perimeter / (l1 - l0), LABEL_PX
+        k = min(1.0, LABEL_MAX_PX / w)
+        return (pts, faces), np.array(uv), (int(w * k) // 4 * 4, int(h * k))
+
+    def cap(self):
+        """Screw cap from the support ring to above the mouth: knurled skirt, tamper band with its bridge slit, rounded
+        top edge; hollow over the finish (its underside closes the bore at the mouth). Returns visual (pts, faces) and
+        a 24-sided convex collider."""
+        g = self.g
+        z0, z1, zb = self.z_ring1 + 0.0006, g["H"] + g["CAP_TOP"], self.z_ring1 + 0.0006 + g["BAND_H"]
+        rc, ri = g["R_THREAD"] + g["CAP_T"], g["R_THREAD"] + 0.0002
+        knurl = g["RIB_D"] * (1 - np.abs(np.cos(np.pi * g["CAP_RIBS"] * np.arange(N_THETA) / N_THETA)))
+
+        def rd(r):
+            return self.ring(r, 0.0)
+
+        ribbed = rd(rc) * ((rc - knurl) / rc)[:, None]
+        profile = [(0.0, g["H"])] + [(rd(ri), g["H"])] * 2 + [(rd(ri), z0)] * 2 + [(rd(rc - 0.0003), z0)] * 2
+        profile += [(rd(rc - 0.0003), zb - 0.0004), (rd(rc - 0.0008), zb - 0.0002), (rd(rc - 0.0008), zb + 0.0002)]
+        profile += [(rd(rc - 0.0003), zb + 0.0004), (ribbed, zb + 0.0008), (ribbed, z1 - 0.0012)]
+        profile += [(rd(rc - 0.0005), z1 - 0.0003)] + [(rd(rc - 0.0012), z1)] * 2 + [(0.0, z1)]
+        step = N_THETA // BOTTOM_SIDES
+        hull = np.array([(*p, z) for z in (z0, z1) for p in rd(rc)[::step]])
+        return pc.loft(profile), hull
 
     def collision_levels(self):
         """Greedy Z levels from the fillet top to the shoulder end: the collider follows the outer envelope within
@@ -335,10 +423,12 @@ def wall_staves(levels):
 def build(g):
     b = Bottle(g)
     outer, inner = b.profiles()
-    parts = {"model": b.loft(outer + inner), **b.labels()}
+    label, label_uv, label_px = b.label()
+    cap, cap_hull = b.cap()
+    parts = {"model": b.loft(outer + inner), "label": label, "cap": cap}
     for name, part in parts.items():
         assert mp.signed_volume(*part) > 0, f"{name} has inward-facing winding"
-    hulls = b.hulls()
+    hulls = b.hulls()  # the bottle's; the cap collider closes the mouth on purpose, so the cavity check skips it
     probe = np.array(
         [
             (*(f * p), z)
@@ -353,7 +443,10 @@ def build(g):
         assert not np.any(np.all(probe @ eq[:, :3].T + eq[:, 3] < -1e-6, axis=1)), "hull intrudes into cavity"
     bottom = hulls[0][:, 2]
     assert np.all((bottom == 0) | (bottom >= 0.0015)), "slab points within PhysX plane tolerance of the bottom"
-    return dict(parts=parts, hulls=hulls, ml=b.brim_ml(), contact_r=g["R"] - g["FIL"], bottle=b)
+    return dict(
+        parts=parts, hulls=hulls, cap_hull=cap_hull, label_uv=label_uv, label_px=label_px,
+        ml=b.brim_ml(), contact_r=g["R"] - g["FIL"], bottle=b,
+    )  # fmt: skip
 
 
 def glass(g):
@@ -405,28 +498,139 @@ def paint(name, rgb):
     return material
 
 
-def write_usdz(out, c, g):
-    materials = {
-        "model": glass(g),
-        "label_bottom": paint("LabelBottom", g["LABEL_RGB"][0]),
-        "label_top": paint("LabelTop", g["LABEL_RGB"][1]),
-    }
+def label_look(g):
+    def material(st):
+        rgb = g["LABEL_RGB"][0]  # UsdPreviewSurface fallback colour
+        mat = mp.add_material(
+            st,
+            "/root/_materials/Label",
+            "OmniPBR",
+            {"reflection_roughness_constant": 0.35, "metallic_constant": 0.0},
+            rgb,
+            1.0,
+            0.35,
+        )
+        sh = UsdShade.Shader.Get(st, "/root/_materials/Label/Shader")
+        sh.CreateInput("diffuse_texture", Sdf.ValueTypeNames.Asset).Set(Sdf.AssetPath(LABEL_TEX))
+        return mat
+
+    return material
+
+
+def add_hulls(st, parent, hulls, physics_material=None):
+    """Invisible convex-hull colliders <parent>/hull_NN (pc.add_collision under any parent)."""
+    mp.add_xform(st, parent)
+    for i, h in enumerate(hulls):
+        hull = ConvexHull(h)
+        tri = hull.simplices.copy()
+        n = np.cross(h[tri[:, 1]] - h[tri[:, 0]], h[tri[:, 2]] - h[tri[:, 0]])
+        flip = np.einsum("ij,ij->i", n, hull.equations[:, :3]) < 0
+        tri[flip] = tri[flip][:, ::-1]
+        used, tri = np.unique(tri, return_inverse=True)
+        m = mp.add_mesh(st, f"{parent}/hull_{i:02d}", h[used], tri.reshape(-1, 3).tolist())
+        prim = m.GetPrim()
+        m.CreatePurposeAttr(UsdGeom.Tokens.guide)
+        vis = UsdGeom.VisibilityAPI.Apply(prim)
+        vis.CreateRenderVisibilityAttr(UsdGeom.Tokens.invisible)
+        vis.CreateGuideVisibilityAttr(UsdGeom.Tokens.invisible)
+        UsdPhysics.CollisionAPI.Apply(prim)
+        UsdPhysics.MeshCollisionAPI.Apply(prim).CreateApproximationAttr(UsdPhysics.Tokens.convexHull)
+        if physics_material is not None:
+            UsdShade.MaterialBindingAPI.Apply(prim).Bind(
+                physics_material, UsdShade.Tokens.weakerThanDescendants, "physics"
+            )
+
+
+def add_meshes(st, c, g, links):
+    """Visual meshes: bottle shell and label on links['body'], cap on links['cap'] (model first: loaders read the
+    first Mesh)."""
+    looks = {"model": glass(g), "label": label_look(g), "cap": paint("Cap", g["CAP_RGB"])}
+    for name, (pts, faces) in c["parts"].items():
+        link = links["cap" if name == "cap" else "body"]
+        if not st.GetPrimAtPath(f"{link}/visual"):
+            mp.add_xform(st, f"{link}/visual")
+        mesh = mp.add_mesh(st, f"{link}/visual/{name}", pts, faces, mp.vertex_normals(pts, faces))
+        if name == "label":
+            UsdGeom.PrimvarsAPI(mesh).CreatePrimvar(
+                "st", Sdf.ValueTypeNames.TexCoord2fArray, UsdGeom.Tokens.faceVarying
+            ).Set(Vt.Vec2fArray.FromNumpy(c["label_uv"].astype(np.float32)))
+        UsdShade.MaterialBindingAPI.Apply(mesh.GetPrim()).Bind(looks[name](st))
+
+
+def add_cap_joints(st, c, g, mass):
+    """Floating articulation body -> cap_twist (revolute about the bottle axis, 0 = closed, + = unscrewing, i.e.
+    counter-clockwise seen from above) -> nut -> cap_lift (prismatic along the axis, mimics the twist: one PITCH per
+    turn) -> cap. Both stop after OPEN_TURNS; the cap stays on the bottle (a loose cap cannot leave an articulation)."""
+    root = st.GetPrimAtPath("/root/body")  # on the root link, as ArticulationObject.fix_root_link expects
+    UsdPhysics.ArticulationRootAPI.Apply(root)
+    art = PhysxSchema.PhysxArticulationAPI.Apply(root)
+    art.CreateEnabledSelfCollisionsAttr(False)
+    art.CreateSolverPositionIterationCountAttr(16)
+    pm = UsdShade.Material.Define(st, "/root/_materials/PhysicsPlastic")
+    api = UsdPhysics.MaterialAPI.Apply(pm.GetPrim())  # ArticulationObject does not apply metadata friction
+    api.CreateStaticFrictionAttr(STATIC_FRICTION)
+    api.CreateDynamicFrictionAttr(DYNAMIC_FRICTION)
+    api.CreateRestitutionAttr(0.0)
+    zc = float(c["cap_hull"][:, 2].mean())
+    for link, m, inertia in (
+        ("/root/body", mass - g["CAP_MASS"] - NUT_MASS, None),  # inertia from the colliders
+        ("/root/nut", NUT_MASS, (NUT_INERTIA,) * 3),  # massless-ish carrier between the two joints, no collider
+        ("/root/cap", g["CAP_MASS"], None),
+    ):
+        prim = st.GetPrimAtPath(link)
+        UsdPhysics.RigidBodyAPI.Apply(prim)
+        mass_api = UsdPhysics.MassAPI.Apply(prim)
+        mass_api.CreateMassAttr(m)
+        if inertia:
+            mass_api.CreateDiagonalInertiaAttr(Gf.Vec3f(*inertia))
+            mass_api.CreateCenterOfMassAttr(Gf.Vec3f(0.0, 0.0, zc))
+    add_hulls(st, "/root/body/collision", c["hulls"], pm)
+    add_hulls(st, "/root/cap/collision", [c["cap_hull"]], pm)
+    UsdPhysics.FilteredPairsAPI.Apply(st.GetPrimAtPath("/root/cap")).CreateFilteredPairsRel().AddTarget("/root/body")
+    mp.add_xform(st, "/root/joints")
+    twist = UsdPhysics.RevoluteJoint.Define(st, "/root/joints/cap_twist")
+    lift = UsdPhysics.PrismaticJoint.Define(st, "/root/joints/cap_lift")
+    for j, b0, b1, upper in ((twist, "/root/body", "/root/nut", 360.0 * g["OPEN_TURNS"]),
+                             (lift, "/root/nut", "/root/cap", g["PITCH"] * g["OPEN_TURNS"])):  # fmt: skip
+        j.CreateBody0Rel().SetTargets([b0])
+        j.CreateBody1Rel().SetTargets([b1])
+        j.CreateAxisAttr("Z")
+        j.CreateLowerLimitAttr(0.0)
+        j.CreateUpperLimitAttr(upper)
+        for k in (0, 1):  # all link frames coincide with /root; the bottle axis is its Z axis
+            getattr(j, f"CreateLocalPos{k}Attr")(Gf.Vec3f(0, 0, 0))
+            getattr(j, f"CreateLocalRot{k}Attr")(Gf.Quatf(1, 0, 0, 0))
+    drive = UsdPhysics.DriveAPI.Apply(twist.GetPrim(), "angular")
+    drive.CreateStiffnessAttr(0.0)
+    drive.CreateDampingAttr(CAP_DAMPING)
+    PhysxSchema.PhysxJointAPI.Apply(twist.GetPrim()).CreateArmatureAttr(CAP_ARMATURE)
+    mimic = PhysxSchema.PhysxMimicJointAPI.Apply(lift.GetPrim(), "rotZ")
+    mimic.CreateReferenceJointRel().SetTargets([twist.GetPath()])
+    mimic.CreateGearingAttr(-g["PITCH"] / 360.0)  # lift + gearing * twist = 0, metres per degree
+    mimic.CreateOffsetAttr(0.0)
+
+
+def write_usdz(out, c, g, label_png, articulated=False, mass=None):
     tmp = Path(tempfile.mkdtemp()) / "object.usdc"
     st = Usd.Stage.CreateNew(str(tmp))
     UsdGeom.SetStageUpAxis(st, UsdGeom.Tokens.z)
     UsdGeom.SetStageMetersPerUnit(st, 1.0)
     root = mp.add_xform(st, "/root")
     st.SetDefaultPrim(root.GetPrim())
-    UsdPhysics.RigidBodyAPI.Apply(root.GetPrim())
-    mp.add_xform(st, "/root/visual")
-    for name, (pts, faces) in c["parts"].items():  # model first: loaders read the first Mesh
-        mesh = mp.add_mesh(st, f"/root/visual/{name}", pts, faces, mp.vertex_normals(pts, faces))
-        UsdShade.MaterialBindingAPI.Apply(mesh.GetPrim()).Bind(materials[name](st))
-    pc.add_collision(st, c["hulls"])
+    if articulated:
+        for link in ("/root/body", "/root/nut", "/root/cap"):
+            mp.add_xform(st, link)
+        add_meshes(st, c, g, {"body": "/root/body", "cap": "/root/cap"})
+        add_cap_joints(st, c, g, mass)
+    else:
+        UsdPhysics.RigidBodyAPI.Apply(root.GetPrim())
+        add_meshes(st, c, g, {"body": "/root", "cap": "/root"})
+        add_hulls(st, "/root/collision", c["hulls"] + [c["cap_hull"]])
     st.Save()
     zip_writer = getattr(Sdf, "ZipFileWriter", None) or Usd.ZipFileWriter
     zw = zip_writer.CreateNew(str(out))
     zw.AddFile(str(tmp), "object.usdc")
+    zw.AddFile(str(label_png), LABEL_TEX)
     zw.Save()
 
 
@@ -442,7 +646,7 @@ def description(uid, g, ml):
     }
     desc = [
         w["look"],
-        f"open {w['name'][1]} without a cap, about {g['H'] * 100:.0f} cm tall",
+        f"{w['name'][1]} closed with a screw cap, about {g['H'] * 100:.0f} cm tall",
         f"hollow {w['material'][1]} {w['name'][0]} that holds about {ml:.0f} ml",
         f"{w['name'][0]} with a {w['shape'][0]} and a {w['shape'][1]}",
         f"light {w['name'][0]} grasped around its body",
@@ -450,20 +654,31 @@ def description(uid, g, ml):
     return {"uuid": uid, "caption": caption, "description": desc}
 
 
-def save(type_dir, idx, c, g, mass):
+def save(type_dir, idx, c, g, mass, articulated=False):
+    """Clutter/<category>/<idx>: one rigid body, cap fixed on. With articulated: the sibling
+    Articulation/<category>/<idx> with the cap on cap_twist / cap_lift (add_cap_joints)."""
     every = np.concatenate([p for p, _ in c["parts"].values()])
     shift = -(every.min(0) + every.max(0)) / 2
     parts = {k: (p + shift, f) for k, (p, f) in c["parts"].items()}
-    c = dict(c, parts=parts, hulls=[h + shift for h in c["hulls"]])
-    d = Path(type_dir) / CATEGORY / f"{idx:05d}"
+    c = dict(c, parts=parts, hulls=[h + shift for h in c["hulls"]], cap_hull=c["cap_hull"] + shift)
+    kind = "Articulation" if articulated else "Clutter"
+    d = Path(type_dir).parent / kind / CATEGORY / f"{idx:05d}"
     d.mkdir(parents=True, exist_ok=True)
-    uid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"robodojo/clutter/{CATEGORY}/{idx}"))
-    write_usdz(d / "object.usdz", c, g)
+    uid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"robodojo/{kind.lower()}/{CATEGORY}/{idx}"))
+    label_png = Path(tempfile.mkdtemp()) / "label.png"
+    art = bottle_label.draw_label(g["ART"], *g["LABEL_RGB"], g["LABEL"][2], c["label_px"], idx)
+    ImageChops.offset(art, int(LABEL_FRONT_U * art.width), 0).save(label_png)
+    write_usdz(d / "object.usdz", c, g, label_png, articulated, mass)
     faces = [f for _, fs in parts.values() for f in fs]
     meta = pc.metadata(uid, dict(pts=every + shift, faces=faces, contact_r=c["contact_r"]), mass, shift)
     del meta["physics"]["friction"]
     meta["physics"].update(static_friction=STATIC_FRICTION, dynamic_friction=DYNAMIC_FRICTION)
-    meta["visual"] = {"color_parts": ["label_bottom"]}  # rt_color recolours the label, the bottle stays clear
+    meta["visual"] = {"color_parts": ["cap"]}  # rt_color recolours the cap; the bottle stays clear, the label printed
+    if articulated:  # joint positions as ArticulationObject reports them: radians, metres
+        meta["articulation"] = {
+            "cap_twist": {"closed": 0.0, "open": round(2 * np.pi * g["OPEN_TURNS"], 4), "unit": "rad"},
+            "cap_lift": {"closed": 0.0, "open": round(g["PITCH"] * g["OPEN_TURNS"], 4), "unit": "m"},
+        }
     if idx == 0:
         model = parts["model"][0]
         mouth = model[model[:, 2] > c["bottle"].z_ring1 + shift[2] + 1e-6]
@@ -473,7 +688,7 @@ def save(type_dir, idx, c, g, mass):
             "底部直径": round(float(np.ptp(foot[:, 0])) * 1000, 1),  # outer body just above the bottom fillet
         }
     else:
-        meta["variant_of"] = f"Clutter/{CATEGORY}/00000"
+        meta["variant_of"] = f"{kind}/{CATEGORY}/00000"
     (d / "metadata.json").write_text(json.dumps(meta, indent=4, ensure_ascii=False))
     (d / "description.json").write_text(json.dumps(description(uid, g, c["ml"]), indent=4))
     return d, meta
@@ -490,11 +705,13 @@ def main(type_dir):
             mass = g["MASS"]
         else:
             mass = round(NONGFU["MASS"] * c["ml"] / base, 4)  # estimated: empty 00000 scaled by brim volume
-        d, meta = save(type_dir, idx, c, g, mass)
-        print(
-            f"{d}: {c['ml']:.0f} ml brim, mass {mass} kg, size {meta['physics']['size']}, "
-            f"{len(c['hulls'])} collision hulls, measurements_mm {meta.get('measurements_mm', '-')}"
-        )
+        for articulated in (False, True):
+            d, meta = save(type_dir, idx, c, g, mass, articulated)
+            print(
+                f"{d}: {c['ml']:.0f} ml brim, mass {mass} kg, size {meta['physics']['size']}, "
+                f"{len(c['hulls']) + 1} collision hulls, label {c['label_px']} px, "
+                f"measurements_mm {meta.get('measurements_mm', '-')}"
+            )
 
 
 if __name__ == "__main__":
