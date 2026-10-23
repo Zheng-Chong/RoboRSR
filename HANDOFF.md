@@ -12,7 +12,7 @@
 
 - **机器人** G1-D + Dex1-1（带相机版夹爪）：两条 7 自由度手臂加两指夹爪，关节角控制，30 Hz。分两个版本（对应官方标准版 / 旗舰版）：桌面版 `g1d` 底盘固定，腰（`waist_joint_state`）和升降（`lift_joint_state`）是可选动作键，不发就保持；移动版 `g1d_mobile` 再加差速底盘 `base_velocity` [vx, vyaw]，不发就停车。已有数据和策略都只用 16 维手臂 + 夹爪，不受影响。细节见 README「机器人本体」和 CONTRACT「观测与动作」。
   - 头部用双目的左眼 `cam_head`（棋盘格标定 fx≈279.5，宇树合同外参），两个腕部相机 fx≈314；投影到真机画面核对过（误差 0.4–3.6 px）。
-  - 关节驱动参数（刚度 4400、阻尼 40）和夹爪力是拍定的，没做系统辨识。同事把"相机+动作标定工具包"作为 `g1d_calib_toolkit_20261019.zip` 传到了仓库根目录，还没接入。
+  - 关节驱动参数（刚度 4400、阻尼 40）和夹爪力是拍定的，没做系统辨识。夹爪开合速度从 10-23 起限到每指 0.064 m/s（真机遥操作数据的合爪速度；之前是 URDF 的 0.2 m/s，即 Dex1-1 最快档），见「最近任务」。同事把"相机+动作标定工具包"作为 `g1d_calib_toolkit_20261019.zip` 传到了仓库根目录，还没接入。
   - 构建：`python scripts/g1d/build_asset.py`（读 `real2sim/robot/g1d_v4`）。下载官方资产后先跑一次 `utils/update_embodiment_config_path.py`。
 - **场景**（`real2sim/scenes/`）：env 配置 `g1d` 是办公室，`g1d_counter` 是吧台，`g1d_lab` 是公司实验室，`g1d_school` 是学校实验室绿幕桌，`g1d_shenzhen_lab` 是深圳实验室办公桌。前三个从照片拟合，尺度靠先验；学校的来自同事用真机相机画面拟合的 MuJoCo 孪生；深圳实验室是第一个按平台登记、用卷尺定尺度的场景（卷尺三项通过，站位和叠图待做）。其余都没有卷尺实测，都没有叠图验收。状态汇总：`python scripts/scenes/acceptance.py`（目前全部 pending）。新场景先在数采平台登记（≥ 5 张照片 + 卷尺实测，写 `registration.json`），再按 `real2sim/scenes/SKILL.md` 交给 coding agent 建模。新场景先在数采平台「登记场景」（至少 5 张照片 + 卷尺实测，写 `real2sim/scenes/<场景>/registration.json`），再按 `real2sim/scenes/SKILL.md` 建模。
 - **物体**：每件资产的来源和匹配程度看 `real2sim/ASSETS.md`。按数采平台的登记（`real2sim/objects/<id>/spec.json` + 照片）给实物建模，交给 coding agent 时按 `scripts/objects/SKILL.md`；平台物体页生成的「建模任务」文本第一行就指向它。
@@ -34,6 +34,14 @@
   - 仿真环境 `/root/miniconda3/envs/RoboDojo`；导出环境 `robodojo-lerobot`（lerobot 0.4.4，10-19 补装了 h5py 3.16，`pip -i` 用清华镜像）；上传环境 `/data/robodojo-runs/ms-venv`；运行目录在 `/data/robodojo-runs/`。
 
 ## 最近任务
+
+### G1-D 夹爪开合速度按真机限速（2026-10-23，`chongzheng/robot-g1d-gripper-speed`）
+
+- **起因**（OpenWAM 深圳倒豆子评测时用户发现）：仿真夹爪合得比真机快。统计 30 Hz 数据里开度从离开张开位到停住的帧数：深圳仿真 500 条中位数 2 帧（0.07 s），峰值每帧 0.149 个行程；真机 G1D 遥操作的硬杯任务（PourBeans、PourBeansPlus、PickKettle）6–8 帧（0.20–0.27 s），峰值约每帧 0.048 个行程，软物体（毛绒、瓶子）30–46 帧。
+- **原因**：仿真只受 URDF 的 0.2 m/s（每指）限速，两指合拢约 400 mm/s，等于 Dex1-1 官方最快档（全行程最短 0.24 s，速度可调 50–375 mm/s）；真机控制器每步把目标裁到当前位置附近（遥操作 ±0.18 rad 再加平滑，见「剩余事项」的真机设定），实际约每指 0.064 m/s（0.048 × 44.5 mm × 30）。
+- **改动**：`env/robot_manager/robot_config/g1d.py` 夹爪执行器加 `velocity_limit_sim=0.064`（桌面版、移动版共用）；README 控制对齐一节注明。刚度、力上限没动（PR #24 另改刚度 3.6e4 / 55 N，与本改动相邻，合并时只需保留两边）。
+- **验证**：本机 `scripts/check.sh` 通过（41 passed，1 skipped）。`5090-2` 隔离目录 `/data/robodojo-runs/gripper-speed-20261023/{old,new}`（代码取自生成深圳数据的 `1d39c9d`，new 只多这一行），`g1d_pour_beans_cup_or_mug` / `g1d_shenzhen_lab_beans_collect` 种子 500 布局 0–7 的专家采集：通过 6/8 对 6/8（同一批布局通过），合爪中位数 2 帧 → 5 帧（0.17 s），比真机 6–8 帧仍略快（真机还有平滑滤波）。
+- **影响**：已有数据集（办公室 100 条 ×2、深圳 500 条）都是旧速度采的，不改；新采的数据用新速度。用旧数据训练的策略在新速度下评测会更早抬手，需要时再测。
 
 ### 真机 Motus 倒豆模型在上海实验室的仿真评测（2026-10-23，`chongzheng/eval-motus-lab-beans`）
 
@@ -373,6 +381,7 @@
 
 ## 最近历史
 
+- 2026-10-23：G1-D 夹爪限速每指 0.064 m/s（按真机遥操作数据），专家采集通过率不变（6/8 对 6/8），合爪 2 帧 → 5 帧。
 - 2026-10-23：真机 Motus 倒豆模型（ModelScope `Vincia/WanVlmMask-G1DPourBeansGenEps222-AbsQpos16-30000`）在上海实验室仿真量杯倒豆 0/20（夹爪总是夹空）；新增 `g1d_lab_beans_collect`，收入 `scripts/g1d/remote_policy.py`。
 - 2026-10-22：启动榜单冲分（20 天）：5090-2 建基线运行目录，拉齐官方 Assets、OpenWAM / pi0.5 官方 checkpoint 和两套推理环境，冒烟通过后启动两个模型 54 个任务的全量基线评测；确认 20 个榜单任务没有官方训练数据。
 - 2026-10-22：深圳实验室倒豆 500 条（矮量杯或马克杯、300–600 豆、2–5 干扰物、严格整回合验收）采完、审计、上传 ModelScope 私有仓库 `ChongZheng/g1d_shenzhen_pour_beans_cup_or_mug_500`。

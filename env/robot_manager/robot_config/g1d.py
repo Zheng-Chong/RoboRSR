@@ -159,6 +159,10 @@ def get_robot_config(mobile=False):
             "gripper": ImplicitActuatorCfg(
                 joint_names_expr=[".*_dex1_finger_joint_.*"],
                 effort_limit_sim=20.0,  # Dex1-1 rating per finger
+                # The real controllers clip each target near the current position (teleop +-0.18 rad plus smoothing),
+                # so the real G1-D closes at ~0.064 m/s per finger (peak rate in the G1D teleop recordings, 30 Hz),
+                # not the URDF's 0.2 m/s (Dex1-1 fastest setting, 0.24 s full stroke).
+                velocity_limit_sim=0.064,
                 stiffness=1e4,  # full force within 2 mm, so thin handles are still squeezed before the stroke ends
                 damping=100,
             ),
