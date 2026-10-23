@@ -1,0 +1,22 @@
+# 上海实验室 (real_scene3_lab) profile for granular (bean) tasks: g1d_lab's scene, robot stand and layout / result
+# namespace with the 1/600 s physics of g1d_beans_collect (scripts/datagen/CONTRACT.md).
+config_name: g1d_lab
+
+config:
+  sim: g1d_beans_collect_sim
+  scene: default
+  robot: g1d_lab
+  camera: g1d_camera
+
+observation:
+  collect_freq: 30
+  robot:
+    joint_states: true
+    world_ee_state: true
+    ee_state: measured  # gripper state from the finger joints, not the last command (scripts/datagen/CONTRACT.md)
+  vision:
+    approximate_depth: false
+    depth: false
+    intrinsic_matrix: false
+    extrinsic_matrix: false
+    shape: true

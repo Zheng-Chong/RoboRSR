@@ -97,7 +97,8 @@ def test_embodiments():
     bodies = server.scan_embodiments()  # robot_config modules; per-scene stands of one body count as one
     assert {"g1d", "x5", "franka"} <= set(bodies) and bodies["g1d"]["in_code"]
     lab = next(s for s in bodies["g1d"]["setups"] if s["robot_cfg"] == "g1d_lab")
-    assert lab["env_cfgs"] == ["g1d_lab"] and lab["scenes"] == ["real_scene3_lab"] and lab["arm_dim"] == [7, 7]
+    assert lab["env_cfgs"] == ["g1d_lab", "g1d_lab_beans_collect"]
+    assert lab["scenes"] == ["real_scene3_lab"] and lab["arm_dim"] == [7, 7]
     assert next(s for s in bodies["x5"]["setups"] if s["robot_cfg"] == "dual_x5")["count"] == 2
 
 

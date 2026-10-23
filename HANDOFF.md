@@ -1,6 +1,6 @@
 # Project Handoff
 
-更新时间：2026-10-22
+更新时间：2026-10-23
 当前分支：`main`。G1-D 桌面版 / 移动版（[PR #17](https://github.com/Zheng-Chong/RoboRSR/pull/17)）已于 2026-10-21 合并进 `main`。深圳实验室场景（[PR #22](https://github.com/Zheng-Chong/RoboRSR/pull/22)）已于 2026-10-21 合并（`2975b4a`）并部署到数采平台。更早：流水线规范化（[PR #1](https://github.com/Zheng-Chong/RoboRSR/pull/1)）和学校场景接入（[PR #2](https://github.com/Zheng-Chong/RoboRSR/pull/2)）都已于 2026-10-20 合并，短分支已删除。
 当前目标：
 - **榜单冲分（2026-10-22 起，20 天）**：用本平台做多轮 Coding Agent 仿真数据 → 评测 → 对抗式（找失败、补难例和恢复数据）迭代，提高 OpenWAM、pi0.5 在上游 RoboDojo 榜单（54 个 dual X5 任务）上的成功率。用户确认：榜单允许用自生成数据训练；训练在 dsw-4（一轮 ≤ 1 天）。见「最近任务」第一节。
@@ -34,6 +34,18 @@
   - 仿真环境 `/root/miniconda3/envs/RoboDojo`；导出环境 `robodojo-lerobot`（lerobot 0.4.4，10-19 补装了 h5py 3.16，`pip -i` 用清华镜像）；上传环境 `/data/robodojo-runs/ms-venv`；运行目录在 `/data/robodojo-runs/`。
 
 ## 最近任务
+
+### 真机 Motus 倒豆模型在上海实验室的仿真评测（2026-10-23，`chongzheng/eval-motus-lab-beans`）
+
+- **用户要求**：测 ModelScope `Vincia/WanVlmMask-G1DPourBeansGenEps222-AbsQpos16-30000` 在上海实验室（`g1d_lab`）仿真里倒豆子的成功率，只用量杯，不加干扰物。推理代码在 `rtx5090-180`（端口 34134，内网 `192.168.0.180`）的 `/home/work/wenjj/InferenceMotusV2`。
+- **模型**：Motus（Wan2.2-TI2V-5B + Qwen3-VL-2B），从 380 条的 checkpoint 出发，用 222 条**真机**"倒豆子"数据后训练 3 万步；16 维绝对关节位置 qpos（内部顺序 [L7, LG, R7, RG]），每块 16 步、30 Hz；头部左眼加两个腕部相机拼成 T 形 384×320；指令只有"倒豆子"（带 T5 缓存）。权重已在服务器 `/home/work/wenjj/ckpt/` 下，预训练模型在 `/home/work/cache/wx1469573/pretrained_models/`；eps222 训练集在服务器上已经不存在。`/home/work` 盘 100% 满，自己的文件放根分区。
+- **做法**（不改 InferenceMotusV2）：
+  - 服务端 `rtx5090-180:/root/motus-sim-eval-20261023/serve_motus_sim.py`（本机副本在 `output/motus_lab_eval_20261023/`）：包装 `MotusV2PolicyAdapter`，按真机 `inference_motusv2_PourBeans.sh` 的串行路径调用（5 步去噪、插值 1、不开 RTC），协议同 OpenWAM 的 `serve_g1d.py`；Python 用 `/home/work/wenjj/envs/wallx`，要加 `PYTHONNOUSERSITE=1`（否则 `/root/.local` 的 torchvision 冲突）。每个实例 20 GB，加载约 2 分钟，单次推理约 0.63 s。`run_server.sh <gpu> <port>`，tmux `motus-sim-<port>`，已全部停掉。
+  - 仿真端 `5090-2:/data/robodojo-runs/motus-lab-beans-20261023/`：入库 `scripts/g1d/remote_policy.py`（原来只在 OpenWAM 运行目录，原样收入）和 `env_cfg/g1d_lab_beans_collect.yml`（实验室 + 1/600 s）；`Assets/` 是 `lab-furniture-install-20261022-085858` 的硬链接副本（那份机器人 USD 按当前代码重建、在 `g1d_lab` 用脚本专家验证过；共享库的 `Robots/g1d` 和它不同），`Eval_Layout` 单独复制。两台机器内网直连。
+  - 核对过的对齐：真机图像是 RGB（`process_images_and_observations` 做了 BGR→RGB），仿真也是；真机夹爪 0 闭合到 5.4 全开，夹住量杯读约 4.1–4.5，仿真夹住量杯实测开度约 0.75（≈4.05），线性换算一致；真机数据里腕部相机没有左右互换。没对齐的：真机起始姿态是双臂下垂（例如肘部约 −0.3），仿真默认肘部 −1.0、夹爪贴近头部相机。
+- **结果**（seed 0 的 20 个布局各 1 次；`build_asset.py` 的标准布局：左手倒、两杯 45° 偏航、672 颗豆子、无干扰物；步数上限 1200）：任务判据 0/20，严格判据 0/20，矮杯里 0 颗。7 个回合碰洒了豆子（共 178 颗，最多 98 颗，是高杯被碰倒）。失败模式每个回合都一样：左手伸向高杯后夹爪闭合在空处（开度 < 0.5 持续 537–1098 帧），从来没有夹住过杯子；右手从不闭合。`_result.json` 三份，`eval_time` 合计 20。逐回合 JSON、轨迹 npz 和截图在本机 `output/motus_lab_eval_20261023/`。
+- **验证**：本机 `check.sh` 41 passed 1 skipped（`test_server.py` 的 `g1d_lab` 现在对应两个 env 配置）；单回合探针后再跑全量，三路并行（服务端 GPU 1/4/5，仿真 5090-2 的 GPU 2 两路、GPU 7 一路），约 85 分钟。
+- **没做**：每个布局只跑了 1 次（SKILL 要求 3 次；结果是 0 颗入杯，重复意义不大）；没试真机起始姿态、10 步去噪、夹爪阈值等变体；没有和脚本专家在同一批 20 个布局上对照（10-22 只验证过布局 0）。
 
 ### 场景中文名（2026-10-23，直接推 `main`）
 
@@ -308,6 +320,8 @@
 
 ## 剩余事项与风险
 
+- **真机模型的仿真评测**：Motus eps222 在上海实验室 0/20，原因还没拆开（起始姿态、仿真画面与真机差异、杯位分布都可能）。要继续，先试双臂下垂的真机起始姿态（`remote_policy.py` 目前不支持设起始姿态），再在同一批布局上跑脚本专家做对照。服务端重启见「最近任务」第一节。
+
 - **榜单基线**：10-22 16:35 停止，54 个任务只完成 6 个（见「最近任务」）；是否续跑等用户决定。续跑时 pi0.5 策略 + Isaac 同卡约 25 GB，一卡一组；OpenWAM 策略卡和仿真卡要分开。`/data` 剩约 192 GB（91%），另一会话的 `g1d_green_table/` 占 1.4 TB。官方榜单页面是 JS 渲染，没抓到公开分数，要和自测基线对照需手动查 robodojo-benchmark.com/LeaderBoard。dsw-4 根分区 100% 满（19 GB），训练数据和产出要放 `/mnt/data`。
 
 - **G1-D 移动版**：
@@ -359,6 +373,7 @@
 
 ## 最近历史
 
+- 2026-10-23：真机 Motus 倒豆模型（ModelScope `Vincia/WanVlmMask-G1DPourBeansGenEps222-AbsQpos16-30000`）在上海实验室仿真量杯倒豆 0/20（夹爪总是夹空）；新增 `g1d_lab_beans_collect`，收入 `scripts/g1d/remote_policy.py`。
 - 2026-10-22：启动榜单冲分（20 天）：5090-2 建基线运行目录，拉齐官方 Assets、OpenWAM / pi0.5 官方 checkpoint 和两套推理环境，冒烟通过后启动两个模型 54 个任务的全量基线评测；确认 20 个榜单任务没有官方训练数据。
 - 2026-10-22：深圳实验室倒豆 500 条（矮量杯或马克杯、300–600 豆、2–5 干扰物、严格整回合验收）采完、审计、上传 ModelScope 私有仓库 `ChongZheng/g1d_shenzhen_pour_beans_cup_or_mug_500`。
 - 2026-10-22：实验室场景 `real_scene3_lab` 的工位桌、网椅、活动柜、文件柜、边桌、圆桌建成立体模型（`/Background/Furniture`），从墙面照片里抠掉；隔离目录里三个脚本演示通过后，经用户同意换进共享库（见「最近任务」）。
