@@ -18,6 +18,7 @@ This fork adds the Unitree G1-D and a Real2Sim workflow; the rest of this file i
 | Scene twins | `real2sim/scenes/<scene>/`, `scripts/scenes/` (ChArUco, overlay, acceptance) | `real2sim/scenes/SKILL.md` |
 | Data generation and release | `scripts/datagen/` (collect, run_batch, export, audit, replay, upload, plugins) | `scripts/datagen/SKILL.md` |
 | Sim evaluation of external checkpoints | `bash scripts/robodojo.sh eval --env-cfg <dataset env config> ...` | `scripts/datagen/SKILL.md` |
+| RSI: adversarial data / exam rounds on the RoboDojo leaderboard tasks | `rsi/` (protocol, run configs), `scripts/datagen/x5_layouts.py` | `rsi/AGENTS.md` (binding for both agents) |
 
 - The data contract between this repo and training (formats, state and action semantics, physics profile, real-robot mapping) is `scripts/datagen/CONTRACT.md`; every dataset is listed in `scripts/datagen/registry.json`.
 - One agent session = one `git worktree` and short branch: several sessions share the main checkout, and a shared index has already put one session's files into another's commit.

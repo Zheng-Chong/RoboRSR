@@ -1,6 +1,6 @@
 # Project Handoff
 
-更新时间：2026-10-23
+更新时间：2026-10-24
 当前分支：`main`。G1-D 桌面版 / 移动版（[PR #17](https://github.com/Zheng-Chong/RoboRSR/pull/17)）已于 2026-10-21 合并进 `main`。深圳实验室场景（[PR #22](https://github.com/Zheng-Chong/RoboRSR/pull/22)）已于 2026-10-21 合并（`2975b4a`）并部署到数采平台。更早：流水线规范化（[PR #1](https://github.com/Zheng-Chong/RoboRSR/pull/1)）和学校场景接入（[PR #2](https://github.com/Zheng-Chong/RoboRSR/pull/2)）都已于 2026-10-20 合并，短分支已删除。
 当前目标：
 - **榜单冲分（2026-10-22 起，20 天）**：用本平台做多轮 Coding Agent 仿真数据 → 评测 → 对抗式（找失败、补难例和恢复数据）迭代，提高 OpenWAM、pi0.5 在上游 RoboDojo 榜单（54 个 dual X5 任务）上的成功率。用户确认：榜单允许用自生成数据训练；训练在 dsw-4（一轮 ≤ 1 天）。见「最近任务」第一节。
@@ -34,6 +34,14 @@
   - 仿真环境 `/root/miniconda3/envs/RoboDojo`；导出环境 `robodojo-lerobot`（lerobot 0.4.4，10-19 补装了 h5py 3.16，`pip -i` 用清华镜像）；上传环境 `/data/robodojo-runs/ms-venv`；运行目录在 `/data/robodojo-runs/`。
 
 ## 最近任务
+
+### RSI 协议初版 `rsi/AGENTS.md`（2026-10-24，直接推 `main`，只有文档）
+
+- **用户要求**：① RoboDojo 评测用到的随机资产，生产数据时必须保留（第一规则；用户原话里的"拼车"按语音误识别理解为"评测"）；② 给 coding agent 能做泛化的操作（探索边际），避免押题、抄答案；③ 多 agent：一个改进数据、一个改进评测，二者对抗、不能互相通信；④ 写成类似 AGENT.md 的东西，给定模型、训练资源、评测平台就能跑 RSI。
+- **内容**：三条硬规则；资产分三层（T0 官方保留、T1 考场池、T2 训练池，剩余资产 7:3 分 T2 / T1）；数据方、评测方、裁判（确定性脚本 + 人工）的权限和 seed 段；泛化算子表；成绩单只给分档的科目成绩（信息流唯一通道）；每轮流程、封存探针（画"轮数 → 泛化"曲线）、固定训练配方；裁判审计清单；`rsi/rsi.example.yaml` 输入配置；v0.1 缺口清单。
+- **规则 1 的实测依据**（`5090-2` 上统计官方 `arx_x5/0` 全部 54 个任务）：房间 14 个全被评测用掉（基础任务 2 个，`_random` 12 个）；材质 504 种里评测用了 374 种，没用过的 130 种；杂物 193 个实例里评测用了 192 个（`_random` 191，`general_pickup` 145），官方训练数据里没有杂物；`_random` 独有物体实例 95 个；HDR 只有 1 张（基础任务也用）。所以房间和干扰物只能靠新资产做随机。
+- **和现有代码的冲突**：10-23 提交的 `x5_layouts.py` 和平台随机方案能选到 T0 资产，违反规则 1，要先做裁判的 T0 统计和池子过滤（协议第八节 P0）。
+- **验证**：只有文档；`check.sh`。
 
 ### 数采平台：上游榜单任务的泛化随机方案 + X5 布局生成器（2026-10-23，直接推 `main`）
 
@@ -381,7 +389,7 @@
 
 ## 下一会话
 
-0. RSI 随机布局：部署平台后在浏览器里给一个 `_random` 任务保存一份方案；调低灯光 / HDR 默认范围避免过曝；然后给 12 个 `_random` 任务的基础版写 X5 脚本专家，用 `x5_layouts.py` 的训练布局采数据（内部留出集用 `--split val`）。
+0. RSI：先读 `rsi/AGENTS.md`。按第八节 P0 依次做：裁判 `rsi/referee/assets.py`（统计 T0、切分 T1 / T2、审计），`x5_layouts.py` 和平台随机方案只列出所在池子的资产；12 个 `_random` 任务基础版的 X5 脚本专家；新房间变体和新杂物。随机方案平台部署后在浏览器里走一遍；调低灯光 / HDR 默认范围避免过曝。
 0. 榜单：基线已停（16:35，用户要求），先问用户是否续跑；续跑后收两份基线（`smoke_results/baseline_*_20261022.md`，核对每个任务 `eval_time >= 1`），按任务对比 OpenWAM / pi0.5 / 有无官方数据；看失败视频做归类；然后开始把 `collect.py` 和插件接口推广到 dual X5，按优先级给无官方数据的任务写专家。
 0. 实现平台登记的 `g1d_pour_beans_any_cups`：在平台任务抽屉复制「实现任务」文本交给 coding agent（输入 `real2sim/tasks/g1d_pour_beans_any_cups/registration.json`）。
 0. 深圳实验室（已合并、部署，共享库待补装）：去现场量站位、拍头部 / 腕部画面做叠图（`overlay.py --env-cfg g1d_shenzhen_lab`）。
@@ -394,6 +402,7 @@
 
 ## 最近历史
 
+- 2026-10-24：RSI 协议初版 `rsi/AGENTS.md` + `rsi/rsi.example.yaml`：官方评测资产保留、只许泛化不许押题、数据方和评测方对抗且只经裁判交换分档成绩；统计出房间和杂物几乎全是官方保留资产。
 - 2026-10-23：数采平台任务抽屉加「泛化随机方案」，新增 X5 布局生成器 `scripts/datagen/x5_layouts.py`（接手另一会话未提交的实现；相机扰动改为只转角度，平移会让部分环境出图全黑）；`5090-2` 端到端验证 10/10 正常。
 - 2026-10-23：真机 Motus 倒豆模型（ModelScope `Vincia/WanVlmMask-G1DPourBeansGenEps222-AbsQpos16-30000`）在上海实验室仿真量杯倒豆 0/20（夹爪总是夹空）；新增 `g1d_lab_beans_collect`，收入 `scripts/g1d/remote_policy.py`。
 - 2026-10-22：启动榜单冲分（20 天）：5090-2 建基线运行目录，拉齐官方 Assets、OpenWAM / pi0.5 官方 checkpoint 和两套推理环境，冒烟通过后启动两个模型 54 个任务的全量基线评测；确认 20 个榜单任务没有官方训练数据。

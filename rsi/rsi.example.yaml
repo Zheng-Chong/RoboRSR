@@ -1,0 +1,44 @@
+# One RSI run (rsi/AGENTS.md). Copy to rsi/runs/<name>.yaml; hosts are SSH aliases only, never addresses or keys.
+name: openwam-x5-r6
+mode: adversarial          # adversarial | generate_only (exam frozen after round 1)
+rounds: 6
+
+models:                    # each runs its own RSI loop with the same exams and data budget
+  - policy: OpenWAM        # XPolicyLab/policy/<policy>
+    ckpt: OpenWAM-Alpha-Sim-RoboDojo
+    action_type: ee
+    policy_env: /root/miniconda3/envs/openwam-bench
+  - policy: Pi_05
+    ckpt: sim              # resolves to checkpoints/RoboDojo-sim-arx_x5-joint-0
+    action_type: joint
+    policy_env: uv
+
+training:                  # fixed recipe from round 0 on; the data agent never changes it
+  host: dsw-4
+  gpus: [0, 1, 2, 3, 4, 5, 6, 7]
+  hours_per_round: 24
+  data_root: /mnt/data/<user>/rsi     # the root disk of dsw-4 is full
+  mix: {official: 0.5, generated: 0.5}  # share of each training batch
+  command: "bash XPolicyLab/policy/{policy}/train.sh RoboDojo {dataset} arx_x5 {action_type} 0 {gpus}"
+
+eval_platform:
+  host: 5090-2
+  gpus: [0, 2, 3, 4, 5, 6, 7]         # GPU 1 hosts another session's real-robot server
+  sim_env: /root/miniconda3/envs/RoboDojo
+  run_root: /data/robodojo-runs/rsi-{name}
+
+tasks: [stack_bowls, hang_mugs, push_T, make_toast, pack_objects_into_box, pour_liquid_into_cup,
+        sort_nesting_dolls_by_size, stack_blocks, store_laptop_and_headphones, sweep_blocks,
+        arrange_largest_number, fold_clothes]   # base tasks of the 12 _random variants
+
+budget:                    # per round
+  data_episodes: 2000
+  exam_episodes: 600       # >= 20 per subject
+  sealed_probe_episodes: 300
+  exploration_share: 0.3   # rule 2: data and exam both
+
+seeds:                     # layout seed ranges per party (rsi/AGENTS.md, section 2)
+  data: [1000, 4999]
+  exam: [5000, 8999]
+  sealed: [9000, 9999]
+  official: 0
