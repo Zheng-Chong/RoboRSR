@@ -49,6 +49,7 @@
   - 本机：`check.sh`（ruff 0.11.7、41 passed 1 skipped、任务清单）；`build_scene.py` + `check_scene.py` 19/20（唯一 FAIL 是吧台站位的固定提醒）；`scene_parts.py` 重新生成 `parts.json`。
   - `5090-2` 隔离目录 `/data/robodojo-runs/counter-lounge-20261023-163001`（1 号卡，和 `owam-server` 共用；其余 7 张卡被另一位同事的 `gpu_hold.py` 占着）：两把椅子 `check_object.py` OK；脚本专家 `--env_cfg_type g1d_counter_mobile --seed 0` 前 4 个布局 4/4 成功（左手 1 个、右手 3 个），`_result.json` `success_rate` 1.0、`eval_time` 4。头部相机截图在本机 `output/deliver_head.jpg`（不入库）。
   - 没跑：完整 `build_asset.py`（服务器缺 `g1d_v4`/`unitree_ros`，布局用 `build_lounge_layouts` 单独生成），seed 1、2，`body_probe.py`，椅子被推开的专门测试。
+- **10-24 下午补**（用户：顶部太假、3D 预览没更新）：房间加 3.20 m 穿孔木天花板、客区木吊顶做实并用自发光底面、白色石膏带和筒灯灯槽，木柱和木柜墙顶到天花板，顶灯挪到天花板（吧台画面会略暗一点）；改完隔离目录里送杯 seed 0 布局 0 仍然成功。平台 `/file` 对 `.glb` 和 `preview/` 下的渲染图改为 `no-cache`（原来的 `stale-while-revalidate` 让重建后的第一次打开总是旧模型），实拍照片和视频不变。
 - **共享资产库没动**：`lounge_chair`、新的 `Room/real_scene2`（带客区）、`Eval_Layout/RoboDojo/g1d_counter_mobile/` 都只在隔离目录里。装库要先征得用户同意；新 `real_scene2` 也会改变 `g1d_counter` 的画面左侧（原来是一面刷漆墙加挂画），吧台本身几何不变。
 ### RSI 协议初版 `rsi/AGENTS.md`（2026-10-24，直接推 `main`，只有文档）
 
@@ -430,6 +431,7 @@
 
 ## 最近历史
 
+- 2026-10-24：吧台场景补天花板和客区顶部；平台重建的渲染图和 3D 模型不再先显示旧缓存；数采平台部署到 `0d8c8c3`（部署机上别人未提交的改动先存补丁、快进后放回，冲突两处手工合并）。
 - 2026-10-24：吧台场景加左侧客区（3 张照片拟合，墙纸凹龛、两张圆桌、可推动的扶手椅刚体）；新增移动版配置 `g1d_counter_mobile` 和第一个移动操作任务 `g1d_deliver_cup_to_lounge`（吧台拿杯送到客区圆桌），脚本专家 seed 0 前 4 个布局 4/4；修复 `is_all_gripper_open` 对 G1-D 夹爪方向判反。
 - 2026-10-24：RSI 协议初版 `rsi/AGENTS.md` + `rsi/rsi.example.yaml`：官方评测资产保留、只许泛化不许押题、数据方和评测方对抗且只经裁判交换分档成绩；统计出房间和杂物几乎全是官方保留资产。
 - 2026-10-23：上海实验室 `real_scene3_lab` 的墙面不再贴照片，改成纯色饰面加门、白板、电视；角落放了一台由 URDF 烘焙的静态 G1-D（`usd/g1d.usdc`）。离线检查通过；10-24 在 `5090-2` 跑 Isaac 渲染和三个脚本演示，全部通过，经用户同意装进共享库并更新平台预览。

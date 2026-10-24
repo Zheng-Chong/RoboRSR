@@ -15,7 +15,7 @@ def Xform "Lights"
         float inputs:height = 0.6
         float inputs:intensity = 6000
         float inputs:width = 1.2
-        double3 xformOp:translate = (-0.6, -0.55, 2.783)
+        double3 xformOp:translate = (-0.6, -0.55, 3.18)
         uniform token[] xformOpOrder = ["xformOp:translate"]
     }
 
@@ -26,7 +26,7 @@ def Xform "Lights"
         float inputs:height = 0.6
         float inputs:intensity = 6000
         float inputs:width = 1.2
-        double3 xformOp:translate = (0.6, -0.55, 2.783)
+        double3 xformOp:translate = (0.6, -0.55, 3.18)
         uniform token[] xformOpOrder = ["xformOp:translate"]
     }
 
@@ -37,7 +37,7 @@ def Xform "Lights"
         float inputs:height = 0.6
         float inputs:intensity = 6000
         float inputs:width = 1.2
-        double3 xformOp:translate = (0, -1.8, 2.783)
+        double3 xformOp:translate = (0, -1.8, 3.18)
         uniform token[] xformOpOrder = ["xformOp:translate"]
     }
 
@@ -48,7 +48,7 @@ def Xform "Lights"
         float inputs:height = 0.6
         float inputs:intensity = 6000
         float inputs:width = 1.2
-        double3 xformOp:translate = (-3.589, -1.742, 2.783)
+        double3 xformOp:translate = (-3.589, -1.742, 3.18)
         uniform token[] xformOpOrder = ["xformOp:translate"]
     }
 
@@ -59,7 +59,7 @@ def Xform "Lights"
         float inputs:height = 0.6
         float inputs:intensity = 6000
         float inputs:width = 1.2
-        double3 xformOp:translate = (-5, -1.6, 2.783)
+        double3 xformOp:translate = (-5, -1.6, 3.18)
         uniform token[] xformOpOrder = ["xformOp:translate"]
     }
 

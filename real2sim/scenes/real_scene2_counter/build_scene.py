@@ -95,6 +95,12 @@ LOUNGE = dict(
     left_col_front=lounge_xy(0, -LF["left_depth"])[1],
     skirting_h=0.08,
 )
+# Top of the room, back-projected through the lounge1 camera: the alcove's wood soffit (its underside lit warm by a
+# hidden strip) runs from the wallpaper to the columns' front at band_z; a 10 cm wood fascia, then a 0.22 m white
+# plaster strip, then the perforated wood ceiling (~3.2 m, estimated: only its edge is in the photos) with a dark
+# downlight slot about 0.8 m out from the columns.
+CEILING = dict(z=3.20, fascia_z=3.11, strip_w=0.22, slot_y=r3(COLUMNS["left_front"] - 0.80), slot_w=0.12)
+DOWNLIGHT = dict(r=0.045, dx=1.0)
 # Round cafe tables: wood top, brass column and base disc (2 cm high, under the chassis' 3.4 cm clearance). The second
 # table (left, white chairs) is only partly in the photos: placed by eye, its size copied from the first.
 TABLE = dict(top_z=0.75, top_r=r3(LF["table_r"]), top_t=0.03, col_r=0.035, base_r=r3(LF["base_r"]), base_h=0.02)
@@ -184,9 +190,15 @@ MATERIALS = {
     "green_band": ((1.0, 1.0, 1.0), 0.7, 0.0, 1.0, "green_band.png"),
     "brass": ((0.62, 0.48, 0.24), 0.30, 1.0, 1.0, None),
     "table_wood": ((0.42, 0.24, 0.10), 0.45, 0.0, 1.0, None),
+    "wood_lit": ((1.0, 1.0, 1.0), 0.55, 0.0, 1.0, "wood.png"),
+    "plaster_white": ((0.86, 0.86, 0.84), 0.9, 0.0, 1.0, None),
+    "ceiling_wood": ((1.0, 1.0, 1.0), 0.8, 0.0, 1.0, "ceiling_wood.png"),
+    "slot_dark": ((0.04, 0.04, 0.04), 0.6, 0.0, 1.0, None),
+    "downlight": ((1.0, 1.0, 1.0), 0.3, 0.0, 1.0, "glow.png"),
 }
 CUTOUT = {"bin_label"}  # textures whose alpha cuts the surface (opacityThreshold)
-EMISSIVE = {"green_band"}  # back-lit: the texture also drives emissiveColor
+# back-lit: the texture also drives emissiveColor (the green band, the soffit's underside, the downlights)
+EMISSIVE = {"green_band", "wood_lit", "downlight"}
 PHYS = {
     "default": (0.5, 0.45, 0.0),
     "quartz": (0.55, 0.45, 0.0),
@@ -557,6 +569,24 @@ def build_textures():
     )
     cv2.imwrite(str(TEX / "poster.png"), poster_texture(im, im2))
     cv2.imwrite(str(TEX / "bin_label.png"), bin_label_texture(im2))
+    cv2.imwrite(str(TEX / "ceiling_wood.png"), perforated_wood())
+    cv2.imwrite(str(TEX / "glow.png"), np.full((8, 8, 3), 255, np.uint8))
+
+
+def perforated_wood(size=512, seed=5):
+    """One 0.6 m acoustic ceiling panel: pale oak (the lounge1 ceiling's colour), fine grain, a 15 mm grid of 3 mm
+    holes and a dark joint along two edges, so that tiling shows the panel joints."""
+    rng = np.random.default_rng(seed)
+    grain = cv2.GaussianBlur(rng.normal(0, 1, (size, size // 8)).astype(np.float32), (0, 0), 1.5)
+    grain = cv2.resize(grain, (size, size), interpolation=cv2.INTER_CUBIC)
+    base = np.array([118, 168, 205], np.float32)  # BGR
+    im = np.clip(base[None, None] * (1 + 0.04 * grain[..., None]), 0, 255)
+    pitch = size / 40
+    yy, xx = np.mgrid[0:size, 0:size]
+    holes = np.hypot((xx % pitch) - pitch / 2, (yy % pitch) - pitch / 2) < 1.3
+    im[holes] *= 0.35
+    im[:3], im[:, :3] = im[:3] * 0.45, im[:, :3] * 0.45
+    return im.astype(np.uint8)
 
 
 # ----------------------------------------------------------------------------- scene parts
@@ -703,7 +733,7 @@ def add_background(L):
     L.mesh("Backsplash", box_xyz(-hl, hl, wy, wy + 0.02, c["top_z"], H), "marble", uv=planar_uv(1.2, 1.2))
     L.mesh("ColumnLeft", box_xyz(lx, -hl, cl["left_front"], col_back, 0.0, HR), "wood", uv=planar_uv(0.6, 2.4))
     # right cabinet wall, the dispenser bays cut into it
-    wall = box_xyz(hl, cb["x1"], rf, wy + 0.02, 0.0, H)
+    wall = box_xyz(hl, cb["x1"], rf, wy + 0.02, 0.0, HR)  # up to the ceiling
     bays = [box_xyz(x0, x1, rf - 0.01, rf + dp["depth"], *dp["z"]) for x0, x1 in dp["bays"]]
     L.mesh("CabinetsRight/body", wall.difference(trimesh.util.concatenate(bays)), "wood", uv=planar_uv(0.6, 2.4))
     yf = rf - 0.0005
@@ -733,8 +763,9 @@ def add_background(L):
             "plastic_black",
         )
     L.mesh(
-        "Soffit", box_xyz(-hl, hl, min(cl["left_front"], rf), wy + 0.02, H, H + 0.05), "wood", uv=planar_uv(0.6, 2.4)
+        "Soffit", box_xyz(-hl, hl, min(cl["left_front"], rf), wy + 0.02, H, HR), "wood", uv=planar_uv(0.6, 2.4)
     )
+    L.mesh("Ceiling", down_quad(r["x0"], r["x1"], r["y0"], col_back, HR), "ceiling_wood", uv=lambda fv, fn: fv[:, :2] / 0.6)
     # office wall beyond the lounge's left column (not in the photos), on the lounge wallpaper plane
     ly, lc = LOUNGE["wall_y"], LOUNGE["x0"] - LOUNGE["left_col_w"]
     L.mesh("WallLeft/upper", box_xyz(r["x0"], lc, ly, ly + 0.02, 0.0, HR), "wall_paint")
@@ -795,7 +826,12 @@ def add_background(L):
 
 
 def room_height():
-    return max(WALL["height"], LOUNGE["band_z"] + 0.05)
+    return CEILING["z"]
+
+
+def down_quad(x0, x1, y0, y1, z):
+    """Horizontal quad facing down (a ceiling seen from the room; culled when looking in from above)."""
+    return quad((x0, y0, z), (x0, y1, z), (x1, y1, z), (x1, y0, z))
 
 
 def round_table(L, name, cx, cy):
@@ -830,8 +866,15 @@ def add_lounge(L):
         uv=rect_uv(0, x0, x1, pz, bz),
     )
     L.mesh("Alcove/wall", box_xyz(x0, x1, y, y + 0.02, 0.0, room_height()), "wall_paint")
-    L.mesh("Alcove/soffit", box_xyz(x0, x1, lg["soffit_front"], y, bz, bz + 0.05), "wood", uv=wood)
-    lc = x0 - lg["left_col_w"]
+    lc, ce, front, top = x0 - lg["left_col_w"], CEILING, lg["soffit_front"], room_height()
+    L.mesh("Alcove/soffit", box_xyz(x0, x1, front, y, bz, top), "wood", uv=wood)
+    L.mesh("Alcove/soffit_lit", down_quad(x0, x1, front, y, bz - 0.001), "wood_lit", uv=wood)
+    # white plaster strip in front of the soffit (and the left column), then the downlight slot in the ceiling
+    L.mesh("Ceiling/strip", box_xyz(lc, x1, front - ce["strip_w"], front, ce["fascia_z"], top), "plaster_white")
+    sy, sw = ce["slot_y"], ce["slot_w"]
+    L.mesh("Ceiling/slot", box_xyz(lc, x1, sy - sw / 2, sy + sw / 2, top - 0.01, top), "slot_dark")
+    for i, x in enumerate(np.arange(lc + DOWNLIGHT["dx"] / 2, x1, DOWNLIGHT["dx"])):
+        L.mesh(f"Ceiling/downlight_{i}", cyl(x, sy, top - 0.013, DOWNLIGHT["r"], 0.003, 24), "downlight", smooth=True)
     L.mesh("Alcove/column_left", box_xyz(lc, x0, lg["left_col_front"], y + 0.02, 0.0, room_height()), "wood", uv=wood)
     L.collider("Colliders/alcove_wall", box_xyz(x0, x1, y - 0.025, y + 0.02, 0.0, room_height()))
     L.collider("Colliders/alcove_column_left", box_xyz(lc, x0, lg["left_col_front"], y + 0.02, 0.0, room_height()))
@@ -867,7 +910,7 @@ def add_lights(L):
         rl.CreateIntensityAttr(lt["intensity"])
         rl.CreateEnableColorTemperatureAttr(True)
         rl.CreateColorTemperatureAttr(lt["color_temperature"])
-        UsdGeom.Xformable(rl).AddTranslateOp().Set(Gf.Vec3d(x * SCALE, y * SCALE, (WALL["height"] - 0.02) * SCALE))
+        UsdGeom.Xformable(rl).AddTranslateOp().Set(Gf.Vec3d(x * SCALE, y * SCALE, (room_height() - 0.02) * SCALE))
     dome = UsdLux.DomeLight.Define(L.stage, f"{L.rootpath}/AmbientDome")
     dome.CreateIntensityAttr(lt["dome"])
     dome.CreateColorAttr(Gf.Vec3f(0.95, 0.95, 1.0))

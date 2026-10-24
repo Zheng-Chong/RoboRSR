@@ -239,6 +239,10 @@ def test_http():
         etag = resp.getheader("ETag")
         assert status == 200 and etag and resp.getheader("Cache-Control") == server.FILE_CACHE
         assert request("GET", f"/file?path={video}", headers={"If-None-Match": etag})[:2] == (304, b"")
+        model = run / "scene.glb"  # rebuilt in place: rechecked on every view
+        model.write_bytes(b"glTF")
+        status, _, resp = request("GET", f"/file?path={model}")
+        assert status == 200 and resp.getheader("Cache-Control") == server.PREVIEW_CACHE
         conn = http.client.HTTPConnection("127.0.0.1", httpd.server_port)  # keep-alive: one socket, also after a 416
         steps = [({"Range": "bytes=20-30"}, 416, b""), ({}, 200, b"0123456789")]
         steps.append(({"If-None-Match": f'W/"x", {etag}'}, 304, b""))

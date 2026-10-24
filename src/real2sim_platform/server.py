@@ -72,9 +72,12 @@ EVAL_ID = re.compile(r"[a-z0-9][a-z0-9_-]*")  # also the policy name in eval_res
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 SERVED_SUFFIXES = IMAGE_SUFFIXES | {".mp4", ".webm", ".md", ".json", ".glb"}
 MAX_UPLOAD = 25 << 20
-# images and videos: fresh for a minute, then shown from cache at once while the ETag is rechecked in the background,
-# so a re-rendered preview appears on the next visit; private, because they are only served to signed-in users
+# photos and videos: fresh for a minute, then shown from cache at once while the ETag is rechecked in the background;
+# private, because they are only served to signed-in users
 FILE_CACHE = "private, max-age=60, stale-while-revalidate=604800"
+# renders and 3D models that get rebuilt in place (preview/, .glb): rechecked on every view (a 304 when unchanged), so a
+# rebuilt scene shows at once instead of after one stale visit
+PREVIEW_CACHE = "private, no-cache"
 USERNAME = re.compile(r"[\w.-]{1,32}")
 PBKDF2_ROUNDS = 200_000
 COOKIE, SESSION_DAYS = "r2s_session", 14
@@ -1196,6 +1199,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def send_file(self, path, cache=FILE_CACHE):
         """Serve a file with HTTP Range support, which <video> needs for seeking, and an ETag to revalidate caches."""
+        if cache is FILE_CACHE and (path.suffix == ".glb" or "preview" in path.parts):
+            cache = PREVIEW_CACHE
         st = path.stat()
         size, etag = st.st_size, f'"{st.st_mtime_ns:x}-{st.st_size:x}"'
         if etag in [tag.strip() for tag in self.headers.get("If-None-Match", "").split(",")]:

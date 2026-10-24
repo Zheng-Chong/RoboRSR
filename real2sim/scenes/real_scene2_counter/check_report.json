@@ -51,6 +51,8 @@
    "detail": {
     "assets": [
      "bin_label.png",
+     "ceiling_wood.png",
+     "glow.png",
      "green_band.png",
      "marble.png",
      "microwave_front.png",
@@ -73,7 +75,7 @@
    "name": "every render mesh has a bound material",
    "ok": true,
    "detail": {
-    "render_meshes": 95,
+    "render_meshes": 105,
     "unbound": []
    }
   },
@@ -81,7 +83,7 @@
    "name": "render triangle budget (< 100k)",
    "ok": true,
    "detail": {
-    "triangles": 6252
+    "triangles": 6856
    }
   },
   {
