@@ -33,7 +33,7 @@ tasks: [stack_bowls, hang_mugs, push_T, make_toast, pack_objects_into_box, pour_
 
 budget:                    # per round
   data_episodes: 2000
-  exam_episodes: 600       # >= 20 per subject
+  exam_episodes: 900       # >= 30 per subject and level; 15% L0 anchor
   sealed_probe_episodes: 300
   exploration_share: 0.3   # rule 2: data and exam both
 
