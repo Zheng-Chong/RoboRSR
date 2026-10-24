@@ -15,6 +15,7 @@ import argparse
 import json
 import math
 from pathlib import Path
+import re
 import shutil
 import xml.etree.ElementTree as ET
 
@@ -82,14 +83,14 @@ TV = dict(x0=0.20, x1=0.99, z0=1.03, z1=1.27)  # black screen on the +Y wall und
 # 0.4-0.7 m off, as with the other far corner furniture. Static: visual meshes decimated to G1D_FACES, box colliders.
 G1D = dict(urdf=HERE.parents[1] / "robot" / "g1d_v4" / "g1_d_full_dex1_v4.urdf", x=-2.22, y=2.92, facing=-90)
 G1D_POSE = {"left_elbow_joint": 1.2, "right_elbow_joint": 1.2}  # rad; at 0 the forearms point forward
-G1D_FACES = 40000
-G1D_MATERIALS = {  # URDF visual colour -> material
-    (0.792, 0.82, 0.933): "g1d_shell",
-    (0.7, 0.7, 0.7): "g1d_body",
-    (0.2, 0.2, 0.2): "g1d_dark",
-    (0.898, 0.918, 0.929): "g1d_light",
-    (0.298, 0.298, 0.298): "g1d_pad",
+G1D_FACES = 55000
+# The simulated G1-D's finish, not the URDF's CAD colours: env/robot_manager/robot_config/g1d.py (LINK_MATERIALS,
+# RING_LINKS, RING_X) imports Isaac Lab, so it is mirrored here; keep the two in sync.
+G1D_LINK_MATERIALS = {
+    r"torso_link|AGV_link|LZ_.*_Link|.*_(shoulder_.*|elbow|wrist_.*)_link": "g1d_metal",
+    r".*_dex1_.*|Yaw_Link|Pitching_Link|head_link|logo_link|.*_Wheel_Link": "g1d_black",
 }
+G1D_RING_LINKS, G1D_RING_X = r".*_elbow_link", (0.075, 0.2)  # black forearm ring, link frame x
 # clean 0.6 m floor patch, right of the table in p4; gain: the photo pixels already carry the room light, used as albedo
 # they rendered the carpet ~1.5x too bright against the tabletop
 CARPET = dict(patch=(-0.45, 0.15, -1.2, -0.6), photo="p4.jpg", gain=0.67)
@@ -148,11 +149,8 @@ MATERIALS = {
     "glass": (lin((104, 129, 112)), 0.05, 0.0, 1.0, None),  # opaque: nothing is modelled behind the partition
     "door": (lin((145, 134, 124)), 0.5, 0.0, 1.0, None),
     "whiteboard": (lin((166, 165, 149)), 0.25, 0.0, 1.0, None),
-    "g1d_shell": ((0.792, 0.82, 0.933), 0.4, 0.3, 1.0, None),
-    "g1d_body": ((0.7, 0.7, 0.7), 0.4, 0.3, 1.0, None),
-    "g1d_dark": ((0.2, 0.2, 0.2), 0.5, 0.2, 1.0, None),
-    "g1d_light": ((0.898, 0.918, 0.929), 0.4, 0.2, 1.0, None),
-    "g1d_pad": ((0.298, 0.298, 0.298), 0.7, 0.0, 1.0, None),
+    "g1d_metal": ((0.62, 0.63, 0.65), 0.5, 1.0, 1.0, None),  # env/robot_manager/robot_config/g1d.py MATERIALS
+    "g1d_black": ((0.02, 0.02, 0.02), 0.8, 0.0, 1.0, None),
     "desk_white": ((0.72, 0.72, 0.70), 0.4, 0.0, 1.0, None),
     "frame_white": ((0.55, 0.55, 0.53), 0.4, 0.3, 1.0, None),
     "chair_black": ((0.02, 0.02, 0.022), 0.7, 0.0, 1.0, None),
@@ -691,20 +689,27 @@ def g1d_meshes():
             m = m @ trimesh.transformations.rotation_matrix(G1D_POSE[j.get("name")], axis)
         return pose(j.find("parent").get("link")) @ m
 
-    groups = {}
+    parts = []
     for link in urdf.iter("link"):
+        name = link.get("name")
+        mat = next(k for pattern, k in G1D_LINK_MATERIALS.items() if re.fullmatch(pattern, name))
         for vis in link.iter("visual"):
             m = trimesh.load(G1D["urdf"].parent / vis.find("geometry/mesh").get("filename"), force="mesh")
-            m.apply_transform(pose(link.get("name")) @ urdf_origin(vis))
-            rgba = tuple(round(float(v), 3) for v in vis.find("material/color").get("rgba").split())
-            groups.setdefault(G1D_MATERIALS[rgba[:3]], []).append(m)
-    merged = {k: trimesh.util.concatenate(ms) for k, ms in groups.items()}
-    total = sum(len(m.faces) for m in merged.values())
-    target = {k: max(500, G1D_FACES * len(m.faces) // total) for k, m in merged.items()}
-    out = {
-        k: m.simplify_quadric_decimation(face_count=target[k]) if len(m.faces) > target[k] else m
-        for k, m in merged.items()
-    }
+            m.apply_transform(urdf_origin(vis))  # link frame
+            if re.fullmatch(G1D_RING_LINKS, name):
+                x = m.triangles_center[:, 0]
+                ring = (x > G1D_RING_X[0]) & (x < G1D_RING_X[1])
+                split = [(mat, m.submesh([~ring], append=True)), ("g1d_black", m.submesh([ring], append=True))]
+            else:
+                split = [(mat, m)]
+            parts += [(k, part.apply_transform(pose(name))) for k, part in split]
+    # each mesh on its own: decimating a merged group collapses its small parts (the head next to the grippers)
+    ratio = G1D_FACES / sum(len(m.faces) for _, m in parts)
+    groups = {}
+    for k, m in parts:
+        n = max(min(len(m.faces), 200), int(len(m.faces) * ratio))
+        groups.setdefault(k, []).append(m.simplify_quadric_decimation(face_count=n) if n < len(m.faces) else m)
+    out = {k: trimesh.util.concatenate(ms) for k, ms in groups.items()}
     z0 = min(m.bounds[0][2] for m in out.values())
     return {k: m.apply_translation([0.0, 0.0, -z0]) for k, m in out.items()}
 
@@ -743,7 +748,7 @@ def main():
         shutil.rmtree(OUT)
     OUT.mkdir(parents=True)
     build_textures()
-    layer = Layer(OUT / "g1d.usdc", "G1D")  # binary: 40k triangles; before background.usda, which references it
+    layer = Layer(OUT / "g1d.usdc", "G1D")  # binary: 55k triangles; before background.usda, which references it
     add_g1d(layer)
     layer.save()
     for name, fn in [("background", add_background), ("table", add_table), ("lights", add_lights)]:
