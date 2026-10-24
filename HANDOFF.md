@@ -36,7 +36,7 @@
 
 ## 最近任务
 
-### 办公室 `real_scene1_office`：墙面、柜子、椅子按照片返工（2026-10-24，`chongzheng/scene-office-furniture`）
+### 办公室 `real_scene1_office`：墙面、柜子、椅子按照片返工（2026-10-24，`a13ddea` 快进进 `main`，短分支已删除）
 
 - **用户要求**：把墙壁、各种柜子、椅子的建模和材质和真实拍摄对齐。
 - **做法**：在 `reference/` 的照片上读像素，用 `cameras_scene.json` 的 SfM 相机反投影到已知平面或多视角三角化；颜色取照片 sRGB 中值当反照率（同实验室 10-23 的墙面做法）。逐项数值和依据在 `build_scene.py` 的 `LAYOUT[...]["src"]`，改前改后对照表在 `PLAN.md`「墙面、柜子、椅子」。
@@ -442,7 +442,7 @@
 0. 榜单：基线已停（16:35，用户要求），先问用户是否续跑；续跑后收两份基线（`smoke_results/baseline_*_20261022.md`，核对每个任务 `eval_time >= 1`），按任务对比 OpenWAM / pi0.5 / 有无官方数据；看失败视频做归类；然后开始把 `collect.py` 和插件接口推广到 dual X5，按优先级给无官方数据的任务写专家。
 0. 实现平台登记的 `g1d_pour_beans_any_cups`：在平台任务抽屉复制「实现任务」文本交给 coding agent（输入 `real2sim/tasks/g1d_pour_beans_any_cups/registration.json`）。
 0. 深圳实验室（已合并、部署，共享库待补装）：去现场量站位、拍头部 / 腕部画面做叠图（`overlay.py --env-cfg g1d_shenzhen_lab`）。
-0. 办公室返工（`chongzheng/scene-office-furniture`）：在 `5090-2` 隔离目录跑 `build_asset.py` 和一次 `scripted_demo --env_cfg_type g1d`，看头部相机画面里的木纹、网背、白板；征得同意后装共享库 `Room/real_scene1`，再重新生成平台封面和 `scene.glb`。
+0. 办公室返工（已在 `main`）：在 `5090-2` 隔离目录跑 `build_asset.py` 和一次 `scripted_demo --env_cfg_type g1d`，看头部相机画面里的木纹、网背、白板；征得同意后装共享库 `Room/real_scene1`，再重新生成平台封面和 `scene.glb`。
 1. 先看 `git log`、本文件和 `scripts/datagen/CONTRACT.md`。主工作区里还有物体建模 SKILL 会话没提交的改动（见"最近任务"里的"并行会话"）；拉取新的 `main` 前，先让那个会话提交，或者先 stash。
 2. 下一批数据用新流水线采集。先跑单回合探针，确认 `joint_names`、夹爪 state 和图像都正常，再按 `scripts/datagen/SKILL.md` 批量采集、导出、审计、回放，最后登记。
 3. 去现场按 `real2sim/scenes/SKILL.md` 采集（ChArUco 标定板照片、卷尺、灯光、机器人相机画面），在平台「登记场景」录入，回来跑 `overlay.py` 和 `acceptance.py`。
