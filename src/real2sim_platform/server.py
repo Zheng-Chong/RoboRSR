@@ -475,17 +475,28 @@ def instance_pools(task):
 
     train, seen = by_category(base), by_category(variant) if variant else {}
     held = {c: sorted(i - train.get(c, set())) for c, i in seen.items() if i - train.get(c, set())}
-    return {"base": base, "variant": variant, "train": {c: sorted(i) for c, i in train.items()}, "holdout": held}
+    new = {"train": {}, "exam": {}}  # instances no official layout uses (rsi/assets/pools.json), per pool
+    tiers = load_json(rsi_profile.rsi_assets.POOLS) or {"pools": {}}
+    for pool, found in new.items():
+        for asset_id in tiers["pools"].get(pool, {}).get("instances", []):
+            category, index = asset_id.partition(":")[2].split("/")
+            if category in train:
+                found.setdefault(category, []).append(int(index))
+    pools = {c: sorted(i) for c, i in train.items()}
+    return {"base": base, "variant": variant, "train": pools, "holdout": held, "new": new}
 
 
-def write_randomization(task, profile, assets):
+def write_randomization(task, profile, assets, pools=None):
     """Check a profile from the task drawer and write real2sim/benchmark_tasks/<task>/randomization.json (removed when
     it is null); returns an error message or None."""
     path = rsi_profile.PROFILES_DIR / task / "randomization.json"
     if profile is None:
         path.unlink(missing_ok=True)
         return None
-    if error := rsi_profile.check(profile, rsi_profile.options(assets)):
+    pool = profile.get("pool", "train") if isinstance(profile, dict) else "train"
+    if pool not in ("train", "exam"):
+        return "pool 只能是 train（数据方）或 exam（评测方）"
+    if error := rsi_profile.check(profile, rsi_profile.options(assets, pool, pools)):
         return error
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(profile, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -1053,7 +1064,8 @@ class Handler(BaseHTTPRequestHandler):
         elif url.path == "/api/clutter":
             self.send_json(clutter_categories(self.scan_args[0]))
         elif url.path == "/api/rsi-options":  # what an upstream task's randomization profile may pick from
-            self.send_json(rsi_profile.options(self.scan_args[0]))
+            pool = "exam" if query.get("pool") == "exam" else "train"
+            self.send_json(rsi_profile.options(self.scan_args[0], pool))
         elif url.path == "/api/object-indices":
             self.send_json(object_indices(self.scan_args[0], self.store))
         elif url.path == "/api/items" and query.get("kind") in KINDS:
@@ -1188,7 +1200,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json({"error": error}, 409)
         self.store.delete(kind, id_)
         if kind == "object" and OBJECT_ID.fullmatch(id_):
-            shutil.rmtree(OBJECTS_DIR / id_, ignore_errors=True)  # spec, photos, renders: left behind they re-list the object
+            # spec, photos, renders: left behind they re-list the object
+            shutil.rmtree(OBJECTS_DIR / id_, ignore_errors=True)
         elif kind == "task" and TASK_ID.fullmatch(id_):
             (TASKS_DIR / id_ / "registration.json").unlink(missing_ok=True)
         elif kind == "embodiment" and EMBODIMENT_ID.fullmatch(id_):

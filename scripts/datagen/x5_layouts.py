@@ -23,6 +23,7 @@ env_cfg/camera/rsi_<task>.yml (both git-ignored).
 """
 
 import argparse
+import colorsys
 from copy import deepcopy
 import hashlib
 import json
@@ -40,6 +41,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT), str(ROOT / "scripts" / "datagen")]
+import rsi_assets  # noqa: E402
 import rsi_profile  # noqa: E402
 
 from utils.cluttered_generator import ClutteredGenerator  # noqa: E402
@@ -60,6 +62,21 @@ LIGHT_SHAPE = {  # type -> {attribute range key: (low, high)}
 }
 YAW_TOL = 1e-3
 TILT_TOL = 0.1  # quaternion x / y of a settled tilt (about 11 deg) still folded into the base orientation
+# base task -> {factor: categories} a profile's color / scale may touch. A colour replaces the object's own textures
+# (digits, labels), and a scaled object can stop fitting what the task puts it in (nested bowls, dolls sorted by size,
+# a toaster slot, plugs and holes), so everything else stays as the template has it.
+RESTYLE = {
+    "stack_bowls": {"color": {"bowl"}},
+    "stack_blocks": {"color": {"block"}, "scale": {"block"}},
+    "hang_mugs": {"color": {"mug"}, "scale": {"mug"}},
+    "push_T": {"color": {"t"}},
+    "sweep_blocks": {"color": {"small_cube"}, "scale": {"small_cube"}},
+    "pour_liquid_into_cup": {"color": {"mug", "goblet"}, "scale": {"mug"}},
+    "pack_objects_into_box": {"scale": {"car", "shoe", "hammer", "electric_toothbrush"}},
+    "store_laptop_and_headphones": {"scale": {"headset"}},
+}
+COLOR_HSV = ((0.0, 1.0), (0.45, 0.9), (0.35, 0.9))  # hue, saturation, value of a random colour
+SEED_RANGES = {"train": (1000, 4999), "exam": (5000, 9999)}  # layout seed folders per pool, rsi/AGENTS.md section 2
 
 
 def load_yaml(path):
@@ -106,10 +123,6 @@ class Assets:
             path = self.root / "Object" / "RoboDojo" / key[0] / category / f"{index:05d}" / "metadata.json"
             self.cache[key] = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
         return self.cache[key]
-
-    def clutter_instances(self, category):
-        folder = self.root / "Object" / "RoboDojo" / "Clutter" / category
-        return sorted(int(p.parent.name) for p in folder.glob("*/metadata.json"))
 
 
 def bbox(meta, scale):
@@ -169,7 +182,7 @@ def parent_label(entry):
 
 
 class Generator:
-    def __init__(self, task, profile, assets, templates):
+    def __init__(self, task, profile, assets, templates, tiers=None):
         self.task, self.profile, self.assets = task, profile, Assets(assets)
         base, variant = rsi_profile.holdout_split(task)
         self.base_config = load_yaml(CONFIG_DIR / f"{base}.yml")
@@ -182,7 +195,13 @@ class Generator:
         ]
         clutter_cfg = (self.variant_config.get("Clutter") or self.base_config.get("Clutter") or [None])[0]
         self.clutter_region = region(clutter_cfg["xlim"], clutter_cfg["ylim"]) if clutter_cfg else None
-        self.opts = rsi_profile.options(assets)
+        self.opts = rsi_profile.options(assets, profile.get("pool", "train"), tiers)
+        self.reserved = set(self.opts["reserved"])
+        self.extra = {}  # (section, category) -> the pool's new instances
+        for asset_id in self.opts["instances"]:
+            section, _, name = asset_id.partition(":")
+            category, index = name.split("/")
+            self.extra.setdefault((section, category), []).append(int(index))
 
     def layout(self, index, seed, tries=20):
         """One layout and its record of what was drawn: the first draw in which every object found a free spot, else
@@ -212,6 +231,8 @@ class Generator:
         p = self.profile
         if p.get("instances"):
             record["instances"] = self.swap_instances(layout, rng)
+        if p.get("color") or p.get("scale"):
+            record["restyled"] = self.restyle(layout, rng)
         table = layout.get("Table")
         gen = self.table_generator(table) if table else None
         if gen and (p.get("position") or p.get("yaw")):
@@ -231,8 +252,8 @@ class Generator:
                 i
                 for cat, grp, indices in self.labels.get(entry.get("label"), [])
                 if cat == category and grp == group
-                for i in indices
-                if i not in self.holdout.get(category, set())
+                for i in indices + (self.extra.get((section, category), []) if group is None else [])
+                if i not in self.holdout.get(category, set()) and f"{section}:{category}/{i}" not in self.reserved
             ]
             taken = used.setdefault((category, group), set())
             choices = [i for i in pool if i not in taken]
@@ -252,6 +273,36 @@ class Generator:
             entry["physics"] = {**entry.get("physics", {}), **(new_meta.get("physics") or {})}
             swapped.append(f"{category} {old}->{new}")
         return swapped
+
+    def restyle(self, layout, rng):
+        """Random colour and uniform scale of the task objects RESTYLE allows; an object with something resting on it,
+        or resting on another object, keeps its size."""
+        allow, p, done = RESTYLE.get(rsi_profile.holdout_split(self.task)[0], {}), self.profile, []
+        parents = {parent_label(e) for _, _, e in entries(layout)} - {None}
+        for section, category, entry in entries(layout):
+            if section != "Rigid":
+                continue
+            meta = self.assets.meta(section, category, entry["category_idx"])
+            if p.get("scale") and category in allow.get("scale", ()) and meta and entry.get("label") not in parents:
+                if not parent_label(entry):
+                    s, old = rng.uniform(*p["scale"]), entry.get("scale") or [1.0, 1.0, 1.0]
+                    new = [float(v * s) for v in old]
+                    entry["default_pos"][2] += bottom(meta, old, entry["default_ori"]) - bottom(
+                        meta, new, entry["default_ori"]
+                    )
+                    entry["scale"] = new
+                    if mass := (entry.get("physics") or {}).get("mass") or (meta.get("physics") or {}).get("mass"):
+                        entry["physics"] = {**entry.get("physics", {}), "mass": float(mass * s**3)}
+                    done.append(f"{category} x{s:.2f}")
+            if p.get("color") and category in allow.get("color", ()):
+                rgb = colorsys.hsv_to_rgb(*(rng.uniform(*r) for r in COLOR_HSV))
+                linear = [round((c / 12.92) if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4, 4) for c in rgb]
+                visual = {**entry.get("visual", {}), "color": linear}
+                if parts := ((meta or {}).get("visual") or {}).get("color_parts"):
+                    visual["color_parts"] = parts
+                entry["visual"] = visual
+                done.append(f"{category} colour")
+        return done
 
     def table_generator(self, table):
         sx, sy, sz = table["scale"]
@@ -374,19 +425,27 @@ class Generator:
                 moved[id(entry)] = (old, pose(entry))
 
     def place_clutter(self, layout, gen, rng, cfg):
+        """Distractors from the pool (rsi_assets: unused clutter and unused objects of other categories), one per
+        category, never a category the task itself uses."""
         wanted = rng.randint(*cfg["count"])
         used = {c for _, c, _ in entries(layout)}
-        categories = [c for c in (cfg.get("categories") or self.opts["clutter"]) if c not in used]
+        keep = set(cfg.get("categories") or self.opts["clutter"])
+        by_category = {}
+        for asset_id in self.opts["distractors"]:
+            kind, _, name = asset_id.partition(":")
+            category, index = name.split("/")
+            if category in keep and category not in used:
+                by_category.setdefault(category, []).append((kind, int(index)))
+        categories = sorted(by_category)
         rng.shuffle(categories)
         placed = []
         for category in categories:
             if len(placed) >= wanted:
                 break
-            instances = self.assets.clutter_instances(category)
-            if not instances:
+            kind, index = rng.choice(by_category[category])
+            meta = self.assets.meta(kind, category, index, clutter=kind == "clutter")
+            if not meta:
                 continue
-            index = rng.choice(instances)
-            meta = self.assets.meta(None, category, index, clutter=True)
             ok, world, _ = gen.add_model_from_config(
                 meta,
                 rotate_rand=True,
@@ -402,20 +461,20 @@ class Generator:
                 "type": "rigid",
                 **{k: v for k, v in (meta.get("physics") or {}).items() if k in ("mass", "friction")},
             }
-            layout.setdefault("Rigid", {}).setdefault(category, []).append(
-                {
-                    "category_idx": index,
-                    "physics": physics,
-                    "scale": [1.0, 1.0, 1.0],
-                    "type": "cluttered",
-                    "clutter_idx": len(placed),
-                    "yaml_path": "Clutter/clutter.yml",
-                    "relative_plane": "Table",
-                    "default_pos": [float(v) for v in world[:3]],
-                    "default_ori": [float(v) for v in world[3:]],
-                }
-            )
-            placed.append(f"{category}/{index:05d}")
+            entry = {
+                "category_idx": index,
+                "physics": physics,
+                "scale": [1.0, 1.0, 1.0],
+                "relative_plane": "Table",
+                "default_pos": [float(v) for v in world[:3]],
+                "default_ori": [float(v) for v in world[3:]],
+            }
+            if kind == "clutter":  # LayoutManager loads a cluttered entry from Object/RoboDojo/Clutter
+                entry |= {"type": "cluttered", "clutter_idx": len(placed), "yaml_path": "Clutter/clutter.yml"}
+            else:  # an object of another category, loaded from its own section; no label, so no task check sees it
+                entry |= {"category": category, "group": None}
+            layout.setdefault(kind if kind != "clutter" else "Rigid", {}).setdefault(category, []).append(entry)
+            placed.append(f"{kind}:{category}/{index}")
         return placed
 
     def scene(self, layout, rng, record):
@@ -496,8 +555,13 @@ def main(argv=None):
         ap.error("seed 0 is the benchmark's eval set")
     path = args.profile or rsi_profile.PROFILES_DIR / args.task / "randomization.json"
     profile = json.loads(path.read_text(encoding="utf-8"))
-    if error := rsi_profile.check(profile, rsi_profile.options(args.assets)):
+    pool = profile.get("pool", "train")
+    if error := rsi_profile.check(profile, rsi_profile.options(args.assets, pool)):
         raise SystemExit(f"{path}: {error}")
+    low, high = SEED_RANGES[pool]
+    if not low <= args.seed <= high:
+        ap.error(f"a {pool} profile writes seeds {low}-{high} (rsi/AGENTS.md, section 2)")
+    allowed = rsi_assets.allowed(rsi_assets.load(), pool)
     gen = Generator(args.task, profile, args.assets, templates_of(args.assets, args.task))
     env_cfg = camera_configs(args.task, profile["camera"]) if profile.get("camera") else "arx_x5"
     out = args.assets / "Eval_Layout" / "RoboDojo" / env_cfg / str(args.seed)
@@ -515,6 +579,8 @@ def main(argv=None):
         if record["kept_pose"]:
             dropped += 1
             continue
+        if banned := sorted(rsi_assets.layout_assets(layout)[0] - allowed):
+            raise SystemExit(f"layout {draw - 1} uses reserved or other-pool assets: {', '.join(banned)}")
         name = f"{args.task}_{len(records)}.json"
         (out / name).write_text(json.dumps(layout, ensure_ascii=False), encoding="utf-8")
         records[name] = record

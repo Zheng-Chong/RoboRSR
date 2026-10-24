@@ -96,10 +96,13 @@ description: 在 RoboDojo 里用脚本专家批量生成 G1-D 仿真示教数据
 
 上游引擎只回放已保存的布局，没有生成器。`scripts/datagen/x5_layouts.py` 以任务的官方评测布局（`arx_x5/0`）为结构模板，按随机方案重抽每个布局：
 
-- 随机方案在数采平台任务抽屉的「泛化随机方案」里填，写 `real2sim/benchmark_tasks/<任务>/randomization.json`（格式和校验见 `scripts/datagen/rsi_profile.py`），入库。
+- 随机方案在数采平台任务抽屉的「泛化随机方案」里填，写 `real2sim/benchmark_tasks/<任务>/randomization.json`（格式和校验见 `scripts/datagen/rsi_profile.py`），入库。方案要选池子：`train`（数据方）或 `exam`（评测方）。
+- 资产分池（`rsi/AGENTS.md` 规则 1）：`python scripts/datagen/rsi_assets.py scan --assets Assets` 写 `rsi/assets/pools.json`（仿真环境的 python，要 PyYAML）。官方评测用到的资产，加上没有官方数据的任务配置里能抽到的编号，都算榜单保留资产，谁都不能用；官方训练见过的两方都能用；其余按 7:3 分给训练池和考场池。官方资产变了、或加了新资产以后要重新扫描并入库。生成器和平台只列出所选池子的资产，写布局前会再检查一遍；裁判用 `rsi_assets.py audit --assets Assets --layouts <目录> --pool <池>` 复查。
+- 干扰物来自池子：没用过的杂物，加上不属于任何任务类别的、没用过的物体（写成不带标签的普通 `Rigid` 条目）。新实例（任务类别里没用过的编号）会加进换实例的候选。严格口径下这两样现成的都只剩几个，要靠新资产补。
+- 换色、等比缩放只对 `x5_layouts.RESTYLE` 白名单里的任务和物体生效：纯色会盖掉物体原来的贴图，缩放会改变套碗、按大小排序、插槽类任务的答案。缩放后物体仍落在桌面上，质量按体积换算。
 - 可选项：位置和朝向（只在任务配置自己的范围里重采样，从不照抄评测布局；配置里写死位置的物体不动）、实例（只抽基础任务的训练侧编号，`_random` 独有的编号是榜单留出实例，永远不抽）、干扰物（杂物库，类别不重复）、房间池、桌面和地面 MDL 材质池、背景 HDR 和亮度（整个舞台共用一个穹顶，取第一个并行环境的布局）、额外灯光（类型、数量、亮度、色温）、头部相机角度扰动。
 - 相机只扰动角度：平移 2 cm 时 10 个并行环境里有 3 个出图全黑（10-23 在 5090-2 上对照过：只去掉平移就恢复正常）。开了相机扰动会生成 git 忽略的 `env_cfg/arx_x5_rsi_<任务>.yml` 和 `env_cfg/camera/rsi_<任务>.yml`，布局放在这个 env 配置下。
-- 命令（隔离目录、仿真环境的 python；seed 0 是榜单评测集，脚本拒绝写）：`python scripts/datagen/x5_layouts.py --task <任务> --seed <N> --count 100 [--split val]`。输出目录带 `split.json`（默认 train，评测客户端会拒绝）和 `report_<任务>.json`（每个布局抽到了什么）。
+- 命令（隔离目录、仿真环境的 python）：`python scripts/datagen/x5_layouts.py --task <任务> --seed <N> --count 100 [--split val]`。训练池的方案只能写 seed 1000–4999，考场池只能写 5000–9999，seed 0 是榜单评测集。输出目录带 `split.json`（默认 train，评测客户端会拒绝）和 `report_<任务>.json`（每个布局抽到了什么）。
 - 生成后要在 Isaac 里看一遍画面再用：用一个只保持姿态的策略模块（`--policy_module`）跑 10 个布局，检查头部相机最后一帧没有大面积黑块、亮度不过曝。
 
 ## 用本仓库评估外部训练的 checkpoint
