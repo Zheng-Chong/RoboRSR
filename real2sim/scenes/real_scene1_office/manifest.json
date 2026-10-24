@@ -195,8 +195,8 @@
  },
  "files": {
   "usd/background.usda": {
-   "bytes": 2535793,
-   "sha256": "d307a4f03f509ac20cb04d15fd454ac140763a97fda608998b4da3ca95f5c904"
+   "bytes": 6124364,
+   "sha256": "8f05607ea9ecfc46bf3a5a48130eb229aaa19ea8c641b77e901ea0d1a14cef41"
   },
   "usd/build_params.json": {
    "bytes": 6549,
@@ -245,6 +245,10 @@
   "usd/textures/carpet_tile.png": {
    "bytes": 375497,
    "sha256": "67d8751ad05a2665388fa6b1aee469677a732da136c7e5eb8c452810140872e2"
+  },
+  "usd/textures/leather.png": {
+   "bytes": 193296,
+   "sha256": "343665fe1c3f034135b56004e097ac2b6dad34a1378fd5618bea2fb8635bd82b"
   },
   "usd/textures/window_exterior.png": {
    "bytes": 422015,

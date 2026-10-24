@@ -89,6 +89,7 @@
     "assets": [
      "cabinet_wood.png",
      "carpet_tile.png",
+     "leather.png",
      "window_exterior.png"
     ],
     "unresolved": []
@@ -105,8 +106,8 @@
    "name": "mesh validity (finite points, triangle indices, normals count, no degenerate faces)",
    "ok": true,
    "detail": {
-    "meshes": 200,
-    "triangles": 29206,
+    "meshes": 201,
+    "triangles": 57666,
     "bad": []
    }
   },

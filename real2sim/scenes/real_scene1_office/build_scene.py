@@ -101,6 +101,9 @@ def lin(srgb):
 
 # Walls, cabinets and chairs: sRGB medians of the photos (named in the comment), used as albedo.
 CABINET_WOOD_SRGB = (126, 84, 44)  # lower doors, p3 (sunlit) and v0400 (shade)
+# sofa seat medians v0160 (151, 91, 71), v0260 (145, 86, 66); hue moved ~4 deg toward yellow because the warm sun
+# and RTX tone mapping rendered the plain median visibly redder than the photos
+LEATHER_SRGB = (152, 96, 62)
 
 # name: (diffuse linear RGB, roughness, metallic, opacity)
 MATERIALS = {
@@ -126,9 +129,12 @@ MATERIALS = {
     "column_clad": (lin((209, 200, 185)), 0.6, 0.0, 1.0),  # NE corner column, v0260
     "mullion": ((0.06, 0.06, 0.065), 0.4, 0.3, 1.0),
     "exterior": ((1.0, 1.0, 1.0), 1.0, 0.0, 1.0),
-    "leather": ((0.36, 0.10, 0.03), 0.45, 0.0, 1.0),
-    "pot_white": ((0.80, 0.80, 0.78), 0.3, 0.0, 1.0),
-    "leaf": ((0.04, 0.16, 0.03), 0.6, 0.0, 1.0),
+    "leather": (lin(LEATHER_SRGB), 0.3, 0.0, 1.0),  # diffuse from textures/leather.png
+    "leather_dark": (lin((96, 52, 34)), 0.4, 0.0, 1.0),  # buttons and piping, the shaded seams of v0160
+    "pot_white": (lin((222, 220, 214)), 0.22, 0.0, 1.0),  # glazed pot
+    "soil": (lin((25, 26, 14)), 1.0, 0.0, 1.0),  # v0260
+    "stem": (lin((52, 74, 30)), 0.4, 0.0, 1.0),
+    "leaf": (lin((45, 68, 24)), 0.3, 0.0, 1.0),  # glossy ZZ leaflets; v0160/v0260 medians (29-38, 40-46, 12-22) in shade
     "chair_black": (lin((25, 22, 23)), 0.45, 0.0, 1.0),  # padded high-back chair, v0260
     "chair_seat": (lin((39, 42, 53)), 0.9, 0.0, 1.0),  # task-chair seat fabric, v0480
     "chair_mesh": (lin((40, 41, 45)), 0.8, 0.0, 0.6),  # task-chair back mesh, lets the room through (v0100)
@@ -146,7 +152,8 @@ MATERIALS = {
     "basket": ((0.80, 0.78, 0.70), 0.7, 0.0, 1.0),
 }
 
-TEXTURED = {"carpet": "carpet_tile.png", "exterior": "window_exterior.png", "cabinet_wood": "cabinet_wood.png"}
+TEXTURED = {"carpet": "carpet_tile.png", "exterior": "window_exterior.png", "cabinet_wood": "cabinet_wood.png",
+            "leather": "leather.png"}
 WOOD_TILE_M = 0.6  # cabinet_wood.png covers 0.6 x 0.6 m, grain along v
 
 PHYS = {"default": (0.5, 0.45, 0.0), "table_white": (0.5, 0.45, 0.0), "carpet": (0.8, 0.7, 0.0)}
@@ -372,10 +379,26 @@ def wood_texture(mean_srgb, size=512, seed=7):
     return np.clip(rgb[..., ::-1], 0, 255).astype(np.uint8)
 
 
+def leather_texture(mean_srgb, size=512, seed=11):
+    """Tileable pebbled grain over a soft mottle, sRGB mean = mean_srgb."""
+    rng = np.random.default_rng(seed)
+
+    def wrap_blur(a, sx, sy=None):
+        return cv2.GaussianBlur(np.pad(a, 48, mode="wrap"), (0, 0), sigmaX=sx, sigmaY=sy or sx)[48:-48, 48:-48]
+
+    pebble = wrap_blur(rng.normal(size=(size, size)), 1.6)
+    mottle = wrap_blur(rng.normal(size=(size, size)), 24)
+    shade = 1 + 0.015 * pebble / pebble.std() + 0.02 * mottle / mottle.std()
+    rgb = np.asarray(mean_srgb, float)[None, None, :] * shade[..., None]
+    rgb *= np.asarray(mean_srgb, float) / rgb.reshape(-1, 3).mean(0)
+    return np.clip(rgb[..., ::-1], 0, 255).astype(np.uint8)
+
+
 def build_textures():
     """Copy the packaged texture sources; regenerate them from the observation analysis only if missing."""
     TEX.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(TEX / "cabinet_wood.png"), wood_texture(CABINET_WOOD_SRGB))
+    cv2.imwrite(str(TEX / "leather.png"), leather_texture(LEATHER_SRGB))
     src = HERE / "texture_src"
     if (src / "carpet_tile.png").exists() and (src / "window_exterior.png").exists():
         for name in ("carpet_tile.png", "window_exterior.png"):
@@ -597,34 +620,115 @@ def add_chair(L, name, x, y, yaw, kind):
     L.collider(f"Colliders/{name}", c)
 
 
-def add_furniture(L):
+def rbox(x0, x1, y0, y1, z0, z1, r):
+    """Box with every edge rounded by r (hull of corner spheres)."""
+    s = trimesh.creation.icosphere(subdivisions=2, radius=r)
+    pts = [s.vertices + [x, y, z] for x in (x0 + r, x1 - r) for y in (y0 + r, y1 - r) for z in (z0 + r, z1 - r)]
+    return trimesh.convex.convex_hull(np.vstack(pts))
+
+
+def add_sofa(L):
+    """Three-seat leather sofa with track arms, one tufted bench cushion, one back cushion, piping and short legs.
+    Outline from LAYOUT; the tier heights split the measured seat height the way v0160 shows them (legs : rail :
+    cushion front = 13 : 28 : 28 px)."""
     s = LAYOUT["sofa"]
-    sx0, sx1, sy0, sy1 = s["x0"], s["x1"], s["y0"], s["y1"]
-    L.mesh("Sofa/base", box_xyz(sx0, sx1, sy0 + 0.02, sy1, 0.08, 0.30), "leather")
-    L.mesh("Sofa/seat", box_xyz(sx0 + 0.17, sx1 - 0.17, sy0, sy1 - 0.20, 0.30, s["seat_z"]), "leather")
-    L.mesh("Sofa/back", box_xyz(sx0 + 0.17, sx1 - 0.17, sy1 - 0.22, sy1, 0.30, s["back_z"]), "leather")
-    L.mesh("Sofa/arm_l", box_xyz(sx0, sx0 + 0.17, sy0 + 0.02, sy1, 0.30, s["arm_z"]), "leather")
-    L.mesh("Sofa/arm_r", box_xyz(sx1 - 0.17, sx1, sy0 + 0.02, sy1, 0.30, s["arm_z"]), "leather")
-    L.mesh("Sofa/pillow", box(sx1 - 0.40, sy0 + 0.38, s["seat_z"], 0.40, 0.26, 0.12, -20), "leather")
-    for k, (lx, ly) in enumerate([(sx0 + 0.06, sy0 + 0.08), (sx1 - 0.06, sy0 + 0.08), (sx0 + 0.06, sy1 - 0.08),
-                                  (sx1 - 0.06, sy1 - 0.08)]):
-        L.mesh(f"Sofa/foot_{k}", cyl(lx, ly, 0.0, 0.02, 0.08), "chrome")
-    L.collider("Colliders/sofa", box_xyz(sx0, sx1, sy0, sy1, 0.0, s["back_z"]))
+    x0, x1, y0, y1, zs, zb, za = s["x0"], s["x1"], s["y0"], s["y1"], s["seat_z"], s["back_z"], s["arm_z"]
+    aw, leg, rail = 0.14, 0.07, 0.26  # arm width (v0160: 41 of 700 px across 2.28 m), leg height, rail top
+    tex = dict(uv=planar_uv(0.3), smooth=True)
+    L.mesh("Sofa/frame", rbox(x0 + aw - 0.02, x1 - aw + 0.02, y0 + 0.03, y1, leg, rail, 0.03), "leather", **tex)
+    L.mesh("Sofa/back_frame", rbox(x0 + aw - 0.02, x1 - aw + 0.02, y1 - 0.14, y1, rail - 0.02, zb - 0.06, 0.04),
+           "leather", **tex)
+    L.mesh("Sofa/seat_cushion", rbox(x0 + aw, x1 - aw, y0, y1 - 0.20, rail - 0.01, zs, 0.05), "leather", **tex)
+    L.mesh("Sofa/back_cushion", rbox(x0 + aw + 0.005, x1 - aw - 0.005, y1 - 0.30, y1 - 0.10, zs - 0.03, zb, 0.07),
+           "leather", **tex)
+    for side, (a0, a1) in (("l", (x0, x0 + aw)), ("r", (x1 - aw, x1))):
+        L.mesh(f"Sofa/arm_{side}", rbox(a0, a1, y0 + 0.01, y1, leg, za, 0.045), "leather", **tex)
+    yc = (y0 + y1 - 0.20) / 2
+    buttons = [ellipsoid([x, yc, zs - 0.004], [0.012, 0.012, 0.006], 2) for x in np.linspace(x0 + aw + 0.20, x1 - aw - 0.20, 6)]
+    piping = [tube([(x0 + aw + 0.03, y0 + 0.012, zs - 0.012), (x1 - aw - 0.03, y0 + 0.012, zs - 0.012)], 0.006)]
+    for a in (x0 + 0.01, x1 - 0.01):
+        piping.append(tube([(a, y0 + 0.05, za - 0.012), (a, y1 - 0.03, za - 0.012)], 0.006))
+    L.mesh("Sofa/tufting", trimesh.util.concatenate(buttons + piping), "leather_dark", smooth=True)
+    pillow = rbox(-0.26, 0.26, -0.11, 0.11, 0.0, 0.13, 0.05)
+    pillow.apply_transform(trimesh.transformations.rotation_matrix(math.radians(18), [1, 0, 0]))
+    pillow.apply_transform(T(x1 - aw - 0.22, y0 + 0.26, zs + 0.01, -35))
+    L.mesh("Sofa/pillow", pillow, "leather", **tex)
+    feet = [trimesh.creation.cylinder(radius=0.013, segment=[[lx, ly, 0.0], [lx, ly, leg]], sections=12)
+            for lx in (x0 + 0.07, x1 - 0.07) for ly in (y0 + 0.08, y1 - 0.08)]
+    L.mesh("Sofa/feet", trimesh.util.concatenate(feet), "chrome")
+    L.collider("Colliders/sofa", box_xyz(x0, x1, y0, y1, 0.0, zb))
+
+
+def leaflet(length, width, n=7):
+    """Two-sided elliptic leaf in its local frame: midrib along +X from the origin, blade in XY, folded along the rib."""
+    t = np.linspace(0, math.pi, n + 2)[1:-1]
+    xs, ys = length * (1 - np.cos(t)) / 2, width / 2 * np.sin(t)
+    verts = [(0, 0, 0), (length, 0, 0)] + [(x, 0, 0) for x in xs]
+    for s in (1, -1):
+        verts += [(x, s * y, 0.25 * y) for x, y in zip(xs, ys)]
+    rib, rims = [0] + list(range(2, 2 + n)) + [1], [2 + n, 2 + 2 * n]
+    faces = []
+    for k, r0 in enumerate(rims):
+        rim = [0] + list(range(r0, r0 + n)) + [1]
+        for i in range(n + 1):
+            a, b, c, d = rib[i], rim[i], rim[i + 1], rib[i + 1]
+            tri = [[a, b, c], [a, c, d]] if k == 0 else [[a, c, b], [a, d, c]]
+            faces += [f for f in tri if len(set(f)) == 3]
+    faces += [f[::-1] for f in faces]
+    return trimesh.Trimesh(verts, faces, process=False)
+
+
+def placed(mesh, x_axis, up, origin):
+    """mesh with its local X along x_axis and Z along the component of `up` orthogonal to it, at origin."""
+    x_axis = x_axis / np.linalg.norm(x_axis)
+    z = up - (up @ x_axis) * x_axis
+    z /= np.linalg.norm(z)
+    M = np.eye(4)
+    M[:3, 0], M[:3, 1], M[:3, 2], M[:3, 3] = x_axis, np.cross(z, x_axis), z, origin
+    return mesh.copy().apply_transform(M)
+
+
+def add_plant(L, seed=3):
+    """Zamioculcas (ZZ plant) in a tall glazed pot: upright, slightly arching stems carrying opposite pairs of glossy
+    leaflets from a third of the way up, as in v0160/v0260."""
     p = LAYOUT["plant"]
-    px, py = p["x"], p["y"]
-    L.mesh("Plant/pot", cyl(px, py, 0.0, p["pot_r"], p["pot_h"], 40), "pot_white")
-    rng = np.random.default_rng(3)
-    leaves = [cyl(px, py, p["pot_h"] - 0.05, 0.05, p["top"] - p["pot_h"] - 0.1, 12)]
-    for k in range(80):
-        h = rng.uniform(p["pot_h"] + 0.05, p["top"])
-        a = rng.uniform(0, 2 * math.pi)
-        r = rng.uniform(0.02, 0.30) * (h - p["pot_h"]) / (p["top"] - p["pot_h"]) + 0.03
-        lf = ellipsoid([0, 0, 0], [0.055, 0.022, 0.006], 1)
-        lf.apply_transform(trimesh.transformations.euler_matrix(rng.uniform(-0.6, 0.6), rng.uniform(-0.5, 0.5), a))
-        lf.apply_translation([px + r * math.cos(a), py + r * math.sin(a), h])
-        leaves.append(lf)
+    px, py, r, h = p["x"], p["y"], p["pot_r"], p["pot_h"]
+    pot = revolve(np.array([[0, 0], [r - 0.035, 0], [r - 0.01, h - 0.02], [r, h], [r - 0.012, h],
+                            [r - 0.022, h - 0.05], [0, h - 0.05]]), 48)
+    pot.apply_translation([px, py, 0])
+    L.mesh("Plant/pot", pot, "pot_white", smooth=True)
+    L.mesh("Plant/soil", cyl(px, py, h - 0.052, r - 0.022, 0.005, 32), "soil")
+    rng = np.random.default_rng(seed)
+    stems, leaves = [], []
+    for _ in range(34):
+        a, rr = rng.uniform(0, 2 * math.pi), 0.12 * math.sqrt(rng.uniform())
+        base = np.array([px + rr * math.cos(a), py + rr * math.sin(a), h - 0.05])
+        out = np.array([math.cos(a + rng.normal(0, 0.4)), math.sin(a + rng.normal(0, 0.4)), 0.0])
+        tilt, height = math.radians(rng.uniform(3, 22)), rng.uniform(0.38, p["top"] - h)
+        pts = [base + height * (u * math.cos(tilt) * np.array([0, 0, 1.0]) + u ** 1.6 * math.sin(tilt) * out)
+               for u in np.linspace(0, 1, 6)]
+        stems.append(tube(pts, 0.0055, sections=6))
+        side = np.cross([0, 0, 1.0], out)  # leaflets of one leaf lie in one plane (pinnate)
+        for u in np.linspace(0.35, 0.95, rng.integers(5, 9)):
+            i = min(int(u * 5), 4)
+            c = pts[i] + (pts[i + 1] - pts[i]) * (u * 5 - i)
+            axis = (pts[i + 1] - pts[i]) / np.linalg.norm(pts[i + 1] - pts[i])
+            size = rng.uniform(0.055, 0.085) * (1.1 - 0.4 * abs(u - 0.6))
+            for s in (-1, 1):
+                d = math.cos(math.radians(55)) * axis + math.sin(math.radians(55)) * s * side
+                lf = leaflet(size, size * 0.38)
+                lf.apply_transform(trimesh.transformations.rotation_matrix(rng.normal(0, 0.25), [1, 0, 0]))
+                leaves.append(placed(lf, d, out + [0, 0, 0.6], c))
+        axis = pts[-1] - pts[-2]
+        leaves.append(placed(leaflet(0.07, 0.027), axis, out, pts[-1]))
+    L.mesh("Plant/stems", trimesh.util.concatenate(stems), "stem", smooth=True)
     L.mesh("Plant/foliage", trimesh.util.concatenate(leaves), "leaf")
-    L.collider("Colliders/plant", cyl(px, py, 0.0, p["pot_r"], p["pot_h"], 16))
+    L.collider("Colliders/plant", cyl(px, py, 0.0, r, h, 16))
+
+
+def add_furniture(L):
+    add_sofa(L)
+    add_plant(L)
     de = LAYOUT["desk_east"]
     add_desk(L, "DeskEast", de["x0"], de["x1"], de["y0"], de["y1"], de["top"])
     L.mesh("DeskEast/basket", box(0.86, 0.12, de["top"], 0.40, 0.28, 0.12, 8), "basket")

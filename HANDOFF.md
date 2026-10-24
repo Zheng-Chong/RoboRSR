@@ -61,6 +61,8 @@
   - 南墙主墙面厚度 0.12 → 0.10 m，`scene_parts.py` 现在把它识别为墙面（原来因浮点误差被排除）；`parts.json` 墙面 2 块，`library.json` 里办公室 `wall_light` 的颜色和 `tile_m` 跟着更新。
 - **验证**：本机 `check_scene.py` 31/31；15 个真实相机用 `render_all.py`（Open3D）重渲染并和照片叠加核对，六个视角的对比图在本机 `real2sim/scenes/real_scene1_office/preview/rework_furniture_sheet.jpg`（不入库）；`scene_parts.py` 重新生成 `parts.json`；`make_manifest.py`；`check.sh`。本机环境：`uv` + Python 3.11，Open3D 需要 arm64 的 libusb（命令见 `REPORT.md`「复现」）。
 - **Isaac 验证和部署**（10-24 下午，用户要求"提交更新并部署"）：`5090-2` 隔离目录 `/data/robodojo-runs/office-furniture-20261024-1605/`（GPU 0；`Assets/` 硬链接自 `lab-walls-20261024-1314`，只换 `Room/real_scene1/`）：`render_scenes.py` 正常（RTX 下网背半透明、木纹正常）；`g1d` seed 0 的拾取、叠块、量杯倒豆都是 `success_rate` 1.0、`eval_time` 1，头部相机画面看过。经用户同意装进共享库 `5090-2:/data/robodojo-assets/Assets/Room/real_scene1/`（和隔离目录 `diff -r` 一致；布局没动，`g1d`、`g1d_mobile` 的布局不引用背景路径），旧版备份 `/data/robodojo-assets/backups/backup-shared-room1-20261024-161130.tgz`。平台：部署机检出**没快进**（`server.py`、`index.html`、`HANDOFF.md`、`ASSETS.md` 上有别的会话没提交的改动，和要快进的提交重叠），只把 `main` 版本的 `real2sim/scenes/real_scene1_office/` 改动文件和 `real2sim/materials/library.json` 拷了过去，`preview/` 整个换成新版（15 视角对比图、5 个自由视角、返工对比表、RTX 封面、`scene.glb`）；旧的备份在 `/root/RoboDojo/.cache/office-before-furniture-20261024-161217/`。重启平台后扫描：办公室检查 31/0、51 张预览、封面和 3D 模型都是新的，未登录 `/api/info` 401。
+- **部署机更新到 `main`**（16:58，用户同意）：`/root/RoboDojo` 从 `db77167` 快进到 `c1b601c`。别的会话的 28 个未提交文件先 `git stash`（备份 `.cache/ff-main-20261024-165752/local.patch`、`status.txt`），快进后 `stash pop` 无冲突（`server.py`、`index.html` 各一行本地改动保留）；办公室那 12 个文件先还原再快进，木纹 LFS 文件补实际内容。部署机 `test_server.py` 9 项通过，重启后扫描正常。
+- **沙发、盆栽返工**（10-24 下午，用户："沙发和盆栽还是有点假"）：沙发外轮廓不变，改成圆角部件、一体靠背垫、带拉扣和滚边的长坐垫、细金属腿、斜靠的圆角抱枕，皮革贴图 `usd/textures/leather.png`；盆栽改成金钱树（34 根直立茎、成对双面小叶）和釉面锥形花盆。依据和数值见 `PLAN.md` 对照表最后两行。验证：`check_scene.py` 31/31；Open3D 叠图（v0160、v0260、p4）轮廓重合；隔离目录里 RTX 封面渲染两轮（第一轮皮革偏红、斑驳，调了色相、斑驳度和粗糙度），`g1d` 拾取 seed 0 `success_rate` 1.0、`eval_time` 1，头部相机画面看过。
 - **没做**：柜高 2.05 m、白板顶 2.40 m 在所有照片之外，是估计值；没对机器人头部相机调色。
 
 ### 吧台客区 + 第一个移动操作任务（2026-10-23/24，`chongzheng/scene-counter-lounge-mobile`）
@@ -456,7 +458,7 @@
 0. 榜单：基线已停（16:35，用户要求），先问用户是否续跑；续跑后收两份基线（`smoke_results/baseline_*_20261022.md`，核对每个任务 `eval_time >= 1`），按任务对比 OpenWAM / pi0.5 / 有无官方数据；看失败视频做归类；然后开始把 `collect.py` 和插件接口推广到 dual X5，按优先级给无官方数据的任务写专家。
 0. 实现平台登记的 `g1d_pour_beans_any_cups`：在平台任务抽屉复制「实现任务」文本交给 coding agent（输入 `real2sim/tasks/g1d_pour_beans_any_cups/registration.json`）。
 0. 深圳实验室（已合并、部署，共享库待补装）：去现场量站位、拍头部 / 腕部画面做叠图（`overlay.py --env-cfg g1d_shenzhen_lab`）。
-0. 部署机快进前：办公室场景的 11 个文件和 `library.json` 在部署机上显示为本地改动、内容和 `main` 相同，先 `git checkout -- real2sim/scenes/real_scene1_office real2sim/materials/library.json` 并删掉未跟踪的 `real2sim/scenes/real_scene1_office/usd/textures/cabinet_wood.png`，再快进；别的会话在 `server.py`、`index.html` 上的未提交改动要先和那位协调。
+0. 部署机快进：别的会话在部署机上还有 28 个未提交文件，快进照 10-24 16:58 那次做（先 stash、快进、pop，新增 LFS 文件从本机补实际内容）。
 1. 先看 `git log`、本文件和 `scripts/datagen/CONTRACT.md`。主工作区里还有物体建模 SKILL 会话没提交的改动（见"最近任务"里的"并行会话"）；拉取新的 `main` 前，先让那个会话提交，或者先 stash。
 2. 下一批数据用新流水线采集。先跑单回合探针，确认 `joint_names`、夹爪 state 和图像都正常，再按 `scripts/datagen/SKILL.md` 批量采集、导出、审计、回放，最后登记。
 3. 去现场按 `real2sim/scenes/SKILL.md` 采集（ChArUco 标定板照片、卷尺、灯光、机器人相机画面），在平台「登记场景」录入，回来跑 `overlay.py` 和 `acceptance.py`。
