@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 ENV_KEY = "ROBODOJO_REMOTE_POLICY"  # JSON config for the in-process policy; survives main.py's os.execv restarts
 RAW_OPEN = 5.4  # Dex1 reading when fully open; sim gripper state and command are 0 closed .. 1 open
+SETTLE = 10  # steps the --init-joints start is held before the episode's frames count
 CAMERAS = {"cam_head": "head_left", "cam_left_wrist": "wrist_left", "cam_right_wrist": "wrist_right"}
 
 
@@ -72,8 +73,21 @@ def joint16(obs, keys):
     return np.concatenate([*state, np.float32(grips)])
 
 
-def request(env, obs, keys):
+def finger_joints(env):
+    """[[left finger 1, finger 2], [right finger 1, finger 2]] joint positions (m) of env 0."""
+    rm = env.robot_manager
+    rows = {}
+    for idx, robot in enumerate(rm.robot_list):
+        if robot.type == "target":
+            q = rm.robot_key[idx].data.joint_pos[0, robot.gripper_joint_indices]
+            rows[robot.arm_name.split("_")[0]] = q.cpu().numpy().astype(np.float32)
+    return np.stack([rows["left"], rows["right"]])
+
+
+def request(env, obs, keys, prompt=None):
     msg = {"observation/state": joint16(obs, keys)}
+    if prompt is not None:
+        msg["prompt"] = prompt
     for camera, name in CAMERAS.items():
         msg[f"observation/images/{name}"] = np.ascontiguousarray(obs["vision"][camera]["color"], dtype=np.uint8)
     return msg
@@ -104,6 +118,24 @@ def to_action(row, keys, close_below):
     return action
 
 
+def place_arms(env, keys, q14, close_below, settle=SETTLE):
+    """Put the target arms at q14 [L7, R7] (rad), grippers open, and hold them there for `settle` steps."""
+    import torch
+
+    rm = env.robot_manager
+    for idx, robot in enumerate(rm.robot_list):
+        if robot.type != "target":
+            continue
+        key = rm.robot_key[idx]
+        side = robot.arm_name.split("_")[0]
+        q = torch.tensor([q14[:7] if side == "left" else q14[7:]], dtype=torch.float32, device=key.device)
+        key.write_joint_state_to_sim(q, torch.zeros_like(q), joint_ids=robot.arm_joint_indices)
+        key.set_joint_position_target(q, joint_ids=robot.arm_joint_indices)
+    hold = to_action(np.r_[q14, RAW_OPEN, RAW_OPEN], keys, close_below)
+    for _ in range(settle):
+        env.take_action(hold)
+
+
 def run_episode(env, plugin, output, cfg):
     from websockets.sync.client import connect
 
@@ -111,11 +143,17 @@ def run_episode(env, plugin, output, cfg):
     sidecar = output / f"episode_{layout_id:06d}.json"
     env.end_on_success = False  # strict acceptance needs the beans settled after the task check fires
     env.step_lim = plugin.STEP_LIM
+    start = (cfg.get("init_joints") or {}).get(str(layout_id))
+    if start is not None:
+        settle = cfg.get("settle_steps", SETTLE)
+        env.step_lim += settle
+        place_arms(env, arm_keys(env), start, cfg["close_below"], settle)
     episode = plugin.Episode(env)
     obs = env.get_obs()
     result = dict(task=plugin.TASK, acceptance_version=plugin.ACCEPTANCE, layout_seed=int(env.eval_seed))
     result.update(layout_id=layout_id, server=cfg["server"], close_below=cfg["close_below"])
-    result.update(smooth_sigma=cfg["smooth_sigma"], blend_steps=cfg["blend_steps"])
+    prompt = (cfg.get("prompts") or {}).get(str(layout_id))
+    result.update(smooth_sigma=cfg["smooth_sigma"], blend_steps=cfg["blend_steps"], start_joints=start, prompt=prompt)
     if episode.reject:
         result.update(accepted=False, reason=episode.reject, **episode.summary())
         sidecar.write_text(json.dumps(result, indent=2) + "\n")
@@ -124,13 +162,14 @@ def run_episode(env, plugin, output, cfg):
     keys = arm_keys(env)
     packb, unpackb = codec()
     frames, stable, infer = 0, 0, []
-    trace = dict(state=[], raw=[], command=[], chunk=[])  # joint16 (raw gripper units): state, server row, sent row
+    # joint16 (raw gripper units): state, server row, sent row; fingers: both finger joints of each gripper (m)
+    trace = dict(state=[], raw=[], command=[], chunk=[], fingers=[])
     last = None
     with connect(cfg["server"], max_size=None, compression=None, open_timeout=60) as ws:
         meta = unpackb(ws.recv())
         while frames < env.step_lim and stable < plugin.HOLD and not env.end_flag[0]:
             t0 = time.monotonic()
-            ws.send(packb(request(env, obs, keys)))
+            ws.send(packb(request(env, obs, keys, prompt)))
             reply = ws.recv()
             if isinstance(reply, str):
                 raise RuntimeError(f"policy server error:\n{reply}")
@@ -141,6 +180,7 @@ def run_episode(env, plugin, output, cfg):
                 trace["raw"].append(raw_row)
                 trace["command"].append(row)
                 trace["chunk"].append(len(infer) - 1)
+                trace["fingers"].append(finger_joints(env))
                 last = row
                 env.take_action(to_action(row, keys, cfg["close_below"]))
                 obs = env.get_obs()
@@ -186,6 +226,15 @@ def main():
     parser.add_argument("--close-below", type=float, default=0.87, help="predicted opening below this closes")
     parser.add_argument("--smooth-sigma", type=float, default=0.0, help="Gaussian sigma (actions) over each chunk")
     parser.add_argument("--blend-steps", type=int, default=0, help="rows blended from the previous command")
+    parser.add_argument(
+        "--init-joints", type=Path, help="JSON {layout id: [L7, R7] arm joints}: each listed episode starts there"
+    )
+    parser.add_argument(
+        "--settle-steps", type=int, default=SETTLE, help="steps an --init-joints start is held (beans settle too)"
+    )
+    parser.add_argument(
+        "--prompts", type=Path, help="JSON {layout id: instruction} sent as the request's prompt (server default else)"
+    )
     args, remaining = parser.parse_known_args()
     files = layout_files(args.env_cfg, args.seed, args.task)
     wanted = [int(i) for i in args.layout_ids.split(",") if i.strip()] or range(len(files))
@@ -196,6 +245,9 @@ def main():
         return
     cfg = dict(plugin=plugin_name(args.task), output=str(args.output.resolve()), server=args.server)
     cfg.update(close_below=args.close_below, smooth_sigma=args.smooth_sigma, blend_steps=args.blend_steps)
+    cfg.update(init_joints=json.loads(args.init_joints.read_text()) if args.init_joints else None)
+    cfg.update(settle_steps=args.settle_steps)
+    cfg.update(prompts=json.loads(args.prompts.read_text()) if args.prompts else None)
     os.environ[ENV_KEY] = json.dumps(cfg)
     os.environ["EVAL_NUM"] = str(len(todo))
     sys.argv = [str(ROOT / "src/eval_client/main.py"), "--env_cfg_type", args.env_cfg, "--task_name", args.task]

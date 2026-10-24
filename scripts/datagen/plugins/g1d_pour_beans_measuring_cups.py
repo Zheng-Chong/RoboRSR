@@ -16,6 +16,19 @@ TAIL = 60  # actions the last command is held after the script ends
 HOLD = 30  # frames (1 s) the acceptance must hold
 LABELS = ("source_cup", "target_cup")
 COUNT_KEYS = ("total", "source", "target", "outside", "overlap")
+ROUND_WALL, ROUND_BOTTOM = 0.002, 0.004  # m; a round target cup's wall and bottom (make_water_cup.py --gray)
+
+
+def target_cup(lm):
+    """None for the short measuring cup; else the round cavity (collect_office_beans.in_round_cavity) of the target
+    cup: the layout entry's "cavity" when given (tapered cups), otherwise a straight cup of its layout size."""
+    cfg = lm.get_scene_object(0, lm.get_instance_name(0, "target_cup")).instance_config
+    if cfg["category"] == "measuring_cup":
+        return None
+    if cfg.get("cavity"):
+        return dict(cfg["cavity"])
+    diameter, _, height = cfg["physics"]["size"]
+    return dict(height=height, radius=diameter / 2 - ROUND_WALL, bottom=ROUND_BOTTOM)
 
 
 def upright(pose):
@@ -32,8 +45,9 @@ class Episode:
         self.env = env
         lm = self.lm = env.scene_manager.layout_manager
         self.fluid = lm.get_scene_object(0, lm.get_instance_name(0, "beans"))
+        self.target = target_cup(lm)
         self.initial = self.particles()
-        self.initial_counts = counts(self.initial, pose_map(self.poses()))
+        self.initial_counts = counts(self.initial, pose_map(self.poses()), self.target)
         self.final_counts = self.initial_counts
         ok = self.initial_counts["source"] == len(self.initial)
         self.reject = None if ok else "beans not all inside the source cup at the start"
@@ -54,7 +68,7 @@ class Episode:
     def step(self):
         """After each action: record beans and cups; True while every bean is in the short cup, both upright."""
         points, poses = self.particles(), self.poses()
-        self.final_counts = counts(points, pose_map(poses))
+        self.final_counts = counts(points, pose_map(poses), self.target)
         self.history["particles"].append(points.astype(np.float32))
         self.history["cup_poses"].append(poses.astype(np.float32))
         self.history["counts"].append([self.final_counts[k] for k in COUNT_KEYS])
@@ -68,7 +82,10 @@ class Episode:
 
     def summary(self):
         return dict(
-            initial_counts=self.initial_counts, final_counts=self.final_counts, upright_limit_degrees=UPRIGHT_DEG
+            initial_counts=self.initial_counts,
+            final_counts=self.final_counts,
+            upright_limit_degrees=UPRIGHT_DEG,
+            **({"target_cup": self.target} if self.target else {}),
         )
 
 
@@ -78,11 +95,12 @@ def audit(privileged, quality):
     total = quality["initial_counts"]["total"]
     particles, poses = privileged["particles"], privileged["cup_poses"]
     assert particles.shape == (quality["frames"], total, 3) and poses.shape == (quality["frames"], 2, 7)
-    start = counts(privileged["initial_particles"].astype(float), pose_map(poses[0]))
+    target = quality.get("target_cup")
+    start = counts(privileged["initial_particles"].astype(float), pose_map(poses[0]), target)
     assert start["source"] == total and start["outside"] == 0, start
     tilt = 0.0
     for points, frame in zip(particles[-HOLD:], poses[-HOLD:]):
-        assert all_transferred(counts(points.astype(float), pose_map(frame)), total)
+        assert all_transferred(counts(points.astype(float), pose_map(frame), target), total)
         assert all(map(upright, frame))
         tilt = max(
             tilt, *(np.degrees(np.arccos(np.clip(demo.from_wxyz(p[3:]).as_matrix()[2, 2], -1, 1))) for p in frame)

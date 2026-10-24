@@ -15,6 +15,22 @@
         "arm_dim": [7, 7],
         "ee_dim": [1, 1]
     },
+    "g1d_lab_real_start": {
+        "arm_dim": [7, 7],
+        "ee_dim": [1, 1]
+    },
+    "g1d_lab_real_soft": {
+        "arm_dim": [7, 7],
+        "ee_dim": [1, 1]
+    },
+    "g1d_lab_real380_start": {
+        "arm_dim": [7, 7],
+        "ee_dim": [1, 1]
+    },
+    "g1d_lab_eps380": {
+        "arm_dim": [7, 7],
+        "ee_dim": [1, 1]
+    },
     "g1d_school": {
         "arm_dim": [7, 7],
         "ee_dim": [1, 1]

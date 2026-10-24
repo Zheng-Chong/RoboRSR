@@ -9,6 +9,8 @@ the Dex1-1 fingers in the clips.
 Usage:
     python scripts/objects/make_water_cup.py [OUT_DIR]    # default Assets/Object/RoboDojo/Rigid/water_cup
     python scripts/objects/make_water_cup.py --plastic [OUT_DIR]    # default .../Rigid/plastic_cup
+    python scripts/objects/make_water_cup.py --gray [OUT_DIR]       # smoke-grey tumbler, .../Rigid/plastic_cup/00001
+    python scripts/objects/make_water_cup.py --blue [OUT_DIR]       # opaque blue cup, .../Rigid/plastic_cup/00002
     python scripts/objects/check_object.py Assets/Object/RoboDojo/Rigid/water_cup/00000
 Writes OUT_DIR/00000/{object.usdz, metadata.json, description.json}. Needs what make_pitcher.py needs.
 
@@ -42,6 +44,15 @@ N_THETA, N_STAVE = 192, 32  # visual segments; collision wall staves (inner chor
 ENAMEL, STEEL = (0.84, 0.85, 0.81), (0.56, 0.58, 0.60)
 PLASTIC = dict(H=0.095, R0=0.026, R1=0.036, T_WALL=0.002, T_BOTTOM=0.003, MASS=0.03)
 CLEAR = (0.97, 0.98, 0.98)
+# --gray: the smoke-grey clear tumbler the real G1D-PourBeansEps380 left hand holds ("灰色的粗口杯"), straight-sided;
+# 66 mm across and 89 mm tall from its head-camera frames (episode 0, fitted stand); wall, bottom and mass estimated
+GRAY = dict(H=0.089, R0=0.032, R1=0.033, T_WALL=0.002, T_BOTTOM=0.004, MASS=0.06, CLEAR=(0.52, 0.53, 0.55))
+GRAY_CUP = False
+# --blue: the opaque blue tapered plastic cup of the same data ("蓝色杯子"), 72 mm at the rim, ~48 mm at the bottom,
+# 99 mm tall (episode 200's head frame); wall, bottom and mass estimated
+BLUE_RGB = (0.04, 0.22, 0.72)
+BLUE = dict(H=0.099, R0=0.024, R1=0.036, T_WALL=0.0015, T_BOTTOM=0.003, MASS=0.02, ENAMEL=BLUE_RGB, STEEL=BLUE_RGB)
+BLUE_CUP = False
 
 
 def lathe(profile):
@@ -203,6 +214,40 @@ def metadata(uid, pts, n_faces):
 
 
 def description(uid, ml):
+    if BLUE_CUP:
+        caption = {
+            "color": ["blue", "opaque", "bright blue"],
+            "material": ["plastic", "PP", "opaque plastic"],
+            "size": [f"holds about {ml:.0f} ml", "about 10 cm tall", "fits in one hand"],
+            "name": ["blue cup", "plastic cup", "party cup"],
+            "shape": ["tapered cylinder", "wider at the rim", "rolled rim"],
+            "function": ["drinking water", "holding beans", "receiving a pour"],
+        }
+        desc = [
+            "opaque blue plastic cup without a handle",
+            "tapered blue cup, wider at the rim",
+            f"blue plastic cup that holds about {ml:.0f} ml",
+            "bright blue disposable cup",
+            "light blue cup grasped around its body",
+        ]
+        return {"uuid": uid, "caption": caption, "description": desc}
+    if GRAY_CUP:
+        caption = {
+            "color": ["smoke grey", "transparent", "tinted"],
+            "material": ["plastic", "acrylic", "tinted clear plastic"],
+            "size": [f"holds about {ml:.0f} ml", "about 9 cm tall", "fits in one hand"],
+            "name": ["grey cup", "tumbler", "wide-mouth cup"],
+            "shape": ["straight cylinder", "wide mouth", "no handle"],
+            "function": ["drinking water", "holding beans", "receiving a pour"],
+        }
+        desc = [
+            "transparent smoke-grey cup without a handle",
+            "straight-sided grey tumbler with a wide mouth",
+            f"tinted clear cup that holds about {ml:.0f} ml",
+            "grey see-through drinking cup",
+            "wide-mouth grey cup grasped around its body",
+        ]
+        return {"uuid": uid, "caption": caption, "description": desc}
     if PLASTIC_CUP:
         caption = {
             "color": ["clear", "transparent", "colourless"],
@@ -245,9 +290,11 @@ def main(out_dir):
     visual = [(p + shift, f, m) for p, f, m in visual]
     hulls = [h + shift for h in hulls]
     all_pts = np.concatenate([p for p, _, _ in visual])
-    d = Path(out_dir) / "00000"
+    index = 2 if BLUE_CUP else 1 if GRAY_CUP else 0
+    d = Path(out_dir) / f"{index:05d}"
     d.mkdir(parents=True, exist_ok=True)
-    uid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"robodojo/rigid/{'plastic_cup' if PLASTIC_CUP else 'water_cup'}/0"))
+    category = "plastic_cup" if PLASTIC_CUP or BLUE_CUP else "water_cup"
+    uid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"robodojo/rigid/{category}/{index}"))
     write_usdz(d / "object.usdz", visual, hulls)
     meta = metadata(uid, all_pts, sum(len(f) for _, f, _ in visual))
     (d / "metadata.json").write_text(json.dumps(meta, indent=4))
@@ -257,12 +304,17 @@ def main(out_dir):
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    PLASTIC_CUP = "--plastic" in args
-    args = [a for a in args if a != "--plastic"]
+    GRAY_CUP, BLUE_CUP = "--gray" in args, "--blue" in args
+    PLASTIC_CUP = GRAY_CUP or "--plastic" in args
+    args = [a for a in args if a not in ("--plastic", "--gray", "--blue")]
     if PLASTIC_CUP:
         globals().update(PLASTIC)
+    if GRAY_CUP:
+        globals().update(GRAY)
+    if BLUE_CUP:  # opaque: the enamel/steel PBR path, both faces blue
+        globals().update(BLUE)
     try:
-        main(args[0] if args else OUT_DIR.with_name("plastic_cup") if PLASTIC_CUP else OUT_DIR)
+        main(args[0] if args else OUT_DIR.with_name("plastic_cup") if PLASTIC_CUP or BLUE_CUP else OUT_DIR)
     except Exception:
         if mp.APP is None:
             raise

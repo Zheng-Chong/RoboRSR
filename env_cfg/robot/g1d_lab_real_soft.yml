@@ -1,0 +1,25 @@
+robots:
+  - {
+    robot_type: arm,
+    robot_name: g1d,
+    coupled: True,
+    need_planner: False,
+    default_root_pos: [0.0, -0.73, 0.1115],
+    default_root_rot: [0.707, 0, 0, 0.707],
+    # g1d_lab_real_start's stand and arm start, with the real arm gains of unitree_lerobot's G1_29 controller
+    # (robot_arm.py: kp 80 / kd 3, wrists kp 40 / kd 1.5) instead of 4400 / 40. The sim arm has no gravity, which
+    # stands in for the controller's gravity feed-forward torque.
+    init_joint_pos: {
+      LZ_mt_Joint: 0.0345, LZ_it_Joint: 0.0345,
+      left_shoulder_pitch_joint: 0.194, left_shoulder_roll_joint: -0.046, left_shoulder_yaw_joint: -0.214,
+      left_elbow_joint: -0.315, left_wrist_roll_joint: -0.029, left_wrist_pitch_joint: -0.249,
+      left_wrist_yaw_joint: 0.119,
+      right_shoulder_pitch_joint: 0.201, right_shoulder_roll_joint: 0.026, right_shoulder_yaw_joint: 0.158,
+      right_elbow_joint: -0.308, right_wrist_roll_joint: 0.026, right_wrist_pitch_joint: -0.280,
+      right_wrist_yaw_joint: 0.055
+    },
+    actuators: {
+      arm: {joint_names_expr: [".*_shoulder_.*", ".*_elbow_joint"], stiffness: 80.0, damping: 3.0},
+      wrist: {like: arm, joint_names_expr: [".*_wrist_.*"], stiffness: 40.0, damping: 1.5}
+    }
+  }

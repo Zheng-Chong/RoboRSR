@@ -35,12 +35,28 @@ def in_cavity(points, position, quaternion, height):
     return cup_shape.in_cavity(local - cup_shape.origin_shift(height), height)
 
 
-def counts(points, poses):
+def in_round_cavity(points, position, quaternion, cup):
+    """Bean centres inside a round cup (origin at its bbox centre): above the inner bottom, below the rim, within the
+    inner wall. `cup` = dict(height, radius (inner, at the rim), bottom (thickness)[, radius_bottom (inner, at the
+    bottom) for a tapered cup])."""
+    local = Rotation.from_quat(np.asarray(quaternion)[[1, 2, 3, 0]]).inv().apply(points - position)
+    z = local[:, 2] + cup["height"] / 2
+    low = cup.get("radius_bottom", cup["radius"])
+    radius = low + (cup["radius"] - low) * z / cup["height"]
+    return (z > cup["bottom"]) & (z < cup["height"]) & (np.linalg.norm(local[:, :2], axis=1) < radius)
+
+
+def counts(points, poses, target=None):
+    """Beans in the tall measuring cup, in the target (the short measuring cup, or the round cup `target` describes
+    for in_round_cavity), and elsewhere."""
     if points.ndim != 2 or points.shape[1] != 3 or not len(points) or not np.isfinite(points).all():
         raise ValueError("Invalid or missing bean positions")
     (short, *_), (tall, *_) = cup_shape.MEASURING
     source = in_cavity(points, *poses["source_cup"], tall)
-    target = in_cavity(points, *poses["target_cup"], short)
+    if target is None:
+        target = in_cavity(points, *poses["target_cup"], short)
+    else:
+        target = in_round_cavity(points, *poses["target_cup"], target)
     return dict(
         total=len(points),
         source=int(source.sum()),

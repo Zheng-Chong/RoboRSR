@@ -1,0 +1,19 @@
+robots:
+  - {
+    robot_type: arm,
+    robot_name: g1d,
+    coupled: True,
+    need_planner: False,
+    default_root_pos: [0.0, -0.73, 0.1115],
+    default_root_rot: [0.707, 0, 0, 0.707],
+    # g1d_lab's stand; arms at the mean first frame of the real G1D-PourBeansEps380 teleop data (380 episodes).
+    init_joint_pos: {
+      LZ_mt_Joint: 0.0345, LZ_it_Joint: 0.0345,
+      left_shoulder_pitch_joint: 0.413, left_shoulder_roll_joint: -0.001, left_shoulder_yaw_joint: -0.143,
+      left_elbow_joint: -0.216, left_wrist_roll_joint: 0.033, left_wrist_pitch_joint: -0.407,
+      left_wrist_yaw_joint: -0.025,
+      right_shoulder_pitch_joint: 0.284, right_shoulder_roll_joint: -0.047, right_shoulder_yaw_joint: 0.017,
+      right_elbow_joint: -0.090, right_wrist_roll_joint: 0.072, right_wrist_pitch_joint: -0.340,
+      right_wrist_yaw_joint: 0.114
+    }
+  }

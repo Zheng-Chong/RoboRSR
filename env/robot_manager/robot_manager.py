@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from copy import deepcopy
 from importlib import import_module
+import re
 from typing import List, Literal
 
 from isaaclab.assets.articulation import ArticulationCfg
@@ -426,6 +427,13 @@ class RobotManager:
                     )
 
                 env_ids = torch.tensor(plan_lst, dtype=torch.int32, device=arm_velocity.device)
+                coupling = getattr(robot, "finger_coupling", None)
+                if coupling and plan_num > 0:  # closing (target above a finger): stay within `coupling` of the laggard
+                    fingers = arm.data.joint_pos[env_ids.long()][:, robot.gripper_joint_indices]
+                    lag = fingers.min(dim=1, keepdim=True).values
+                    gripper_position = torch.where(
+                        gripper_position > lag, torch.minimum(gripper_position, lag + coupling), gripper_position
+                    )
                 arm.set_joint_position_target(arm_position, joint_ids=robot.arm_joint_indices, env_ids=env_ids)  # arm
                 arm.set_joint_velocity_target(arm_velocity, joint_ids=robot.arm_joint_indices, env_ids=env_ids)  # arm
                 arm.set_joint_position_target(
@@ -667,9 +675,25 @@ class RobotManager:
                 )
             )
 
+        if cfg is not None and "actuators" in cfg:
+            # {name: overrides}: replace fields of an actuator group; "like: <group>" starts a new group from another
+            actuators = dict(scene_cfg.actuators)
+            groups = cfg["actuators"]
+            groups = OmegaConf.to_container(groups) if isinstance(groups, DictConfig) else groups
+            for name, overrides in groups.items():
+                overrides = dict(overrides)
+                actuators[name] = actuators[overrides.pop("like", name)].replace(**overrides)
+            scene_cfg = scene_cfg.replace(actuators=actuators)
+
         joint_pos = dict(scene_cfg.init_state.joint_pos)
         if cfg is not None and "init_joint_pos" in cfg:
-            joint_pos.update(cfg["init_joint_pos"])
+            # A default pattern (".*_shoulder_.*") matching an overridden joint is dropped, so an override covers
+            # every joint of that pattern.
+            overrides = dict(cfg["init_joint_pos"])
+            joint_pos = {
+                k: v for k, v in joint_pos.items() if k in overrides or not any(re.fullmatch(k, j) for j in overrides)
+            }
+            joint_pos.update(overrides)
         scene_cfg = scene_cfg.replace(
             prim_path=f"{ENV_REGEX_NAMESPACE}/robot{idx}",
             init_state=ArticulationCfg.InitialStateCfg(

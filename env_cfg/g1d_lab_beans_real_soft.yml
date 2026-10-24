@@ -1,0 +1,22 @@
+# g1d_lab_beans_real_start with the real arm PD gains (robot g1d_lab_real_soft).
+# Layouts and results stay in g1d_lab's namespace.
+config_name: g1d_lab
+
+config:
+  sim: g1d_beans_collect_sim
+  scene: default
+  robot: g1d_lab_real_soft
+  camera: g1d_camera
+
+observation:
+  collect_freq: 30
+  robot:
+    joint_states: true
+    world_ee_state: true
+    ee_state: measured  # gripper state from the finger joints, not the last command (scripts/datagen/CONTRACT.md)
+  vision:
+    approximate_depth: false
+    depth: false
+    intrinsic_matrix: false
+    extrinsic_matrix: false
+    shape: true

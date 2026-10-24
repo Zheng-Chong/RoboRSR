@@ -18,6 +18,21 @@ from scripts.objects.measuring_cup_shape import origin_shift
 
 
 class AcceptanceTests(unittest.TestCase):
+    def test_round_target_cavity(self):
+        cup = dict(height=0.089, radius=0.031, bottom=0.004)
+        at = np.array([0.1, -0.5, 0.88])  # bbox centre
+        upright, tilted = [1.0, 0.0, 0.0, 0.0], Rotation.from_euler("x", 90, degrees=True).as_quat()[[3, 0, 1, 2]]
+        points = at + np.array([[0, 0, 0], [0.025, 0, -0.03], [0, 0, 0.05], [0.035, 0, 0], [0, 0, -0.043]])
+        self.assertEqual(collector.in_round_cavity(points, at, upright, cup).tolist(), [1, 1, 0, 0, 0])
+        low = at + [[0, 0, -0.04]]  # just above the bottom when upright, past the wall once the cup lies down
+        self.assertTrue(collector.in_round_cavity(low, at, upright, cup)[0])
+        self.assertFalse(collector.in_round_cavity(low, at, tilted, cup)[0])
+        poses = {"source_cup": [at + [1, 0, 0], upright], "target_cup": [at, upright]}
+        self.assertEqual(counts(points, poses, cup)["target"], 2)
+        tapered = dict(height=0.099, radius=0.0345, radius_bottom=0.0225, bottom=0.003)
+        side = at + np.array([[0.03, 0, 0.045], [0.03, 0, -0.045]])  # 3 cm out: in near the rim, out near the bottom
+        self.assertEqual(collector.in_round_cavity(side, at, upright, tapered).tolist(), [1, 0])
+
     def test_export_checks_trajectory_evidence_not_only_acceptance_flag(self):
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)

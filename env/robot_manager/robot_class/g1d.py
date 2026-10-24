@@ -11,12 +11,17 @@ BASE_JOINTS = ["base_x_joint", "base_y_joint", "base_yaw_joint"]  # g1d_mobile_d
 BASE_LIMITS = np.array([1.5, 0.6])  # base_velocity: [vx m/s, vyaw rad/s], AgvClient.Move limits
 # A blocked chassis stalls instead of winding up force: its target leads the measured pose by at most this (m, rad).
 BASE_LEAD = np.array([0.01, 0.01, 0.02])
+# The Dex1-1 fingers share one motor and close symmetrically, centring what they grip; the URDF mimic tag is lost on
+# import. While closing, neither finger's target leads the lagging finger by more than this (m; 1e4 N/m x 2 mm is the
+# 20 N limit), so the free finger waits and the blocked one pushes the object to the centre.
+FINGER_COUPLING = 0.002
 
 
 # G1-D is one articulation with two arms (coupled); each arm reads Assets/Robots/g1d/<config_key>_robot_config.yml.
 class G1DLeft(X5):
     config_key = "left"
     asset_name = "g1d"
+    finger_coupling = FINGER_COUPLING
 
     def __init__(self, cfg: dict):
         super().__init__(cfg)
@@ -53,3 +58,4 @@ class G1DLeft(X5):
 class G1DRight(X5):
     config_key = "right"
     asset_name = "g1d"
+    finger_coupling = FINGER_COUPLING
