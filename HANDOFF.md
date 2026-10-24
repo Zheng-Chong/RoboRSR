@@ -36,6 +36,19 @@
 
 ## 最近任务
 
+### 办公室 `real_scene1_office`：墙面、柜子、椅子按照片返工（2026-10-24，`chongzheng/scene-office-furniture`）
+
+- **用户要求**：把墙壁、各种柜子、椅子的建模和材质和真实拍摄对齐。
+- **做法**：在 `reference/` 的照片上读像素，用 `cameras_scene.json` 的 SfM 相机反投影到已知平面或多视角三角化；颜色取照片 sRGB 中值当反照率（同实验室 10-23 的墙面做法）。逐项数值和依据在 `build_scene.py` 的 `LAYOUT[...]["src"]`，改前改后对照表在 `PLAN.md`「墙面、柜子、椅子」。
+- **改了什么**（只动 `build_scene.py` 的背景部分，桌子、物体、灯光位置不变）：
+  - 南墙：墙脚 y=−2.13；电视下深胡桃色腰线 0.83–0.935 m（原 0.95–1.01）、上方玻璃白板、下方带竖缝的墙板和踢脚线，x > −0.12 是通高墙板。
+  - 窗台顶 1.09 m、窗槛墙 1.09–1.49 m（原 1.00 / 1.45，投影到 v0260、p4 落在窗台下方），北墙窗下墙板竖缝；东北角包柱改成浅米色。
+  - 柜子：门面 y=−1.775（深 0.355，原 0.40）；x 0.30–1.28 玻璃展示柜（白框玻璃门从 0.835 m 起、隔板、下木门），x 1.28–2.00 木门高柜（原整柜止于 1.60），竖条拉手、内缩踢脚、程序生成的木纹贴图 `usd/textures/cabinet_wood.png`。机器人身后矮柜改成敞口木架；新增白色活动柜（x 2.03–2.53，p1、v0340）。
+  - 椅子：两种参数化模型，网背办公椅 4 把、墙角的高背皮椅 1 把；墙角椅按三角化的五星脚移到 (1.25, 0.84)（原 (0.90, 0.65)），门边、女同事、西侧 b 三把按脚中心反投影微调。
+  - 南墙主墙面厚度 0.12 → 0.10 m，`scene_parts.py` 现在把它识别为墙面（原来因浮点误差被排除）；`parts.json` 墙面 2 块，`library.json` 里办公室 `wall_light` 的颜色和 `tile_m` 跟着更新。
+- **验证**：本机 `check_scene.py` 31/31；15 个真实相机用 `render_all.py`（Open3D）重渲染并和照片叠加核对，六个视角的对比图在本机 `real2sim/scenes/real_scene1_office/preview/rework_furniture_sheet.jpg`（不入库）；`scene_parts.py` 重新生成 `parts.json`；`make_manifest.py`；`check.sh`。本机环境：`uv` + Python 3.11，Open3D 需要 arm64 的 libusb（命令见 `REPORT.md`「复现」）。
+- **没做**：没跑 Isaac（RTX 下木纹、半透明网背、光面白板没看过）；没跑 `build_asset.py`，**共享库 `Room/real_scene1` 还是旧版**，`g1d`、`g1d_mobile` 的画面要装库后才变（装库要先征得同意）；平台的场景封面和 3D 预览（`scene.glb`）没重新生成；柜高 2.05 m、白板顶 2.40 m 在所有照片之外，是估计值。
+
 ### 吧台客区 + 第一个移动操作任务（2026-10-23/24，`chongzheng/scene-counter-lounge-mobile`）
 
 - **用户要求**：把吧台旁边的客区（3 张照片：墙纸凹龛、圆桌、蓝色扶手椅）加进吧台场景，做成支持移动操作的场景。用户选定：从移动版分支开（已在 `main` 里）、加一个跨区任务并带脚本专家、椅子做成可推动的刚体、暂时没有卷尺，尺度按先验。
@@ -429,6 +442,7 @@
 0. 榜单：基线已停（16:35，用户要求），先问用户是否续跑；续跑后收两份基线（`smoke_results/baseline_*_20261022.md`，核对每个任务 `eval_time >= 1`），按任务对比 OpenWAM / pi0.5 / 有无官方数据；看失败视频做归类；然后开始把 `collect.py` 和插件接口推广到 dual X5，按优先级给无官方数据的任务写专家。
 0. 实现平台登记的 `g1d_pour_beans_any_cups`：在平台任务抽屉复制「实现任务」文本交给 coding agent（输入 `real2sim/tasks/g1d_pour_beans_any_cups/registration.json`）。
 0. 深圳实验室（已合并、部署，共享库待补装）：去现场量站位、拍头部 / 腕部画面做叠图（`overlay.py --env-cfg g1d_shenzhen_lab`）。
+0. 办公室返工（`chongzheng/scene-office-furniture`）：在 `5090-2` 隔离目录跑 `build_asset.py` 和一次 `scripted_demo --env_cfg_type g1d`，看头部相机画面里的木纹、网背、白板；征得同意后装共享库 `Room/real_scene1`，再重新生成平台封面和 `scene.glb`。
 1. 先看 `git log`、本文件和 `scripts/datagen/CONTRACT.md`。主工作区里还有物体建模 SKILL 会话没提交的改动（见"最近任务"里的"并行会话"）；拉取新的 `main` 前，先让那个会话提交，或者先 stash。
 2. 下一批数据用新流水线采集。先跑单回合探针，确认 `joint_names`、夹爪 state 和图像都正常，再按 `scripts/datagen/SKILL.md` 批量采集、导出、审计、回放，最后登记。
 3. 去现场按 `real2sim/scenes/SKILL.md` 采集（ChArUco 标定板照片、卷尺、灯光、机器人相机画面），在平台「登记场景」录入，回来跑 `overlay.py` 和 `acceptance.py`。
@@ -438,6 +452,7 @@
 
 ## 最近历史
 
+- 2026-10-24：办公室场景的墙面、柜子、椅子按照片返工（南墙腰线白板墙板、窗台高度、玻璃展示柜 + 木门高柜 + 活动柜、两款办公椅、木纹贴图），离线检查和 15 视角叠图核对通过；未装共享库。
 - 2026-10-24：吧台场景补天花板和客区顶部；平台重建的渲染图和 3D 模型不再先显示旧缓存；数采平台部署到 `0d8c8c3`（部署机上别人未提交的改动先存补丁、快进后放回，冲突两处手工合并）。
 - 2026-10-24：吧台场景加左侧客区（3 张照片拟合，墙纸凹龛、两张圆桌、可推动的扶手椅刚体）；新增移动版配置 `g1d_counter_mobile` 和第一个移动操作任务 `g1d_deliver_cup_to_lounge`（吧台拿杯送到客区圆桌），脚本专家 seed 0 前 4 个布局 4/4；修复 `is_all_gripper_open` 对 G1-D 夹爪方向判反。
 - 2026-10-24：RSI 协议初版 `rsi/AGENTS.md` + `rsi/rsi.example.yaml`：官方评测资产保留、只许泛化不许押题、数据方和评测方对抗且只经裁判交换分档成绩；统计出房间和杂物几乎全是官方保留资产。

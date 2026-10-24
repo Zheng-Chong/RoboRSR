@@ -19,14 +19,14 @@
   "source": "real_scene1_office",
   "role": "wall",
   "color": [
-   0.66,
-   0.66,
-   0.64
+   0.2918,
+   0.2542,
+   0.2159
   ],
   "texture": null,
   "roughness": 0.8,
   "metallic": 0.0,
-  "tile_m": null,
+  "tile_m": 1.0,
   "category": "scene"
  },
  {

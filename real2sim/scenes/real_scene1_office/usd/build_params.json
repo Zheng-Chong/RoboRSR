@@ -116,10 +116,15 @@
   },
   "north_window": {
    "x1": 1.28,
-   "sill_z": 1.0,
-   "band_top": 1.45,
+   "sill_z": 1.09,
+   "band_top": 1.49,
    "mullion_pitch": 1.3,
-   "src": "sill end back-projected at z=1.0 in v0260; sill/band heights from v0160+v0260 rays"
+   "seams": [
+    -1.36,
+    -0.38,
+    0.61
+   ],
+   "src": "sill front edge and band top back-projected in v0160, checked by projection into v0260/p4 (the 1.00/1.45 of the first build land below the sill there); dado seams at x -1.36/-0.38/0.61 from p4, -0.38 also in v0160/v0260"
   },
   "ne_block": {
    "x0": 1.28,
@@ -129,9 +134,9 @@
   "east_window": {
    "y0": -1.55,
    "y1": 1.29,
-   "sill_z": 1.0,
-   "band_top": 1.45,
-   "src": "E sill start (2.92,1.29); y0 estimate"
+   "sill_z": 1.09,
+   "band_top": 1.49,
+   "src": "E sill start (2.92,1.29); y0 estimate; heights as the N window"
   },
   "door": {
    "y0": 0.95,
@@ -146,19 +151,54 @@
    "z1": 2.1,
    "src": "+X bottom corner triangulated (-0.60,-2.11,1.02); width est. (86in)"
   },
+  "south_wall": {
+   "board_x1": -0.12,
+   "board_top": 2.4,
+   "rail": [
+    0.83,
+    0.935
+   ],
+   "skirting": 0.05,
+   "seam_x": -0.63,
+   "seam_pitch": 0.53,
+   "src": "p3 (v0400 agrees): wall/floor line at y=-2.13; glass whiteboard from the wood rail up, +X edge x=-0.11/-0.13; rail 0.83-0.935; dado seams x -0.63/-1.15/-1.68; x > -0.12 a full-height panel; board top above every view (2.40 est.)"
+  },
   "cabinets": {
-   "x0": 0.35,
-   "x1": 1.6,
-   "depth": 0.4,
+   "x0": 0.3,
+   "x_split": 1.28,
+   "x1": 2.0,
+   "front_y": -1.775,
    "height": 2.05,
-   "src": "floor back-projection of cabinet ends in v0340/v0400"
+   "plinth": 0.09,
+   "split_z": 0.835,
+   "shelves": [
+    1.23,
+    1.64
+   ],
+   "handle_low": [
+    0.65,
+    0.78
+   ],
+   "handle_up": [
+    1.22,
+    1.36
+   ],
+   "src": "door face from the lower-door handle tops triangulated in v0340+v0400+p2 (y=-1.745, residual <2 cm, handles 3 cm proud); glass unit x 0.28-0.33..1.18-1.33, glass from z 0.83 (v0400, p2); tall wood unit centre seam x 1.55-1.62, -X end x 2.0-2.1 (v0340 floor line and door face); shelf z 1.23 (v0400); top 2.05 est. (above every view)"
   },
   "bench": {
-   "x0": -0.4,
-   "x1": 0.35,
+   "x0": -0.45,
+   "x1": 0.28,
    "depth": 0.36,
-   "height": 0.48,
-   "src": "visible behind the real robot; size est."
+   "height": 0.44,
+   "src": "behind the real robot; top z 0.42-0.44 at x -0.47..0.22 in p2; depth est."
+  },
+  "pedestal": {
+   "x0": 2.03,
+   "x1": 2.53,
+   "y0": -1.87,
+   "y1": -1.49,
+   "height": 0.6,
+   "src": "white drawer pedestal, drawer face toward -X: face x=2.03, y -1.87..-1.49 back-projected in p1 and v0340; top z 0.59 (v0340); depth est."
   },
   "sofa": {
    "x0": -1.66,
@@ -206,29 +246,34 @@
    "west_a": [
     -1.45,
     -0.84,
-    90
+    90,
+    "task"
    ],
    "west_b": [
-    -1.39,
-    0.05,
-    -135
+    -1.5,
+    0.01,
+    -135,
+    "task"
    ],
    "door": [
-    -1.98,
-    1.34,
-    180
+    -2.15,
+    1.64,
+    -150,
+    "task"
    ],
    "corner": [
-    0.9,
-    0.65,
-    90
+    1.25,
+    0.84,
+    124,
+    "exec"
    ],
    "woman": [
-    1.15,
-    -0.85,
-    0
+    1.23,
+    -0.94,
+    0,
+    "task"
    ],
-   "src": "star-base centers back-projected to the floor (v0040/v0160/v0480); seat centers at z=0.48"
+   "src": "first build: star-base centers back-projected to the floor (v0040/v0160/v0480). Rework: corner hub triangulated in v0300+p1 (residual 4 mm), facing the v0260/v0300 cameras; door, woman and west_b hubs back-projected at z=0.1 in two or three views each (v0160/v0100, v0300/p1, v0100/v0480/v0040); west_a kept (its back top triangulates to (-1.07,-0.81) in v0480+p0, as the first build). task: mesh-back chair with T arms and a black base (v0040, v0100, v0160, v0480); exec: the padded high-back chair with chrome arms and base by the plant (v0260, v0300, p4)"
   }
  },
  "sun_direction_to_sun": [

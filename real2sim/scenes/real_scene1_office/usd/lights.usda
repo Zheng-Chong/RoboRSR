@@ -20,22 +20,22 @@ def Xform "Lights"
     def RectLight "WindowFillNorth"
     {
         color3f inputs:color = (0.92, 0.96, 1)
-        float inputs:height = 1.35
+        float inputs:height = 1.31
         float inputs:intensity = 400
         float inputs:width = 3.93
         float3 xformOp:rotateXYZ = (-90, 0, 0)
-        double3 xformOp:translate = (-0.6849999999999999, 1.83, 2.125)
+        double3 xformOp:translate = (-0.6849999999999999, 1.83, 2.145)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
     }
 
     def RectLight "WindowFillEast"
     {
         color3f inputs:color = (0.92, 0.96, 1)
-        float inputs:height = 1.35
+        float inputs:height = 1.31
         float inputs:intensity = 250
         float inputs:width = 2.84
         float3 xformOp:rotateXYZ = (-90, 0, -90)
-        double3 xformOp:translate = (2.85, -0.13, 2.125)
+        double3 xformOp:translate = (2.85, -0.13, 2.145)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
     }
 

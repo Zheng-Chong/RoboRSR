@@ -167,19 +167,21 @@
   "colliders": "/Background/Colliders/* (guide purpose, box/convex approximations)",
   "layout_sources": {
    "room": "W glass partition from point cloud x~-2.4..-2.7 and door-frame back-projection; E wall from E-window sill start (2.92,1.29) seen in 3 views; N wall from sofa back; S wall from TV corner triangulation (y=-2.11)",
-   "north_window": "sill end back-projected at z=1.0 in v0260; sill/band heights from v0160+v0260 rays",
+   "north_window": "sill front edge and band top back-projected in v0160, checked by projection into v0260/p4 (the 1.00/1.45 of the first build land below the sill there); dado seams at x -1.36/-0.38/0.61 from p4, -0.38 also in v0160/v0260",
    "ne_block": "solid corner block between N window end and E window start",
-   "east_window": "E sill start (2.92,1.29); y0 estimate",
+   "east_window": "E sill start (2.92,1.29); y0 estimate; heights as the N window",
    "door": "door-frame bottom back-projected near (-2.6,1.65); width est.",
    "tv": "+X bottom corner triangulated (-0.60,-2.11,1.02); width est. (86in)",
-   "cabinets": "floor back-projection of cabinet ends in v0340/v0400",
-   "bench": "visible behind the real robot; size est.",
+   "south_wall": "p3 (v0400 agrees): wall/floor line at y=-2.13; glass whiteboard from the wood rail up, +X edge x=-0.11/-0.13; rail 0.83-0.935; dado seams x -0.63/-1.15/-1.68; x > -0.12 a full-height panel; board top above every view (2.40 est.)",
+   "cabinets": "door face from the lower-door handle tops triangulated in v0340+v0400+p2 (y=-1.745, residual <2 cm, handles 3 cm proud); glass unit x 0.28-0.33..1.18-1.33, glass from z 0.83 (v0400, p2); tall wood unit centre seam x 1.55-1.62, -X end x 2.0-2.1 (v0340 floor line and door face); shelf z 1.23 (v0400); top 2.05 est. (above every view)",
+   "bench": "behind the real robot; top z 0.42-0.44 at x -0.47..0.22 in p2; depth est.",
+   "pedestal": "white drawer pedestal, drawer face toward -X: face x=2.03, y -1.87..-1.49 back-projected in p1 and v0340; top z 0.59 (v0340); depth est.",
    "sofa": "foot + arm back-projection in v0160, leather point extents",
    "plant": "foliage point centroid + rim triangulation",
    "desk_east": "front corners triangulated (0.60,0.33,0.77)/(0.59,-0.52); back edge v0300/v0340 at z=0.75",
    "desk_west": "legs back-projected (-1.23..-1.34, -0.26..-0.44); near corner (-1.16,-0.32) at z=0.75",
    "desk_west2": "orange points near x=-2.4; coarse",
-   "chairs": "star-base centers back-projected to the floor (v0040/v0160/v0480); seat centers at z=0.48"
+   "chairs": "first build: star-base centers back-projected to the floor (v0040/v0160/v0480). Rework: corner hub triangulated in v0300+p1 (residual 4 mm), facing the v0260/v0300 cameras; door, woman and west_b hubs back-projected at z=0.1 in two or three views each (v0160/v0100, v0300/p1, v0100/v0480/v0040); west_a kept (its back top triangulates to (-1.07,-0.81) in v0480+p0, as the first build). task: mesh-back chair with T arms and a black base (v0040, v0100, v0160, v0480); exec: the padded high-back chair with chrome arms and base by the plant (v0260, v0300, p4)"
   }
  },
  "lights": {
@@ -193,16 +195,16 @@
  },
  "files": {
   "usd/background.usda": {
-   "bytes": 1297122,
-   "sha256": "04aae5b33b37b865be1f1bee9f50ec934c93091b47e31932fffa662a70ee4479"
+   "bytes": 2535793,
+   "sha256": "d307a4f03f509ac20cb04d15fd454ac140763a97fda608998b4da3ca95f5c904"
   },
   "usd/build_params.json": {
-   "bytes": 4889,
-   "sha256": "bbe61d3b01c52c4f5e300a1fe76d4203fe87b6e73fdba15e0afe8fef4badf5e2"
+   "bytes": 6549,
+   "sha256": "7c57c68a858ea625a2d67873ffa5cc3e2ce7217bae8532b08e7b27847b1377c9"
   },
   "usd/lights.usda": {
    "bytes": 1871,
-   "sha256": "12cf20faacab577b6cfe436d2697090e64cbf276faef76e111887efb80bdd321"
+   "sha256": "e02dcce5cb2dfd64b8af06b460e3ef4f21b5608b1a931af118252b0fdfc19722"
   },
   "usd/objects/blue_cup_a.usda": {
    "bytes": 56771,
@@ -224,6 +226,10 @@
    "bytes": 58912,
    "sha256": "be2ae6d7a67fcbfaac0b1600293d4e7b139dfc0465dc6f96c0e9e8e21c3a963b"
   },
+  "usd/parts.json": {
+   "bytes": 1888,
+   "sha256": "37ce4e636dba7adb0e6a01a6273e8bf3377258553f60f8f95ce655386c84f88b"
+  },
   "usd/scene.usda": {
    "bytes": 2036,
    "sha256": "a73f85e8127934c6b1200e72c7c9e57cc49b6a3b7c8069aec15a75630332db21"
@@ -231,6 +237,10 @@
   "usd/table.usda": {
    "bytes": 39405,
    "sha256": "a50e135126f16d1a190927c89ea4e44f2b2616d524ee8459a577672a4e6eb303"
+  },
+  "usd/textures/cabinet_wood.png": {
+   "bytes": 351196,
+   "sha256": "4c2f7da4fa97f9dbc16291613f965041da0a28e147993a501184309ae42a7acd"
   },
   "usd/textures/carpet_tile.png": {
    "bytes": 375497,

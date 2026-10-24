@@ -47,14 +47,30 @@ LAYOUT = dict(
               src="W glass partition from point cloud x~-2.4..-2.7 and door-frame back-projection; "
                   "E wall from E-window sill start (2.92,1.29) seen in 3 views; N wall from sofa back; "
                   "S wall from TV corner triangulation (y=-2.11)"),
-    north_window=dict(x1=1.28, sill_z=1.00, band_top=1.45, mullion_pitch=1.30,
-                      src="sill end back-projected at z=1.0 in v0260; sill/band heights from v0160+v0260 rays"),
+    north_window=dict(x1=1.28, sill_z=1.09, band_top=1.49, mullion_pitch=1.30, seams=(-1.36, -0.38, 0.61),
+                      src="sill front edge and band top back-projected in v0160, checked by projection into v0260/p4 "
+                          "(the 1.00/1.45 of the first build land below the sill there); dado seams at x -1.36/-0.38/0.61 "
+                          "from p4, -0.38 also in v0160/v0260"),
     ne_block=dict(x0=1.28, y0=1.29, src="solid corner block between N window end and E window start"),
-    east_window=dict(y0=-1.55, y1=1.29, sill_z=1.00, band_top=1.45, src="E sill start (2.92,1.29); y0 estimate"),
+    east_window=dict(y0=-1.55, y1=1.29, sill_z=1.09, band_top=1.49, src="E sill start (2.92,1.29); y0 estimate; "
+                                                                        "heights as the N window"),
     door=dict(y0=0.95, y1=1.88, height=2.10, src="door-frame bottom back-projected near (-2.6,1.65); width est."),
     tv=dict(x0=-2.50, x1=-0.60, z0=1.03, z1=2.10, src="+X bottom corner triangulated (-0.60,-2.11,1.02); width est. (86in)"),
-    cabinets=dict(x0=0.35, x1=1.60, depth=0.40, height=2.05, src="floor back-projection of cabinet ends in v0340/v0400"),
-    bench=dict(x0=-0.40, x1=0.35, depth=0.36, height=0.48, src="visible behind the real robot; size est."),
+    south_wall=dict(board_x1=-0.12, board_top=2.40, rail=(0.83, 0.935), skirting=0.05, seam_x=-0.63, seam_pitch=0.53,
+                    src="p3 (v0400 agrees): wall/floor line at y=-2.13; glass whiteboard from the wood rail up, +X edge "
+                        "x=-0.11/-0.13; rail 0.83-0.935; dado seams x -0.63/-1.15/-1.68; x > -0.12 a full-height panel; "
+                        "board top above every view (2.40 est.)"),
+    cabinets=dict(x0=0.30, x_split=1.28, x1=2.00, front_y=-1.775, height=2.05, plinth=0.09, split_z=0.835,
+                  shelves=(1.23, 1.64), handle_low=(0.65, 0.78), handle_up=(1.22, 1.36),
+                  src="door face from the lower-door handle tops triangulated in v0340+v0400+p2 (y=-1.745, residual "
+                      "<2 cm, handles 3 cm proud); glass unit x 0.28-0.33..1.18-1.33, glass from z 0.83 (v0400, p2); "
+                      "tall wood unit centre seam x 1.55-1.62, -X end x 2.0-2.1 (v0340 floor line and door face); "
+                      "shelf z 1.23 (v0400); top 2.05 est. (above every view)"),
+    bench=dict(x0=-0.45, x1=0.28, depth=0.36, height=0.44, src="behind the real robot; top z 0.42-0.44 at x -0.47..0.22 "
+                                                              "in p2; depth est."),
+    pedestal=dict(x0=2.03, x1=2.53, y0=-1.87, y1=-1.49, height=0.60,
+                  src="white drawer pedestal, drawer face toward -X: face x=2.03, y -1.87..-1.49 back-projected in p1 "
+                      "and v0340; top z 0.59 (v0340); depth est."),
     sofa=dict(x0=-1.66, x1=0.62, y0=1.10, y1=1.95, seat_z=0.44, back_z=0.81, arm_z=0.62,
               src="foot + arm back-projection in v0160, leather point extents"),
     plant=dict(x=0.93, y=1.45, pot_r=0.19, pot_h=0.75, top=1.45, src="foliage point centroid + rim triangulation"),
@@ -62,9 +78,14 @@ LAYOUT = dict(
                    src="front corners triangulated (0.60,0.33,0.77)/(0.59,-0.52); back edge v0300/v0340 at z=0.75"),
     desk_west=dict(x0=-1.95, x1=-1.22, y0=-2.10, y1=-0.30, top=0.75, src="legs back-projected (-1.23..-1.34, -0.26..-0.44); near corner (-1.16,-0.32) at z=0.75"),
     desk_west2=dict(x0=-2.62, x1=-2.02, y0=-2.10, y1=-0.40, top=0.75, src="orange points near x=-2.4; coarse"),
-    chairs=dict(west_a=(-1.45, -0.84, 90), west_b=(-1.39, 0.05, -135), door=(-1.98, 1.34, 180),
-                corner=(0.90, 0.65, 90), woman=(1.15, -0.85, 0),
-                src="star-base centers back-projected to the floor (v0040/v0160/v0480); seat centers at z=0.48"),
+    chairs=dict(west_a=(-1.45, -0.84, 90, "task"), west_b=(-1.50, 0.01, -135, "task"), door=(-2.15, 1.64, -150, "task"),
+                corner=(1.25, 0.84, 124, "exec"), woman=(1.23, -0.94, 0, "task"),
+                src="first build: star-base centers back-projected to the floor (v0040/v0160/v0480). Rework: corner hub "
+                    "triangulated in v0300+p1 (residual 4 mm), facing the v0260/v0300 cameras; door, woman and west_b "
+                    "hubs back-projected at z=0.1 in two or three views each (v0160/v0100, v0300/p1, v0100/v0480/v0040); "
+                    "west_a kept (its back top triangulates to (-1.07,-0.81) in v0480+p0, as the first build). "
+                    "task: mesh-back chair with T arms and a black base (v0040, v0100, v0160, v0480); exec: the padded "
+                    "high-back chair with chrome arms and base by the plant (v0260, v0300, p4)"),
 )
 
 SUN_TO = np.array([-0.166, 0.732, 0.660])
@@ -72,6 +93,14 @@ SUN_TO = np.array([-0.166, 0.732, 0.660])
 # Uniform correction of the SfM metric scale (1.0 = 0.151 m per SfM unit). Set via --scale-correction
 # once a real length is measured, e.g. measured_table_length / 1.20.
 SCALE = 1.0
+
+def lin(srgb):
+    c = np.asarray(srgb, float) / 255
+    return tuple(np.round(np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4), 4))
+
+
+# Walls, cabinets and chairs: sRGB medians of the photos (named in the comment), used as albedo.
+CABINET_WOOD_SRGB = (126, 84, 44)  # lower doors, p3 (sunlit) and v0400 (shade)
 
 # name: (diffuse linear RGB, roughness, metallic, opacity)
 MATERIALS = {
@@ -86,25 +115,39 @@ MATERIALS = {
     "plush": ((0.42, 0.14, 0.045), 1.0, 0.0, 1.0),
     "steel": ((0.6, 0.6, 0.62), 0.25, 1.0, 1.0),
     "carpet": ((1.0, 1.0, 1.0), 0.95, 0.0, 1.0),
-    "wall_beige": ((0.60, 0.56, 0.50), 0.8, 0.0, 1.0),
-    "wall_light": ((0.66, 0.66, 0.64), 0.8, 0.0, 1.0),
-    "sill_white": ((0.78, 0.78, 0.76), 0.4, 0.0, 1.0),
-    "spandrel": ((0.045, 0.047, 0.05), 0.5, 0.0, 1.0),
+    "wall_beige": (lin((143, 126, 120)), 0.8, 0.0, 1.0),  # window-wall dado, v0160/v0260
+    "wall_light": (lin((147, 138, 128)), 0.8, 0.0, 1.0),  # full-height panel beside the cabinets, p3/v0400
+    "wall_panel": (lin((141, 138, 138)), 0.7, 0.0, 1.0),  # dado under the wood rail, p3/v0400
+    "whiteboard": (lin((172, 182, 177)), 0.12, 0.0, 1.0),  # glass whiteboard above the rail, p3/v0400
+    "skirting": (lin((51, 34, 26)), 0.5, 0.0, 1.0),  # p3
+    "seam": ((0.02, 0.02, 0.02), 0.9, 0.0, 1.0),
+    "sill_white": (lin((180, 180, 184)), 0.4, 0.0, 1.0),  # v0160
+    "spandrel": (lin((62, 61, 62)), 0.5, 0.0, 1.0),  # v0160/v0260
+    "column_clad": (lin((209, 200, 185)), 0.6, 0.0, 1.0),  # NE corner column, v0260
     "mullion": ((0.06, 0.06, 0.065), 0.4, 0.3, 1.0),
     "exterior": ((1.0, 1.0, 1.0), 1.0, 0.0, 1.0),
     "leather": ((0.36, 0.10, 0.03), 0.45, 0.0, 1.0),
     "pot_white": ((0.80, 0.80, 0.78), 0.3, 0.0, 1.0),
     "leaf": ((0.04, 0.16, 0.03), 0.6, 0.0, 1.0),
-    "chair_black": ((0.025, 0.025, 0.028), 0.6, 0.0, 1.0),
+    "chair_black": (lin((25, 22, 23)), 0.45, 0.0, 1.0),  # padded high-back chair, v0260
+    "chair_seat": (lin((39, 42, 53)), 0.9, 0.0, 1.0),  # task-chair seat fabric, v0480
+    "chair_mesh": (lin((40, 41, 45)), 0.8, 0.0, 0.6),  # task-chair back mesh, lets the room through (v0100)
+    "chair_nylon": ((0.02, 0.02, 0.022), 0.4, 0.0, 1.0),
     "chrome": ((0.55, 0.55, 0.57), 0.2, 1.0, 1.0),
     "desk_orange": ((0.62, 0.25, 0.05), 0.45, 0.0, 1.0),
-    "cabinet_wood": ((0.33, 0.15, 0.055), 0.55, 0.0, 1.0),
+    "cabinet_wood": (lin(CABINET_WOOD_SRGB), 0.5, 0.0, 1.0),  # diffuse from textures/cabinet_wood.png
+    "plinth": (lin((73, 49, 30)), 0.6, 0.0, 1.0),  # p3
+    "handle_steel": ((0.55, 0.55, 0.56), 0.3, 1.0, 1.0),
+    "pedestal_white": (lin((190, 190, 186)), 0.5, 0.0, 1.0),
     "glass": ((0.55, 0.60, 0.60), 0.05, 0.0, 0.25),
     "frosted": ((0.75, 0.77, 0.77), 0.6, 0.0, 0.7),
     "tv_black": ((0.01, 0.01, 0.012), 0.15, 0.0, 1.0),
-    "wood_strip": ((0.28, 0.14, 0.06), 0.5, 0.0, 1.0),
+    "wood_strip": (lin((84, 56, 38)), 0.45, 0.0, 1.0),  # rail under the TV, p3
     "basket": ((0.80, 0.78, 0.70), 0.7, 0.0, 1.0),
 }
+
+TEXTURED = {"carpet": "carpet_tile.png", "exterior": "window_exterior.png", "cabinet_wood": "cabinet_wood.png"}
+WOOD_TILE_M = 0.6  # cabinet_wood.png covers 0.6 x 0.6 m, grain along v
 
 PHYS = {"default": (0.5, 0.45, 0.0), "table_white": (0.5, 0.45, 0.0), "carpet": (0.8, 0.7, 0.0)}
 
@@ -144,6 +187,41 @@ def rounded_slab(length, width, r, z0, z1):
     m = trimesh.creation.extrude_polygon(poly, z1 - z0)
     m.apply_translation([0, 0, z0])
     return m
+
+
+def planar_uv(tile_m):
+    """UV callback for Layer.mesh: each triangle projected on its dominant plane, `tile_m` metres per unit;
+    vertical faces get v = z (wood grain runs up the doors)."""
+    def uv(fv):
+        tri = fv.reshape(-1, 3, 3)
+        ax = np.repeat(np.abs(np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])).argmax(1), 3)[:, None]
+        return np.where(ax == 0, fv[:, [1, 2]], np.where(ax == 1, fv[:, [0, 2]], fv[:, [0, 1]])) / tile_m
+    return uv
+
+
+def sheet(f, nu, nv, thick):
+    """Closed thin shell over the surface f(u, v) -> xyz, u, v in [0, 1], thickened by `thick` toward -Y."""
+    U, V = np.meshgrid(np.linspace(0, 1, nu), np.linspace(0, 1, nv), indexing="ij")
+    P = np.array([f(u, v) for u, v in zip(U.ravel(), V.ravel())])
+    n = len(P)
+    faces = []
+    for i in range(nu - 1):
+        for j in range(nv - 1):
+            a, b, c, d = i * nv + j, (i + 1) * nv + j, (i + 1) * nv + j + 1, i * nv + j + 1
+            faces += [[a, b, c], [a, c, d], [a + n, c + n, b + n], [a + n, d + n, c + n]]
+    ring = ([i * nv for i in range(nu)] + [(nu - 1) * nv + j for j in range(1, nv)]
+            + [i * nv + nv - 1 for i in range(nu - 2, -1, -1)] + [j for j in range(nv - 2, 0, -1)])
+    for a, b in zip(ring, ring[1:] + ring[:1]):
+        faces += [[a, b, b + n], [a, b + n, a + n]]
+    m = trimesh.Trimesh(np.vstack([P, P + [0.0, -thick, 0.0]]), faces, process=False)
+    m.fix_normals()
+    return m, P[ring]
+
+
+def tube(points, r, closed=False, sections=8):
+    pts = list(points) + ([points[0]] if closed else [])
+    return trimesh.util.concatenate([trimesh.creation.cylinder(radius=r, segment=[a, b], sections=sections)
+                                     for a, b in zip(pts[:-1], pts[1:])])
 
 
 def cup_profile(H, rt, rb, wall, bottom):
@@ -195,7 +273,7 @@ class Layer:
         if opacity < 1.0:
             sh.CreateInput("opacity", Sdf.ValueTypeNames.Float).Set(opacity)
             sh.CreateInput("ior", Sdf.ValueTypeNames.Float).Set(1.49)
-        tex_file = {"carpet": "carpet_tile.png", "exterior": "window_exterior.png"}.get(key)
+        tex_file = TEXTURED.get(key)
         if tex_file:
             st = UsdShade.Shader.Define(self.stage, f"{self.rootpath}/Looks/{key}/stReader")
             st.CreateIdAttr("UsdPrimvarReader_float2")
@@ -277,9 +355,27 @@ class Layer:
 
 
 # ----------------------------------------------------------------------------- textures
+def wood_texture(mean_srgb, size=512, seed=7):
+    """Tileable straight-grain veneer, sRGB mean = mean_srgb; grain along image rows' normal (v)."""
+    rng = np.random.default_rng(seed)
+    u = np.arange(size) / size
+    grain = sum(rng.normal() / f * np.sin(2 * np.pi * (f * u + rng.uniform())) for f in range(6, 120))
+    drift = sum(rng.normal() / f * np.sin(2 * np.pi * (f * u + rng.uniform())) for f in (1, 2))
+    shift = (np.arange(size)[None, :] + 3 * drift[:, None]).astype(int) % size
+    g = grain[shift]
+    g = (g - g.mean()) / g.std()
+    fine = cv2.GaussianBlur(np.pad(rng.normal(size=(size, size)), 32, mode="wrap"), (0, 0), sigmaX=0.7, sigmaY=8)
+    fine = fine[32:-32, 32:-32]
+    shade = 1 + 0.035 * g + 0.25 * fine
+    rgb = np.asarray(mean_srgb, float)[None, None, :] * shade[..., None]
+    rgb *= np.asarray(mean_srgb, float) / rgb.reshape(-1, 3).mean(0)
+    return np.clip(rgb[..., ::-1], 0, 255).astype(np.uint8)
+
+
 def build_textures():
     """Copy the packaged texture sources; regenerate them from the observation analysis only if missing."""
     TEX.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(TEX / "cabinet_wood.png"), wood_texture(CABINET_WOOD_SRGB))
     src = HERE / "texture_src"
     if (src / "carpet_tile.png").exists() and (src / "window_exterior.png").exists():
         for name in ("carpet_tile.png", "window_exterior.png"):
@@ -301,7 +397,7 @@ def build_textures():
 
 
 # ----------------------------------------------------------------------------- scene parts
-def window_wall(L, name, axis, fixed, a0, a1, sill_z, band_top, H, pitch, inward):
+def window_wall(L, name, axis, fixed, a0, a1, sill_z, band_top, H, pitch, inward, seams=()):
     """Window wall along `axis` ('x' or 'y') at coordinate `fixed`; inward = +1/-1 normal toward room."""
     def bx(u0, u1, d0, d1, z0, z1):
         if axis == "x":
@@ -310,8 +406,10 @@ def window_wall(L, name, axis, fixed, a0, a1, sill_z, band_top, H, pitch, inward
         return box_xyz(fixed + inward * d1, fixed + inward * d0, u0, u1, z0, z1) if inward < 0 else \
             box_xyz(fixed + inward * d0, fixed + inward * d1, u0, u1, z0, z1)
 
-    L.mesh(f"{name}/lower", bx(a0, a1, -0.12, 0.0, 0.0, sill_z - 0.03), "wall_beige")
-    L.mesh(f"{name}/sill", bx(a0, a1, -0.12, 0.10, sill_z - 0.03, sill_z), "sill_white")
+    L.mesh(f"{name}/lower", bx(a0, a1, -0.12, 0.0, 0.0, sill_z - 0.04), "wall_beige", uv=planar_uv(1.0))
+    for k, u in enumerate(seams):
+        L.mesh(f"{name}/seam_{k}", bx(u - 0.002, u + 0.002, 0.0, 0.002, 0.0, sill_z - 0.04), "seam")
+    L.mesh(f"{name}/sill", bx(a0, a1, -0.12, 0.10, sill_z - 0.04, sill_z), "sill_white")
     L.mesh(f"{name}/spandrel", bx(a0, a1, -0.10, -0.02, sill_z, band_top), "spandrel")
     for k, u in enumerate(np.arange(a0, a1 + 1e-6, pitch)):
         L.mesh(f"{name}/mullion_{k}", bx(max(a0, u - 0.03), min(a1, u + 0.03), -0.10, -0.02, band_top, H), "mullion")
@@ -326,26 +424,26 @@ def add_room(L):
            uv=lambda fv: fv[:, :2] / 0.5)
     L.collider("Colliders/floor", box_xyz(X0 - 1, X1 + 1, Y0 - 1, Y1 + 1, -0.10, 0.0), pkey="carpet")
     nw, ne, ew = LAYOUT["north_window"], LAYOUT["ne_block"], LAYOUT["east_window"]
-    window_wall(L, "WallN", "x", Y1, X0, nw["x1"], nw["sill_z"], nw["band_top"], H, nw["mullion_pitch"], -1)
+    window_wall(L, "WallN", "x", Y1, X0, nw["x1"], nw["sill_z"], nw["band_top"], H, nw["mullion_pitch"], -1,
+                nw["seams"])
     L.mesh("Exterior/north", quad([-6.0, Y1 + 2.0, 0], [-6.0, Y1 + 2.0, 4.5], [5.0, Y1 + 2.0, 4.5], [5.0, Y1 + 2.0, 0]),
            "exterior", uv=lambda fv: np.c_[(fv[:, 0] + 6.0) / 11.0, fv[:, 2] / 4.5], no_shadow=True)
-    L.mesh("NECornerBlock", box_xyz(ne["x0"], X1 + 0.12, ne["y0"], Y1 + 0.12, 0.0, H), "wall_beige")
+    L.mesh("NECornerBlock", box_xyz(ne["x0"], X1 + 0.12, ne["y0"], Y1 + 0.12, 0.0, H), "column_clad")
     window_wall(L, "WallE", "y", X1, ew["y0"], ew["y1"], ew["sill_z"], ew["band_top"], H, 1.30, -1)
-    L.mesh("WallE/solid_south", box_xyz(X1, X1 + 0.12, Y0, ew["y0"], 0.0, H), "wall_light")
+    L.mesh("WallE/solid_south", box_xyz(X1, X1 + 0.12, Y0, ew["y0"], 0.0, H), "wall_light", uv=planar_uv(1.0))
     L.mesh("Exterior/east", quad([X1 + 2.0, -6.0, 0], [X1 + 2.0, 5.0, 0], [X1 + 2.0, 5.0, 4.5], [X1 + 2.0, -6.0, 4.5]),
            "exterior", uv=lambda fv: np.c_[(fv[:, 1] + 6.0) / 11.0, fv[:, 2] / 4.5], no_shadow=True)
-    tv, cb, bn = LAYOUT["tv"], LAYOUT["cabinets"], LAYOUT["bench"]
-    L.mesh("WallS/wall", box_xyz(X0, X1, Y0 - 0.12, Y0, 0.0, H), "wall_light")
-    L.mesh("WallS/wood_strip", box_xyz(X0, cb["x0"], Y0, Y0 + 0.03, tv["z0"] - 0.08, tv["z0"] - 0.02), "wood_strip")
+    tv, cb, sw = LAYOUT["tv"], LAYOUT["cabinets"], LAYOUT["south_wall"]
+    bx1, (r0, r1), sk = sw["board_x1"], sw["rail"], sw["skirting"]
+    L.mesh("WallS/wall", box_xyz(X0, X1, Y0 - 0.10, Y0, 0.0, H), "wall_light", uv=planar_uv(1.0))
+    L.mesh("WallS/whiteboard", box_xyz(X0, bx1, Y0, Y0 + 0.008, r1, sw["board_top"]), "whiteboard")
+    L.mesh("WallS/wood_strip", box_xyz(X0, bx1, Y0, Y0 + 0.025, r0, r1), "wood_strip")
+    L.mesh("WallS/dado", box_xyz(X0, bx1, Y0, Y0 + 0.008, sk, r0), "wall_panel")
+    for k, x in enumerate(np.arange(sw["seam_x"], X0, -sw["seam_pitch"])):
+        L.mesh(f"WallS/dado_seam_{k}", box_xyz(x - 0.002, x + 0.002, Y0 + 0.008, Y0 + 0.010, sk, r0), "seam")
+    L.mesh("WallS/skirting", box_xyz(X0, cb["x0"], Y0, Y0 + 0.012, 0.0, sk), "skirting")
     L.mesh("WallS/tv", box_xyz(tv["x0"], tv["x1"], Y0 + 0.01, Y0 + 0.06, tv["z0"], tv["z1"]), "tv_black")
-    L.mesh("Cabinets/body", box_xyz(cb["x0"], cb["x1"], Y0, Y0 + cb["depth"], 0.0, cb["height"]), "cabinet_wood")
-    mid = (cb["x0"] + cb["x1"]) / 2
-    for i, (a, b) in enumerate([(cb["x0"], mid), (mid, cb["x1"])]):
-        L.mesh(f"Cabinets/glass_{i}", box_xyz(a + 0.04, b - 0.04, Y0 + cb["depth"], Y0 + cb["depth"] + 0.01, 1.20,
-                                              cb["height"] - 0.06), "glass")
-        L.mesh(f"Cabinets/frame_{i}", box_xyz(a + 0.02, b - 0.02, Y0 + cb["depth"], Y0 + cb["depth"] + 0.008, 1.17,
-                                              1.20), "frame_white")
-    L.mesh("Bench", box_xyz(bn["x0"], bn["x1"], Y0, Y0 + bn["depth"], 0.0, bn["height"]), "cabinet_wood")
+    add_cabinets(L, Y0)
     d = LAYOUT["door"]
     L.mesh("WallW/glass_south", box_xyz(X0 - 0.02, X0, Y0, d["y0"], 0.0, H), "glass")
     L.mesh("WallW/glass_north", box_xyz(X0 - 0.02, X0, d["y1"], Y1, 0.0, H), "glass")
@@ -354,12 +452,82 @@ def add_room(L):
     for k, y in enumerate([Y0 + 0.02, d["y0"], d["y1"], Y1 - 0.02]):
         L.mesh(f"WallW/post_{k}", box_xyz(X0 - 0.05, X0 + 0.01, y - 0.025, y + 0.025, 0.0, H), "frame_white")
     L.mesh("WallW/base", box_xyz(X0 - 0.05, X0 + 0.01, Y0, Y1, 0.0, 0.08), "frame_white")
+    bn, pd = LAYOUT["bench"], LAYOUT["pedestal"]
     for nm, b in {"wallN": (X0, X1, Y1, Y1 + 0.12, 0.0, H), "wallS": (X0, X1, Y0 - 0.12, Y0, 0.0, H),
                   "wallE": (X1, X1 + 0.12, Y0, Y1, 0.0, H), "wallW": (X0 - 0.05, X0, Y0, Y1, 0.0, H),
                   "ne_block": (ne["x0"], X1, ne["y0"], Y1, 0.0, H),
-                  "cabinets": (cb["x0"], cb["x1"], Y0, Y0 + cb["depth"], 0.0, cb["height"]),
-                  "bench": (bn["x0"], bn["x1"], Y0, Y0 + bn["depth"], 0.0, bn["height"])}.items():
+                  "cabinets": (cb["x0"], cb["x1"], Y0, cb["front_y"], 0.0, cb["height"]),
+                  "bench": (bn["x0"], bn["x1"], Y0, Y0 + bn["depth"], 0.0, bn["height"]),
+                  "pedestal": (pd["x0"], pd["x1"], pd["y0"], pd["y1"], 0.0, pd["height"])}.items():
         L.collider(f"Colliders/{nm}", box_xyz(*b))
+
+
+def handle(x, y_face, z0, z1):
+    """Bar pull standing 30 mm proud of a door face at y_face (doors face +Y)."""
+    parts = [box_xyz(x - 0.006, x + 0.006, y_face + 0.018, y_face + 0.030, z0, z1)]
+    for z in (z0 + 0.012, z1 - 0.027):
+        parts.append(box_xyz(x - 0.005, x + 0.005, y_face, y_face + 0.018, z, z + 0.015))
+    return trimesh.util.concatenate(parts)
+
+
+def add_cabinets(L, Y0):
+    """South-wall storage: a display unit (glass upper doors, x0..x_split) and a tall wood unit (x_split..x1), both
+    with wood lower doors and a recessed plinth; the low open bench behind the real robot; the white drawer pedestal
+    past the tall unit's +X end."""
+    c = LAYOUT["cabinets"]
+    yf, yc = c["front_y"], c["front_y"] - 0.02  # door face, carcass front (20 mm doors)
+    zp, zm, zt, t, gap = c["plinth"], c["split_z"], c["height"], 0.018, 0.003
+    xg0, xg1, xt1 = c["x0"], c["x_split"], c["x1"]
+    wood = dict(uv=planar_uv(WOOD_TILE_M))
+    L.mesh("Cabinets/plinth", box_xyz(xg0 + 0.02, xt1 - 0.02, Y0, yf - 0.045, 0.0, zp), "plinth")
+    L.mesh("Cabinets/tall/carcass", box_xyz(xg1, xt1, Y0, yc, zp, zt), "cabinet_wood", **wood)
+    L.mesh("Cabinets/display/carcass_lower", box_xyz(xg0, xg1, Y0, yc, zp, zm), "cabinet_wood", **wood)
+    shell = [box_xyz(xg0, xg1, Y0, Y0 + t, zm, zt), box_xyz(xg0, xg0 + t, Y0, yc, zm, zt),
+             box_xyz(xg1 - t, xg1, Y0, yc, zm, zt), box_xyz(xg0, xg1, Y0, yc, zt - t, zt)]
+    shell += [box_xyz(xg0 + t, xg1 - t, Y0 + t, yc - 0.03, z - t / 2, z + t / 2) for z in c["shelves"]]
+    L.mesh("Cabinets/display/shell", trimesh.util.concatenate(shell), "cabinet_wood", **wood)
+
+    def door(path, x0, x1, z0, z1):
+        L.mesh(path, box_xyz(x0 + gap, x1 - gap, yc, yf, z0 + gap, z1 - gap), "cabinet_wood", **wood)
+
+    handles, fw = [], 0.035
+    for unit, (a, b) in {"display": (xg0, xg1), "tall": (xg1, xt1)}.items():
+        m = (a + b) / 2
+        for side, (u0, u1) in (("p", (a, m)), ("n", (m, b))):
+            door(f"Cabinets/{unit}/door_low_{side}", u0, u1, zp, zm)
+            if unit == "tall":
+                door(f"Cabinets/{unit}/door_up_{side}", u0, u1, zm, zt)
+            else:
+                g0, g1, z0, z1 = u0 + gap, u1 - gap, zm + gap, zt - gap
+                frame = [box_xyz(g0, g0 + fw, yc, yf, z0, z1), box_xyz(g1 - fw, g1, yc, yf, z0, z1),
+                         box_xyz(g0, g1, yc, yf, z0, z0 + fw), box_xyz(g0, g1, yc, yf, z1 - fw, z1)]
+                L.mesh(f"Cabinets/{unit}/door_frame_{side}", trimesh.util.concatenate(frame), "frame_white")
+                L.mesh(f"Cabinets/{unit}/door_glass_{side}",
+                       box_xyz(g0 + fw, g1 - fw, yc + 0.008, yc + 0.012, z0 + fw, z1 - fw), "glass")
+        for s in (-1, 1):
+            handles += [handle(m + s * 0.03, yf, *c["handle_low"]), handle(m + s * 0.03, yf, *c["handle_up"])]
+    L.mesh("Cabinets/handles", trimesh.util.concatenate(handles), "handle_steel")
+
+    bn = LAYOUT["bench"]
+    y1, h = Y0 + bn["depth"], bn["height"]
+    parts = [box_xyz(bn["x0"], bn["x1"], Y0, y1, h - 0.025, h), box_xyz(bn["x0"], bn["x1"], Y0, y1, 0.03, 0.05),
+             box_xyz(bn["x0"], bn["x1"], Y0, Y0 + t, 0.05, h - 0.025)]
+    parts += [box_xyz(x, x + t, Y0, y1, 0.0, h - 0.025) for x in (bn["x0"], bn["x1"] - t)]
+    L.mesh("Bench/body", trimesh.util.concatenate(parts), "cabinet_wood", **wood)
+
+    pd = LAYOUT["pedestal"]
+    x0, x1, py0, py1, h = pd["x0"], pd["x1"], pd["y0"], pd["y1"], pd["height"]
+    L.mesh("Pedestal/body", box_xyz(x0 + 0.02, x1, py0, py1, 0.03, h - 0.02), "pedestal_white")
+    L.mesh("Pedestal/top", box_xyz(x0, x1, py0, py1, h - 0.02, h), "desk_orange")
+    fronts, knobs = [], []
+    for z0, z1 in ((0.03, 0.30), (0.30, 0.45), (0.45, h - 0.02)):
+        fronts.append(box_xyz(x0, x0 + 0.02, py0 + gap, py1 - gap, z0 + gap, z1 - gap))
+        knobs.append(box_xyz(x0 - 0.02, x0, (py0 + py1) / 2 - 0.01, (py0 + py1) / 2 + 0.01, z1 - 0.06, z1 - 0.04))
+    L.mesh("Pedestal/drawers", trimesh.util.concatenate(fronts), "pedestal_white")
+    L.mesh("Pedestal/knobs", trimesh.util.concatenate(knobs), "chair_nylon")
+    L.mesh("Pedestal/casters", trimesh.util.concatenate(
+        [cyl(x, y, 0.0, 0.02, 0.03, 12) for x in (x0 + 0.05, x1 - 0.05) for y in (py0 + 0.05, py1 - 0.05)]),
+        "chair_nylon")
 
 
 def add_desk(L, name, x0, x1, y0, y1, top=0.75):
@@ -370,20 +538,61 @@ def add_desk(L, name, x0, x1, y0, y1, top=0.75):
     L.collider(f"Colliders/{name}_top", box_xyz(x0, x1, y0, y1, top - 0.025, top))
 
 
-def add_chair(L, name, x, y, yaw):
-    """Office chair; local +Y is the direction the sitter faces."""
-    parts = [box(0, 0, 0.42, 0.50, 0.48, 0.08), box(0, -0.24, 0.52, 0.46, 0.05, 0.60),
-             cyl(0, 0, 0.08, 0.025, 0.34)]
+def star_base(reach=0.31):
+    """Five-spoke base with twin-wheel casters: (spokes and hub, casters)."""
+    spokes, casters = [cyl(0, 0, 0.085, 0.045, 0.05, 20)], []
     for k in range(5):
-        a = 2 * math.pi * k / 5
-        parts.append(box(0.15 * math.cos(a), 0.15 * math.sin(a), 0.04, 0.30, 0.04, 0.03, math.degrees(a)))
+        a = math.pi / 2 + 2 * math.pi * k / 5
+        d, t = np.array([math.cos(a), math.sin(a), 0.0]), np.array([-math.sin(a), math.cos(a), 0.0])
+        pts = [d * r + t * s * w + [0, 0, z] for r, w, zs in ((0.03, 0.025, (0.09, 0.13)), (reach, 0.017, (0.06, 0.085)))
+               for s in (-1, 1) for z in zs]
+        spokes.append(trimesh.convex.convex_hull(np.array(pts)))
+        c = d * reach + [0, 0, 0.026]
+        casters.append(trimesh.creation.cylinder(radius=0.026, segment=[c - t * 0.022, c + t * 0.022], sections=16))
+        casters.append(box(*(d * reach)[:2], 0.045, 0.02, 0.02, 0.02))
+    return spokes, casters
+
+
+def chair_parts(kind):
+    """Office chair meshes by material, base centre on the floor, local +Y = the way the sitter faces."""
+    spokes, casters = star_base()
+    if kind == "task":
+        p = {"chair_nylon": spokes + casters + [cyl(0, 0, 0.13, 0.030, 0.13, 16), box(0, -0.01, 0.38, 0.22, 0.22, 0.05)],
+             "chrome": [cyl(0, 0, 0.26, 0.022, 0.13, 16)], "chair_seat": [], "chair_mesh": []}
+        seat = rounded_slab(0.50, 0.48, 0.08, 0.43, 0.50)
+        seat.apply_translation([0, 0.02, 0])
+        p["chair_seat"].append(seat)
+        z0, z1 = 0.56, 1.02  # back top 0.97-1.02 triangulated (west_a, west_b, door)
+        back, rim = sheet(lambda u, v: ((u - 0.5) * (0.47 - 0.05 * v), -0.25 - 0.16 * v + 0.55 * ((u - 0.5) * 0.47) ** 2,
+                                        z0 + v * (z1 - z0)), 9, 7, 0.006)
+        p["chair_mesh"].append(back)
+        p["chair_nylon"] += [tube(rim, 0.013, closed=True), box(0, -0.25, 0.42, 0.07, 0.04, 0.15),
+                             box(0, -0.30, 0.64, 0.30, 0.03, 0.08)]
+        for s in (-1, 1):
+            p["chair_nylon"] += [box(s * 0.18, -0.02, 0.40, 0.18, 0.05, 0.025), box(s * 0.27, -0.02, 0.40, 0.035, 0.06, 0.25)]
+            p["chair_seat"].append(box(s * 0.27, 0.0, 0.65, 0.08, 0.25, 0.03))
+        return p
+    p = {"chrome": spokes + [cyl(0, 0, 0.13, 0.028, 0.26, 16)], "chair_nylon": casters + [box(0, 0, 0.38, 0.24, 0.24, 0.05)],
+         "chair_black": []}
+    seat = rounded_slab(0.52, 0.50, 0.10, 0.43, 0.53)
+    seat.apply_translation([0, 0.02, 0])
+    z0, z1 = 0.55, 1.19  # back top 1.18 triangulated in v0260+v0300+p4
+    back, _ = sheet(lambda u, v: ((u - 0.5) * (0.52 - 0.06 * v), -0.22 - 0.20 * v + 0.45 * ((u - 0.5) * 0.52) ** 2,
+                                  z0 + v * (z1 - z0)), 9, 7, 0.08)
+    p["chair_black"] += [seat, back, box(0, -0.26, 0.42, 0.10, 0.06, 0.16)]
     for s in (-1, 1):
-        parts.append(box(s * 0.26, 0.02, 0.62, 0.05, 0.28, 0.03))
-        parts.append(box(s * 0.26, 0.02, 0.50, 0.03, 0.04, 0.12))
-    m = trimesh.util.concatenate(parts)
-    m.apply_transform(T(x, y, 0, yaw))
-    L.mesh(f"{name}/body", m, "chair_black")
-    c = box(0, -0.02, 0.0, 0.62, 0.62, 1.12)
+        x = s * 0.29
+        p["chrome"].append(tube([(x, -0.17, 0.45), (x, -0.13, 0.66), (x, 0.16, 0.66), (x, 0.20, 0.45)], 0.011))
+        p["chair_black"].append(box(x, 0.01, 0.665, 0.06, 0.24, 0.025))
+    return p
+
+
+def add_chair(L, name, x, y, yaw, kind):
+    for mat, parts in chair_parts(kind).items():
+        m = trimesh.util.concatenate(parts)
+        m.apply_transform(T(x, y, 0, yaw))
+        L.mesh(f"{name}/{mat}", m, mat)
+    c = box(0, -0.02, 0.0, 0.62, 0.62, 1.04 if kind == "task" else 1.20)
     c.apply_transform(T(x, y, 0, yaw))
     L.collider(f"Colliders/{name}", c)
 

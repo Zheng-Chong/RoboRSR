@@ -19,7 +19,7 @@
    }
   },
   {
-   "name": "stage metadata objects\\blue_cup_a.usda",
+   "name": "stage metadata objects/blue_cup_a.usda",
    "ok": true,
    "detail": {
     "upAxis": "Z",
@@ -28,7 +28,7 @@
    }
   },
   {
-   "name": "stage metadata objects\\blue_cup_b.usda",
+   "name": "stage metadata objects/blue_cup_b.usda",
    "ok": true,
    "detail": {
     "upAxis": "Z",
@@ -37,7 +37,7 @@
    }
   },
   {
-   "name": "stage metadata objects\\paper_cup.usda",
+   "name": "stage metadata objects/paper_cup.usda",
    "ok": true,
    "detail": {
     "upAxis": "Z",
@@ -46,7 +46,7 @@
    }
   },
   {
-   "name": "stage metadata objects\\plush_toy.usda",
+   "name": "stage metadata objects/plush_toy.usda",
    "ok": true,
    "detail": {
     "upAxis": "Z",
@@ -55,7 +55,7 @@
    }
   },
   {
-   "name": "stage metadata objects\\tissue_pack.usda",
+   "name": "stage metadata objects/tissue_pack.usda",
    "ok": true,
    "detail": {
     "upAxis": "Z",
@@ -87,6 +87,7 @@
    "detail": {
     "layers": 9,
     "assets": [
+     "cabinet_wood.png",
      "carpet_tile.png",
      "window_exterior.png"
     ],
@@ -104,8 +105,8 @@
    "name": "mesh validity (finite points, triangle indices, normals count, no degenerate faces)",
    "ok": true,
    "detail": {
-    "meshes": 160,
-    "triangles": 20138,
+    "meshes": 200,
+    "triangles": 29206,
     "bad": []
    }
   },
@@ -215,10 +216,10 @@
    "ok": true,
    "detail": {
     "pairs": [],
-    "min_clearance_m": 0.032,
+    "min_clearance_m": 0.055,
     "nearest": [
      "/World/Table/Colliders/top",
-     "/World/Background/Colliders/Chair_corner"
+     "/World/Background/Colliders/DeskEast_top"
     ]
    }
   },
@@ -271,15 +272,15 @@
      "emits": [
       0.0,
       -1.0,
-      0.0
+      -0.0
      ],
      "into_room": true
     },
     "WindowFillEast": {
      "emits": [
       -1.0,
-      0.0,
-      0.0
+      -0.0,
+      -0.0
      ],
      "into_room": true
     }

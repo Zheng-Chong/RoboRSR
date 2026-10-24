@@ -27,21 +27,26 @@
     {
      "path": "Background/WallE/solid_south",
      "material": "wall_light",
-     "uv_m": null
+     "uv_m": 1.0
+    },
+    {
+     "path": "Background/WallS/wall",
+     "material": "wall_light",
+     "uv_m": 1.0
     }
    ],
    "materials": [
     {
      "name": "wall_light",
      "color": [
-      0.66,
-      0.66,
-      0.64
+      0.2918,
+      0.2542,
+      0.2159
      ],
      "texture": null,
      "roughness": 0.8,
      "metallic": 0.0,
-     "tile_m": null
+     "tile_m": 1.0
     }
    ]
   },

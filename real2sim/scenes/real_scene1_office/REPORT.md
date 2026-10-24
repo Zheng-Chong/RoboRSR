@@ -79,10 +79,21 @@
 - RTX 渲染效果：曝光、色彩、半透明、阳光投影；需要用机器人相机渲染一帧，与 `reference/` 中的真实帧对比
 - 真实材料参数
 
-## 7. 复现
+## 7. 墙面、柜子、椅子返工（2026-10-24）
+
+改了什么、依据是什么见 `PLAN.md`「墙面、柜子、椅子」。验证：
+
+- `check_scene.py` 31/31 通过；任务桌离最近的背景碰撞体 5.5 cm（东侧橙色桌，原来是墙角椅 3.2 cm）。
+- 15 个真实相机都重新渲染、和原图叠加核对过（`render_all.py --tag`，`preview/` 不入库）；`preview/rework_furniture_sheet.jpg` 是六个视角的"照片 / 改前 / 改后"。柜子的玻璃门下沿、门缝、拉手，电视墙的腰线、白板边、墙板缝，窗台和窗槛墙，五把椅子的轮廓，在 v0300、v0400、v0480、p3、v0160 的叠图里目视重合；没有逐点量像素误差（门边椅在 v0160 里还偏约 30 px，墙角椅在 v0260 里偏右一点）。
+- 本机没有 Isaac：RTX 下的木纹、半透明网背、光面白板的效果没有看过。
+
+## 8. 复现
 
 ```bash
-python build_scene.py [--scale-correction k]   # 生成 usd/
+# 本机环境（macOS 上 Open3D 还要 arm64 的 libusb，放进 DYLD_FALLBACK_LIBRARY_PATH）：
+# uv run --no-project --python 3.11 --with usd-core --with trimesh --with numpy --with shapely --with scipy \
+#   --with opencv-python-headless --with open3d --with python-fcl --with rtree --with mapbox-earcut --with networkx python ...
+python build_scene.py [--scale-correction k]   # 生成 usd/；之后重跑 scripts/scenes/scene_parts.py 生成 usd/parts.json
 python check_scene.py                           # 离线检查 -> check_report.json
 python make_manifest.py                         # manifest.json（含 sha256）
 python render_all.py                            # 预览（每个相机一个进程，自动重试空帧）
