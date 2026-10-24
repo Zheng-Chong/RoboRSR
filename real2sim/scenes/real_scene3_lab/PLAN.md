@@ -124,11 +124,14 @@ uv run --no-project --python 3.11 --with usd-core --with trimesh --with numpy --
 
 - **2026-10-22，家具 v2 的 Isaac RTX 渲染**：在 `5090-2` 的隔离目录 `/data/robodojo-runs/lab-furniture-20261022-003901/`（GPU 4，只拷了场景目录和 `scripts/scenes/render_scenes.py`）只载场景跑 `render_scenes.py`：退出码 0，日志没有报错；桌椅柜正常渲染，有投影。
 - **2026-10-22，装共享库前的验证**：在 `5090-2` 的隔离目录 `lab-furniture-install-20261022-085858` 里跑 `build_asset.py`，然后用 `g1d_lab` 跑 `scripted_demo` 的 seed 0：拾取、叠块、量杯倒豆三个任务都是 `success_rate` 1.0、`eval_time` 1。五路相机画面正常，头部相机里能看到立体的桌椅柜。之后装进共享库 `5090-2:/data/robodojo-assets/Assets`。
-- **2026-10-23，v3 纯色墙 + G1-D（只做了离线验证）**：`check_scene.py` 24/24 通过（渲染三角面在 10 万以内；G1-D 落地，不碰墙和其他家具，离机器人根节点 1 m 以上）；`preview.py` 的四张照片对比里，墙面分段、门、白板、电视和照片对得上，p3 视角下 G1-D 和照片里的机器人重合。**没跑 Isaac RTX**：当时 `5090-2` 的 7 张卡都满载，空着的 GPU 1 上跑着 OpenWAM 真机推理服务。
+- **2026-10-23/24，v3 纯色墙 + G1-D**：
+  - 离线：`check_scene.py` 24/24（渲染三角面在 10 万以内；G1-D 落地，不碰墙和其他家具，离机器人根节点 1 m 以上）；`preview.py` 的四张照片对比里，墙面分段、门、白板、电视和照片对得上，p3 视角下 G1-D 和照片里的机器人重合。
+  - Isaac（10-24，`5090-2` 隔离目录 `/data/robodojo-runs/lab-walls-20261024-1314/`，GPU 0）：`Assets/` 是 `lab-furniture-install-20261022-085858` 的完整拷贝，只把 `Room/real_scene3/` 换成 v3。`render_scenes.py` 退出码 0，没有报错，`g1d.usdc` 正常加载和渲染。`g1d_lab` 的 seed 0：拾取、叠块、量杯倒豆都是 `success_rate` 1.0、`eval_time` 1；头部相机左上角能看到角落的 G1-D。机器人视觉网格的 "Unresolved reference" 警告是机器人 USD 本身的问题，v2 那一轮也有。
+  - 坑：只给 `--device cuda:0` 时，RTX 仍会用所有卡渲染，别的卡满载时 Vulkan 报显存不足，进程卡死（TERM 杀不掉，要 `kill -9`）。要加 Kit 参数 `--/renderer/multiGpu/enabled=false --/renderer/multiGpu/maxGpuCount=1 --/renderer/activeGpu=0`。`scripted_demo.py` 会自己追加 `--kit_args`，要通过 `main(extra_kit_args=...)` 传进去。
 
 ## 未覆盖
 
-- v3 的 Isaac RTX 渲染，以及 `g1d.usdc` 引用在 Isaac 里的加载；没装共享库。
+- v3 还没装进共享库。
 - 玻璃隔断是不透明色块，大角度看没有透视和反射。
 
 - 家具没有卷尺实测，尺寸按常见规格；没有在 PhysX 里试过机器人或移动底盘碰到家具。
