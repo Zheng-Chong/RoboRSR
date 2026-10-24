@@ -1676,6 +1676,7 @@ function objDeleteBlocker(d) {
   return '';
 }
 function objDeleteButton(d) {
+  if (!ME?.admin) return '';
   const why = objDeleteBlocker(d);
   return `<button class="btn" type="button" data-id="${esc(d.id)}" ${why ? `disabled title="${esc(why)}"` : 'onclick="removeObject(this.dataset.id)"'}>${ic('trash')}删除物体</button>`;
 }

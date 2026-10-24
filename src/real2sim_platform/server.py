@@ -1181,6 +1181,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send_json({"error": error}, 409)
                 shutil.rmtree(folder)
         if kind == "object" and OBJECT_ID.fullmatch(id_):
+            if not self.user["admin"]:
+                return self.send_json({"error": "只有管理员可以删除物体"}, 403)
             error = object_delete_blocker(id_, self.store.list("object"))
             if error:
                 return self.send_json({"error": error}, 409)
