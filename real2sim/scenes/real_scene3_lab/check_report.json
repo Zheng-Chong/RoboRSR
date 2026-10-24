@@ -39,11 +39,7 @@
     "assets": [
      "carpet.png",
      "panel.png",
-     "tabletop.png",
-     "wall_east.png",
-     "wall_north.png",
-     "wall_south.png",
-     "wall_west.png"
+     "tabletop.png"
     ],
     "unresolved": []
    }
@@ -59,7 +55,7 @@
    "name": "every render mesh has a bound material",
    "ok": true,
    "detail": {
-    "render_meshes": 205,
+    "render_meshes": 232,
     "unbound": []
    }
   },
@@ -67,14 +63,14 @@
    "name": "render triangle budget (< 100k)",
    "ok": true,
    "detail": {
-    "triangles": 7074
+    "triangles": 73216
    }
   },
   {
    "name": "colliders are guide purpose (not rendered)",
    "ok": true,
    "detail": {
-    "colliders": 68,
+    "colliders": 70,
     "rendered": []
    }
   },
@@ -163,7 +159,7 @@
    "name": "room furniture stands on the floor",
    "ok": true,
    "detail": {
-    "items": 15,
+    "items": 16,
     "off_floor": {}
    }
   },
@@ -194,11 +190,7 @@
    "detail": {
     "carpet.png": 0.0,
     "panel.png": 0.0,
-    "tabletop.png": 0.0,
-    "wall_east.png": 0.0003,
-    "wall_north.png": 0.0007,
-    "wall_south.png": 0.0005,
-    "wall_west.png": 0.0003
+    "tabletop.png": 0.0
    }
   },
   {

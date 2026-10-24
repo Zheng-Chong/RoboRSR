@@ -25,58 +25,60 @@
   "wall": {
    "parts": [
     {
-     "path": "Background/Walls/south",
-     "material": "wall_south",
-     "uv_m": 6.2
+     "path": "Background/Walls/south_0",
+     "material": "paint",
+     "uv_m": 1.0
     },
     {
-     "path": "Background/Walls/north",
-     "material": "wall_north",
-     "uv_m": 6.2
+     "path": "Background/Walls/south_2",
+     "material": "paint",
+     "uv_m": 1.0
     },
     {
-     "path": "Background/Walls/west",
-     "material": "wall_west",
-     "uv_m": 6.25
+     "path": "Background/Walls/north_0",
+     "material": "paint",
+     "uv_m": 1.0
     },
     {
-     "path": "Background/Walls/east",
-     "material": "wall_east",
-     "uv_m": 6.25
+     "path": "Background/Walls/west_0",
+     "material": "acoustic",
+     "uv_m": 1.0
+    },
+    {
+     "path": "Background/Walls/west_1",
+     "material": "paint",
+     "uv_m": 1.0
+    },
+    {
+     "path": "Background/Walls/east_0",
+     "material": "acoustic",
+     "uv_m": 1.0
     }
    ],
    "materials": [
     {
-     "name": "wall_south",
-     "color": null,
-     "texture": "real2sim/scenes/real_scene3_lab/usd/textures/wall_south.png",
-     "roughness": 0.8,
+     "name": "paint",
+     "color": [
+      0.402,
+      0.3916,
+      0.3278
+     ],
+     "texture": null,
+     "roughness": 0.85,
      "metallic": 0.0,
-     "tile_m": 6.2
+     "tile_m": 1.0
     },
     {
-     "name": "wall_north",
-     "color": null,
-     "texture": "real2sim/scenes/real_scene3_lab/usd/textures/wall_north.png",
-     "roughness": 0.8,
+     "name": "acoustic",
+     "color": [
+      0.0423,
+      0.0467,
+      0.0497
+     ],
+     "texture": null,
+     "roughness": 0.95,
      "metallic": 0.0,
-     "tile_m": 6.2
-    },
-    {
-     "name": "wall_west",
-     "color": null,
-     "texture": "real2sim/scenes/real_scene3_lab/usd/textures/wall_west.png",
-     "roughness": 0.8,
-     "metallic": 0.0,
-     "tile_m": 6.25
-    },
-    {
-     "name": "wall_east",
-     "color": null,
-     "texture": "real2sim/scenes/real_scene3_lab/usd/textures/wall_east.png",
-     "roughness": 0.8,
-     "metallic": 0.0,
-     "tile_m": 6.25
+     "tile_m": 1.0
     }
    ]
   },

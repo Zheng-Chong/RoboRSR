@@ -1,13 +1,13 @@
 # real_scene3：实验室操作台 建模说明
 
-v2（2026-10-22），依据四张手机照片（`reference/p1–p4.jpg`），围着同一张白色折叠培训桌各拍一张。v1 只建了操作台，房间里的家具都压平在墙面照片上；v2 把工位桌、椅子、柜子也建成了立体模型。场景变更时同步更新本文件。
+v3（2026-10-23），依据四张手机照片（`reference/p1–p4.jpg`），围着同一张白色折叠培训桌各拍一张。v1 只建了操作台，房间里的家具都压平在墙面照片上；v2 把工位桌、椅子、柜子也建成了立体模型；v3 去掉墙面照片贴图，墙改成纯色饰面加门、白板、电视，角落里那台 G1-D 直接放了一台 G1-D 模型。场景变更时同步更新本文件。
 
 ## 文件
 
 | 文件 | 作用 |
 | --- | --- |
 | `fit_photo.py` | 四张照片上手工标的角点和边线，联合反求四台相机的位姿、共享焦距和桌子尺寸，写 `fit_photo.json` |
-| `build_scene.py` | 读 `fit_photo.json`，生成 `usd/`（`background.usda`、`table.usda`、`lights.usda`、`scene.usda`、贴图）和 RoboDojo Room 入口 `real_scene3.usd`。家具的摆放和尺寸在 `FURNITURE` 里 |
+| `build_scene.py` | 读 `fit_photo.json`，生成 `usd/`（`background.usda`、`table.usda`、`lights.usda`、`scene.usda`、角落 G1-D 的静态层 `g1d.usdc`、桌面 / 挡板 / 地毯贴图）和 RoboDojo Room 入口 `real_scene3.usd`。家具的摆放和尺寸在 `FURNITURE` 里，墙面在 `WALL_SPANS`、`DOOR`、`BOARDS`、`TV` 里，G1-D 在 `G1D` 里 |
 | `check_scene.py` | 离线检查，写 `check_report.json`（24/24 通过） |
 | `preview.py` | numpy 光栅化预览（`preview/`）。`compare_photo.jpg` 每行是：照片、拟合相机下的渲染、模型边缘叠在照片上（操作台红色，家具绿色）；只核对几何和贴图，不代表 RTX 效果 |
 
@@ -15,7 +15,7 @@ v2（2026-10-22），依据四张手机照片（`reference/p1–p4.jpg`），围
 
 ```bash
 uv run --no-project --python 3.11 --with usd-core --with trimesh --with numpy --with shapely \
-    --with opencv-python-headless --with scipy --with mapbox-earcut --with manifold3d \
+    --with opencv-python-headless --with scipy --with mapbox-earcut --with manifold3d --with fast-simplification \
     sh -c "python fit_photo.py && python build_scene.py && python check_scene.py && python preview.py"
 ```
 
@@ -55,7 +55,7 @@ uv run --no-project --python 3.11 --with usd-core --with trimesh --with numpy --
 
 ## 房间家具（v2）
 
-15 件，全部是静态的参数化模型，放在 `background.usda` 的 `/Background/Furniture/<类>_<序号>` 下，每件带盒体或小凸包碰撞体（purpose 为 guide）。平台 3D 预览的「隐藏房间」也会一起隐藏它们。
+15 件参数化模型加 1 台 G1-D，全部是静态的，放在 `background.usda` 的 `/Background/Furniture/<类>_<序号>` 下，每件带盒体或小凸包碰撞体（purpose 为 guide）。平台 3D 预览的「隐藏房间」也会一起隐藏它们。
 
 **定位方法。** 相机沿用 `fit_photo.json` 的拟合结果，不重新拟合。在放大加网格的照片上手标家具的落地点（桌脚、椅脚、柜底边），用拟合相机反投影到地面 z = 0；两张照片都能看到的（铁皮柜的底边和把手）做三角化。高度方向只用来检查：沿落地点的竖直线读顶边的高度。摆放好之后，用 `preview.py` 的绿色边线和照片逐件比对，再微调。尺寸取常见规格，再用照片核对。
 
@@ -68,6 +68,7 @@ uv run --no-project --python 3.11 --with usd-core --with trimesh --with numpy --
 | 两门铁皮文件柜 0.89 × 0.39 × 1.85 m | x 1.33–2.22，前沿 y = −1.97，背靠玻璃隔断 | p1、p4 两张照片的底边都量出宽 0.89 m，把手三角化在 0.82 m 高；柜顶在两张照片外，高度按 1850 规格 | 宽、位置中高；高度低 |
 | 玻璃隔断前的木面边桌 1.12 × 0.5 × 0.66 m | 中心 (0.09, −2.07) | p1 的两只桌脚落地点（间距 0.98 m）和桌面两端 | 中 |
 | 圆形咖啡桌，直径 0.76 m | 中心 (2.05, 0.07) | 只有 p4 拍到，桌脚被主桌挡住；**假设桌高 0.75 m** 后由视线求出位置和直径 | 低 |
+| G1-D（`g1d_0`，引用 `usd/g1d.usdc`） | 底盘中心 (−2.22, 2.92)，面朝 −Y | p3：底盘前沿 y ≈ 2.65、+X 侧 x ≈ −1.96（p2 反投影偏 0.4–0.7 m，不用）；面朝 p3 相机。模型是 `real2sim/robot/g1d_v4/g1_d_full_dex1_v4.urdf` 按两肘 1.2 rad、其余关节 0 做正运动学，视觉网格按 URDF 颜色合成 5 组、抽稀到 4 万面；碰撞体是底盘、上身两个盒子。不是 articulation，不会动。真机底盘的升降柱在前沿，资产的在正中 | 中 |
 
 **照片之间对不上的地方。**
 
@@ -75,7 +76,16 @@ uv run --no-project --python 3.11 --with usd-core --with trimesh --with numpy --
 - 北排最右那张桌子：p3 给出的前沿是 y ≈ 3.05，p4 要求 y ≈ 2.45，否则桌角会落到墙外。差 0.6 m，不能用噪声解释，可能是东墙北段比拟合的 x = 3.3 更远。机器人主要朝 +Y 看，所以按 p3 摆。p4 左缘这张桌子和两把椅子在 `HAND_MASK` 里手标了一个多边形，从东墙贴图里抠掉。
 - 椅子带脚轮，几张照片之间可能被挪动过。
 
-**墙面贴图。** 家具（和原来的操作台一样）投影到墙面照片上，膨胀 21 px 后抠掉，按行取剩余像素的中值补色（墙面是横向分层的：踢脚线、吸音板、上沿黑条）。照片里没建模的东西仍压平在墙上：桌上的显示器和笔记本、机器人、三脚架、纸箱、边桌上的杯子，近看或大角度看会穿帮。
+**墙面（v3）。** 不再贴照片（10-23 用户要求）。墙面是纯色饰面，颜色取照片的 sRGB 中值，和原来的照片贴图一样直接当反照率；位置由照片像素经拟合相机反投影到墙面得到：
+
+| 墙 | 饰面 | 墙上的东西 |
+| --- | --- | --- |
+| 南（−Y，p1） | x > 1.30 白墙，−1.56…1.30 玻璃隔断（不透明的绿灰色，后面没有建模），x < −1.56 白墙 | 4 根黑色竖框和底框；白门 x −2.77…−1.87、高 2.1 m（−X 侧门边在照片外，按 0.9 m 宽的门推），黑把手离地 1.0 m |
+| 北（+Y，p3） | 白墙 | 黑边白板 x −1.35…1.16，下边框离地 1.29 m；白板下挂一块黑屏 x 0.20…0.99，z 1.03…1.27 |
+| 西（−X，p2） | y < 2.5 深灰吸音板（带 5 cm 黑踢脚线），y > 2.5 白墙（G1-D 背后） | 黑边白板 y −2.07…2.48，下边框离地 1.08 m |
+| 东（+X，p4） | 深灰吸音板（带踢脚线） | 黑边白板 y −2.13…2.91，下边框离地 1.08 m |
+
+白板顶边在所有照片之外，按 2.2 m 假设。侧墙白板下边框在 p2、p4 里读出 1.03–1.18 m（两台相机在画面边缘外推不准），取 1.08。墙面带米制 UV（`uv_m` = 1），平台可以换材质；玻璃、门、竖框、踢脚线按名字排除在墙面替换之外（`scripts/scenes/scene_parts.py` 的 `NOT_WALL`）。照片里桌上的显示器、笔记本、三脚架、纸箱、边桌上的杯子都没建模，现在场景里直接没有它们。
 
 ## 资产分层
 
@@ -84,7 +94,7 @@ uv run --no-project --python 3.11 --with usd-core --with trimesh --with numpy --
   - 灰色带横肋的挡板，贴图取 p1 的行剖面；
   - 两根竖直立柱、V 形底座、四个脚轮、桌板下的托架和横梁。
   - 碰撞体全部是静态盒体或凸包，purpose 为 guide。桌面碰撞体是一个盒体，顶面就在 top_z，和可见表面重合。
-- **`background.usda` `/Background`**：地毯地面（从 p4 中一块干净的 0.6 m 区域按地面单应性矫正，真实尺度，镜像平铺；亮度乘 0.67，因为照片像素本身已带有室内光照）、天花板（2.8 m，挡住 RoboDojo 默认的棕色摄影棚 HDR）以及四面墙。墙是**照片背景板**：用正对该墙的照片矫正到墙面上，操作台和家具挡住的部分按行补色，照片没拍到的部分填中值色。房间家具在 `/Background/Furniture`（见上一节），没建模的杂物仍压平在墙上。
+- **`background.usda` `/Background`**：地毯地面（从 p4 中一块干净的 0.6 m 区域按地面单应性矫正，真实尺度，镜像平铺；亮度乘 0.67，因为照片像素本身已带有室内光照）、天花板（2.8 m，挡住 RoboDojo 默认的棕色摄影棚 HDR）以及四面墙（`/Background/Walls`：纯色饰面和门、白板、电视，见上一节）。房间家具和 G1-D 在 `/Background/Furniture`；G1-D 的网格在单独的二进制层 `usd/g1d.usdc`（约 0.9 MB），由 `Furniture/g1d_0` 引用并放到位。
 - **`lights.usda` `/Lights`**：4 块吊顶面光（RectLight 1.2 × 0.6 m，6500 K，强度 24000），加环境光 Dome（150，被封闭的房间挡住，基本不起作用）。按 p3 照片标定：Isaac 相机没有白平衡，原先的 5000 K 加上棕色 HDR 从房顶灌进来，画面明显偏黄（地毯 R/B 1.29，照片 1.06）；强度扫了 6000 / 12000 / 24000 三档，取桌面亮度最接近照片的一档。
 
 ## 接入 RoboDojo
@@ -114,8 +124,12 @@ uv run --no-project --python 3.11 --with usd-core --with trimesh --with numpy --
 
 - **2026-10-22，家具 v2 的 Isaac RTX 渲染**：在 `5090-2` 的隔离目录 `/data/robodojo-runs/lab-furniture-20261022-003901/`（GPU 4，只拷了场景目录和 `scripts/scenes/render_scenes.py`）只载场景跑 `render_scenes.py`：退出码 0，日志没有报错；桌椅柜正常渲染，有投影。
 - **2026-10-22，装共享库前的验证**：在 `5090-2` 的隔离目录 `lab-furniture-install-20261022-085858` 里跑 `build_asset.py`，然后用 `g1d_lab` 跑 `scripted_demo` 的 seed 0：拾取、叠块、量杯倒豆三个任务都是 `success_rate` 1.0、`eval_time` 1。五路相机画面正常，头部相机里能看到立体的桌椅柜。之后装进共享库 `5090-2:/data/robodojo-assets/Assets`。
+- **2026-10-23，v3 纯色墙 + G1-D（只做了离线验证）**：`check_scene.py` 24/24 通过（渲染三角面在 10 万以内；G1-D 落地，不碰墙和其他家具，离机器人根节点 1 m 以上）；`preview.py` 的四张照片对比里，墙面分段、门、白板、电视和照片对得上，p3 视角下 G1-D 和照片里的机器人重合。**没跑 Isaac RTX**：当时 `5090-2` 的 7 张卡都满载，空着的 GPU 1 上跑着 OpenWAM 真机推理服务。
 
 ## 未覆盖
+
+- v3 的 Isaac RTX 渲染，以及 `g1d.usdc` 引用在 Isaac 里的加载；没装共享库。
+- 玻璃隔断是不透明色块，大角度看没有透视和反射。
 
 - 家具没有卷尺实测，尺寸按常见规格；没有在 PhysX 里试过机器人或移动底盘碰到家具。
 - 和真机头部相机画面对比，复核灯光强度（目前以手机照片为参照）。

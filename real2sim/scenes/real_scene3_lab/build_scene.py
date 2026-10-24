@@ -5,9 +5,10 @@ Scene frame: Z up, meters. Origin on the floor under the tabletop centre; +X alo
 modesty panel. The robot stands on the open -Y side facing +Y (same convention as real_scene1/2).
 
 Sizes come from fit_photo.json (scale from the 0.75 m tabletop height prior). The tabletop and modesty panel carry
-textures rectified from the photos; the floor is a carpet patch rectified at true scale; the walls are photo
-backdrops (everything in front of a wall, e.g. the desk rows, is flattened onto it). Re-run with --scale-correction
-once a real length is measured (measured_length / TABLE["length"]).
+textures rectified from the photos; the floor is a carpet patch rectified at true scale; the walls are plain finishes
+(paint, acoustic panels, glass) in colours sampled from the photos, with the doors, whiteboards and TV seen there
+modelled on them. The G1-D parked in the corner is the team's URDF baked into a static layer (usd/g1d.usdc). Re-run
+with --scale-correction once a real length is measured (measured_length / TABLE["length"]).
 """
 
 import argparse
@@ -15,6 +16,7 @@ import json
 import math
 from pathlib import Path
 import shutil
+import xml.etree.ElementTree as ET
 
 import cv2
 import numpy as np
@@ -58,7 +60,36 @@ BEAM = dict(section=0.04)  # flip-top axle between the column tops; not directly
 # Walls from photo pixels back-projected onto the floor (fit cameras): -Y glass partition (p1), +Y wall behind the
 # desk row (p3), -X acoustic panels (p2), +X wall (p4). Height not observed.
 ROOM = dict(x0=-2.9, x1=3.3, y0=-2.45, y1=3.8, height=2.8)
-WALL_PHOTO = {"south": "p1.jpg", "north": "p3.jpg", "west": "p2.jpg", "east": "p4.jpg"}
+# Wall finishes and fittings from photo pixels back-projected onto the wall planes. Spans of the full-height surface
+# along each wall (x for south / north, y for west / east): -Y glass partition between white wall ends (p1), +Y white
+# wall (p3), -X / +X dark acoustic fabric panels (p2, p4), white past the -X panels' +Y end (p2).
+WALL_SPANS = {
+    "south": [(1.30, ROOM["x1"], "paint"), (-1.56, 1.30, "glass"), (ROOM["x0"], -1.56, "paint")],
+    "north": [(ROOM["x0"], ROOM["x1"], "paint")],
+    "west": [(ROOM["y0"], 2.5, "acoustic"), (2.5, ROOM["y1"], "paint")],
+    "east": [(ROOM["y0"], ROOM["y1"], "acoustic")],
+}
+MULLIONS = [1.30, 0.30, -0.63, -1.56]  # glass partition posts, x (p1)
+DOOR = dict(x0=-2.77, x1=-1.87, height=2.1, handle_x=-1.97, handle_z=1.0)  # p1; 0.9 m, its -X edge is outside p1
+# Whiteboards: (span along the wall, bottom of the black frame). The bottom edge is seen at 1.03-1.18 m on the side
+# walls (p2 and p4 extrapolate badly at their edges) and 1.29 m on the +Y wall; the tops are above every photo (2.2 m
+# assumed).
+BOARDS = {"west": (-2.07, 2.48, 1.08), "east": (-2.13, 2.91, 1.08), "north": (-1.35, 1.16, 1.29)}
+BOARD_TOP = 2.2
+TV = dict(x0=0.20, x1=0.99, z0=1.03, z1=1.27)  # black screen on the +Y wall under the board (p3)
+# The G1-D parked in the -X/+Y corner (p2 right edge, p3 left edge), facing -Y as in p3, arms hanging as in p3 (other
+# joints at zero, lift at the bottom). Chassis front and +X side from p3 (front y~2.65, side x~-1.96); p2 puts it
+# 0.4-0.7 m off, as with the other far corner furniture. Static: visual meshes decimated to G1D_FACES, box colliders.
+G1D = dict(urdf=HERE.parents[1] / "robot" / "g1d_v4" / "g1_d_full_dex1_v4.urdf", x=-2.22, y=2.92, facing=-90)
+G1D_POSE = {"left_elbow_joint": 1.2, "right_elbow_joint": 1.2}  # rad; at 0 the forearms point forward
+G1D_FACES = 40000
+G1D_MATERIALS = {  # URDF visual colour -> material
+    (0.792, 0.82, 0.933): "g1d_shell",
+    (0.7, 0.7, 0.7): "g1d_body",
+    (0.2, 0.2, 0.2): "g1d_dark",
+    (0.898, 0.918, 0.929): "g1d_light",
+    (0.298, 0.298, 0.298): "g1d_pad",
+}
 # clean 0.6 m floor patch, right of the table in p4; gain: the photo pixels already carry the room light, used as albedo
 # they rendered the carpet ~1.5x too bright against the tabletop
 CARPET = dict(patch=(-0.45, 0.15, -1.2, -0.6), photo="p4.jpg", gain=0.67)
@@ -85,23 +116,6 @@ FURNITURE = [
     dict(kind="side_table", x=0.09, y=-2.07, facing=90),  # p1, against the glass
     dict(kind="round_table", x=2.05, y=0.07, facing=0),  # p4 only; height assumed 0.75
 ]
-# Modelled furniture that a fitted camera projects elsewhere than its photo shows, cut out of that backdrop by hand
-# (image px): in p4 the +X end of the +Y desk row and two chairs, placed from p3, land up to 120 px off.
-HAND_MASK = {
-    "p4.jpg": [
-        (0, 40),
-        (150, 40),
-        (160, 85),
-        (205, 60),
-        (240, 62),
-        (250, 190),
-        (285, 250),
-        (245, 265),
-        (150, 290),
-        (85, 350),
-        (0, 350),
-    ]
-}
 
 LIGHTS = dict(
     panels=[(-1.2, -1.2), (1.2, -1.2), (-1.2, 1.2), (1.2, 1.2)],
@@ -113,7 +127,14 @@ LIGHTS = dict(
 
 SCALE = 1.0
 
-# name: (diffuse linear RGB, roughness, metallic, opacity, texture)
+
+def lin(srgb):
+    c = np.asarray(srgb, float) / 255
+    return tuple(float(v) for v in np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4))
+
+
+# name: (diffuse linear RGB, roughness, metallic, opacity, texture). Wall colours: sRGB medians of the photos, used as
+# albedo like the photo textures.
 MATERIALS = {
     "laminate": ((1.0, 1.0, 1.0), 0.35, 0.0, 1.0, "tabletop.png"),
     "edge_band": ((0.62, 0.61, 0.59), 0.45, 0.0, 1.0, None),
@@ -122,10 +143,16 @@ MATERIALS = {
     "plastic_black": ((0.02, 0.02, 0.02), 0.6, 0.0, 1.0, None),
     "carpet": ((1.0, 1.0, 1.0), 0.95, 0.0, 1.0, "carpet.png"),
     "ceiling": ((0.80, 0.80, 0.80), 0.9, 0.0, 1.0, None),
-    "wall_south": ((1.0, 1.0, 1.0), 0.8, 0.0, 1.0, "wall_south.png"),
-    "wall_north": ((1.0, 1.0, 1.0), 0.8, 0.0, 1.0, "wall_north.png"),
-    "wall_west": ((1.0, 1.0, 1.0), 0.8, 0.0, 1.0, "wall_west.png"),
-    "wall_east": ((1.0, 1.0, 1.0), 0.8, 0.0, 1.0, "wall_east.png"),
+    "paint": (lin((170, 168, 155)), 0.85, 0.0, 1.0, None),
+    "acoustic": (lin((58, 61, 63)), 0.95, 0.0, 1.0, None),
+    "glass": (lin((104, 129, 112)), 0.05, 0.0, 1.0, None),  # opaque: nothing is modelled behind the partition
+    "door": (lin((145, 134, 124)), 0.5, 0.0, 1.0, None),
+    "whiteboard": (lin((166, 165, 149)), 0.25, 0.0, 1.0, None),
+    "g1d_shell": ((0.792, 0.82, 0.933), 0.4, 0.3, 1.0, None),
+    "g1d_body": ((0.7, 0.7, 0.7), 0.4, 0.3, 1.0, None),
+    "g1d_dark": ((0.2, 0.2, 0.2), 0.5, 0.2, 1.0, None),
+    "g1d_light": ((0.898, 0.918, 0.929), 0.4, 0.2, 1.0, None),
+    "g1d_pad": ((0.298, 0.298, 0.298), 0.7, 0.0, 1.0, None),
     "desk_white": ((0.72, 0.72, 0.70), 0.4, 0.0, 1.0, None),
     "frame_white": ((0.55, 0.55, 0.53), 0.4, 0.3, 1.0, None),
     "chair_black": ((0.02, 0.02, 0.022), 0.7, 0.0, 1.0, None),
@@ -321,21 +348,6 @@ def flatten_light(img, sigma, valid=None):
     return np.clip(img / np.maximum(g, 1) * mean, 0, 255)
 
 
-def table_silhouette(photo, shape):
-    """Pixels covered by the table (its bounding box hull) in a photo."""
-    t = TABLE
-    pts = [
-        (sx * max(t["length"] / 2, LEGS["x"] + 0.05), sy * t["width"] / 2, z)
-        for sx in (-1, 1)
-        for sy in (-1, 1)
-        for z in (0.0, t["top_z"])
-    ]
-    hull = cv2.convexHull(photo_px(photo, pts).astype(np.int32))
-    mask = np.zeros(shape[:2], np.uint8)
-    cv2.fillConvexPoly(mask, hull, 255)
-    return cv2.dilate(mask, np.ones((15, 15), np.uint8))
-
-
 def tabletop_texture(imgs, size=(1370, 686)):
     """Per-pixel median of the tabletop rectified from all four photos: drops view-dependent glare and shadows."""
     t, g = TABLE, GROMMET
@@ -398,53 +410,11 @@ def wall_point(name, u, z):
     return (u, c, z) if axis == 0 else (c, u, z)
 
 
-def furniture_silhouette(photo, shape):
-    """Pixels covered by the modelled furniture in a photo: its triangles projected through the fitted camera."""
-    rvec, tvec, _ = camera(photo)
-    rmat = cv2.Rodrigues(rvec)[0]
-    mask = np.zeros(shape[:2], np.uint8)
-    for _, parts, _ in furniture_parts():
-        for _, m, _ in parts:
-            if ((m.vertices @ rmat.T + tvec)[:, 2] < 0.1).any():  # behind or beside the camera
-                continue
-            for tri in photo_px(photo, m.vertices)[m.faces]:
-                cv2.fillConvexPoly(mask, np.round(tri).astype(np.int32), 255)
-    if photo in HAND_MASK:
-        cv2.fillPoly(mask, [np.int32(HAND_MASK[photo])], 255)
-    return cv2.dilate(mask, np.ones((21, 21), np.uint8))  # placement is off by 5-20 px
-
-
-def fill_rows(tex, hole, valid):
-    """Fill `hole` with the median colour of the rest of its row (the walls are banded horizontally)."""
-    keep = valid & ~hole
-    prof = np.full((tex.shape[0], 3), np.nan, np.float32)
-    for r in np.flatnonzero(keep.sum(1) >= 0.05 * tex.shape[1]):
-        prof[r] = np.median(tex[r][keep[r]], axis=0)
-    rows, ok = np.arange(len(prof)), ~np.isnan(prof[:, 0])
-    for c in range(3):
-        prof[:, c] = np.interp(rows, rows[ok], prof[ok, c])
-    out = tex.copy()
-    out[hole] = prof[np.nonzero(hole)[0]].astype(np.uint8)
-    return out
-
-
-def wall_texture(name, img, px_per_m=160):
-    """Photo backdrop: the facing photo rectified onto the wall plane. What stands in front of the wall and is
-    modelled (the table, the furniture) is cut out and filled row by row; wall areas outside the photo get the
-    median colour of the photographed band next to them."""
-    axis, u0, u1, _ = WALLS[name]
-    hgt = ROOM["height"]
-    size = (int(abs(u1 - u0) * px_per_m), int(hgt * px_per_m))
-    corners = [wall_point(name, u0, hgt), wall_point(name, u1, hgt), wall_point(name, u1, 0), wall_point(name, u0, 0)]
-    photo = WALL_PHOTO[name]
-    tex = rectify(photo, img, corners, size)
-    valid = rectify(photo, np.full(img.shape[:2], 255, np.uint8), corners, size, cv2.INTER_NEAREST) > 0
-    hidden = table_silhouette(photo, img.shape) | furniture_silhouette(photo, img.shape)
-    occl = rectify(photo, hidden, corners, size, cv2.INTER_NEAREST) > 0
-    tex = fill_rows(tex, occl & valid, valid)
-    band = valid & ~cv2.erode(valid.astype(np.uint8), np.ones((41, 41))).astype(bool)
-    tex[~valid] = np.median(tex[band], axis=0)
-    return tex
+def on_wall(name, a, b, z0, z1, depth):
+    """Box against the inner face of a wall: a..b along it (a < b), z0..z1 high, `depth` into the room."""
+    axis, _, _, c = WALLS[name]
+    d0, d1 = sorted((c, c + (depth if name in ("south", "west") else -depth)))
+    return box_xyz(a, b, d0, d1, z0, z1) if axis == 0 else box_xyz(d0, d1, a, b, z0, z1)
 
 
 def build_textures():
@@ -453,8 +423,6 @@ def build_textures():
     cv2.imwrite(str(TEX / "tabletop.png"), tabletop_texture(imgs))
     cv2.imwrite(str(TEX / "panel.png"), panel_texture(imgs["p1.jpg"]))
     cv2.imwrite(str(TEX / "carpet.png"), carpet_texture(imgs[CARPET["photo"]]))
-    for name, photo in WALL_PHOTO.items():
-        cv2.imwrite(str(TEX / f"wall_{name}.png"), wall_texture(name, imgs[photo]))
 
 
 # ----------------------------------------------------------------------------- scene parts
@@ -668,11 +636,87 @@ def add_background(L):
         "Colliders/floor", box_xyz(r["x0"] - 1, r["x1"] + 1, r["y0"] - 1, r["y1"] + 1, -0.10, 0.0), pkey="carpet"
     )
     for name, (axis, u0, u1, _) in WALLS.items():
-        a, b = wall_point(name, u0, 0), wall_point(name, u1, 0)
-        face = quad(a, b, (*b[:2], hgt), (*a[:2], hgt))
-        L.mesh(f"Walls/{name}", face, f"wall_{name}", uv=rect_uv(axis, u0, u1, 2, 0.0, hgt))
+        for i, (a, b, finish) in enumerate(WALL_SPANS[name]):
+            if finish == "acoustic":
+                L.mesh(f"Walls/{name}_skirting_{i}", on_wall(name, a, b, 0.0, 0.05, 0.01), "frame_black")
+            if (b - a) * (u1 - u0) < 0:  # wound like the whole wall, so the face looks into the room
+                a, b = b, a
+            p, q = wall_point(name, a, 0), wall_point(name, b, 0)
+            # metric UVs, for the platform's material swaps
+            L.mesh(f"Walls/{name}_{i}", quad(p, q, (*q[:2], hgt), (*p[:2], hgt)), finish, uv=lambda v: v[:, [axis, 2]])
         L.collider(f"Colliders/wall_{name}", box_xyz(*WALL_COLLIDERS[name], 0.0, hgt))
+    for i, x in enumerate(MULLIONS):
+        L.mesh(f"Walls/south_mullion_{i}", on_wall("south", x - 0.02, x + 0.02, 0.0, hgt, 0.03), "frame_black")
+    a, b = min(MULLIONS), max(MULLIONS)
+    L.mesh("Walls/south_glass_rail", on_wall("south", a, b, 0.0, 0.05, 0.03), "frame_black")
+    d = DOOR
+    L.mesh("Walls/south_door", on_wall("south", d["x0"], d["x1"], 0.0, d["height"], 0.03), "door")
+    hx, hz = d["handle_x"], d["handle_z"]
+    handle = on_wall("south", hx - 0.07, hx + 0.07, hz - 0.012, hz + 0.012, 0.09)
+    L.mesh("Walls/south_door_handle", handle, "frame_black")
+    for name, (a, b, z) in BOARDS.items():
+        L.mesh(f"Walls/{name}_board", on_wall(name, a, b, z + 0.08, BOARD_TOP, 0.02), "whiteboard")
+        L.mesh(f"Walls/{name}_board_frame", on_wall(name, a, b, z, z + 0.08, 0.03), "frame_black")
+        L.mesh(f"Walls/{name}_board_frame_top", on_wall(name, a, b, BOARD_TOP, BOARD_TOP + 0.03, 0.03), "frame_black")
+    L.mesh("Walls/north_tv", on_wall("north", TV["x0"], TV["x1"], TV["z0"], TV["z1"], 0.06), "frame_black")
     add_furniture(L)
+    g1d = UsdGeom.Xform.Define(L.stage, f"{L.rootpath}/Furniture/g1d_0")
+    g1d.GetPrim().GetReferences().AddReference("./g1d.usdc")
+    g1d.AddTranslateOp().Set(Gf.Vec3d(G1D["x"] * SCALE, G1D["y"] * SCALE, 0.0))
+    g1d.AddRotateZOp().Set(G1D["facing"])
+
+
+def urdf_origin(el):
+    o = el.find("origin")
+    o = {} if o is None else o.attrib
+    xyz, rpy = ([float(v) for v in o.get(k, "0 0 0").split()] for k in ("xyz", "rpy"))
+    m = trimesh.transformations.euler_matrix(*rpy, "sxyz")
+    m[:3, 3] = xyz
+    return m
+
+
+def g1d_meshes():
+    """{material: mesh} of the G1-D's URDF visuals at G1D_POSE (revolute joints), in its own frame (front +X), lowest
+    point at z = 0, decimated to G1D_FACES triangles in all."""
+    urdf = ET.parse(G1D["urdf"]).getroot()
+    joint = {j.find("child").get("link"): j for j in urdf.iter("joint")}
+
+    def pose(link):
+        if link not in joint:
+            return np.eye(4)
+        j = joint[link]
+        m = urdf_origin(j)
+        if j.get("name") in G1D_POSE:
+            axis = [float(v) for v in j.find("axis").get("xyz").split()]
+            m = m @ trimesh.transformations.rotation_matrix(G1D_POSE[j.get("name")], axis)
+        return pose(j.find("parent").get("link")) @ m
+
+    groups = {}
+    for link in urdf.iter("link"):
+        for vis in link.iter("visual"):
+            m = trimesh.load(G1D["urdf"].parent / vis.find("geometry/mesh").get("filename"), force="mesh")
+            m.apply_transform(pose(link.get("name")) @ urdf_origin(vis))
+            rgba = tuple(round(float(v), 3) for v in vis.find("material/color").get("rgba").split())
+            groups.setdefault(G1D_MATERIALS[rgba[:3]], []).append(m)
+    merged = {k: trimesh.util.concatenate(ms) for k, ms in groups.items()}
+    total = sum(len(m.faces) for m in merged.values())
+    target = {k: max(500, G1D_FACES * len(m.faces) // total) for k, m in merged.items()}
+    out = {
+        k: m.simplify_quadric_decimation(face_count=target[k]) if len(m.faces) > target[k] else m
+        for k, m in merged.items()
+    }
+    z0 = min(m.bounds[0][2] for m in out.values())
+    return {k: m.apply_translation([0.0, 0.0, -z0]) for k, m in out.items()}
+
+
+def add_g1d(L):
+    meshes = g1d_meshes()
+    for k, m in meshes.items():
+        L.mesh(f"Body/{k}", m, k, smooth=True)
+    v = np.vstack([m.vertices for m in meshes.values()])
+    for name, part in (("chassis", v[v[:, 2] < 0.25]), ("body", v[v[:, 2] >= 0.25])):
+        (x0, y0, z0), (x1, y1, z1) = part.min(0), part.max(0)
+        L.collider(f"Colliders/{name}", box_xyz(x0, x1, y0, y1, z0, z1))
 
 
 def add_lights(L):
@@ -699,6 +743,9 @@ def main():
         shutil.rmtree(OUT)
     OUT.mkdir(parents=True)
     build_textures()
+    layer = Layer(OUT / "g1d.usdc", "G1D")  # binary: 40k triangles; before background.usda, which references it
+    add_g1d(layer)
+    layer.save()
     for name, fn in [("background", add_background), ("table", add_table), ("lights", add_lights)]:
         layer = Layer(OUT / f"{name}.usda", name.capitalize())
         fn(layer)

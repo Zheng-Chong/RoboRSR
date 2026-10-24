@@ -107,7 +107,7 @@ def test_appearance_settings():
     library = server.material_library()
     assert len(library) > 500 and all("thumb" in m for m in library)
     roles = {m["id"]: m["roles"] for m in library}
-    assert roles["real_scene3_lab/wall/wall_north"] == ["wall"] and "floor" not in roles["mdl/material_0110"]  # plaster
+    assert roles["real_scene3_lab/wall/paint"] == ["wall"] and "floor" not in roles["mdl/material_0110"]  # plaster
 
 
 def test_prototypes():

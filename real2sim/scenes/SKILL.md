@@ -42,7 +42,7 @@ description: 给真实工位建或更新 RoboDojo 数字孪生场景：现场拍
 - 从最接近的已有场景复制目录开始。`real_scene3_lab` 是最新的写法：在照片上手标角点和边线，联合拟合相机和尺寸。本机不需要 Isaac 也能跑，命令见该目录的 `PLAN.md`。
 - 有标定板时，把 `cameras.json` 里的相机位姿和焦距作为强先验（sigma 取小值）喂给 `fit_photo.py`；只有一个尺寸先验时，要在 `scale_basis` 里写明。
 - 量到实测值之后：整体比例不对，用 `build_scene.py --scale-correction` 缩放；单个尺寸不对，就在 `fit_photo.py` 里把对应先验固定成实测值，重新拟合。改完重跑 `check_scene.py` 和 `preview.py`。
-- 房间家具（墙前的桌椅柜）不要压平在墙面照片上：建成参数化几何，放在 Background 层的 `Furniture/` 下（平台渲染取景和「隐藏房间」都按这个约定），并把它们在墙面照片上的投影抠掉、补墙色。写法见 `real_scene3_lab/build_scene.py` 的 `FURNITURE`。
+- 墙面不要贴照片：用纯色饰面（颜色取照片中值），门、白板、玻璃隔断这类东西建成几何体，并把墙面网格带上米制 UV，方便平台换材质。房间家具（墙前的桌椅柜）建成参数化几何，放在 Background 层的 `Furniture/` 下（平台渲染取景和「隐藏房间」都按这个约定）。房间里停着的机器人不用另外建模，直接把我们的 URDF 按照片里的姿态烘焙成静态层引用进来。写法见 `real_scene3_lab/build_scene.py` 的 `WALL_SPANS`、`FURNITURE` 和 `G1D`。
 - 碰撞体：每个凸包最多 64 个顶点、单个面最多 32 个顶点，否则不能和颗粒碰撞（吧台场景就有 6–7 个超限，豆子会穿过去）。
 - 灯光放在 Room 里。房间要有天花板，否则 RoboDojo 默认的棕色 HDR 会从上方漏进来，画面偏黄；Isaac 相机没有白平衡，色温要按照片调。
 

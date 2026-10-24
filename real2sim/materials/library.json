@@ -107,55 +107,37 @@
   "category": "scene"
  },
  {
-  "id": "real_scene3_lab/wall/wall_south",
+  "id": "real_scene3_lab/wall/paint",
   "kind": "preview",
-  "name": "wall_south",
+  "name": "paint",
   "source": "real_scene3_lab",
   "role": "wall",
-  "color": null,
-  "texture": "real2sim/scenes/real_scene3_lab/usd/textures/wall_south.png",
-  "roughness": 0.8,
+  "color": [
+   0.402,
+   0.3916,
+   0.3278
+  ],
+  "texture": null,
+  "roughness": 0.85,
   "metallic": 0.0,
-  "tile_m": 6.2,
+  "tile_m": 1.0,
   "category": "scene"
  },
  {
-  "id": "real_scene3_lab/wall/wall_north",
+  "id": "real_scene3_lab/wall/acoustic",
   "kind": "preview",
-  "name": "wall_north",
+  "name": "acoustic",
   "source": "real_scene3_lab",
   "role": "wall",
-  "color": null,
-  "texture": "real2sim/scenes/real_scene3_lab/usd/textures/wall_north.png",
-  "roughness": 0.8,
+  "color": [
+   0.0423,
+   0.0467,
+   0.0497
+  ],
+  "texture": null,
+  "roughness": 0.95,
   "metallic": 0.0,
-  "tile_m": 6.2,
-  "category": "scene"
- },
- {
-  "id": "real_scene3_lab/wall/wall_west",
-  "kind": "preview",
-  "name": "wall_west",
-  "source": "real_scene3_lab",
-  "role": "wall",
-  "color": null,
-  "texture": "real2sim/scenes/real_scene3_lab/usd/textures/wall_west.png",
-  "roughness": 0.8,
-  "metallic": 0.0,
-  "tile_m": 6.25,
-  "category": "scene"
- },
- {
-  "id": "real_scene3_lab/wall/wall_east",
-  "kind": "preview",
-  "name": "wall_east",
-  "source": "real_scene3_lab",
-  "role": "wall",
-  "color": null,
-  "texture": "real2sim/scenes/real_scene3_lab/usd/textures/wall_east.png",
-  "roughness": 0.8,
-  "metallic": 0.0,
-  "tile_m": 6.25,
+  "tile_m": 1.0,
   "category": "scene"
  },
  {
