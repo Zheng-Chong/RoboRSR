@@ -1,7 +1,8 @@
 """Render a scene twin with Isaac RTX and its own USD lights, for the scene cards of the Real2Sim platform.
 
-Loads real2sim/scenes/<dir>/usd/scene.usda alone (no robot) and frames everything outside /Background and /Lights
-(the table and what stands on it) from the robot's side, front-right and above, the same view the platform's 3D
+Loads real2sim/scenes/<dir>/usd/scene.usda (or its preview.usda, export_glb.scene_stage) alone (no robot) and frames
+everything outside /Background and /Lights (the table and what stands on it) from the robot's side, front-right and
+above, the same view the platform's 3D
 preview opens with; the camera is kept inside the room. Writes <dir>/preview/render/sim.jpg (preview/ is not in git;
 sync it to the platform machine's checkout). One scene per process: each room brings its own dome light.
 
@@ -41,6 +42,8 @@ from pxr import Gf, Usd, UsdGeom  # noqa: E402
 VIEW = np.array([0.55, -1.0, 0.6]) / np.linalg.norm([0.55, -1.0, 0.6])  # front-right, above; the robot stands at -y
 MARGIN = 0.15  # m the camera keeps from the walls and the ceiling
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts" / "scenes"))
+from export_glb import scene_stage  # noqa: E402
 
 
 def look_at(eye, target):
@@ -104,7 +107,7 @@ def main():
         shoot(sim, eye, centre, lo, hi, out)
         return
     room = sim.stage.DefinePrim("/World/Scene", "Xform")
-    room.GetReferences().AddReference(str(scene_dir / "usd" / "scene.usda"))
+    room.GetReferences().AddReference(str(scene_stage(scene_dir)))
     parts = {p.GetName(): p for p in room.GetChildren()}
     if "PhysicsScene" in parts:
         parts["PhysicsScene"].SetActive(False)  # the SimulationContext brings its own

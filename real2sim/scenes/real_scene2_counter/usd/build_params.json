@@ -107,6 +107,7 @@
   "background": "background.usda",
   "table": "counter.usda",
   "lounge": "lounge.usda",
-  "lights": "lights.usda"
+  "lights": "lights.usda",
+  "preview": "preview.usda"
  }
 }

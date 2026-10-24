@@ -10,6 +10,15 @@
    }
   },
   {
+   "name": "stage metadata chairs.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "metersPerUnit": 1.0,
+    "defaultPrim": "/Chairs"
+   }
+  },
+  {
    "name": "stage metadata counter.usda",
    "ok": true,
    "detail": {
@@ -34,6 +43,15 @@
     "upAxis": "Z",
     "metersPerUnit": 1.0,
     "defaultPrim": "/Lounge"
+   }
+  },
+  {
+   "name": "stage metadata preview.usda",
+   "ok": true,
+   "detail": {
+    "upAxis": "Z",
+    "metersPerUnit": 1.0,
+    "defaultPrim": "/World"
    }
   },
   {
@@ -197,6 +215,6 @@
   "RTX rendering, exposure and colour match against the photo",
   "real sizes, friction and light intensities (estimates)"
  ],
- "passed": 19,
- "total": 20
+ "passed": 21,
+ "total": 22
 }

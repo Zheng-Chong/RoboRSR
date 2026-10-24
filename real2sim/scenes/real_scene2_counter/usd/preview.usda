@@ -1,0 +1,45 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def PhysicsScene "PhysicsScene"
+    {
+        vector3f physics:gravityDirection = (0, 0, -1)
+    }
+
+    def "Background" (
+        prepend references = @./background.usda@
+    )
+    {
+    }
+
+    def "Counter" (
+        prepend references = @./counter.usda@
+    )
+    {
+    }
+
+    def "Lounge" (
+        prepend references = @./lounge.usda@
+    )
+    {
+    }
+
+    def "Lights" (
+        prepend references = @./lights.usda@
+    )
+    {
+    }
+
+    def "Chairs" (
+        prepend references = @./chairs.usda@
+    )
+    {
+    }
+}

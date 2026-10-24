@@ -1,4 +1,6 @@
-"""Export a scene twin's usd/scene.usda to preview/scene.glb, for the 3D view on the Real2Sim platform.
+"""Export a scene twin's usd/scene.usda to preview/scene.glb, for the 3D view on the Real2Sim platform. A scene whose
+sim objects are layout objects (the counter lounge's chairs) can add usd/preview.usda (the scene plus them); it is used
+instead when present.
 
 Visible render meshes only (guide-purpose collision proxies are skipped), flattened to world space, Z-up turned to
 glTF's Y-up. UsdPreviewSurface maps to glTF PBR: diffuse colour or texture, roughness, metallic, opacity (blend, or
@@ -104,10 +106,16 @@ def per_corner(values, interpolation, vertex_indices, counts):
     return np.repeat(values[:1], len(vertex_indices), axis=0)  # constant
 
 
+def scene_stage(scene_dir):
+    """usd/preview.usda (the scene plus preview-only furniture) if the scene has one, else usd/scene.usda."""
+    preview = scene_dir / "usd" / "preview.usda"
+    return preview if preview.is_file() else scene_dir / "usd" / "scene.usda"
+
+
 def export(scene_dir):
     from pxr import Gf, Usd, UsdGeom, UsdShade
 
-    stage = Usd.Stage.Open(str(scene_dir / "usd" / "scene.usda"))
+    stage = Usd.Stage.Open(str(scene_stage(scene_dir)))
     cache = UsdGeom.XformCache()
     materials, images, by_material, by_file, meshes = [], [], {}, {}, []
 

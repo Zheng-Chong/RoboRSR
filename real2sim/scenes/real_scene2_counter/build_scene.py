@@ -16,6 +16,7 @@ import json
 import math
 from pathlib import Path
 import shutil
+import sys
 
 import cv2
 import numpy as np
@@ -901,6 +902,26 @@ def chair_poses():
     return out
 
 
+def add_chairs(L):
+    """The lounge chairs at their nominal poses, for usd/preview.usda only (renders and the platform's 3D view): in the
+    sim they are rigid layout objects (scripts/objects/make_lounge_chair.py, placed by scripts/g1d/build_asset.py), so
+    the Room entry leaves them out. Same geometry and centring as the asset."""
+    sys.path.insert(0, str(HERE.parents[2] / "scripts" / "objects"))
+    import make_lounge_chair as chair
+
+    MATERIALS["chair_oak"] = (chair.OAK, 0.5, 0.0, 1.0, None)
+    for idx, (_, rgb) in chair.COLOURS.items():
+        MATERIALS[f"chair_{idx}"] = (rgb, 0.45, 0.0, 1.0, None)
+    parts = chair.build()["parts"]
+    every = np.concatenate([p for p, _ in parts.values()])
+    centre = (every.min(0) + every.max(0)) / 2 * [1, 1, 0]
+    for i, (idx, (x, y), yaw) in enumerate(chair_poses()):
+        rot = trimesh.transformations.rotation_matrix(math.radians(yaw), [0, 0, 1])[:3, :3]
+        for name, (p, f) in parts.items():
+            m = trimesh.Trimesh((p - centre) @ rot.T + [x, y, 0.0], f, process=False)
+            L.mesh(f"chair_{i}/{name}", m, "chair_oak" if name.startswith("leg") else f"chair_{idx}", smooth=True)
+
+
 def add_lights(L):
     lt = LIGHTS
     for i, (x, y) in enumerate(lt["panels"]):
@@ -914,6 +935,9 @@ def add_lights(L):
     dome = UsdLux.DomeLight.Define(L.stage, f"{L.rootpath}/AmbientDome")
     dome.CreateIntensityAttr(lt["dome"])
     dome.CreateColorAttr(Gf.Vec3f(0.95, 0.95, 1.0))
+
+
+SCENE_LAYERS = ("Background", "Counter", "Lounge", "Lights")
 
 
 def main():
@@ -930,21 +954,25 @@ def main():
         ("counter", add_counter),
         ("lounge", add_lounge),
         ("lights", add_lights),
+        ("chairs", add_chairs),
     ]:
         layer = Layer(OUT / f"{name}.usda", name.capitalize())
         fn(layer)
         layer.save()
 
-    st = Usd.Stage.CreateNew(str(OUT / "scene.usda"))
-    UsdGeom.SetStageUpAxis(st, UsdGeom.Tokens.z)
-    UsdGeom.SetStageMetersPerUnit(st, 1.0)
-    UsdPhysics.SetStageKilogramsPerUnit(st, 1.0)
-    world = UsdGeom.Xform.Define(st, "/World")
-    st.SetDefaultPrim(world.GetPrim())
-    UsdPhysics.Scene.Define(st, "/World/PhysicsScene").CreateGravityDirectionAttr(Gf.Vec3f(0, 0, -1))
-    for nm in ("Background", "Counter", "Lounge", "Lights"):
-        st.DefinePrim(f"/World/{nm}").GetReferences().AddReference(f"./{nm.lower()}.usda")
-    st.GetRootLayer().Save()
+    # scene.usda: what the sim's Room holds; preview.usda adds the chairs (layout objects in the sim) for renders and
+    # the platform's 3D view (scripts/scenes/render_scenes.py, export_glb.py)
+    for stage_name, names in (("scene", SCENE_LAYERS), ("preview", SCENE_LAYERS + ("Chairs",))):
+        st = Usd.Stage.CreateNew(str(OUT / f"{stage_name}.usda"))
+        UsdGeom.SetStageUpAxis(st, UsdGeom.Tokens.z)
+        UsdGeom.SetStageMetersPerUnit(st, 1.0)
+        UsdPhysics.SetStageKilogramsPerUnit(st, 1.0)
+        world = UsdGeom.Xform.Define(st, "/World")
+        st.SetDefaultPrim(world.GetPrim())
+        UsdPhysics.Scene.Define(st, "/World/PhysicsScene").CreateGravityDirectionAttr(Gf.Vec3f(0, 0, -1))
+        for nm in names:
+            st.DefinePrim(f"/World/{nm}").GetReferences().AddReference(f"./{nm.lower()}.usda")
+        st.GetRootLayer().Save()
     # RoboDojo Room entry (layout_manager.select_room loads the only .usd in Assets/Room/<name>/): no PhysicsScene,
     # the env owns it. Install by copying this directory to Assets/Room/real_scene2/.
     room = Usd.Stage.CreateNew(str(HERE / "real_scene2.usd"))
@@ -952,7 +980,7 @@ def main():
     UsdGeom.SetStageMetersPerUnit(room, 1.0)
     scene = UsdGeom.Xform.Define(room, "/Scene")
     room.SetDefaultPrim(scene.GetPrim())
-    for nm in ("Background", "Counter", "Lounge", "Lights"):
+    for nm in SCENE_LAYERS:
         room.DefinePrim(f"/Scene/{nm}").GetReferences().AddReference(f"./usd/{nm.lower()}.usda")
     room.GetRootLayer().Save()
 
@@ -987,6 +1015,7 @@ def main():
             table="counter.usda",
             lounge="lounge.usda",
             lights="lights.usda",
+            preview="preview.usda",
         ),
     )
     (OUT / "build_params.json").write_text(json.dumps(params, indent=1), encoding="utf-8")
