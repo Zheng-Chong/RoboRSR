@@ -13,6 +13,8 @@ under policy name "scripted_demo".
     g1d_pour_beans_measuring_cups  the same with the 500 ml (source) and 400 ml measuring cups
     g1d_general_pickup        top-down grasp across the target's narrow side, lift 15 cm
     g1d_stack_blocks          stack the two outer blocks on the middle one, each with the arm on its side; arms back
+    g1d_deliver_cup_to_lounge (g1d_counter_mobile) pick the cup from the counter, back off, drive to a gap between the
+                              chairs at the lounge's round table, face it and set the cup down
 
 Usage (sim env, repo root):
     CUDA_VISIBLE_DEVICES=1 PYTHONPATH=.:XPolicyLab EVAL_NUM=1 python scripts/g1d/scripted_demo.py \
@@ -102,6 +104,16 @@ FINGER_TIPS = 0.023  # grip point -> fingertips
 TABLE_CLEAR = 0.006  # fingertips above the table
 HOVER, LIFT = 0.06, 0.15  # 6 cm hover keeps 3-block stacks below the wrist-pitch limit; pickup lifts 15 cm
 PLACE_GAP = 0.004  # held object's bottom above the surface it is released on
+# Mobile (g1d_mobile): chassis cruise speeds, ramp, tolerances
+DRIVE_V, DRIVE_W, DRIVE_ACC = 0.35, 0.5, 0.5 / 30  # m/s, rad/s; m/s per action (a held cup slips at hard starts)
+DRIVE_TOL, HEADING_TOL, TURN_FIRST = 0.03, 0.03, 0.25  # m, rad; turn on the spot first when off course by more
+SETTLE = 15  # actions standing still after a drive
+BACK_OFF = 0.7  # m straight back from the counter before turning: the held cup clears its front edge
+# Lounge table: root this far outside its rim; the cup set down this far ahead of the root; approach from this far out
+TABLE_STAND, PLACE_AHEAD, APPROACH = 0.20, 0.38, 0.5
+CHAIR_GAP = np.deg2rad(70)  # narrowest gap between the chairs round the table to stand in
+LOUNGE_LIFT = 0.07  # lift column at the 0.75 m table: 0.07 m above the office desk, as the counter's 0.153
+CARRY_UP = 0.08  # m the side-grasped cup is lifted off the counter for the drive (clears the chair backs, 0.8 m)
 
 
 def pad_open(width):
@@ -599,6 +611,116 @@ class Robot:
             point, rot = self.home[arm.arm_key]
             yield from self.move(arm, [(point, rot, 1, 54), (point, rot, 1, 12)])
 
+    def chassis(self):
+        """Chassis (AGV_link) position (x, y) and heading of its +X axis, env frame."""
+        rm = self.env.robot_manager
+        body = next(r for r in rm.robot_list if hasattr(r, "body_dims"))
+        pose = as_np(rm.get_link_pose(body, "AGV_link", env_idx_list=[0], is_relative=True)[0])
+        fwd = from_wxyz(pose[3:7]).apply([1.0, 0.0, 0.0])
+        return pose[:2], float(np.arctan2(fwd[1], fwd[0]))
+
+    def drive(self, target, heading=None, reverse=False, **body):
+        """Drive the chassis to `target` (x, y) with base_velocity, arms held: turn on the spot when off course, then
+        straight on with a speed ramp; optionally turn to `heading` at the end. `body` keys (the lift) ride along."""
+
+        def act(v, w):
+            self.step += 1
+            return dict(self.hold) | self.grip | body | {"base_velocity": [float(v), float(w)]}
+
+        v = 0.0
+        while True:
+            xy, yaw = self.chassis()
+            d = np.subtract(target, xy)
+            dist = float(np.linalg.norm(d))
+            if dist < DRIVE_TOL:
+                break
+            err = wrap(np.arctan2(d[1], d[0]) + (np.pi if reverse else 0.0) - yaw)
+            want = 0.0 if abs(err) > TURN_FIRST else min(DRIVE_V, 1.2 * dist)
+            v = float(np.clip(want, v - DRIVE_ACC, v + DRIVE_ACC))
+            if self.step % 30 == 0:
+                print(f"[scripted_demo] {self.step:4d} chassis {xy.round(3)} yaw {yaw:.2f} to {np.round(target, 3)}")
+            yield act(-v if reverse else v, np.clip(2.0 * err, -DRIVE_W, DRIVE_W))
+        while heading is not None and abs(err := wrap(heading - self.chassis()[1])) > HEADING_TOL:
+            yield act(0.0, np.clip(2.0 * err, -DRIVE_W, DRIVE_W))
+        for _ in range(SETTLE):
+            yield act(0.0, 0.0)
+
+
+def wrap(a):
+    return float((a + np.pi) % (2 * np.pi) - np.pi)
+
+
+def table_approach(robot, table, start):
+    """Unit vector from the lounge table centre to where the robot stands: the middle of a gap of at least CHAIR_GAP
+    between the chairs round it, the one facing `start` most."""
+    bearings = []
+    for rec in robot.lm.get_layout_records(0, "Rigid"):
+        if str(rec.get("label")).startswith("chair_"):
+            xy = robot.object(rec["label"])[0][:2]
+            if np.linalg.norm(xy - table) < 1.2:
+                bearings.append(np.arctan2(*(xy - table)[::-1]))
+    toward = np.arctan2(*(np.subtract(start, table))[::-1])
+    bearings = sorted(bearings)
+    gaps = [(b, (n - b) % (2 * np.pi) or 2 * np.pi) for b, n in zip(bearings, bearings[1:] + bearings[:1])]
+    mids = [b + g / 2 for b, g in gaps if g >= CHAIR_GAP] or [toward]
+    mid = min(mids, key=lambda m: abs(wrap(m - toward)))
+    return np.array([np.cos(mid), np.sin(mid)])
+
+
+def deliver_cup_actions(env):
+    """Side-grasp the cup on the counter (as the cup pours: a top grasp slips off the 30 g plastic cup), lift it, back
+    off, drive through the lounge to a gap between the chairs at the round table, lowering the lift column for it on
+    the way, face the table, set the cup down, open and slide the hand back out."""
+    robot = Robot(env)
+    lm = robot.lm
+    cup0 = robot.object("cup")[0]
+    arm = robot.arm_for(cup0[0])
+    out = -1.0 if arm.arm_key.startswith("left") else 1.0
+    bbox = lm.get_instance_bbox_vertices(lm.get_instance_name(0, "cup"), 0)
+    height = bbox[:, 2].max() - bbox[:, 2].min()
+    grip, hand, _, _, open_cmd = cup_grasp(lm, out, "cup", height - C2C_RIM_DOWN["plastic_cup"])
+    approach = grip - hand.apply([CUP_SLIDE, 0, 0])
+    print(f"[scripted_demo] cup at {cup0.round(3)} with {arm.arm_key} grip {grip.round(3)} open {open_cmd:.2f}")
+    yield from robot.move(
+        arm,
+        [
+            (approach + [0, 0, HOVER], hand, open_cmd, 54),
+            (approach, hand, open_cmd, 30),
+            (grip, hand, open_cmd, 40),  # slide in
+            (grip, hand, 0, 15),  # close
+            (grip + [0, 0, CARRY_UP], hand, 0, 36),
+        ],
+    )
+    print(f"[scripted_demo] lifted cup to {robot.object('cup')[0].round(3)} (from {cup0.round(3)})")
+    start, yaw = robot.chassis()
+    yield from robot.drive(start - BACK_OFF * np.array([np.cos(yaw), np.sin(yaw)]), reverse=True)
+    table, r = np.asarray(env.table_xy[0]), env.table_r[0]
+    u = table_approach(robot, table, start)
+    lift = {"lift_joint_state": [LOUNGE_LIFT]}
+    bearing = np.degrees(np.arctan2(u[1], u[0]))
+    print(f"[scripted_demo] lounge table {table.round(3)} r {r:.3f}, approach bearing {bearing:.0f}")
+    yield from robot.drive(table + (r + TABLE_STAND + APPROACH) * u, **lift)
+    yield from robot.drive(table + (r + TABLE_STAND) * u, heading=float(np.arctan2(-u[1], -u[0])), **lift)
+    spot = table + (r + TABLE_STAND - PLACE_AHEAD) * u
+    # the cup sits in the hand as it does now (it may have slid in the grip on the way): keep that offset
+    point, rot = arm.grasp_point(), arm.pose()[1]
+    centre, _, _, bottom, _ = robot.object("cup")
+    down = np.r_[spot + point[:2] - centre[:2], env.table_z[0] + PLACE_GAP + point[2] - bottom]
+    back = down - rot.apply([CUP_SLIDE, 0, 0])
+    print(f"[scripted_demo] place cup at {spot.round(3)}, hand to {down.round(3)}")
+    yield from robot.move(
+        arm,
+        [
+            (down + [0, 0, HOVER], rot, 0, 48),
+            (down, rot, 0, 36),
+            (down, rot, open_cmd, 15),  # release
+            (back, rot, open_cmd, 30),  # slide out along the fingers
+            (back + [0, 0, HOVER], rot, open_cmd, 24),
+        ],
+    )
+    checks = {c[0]: env.reward_manager.call_func_parser(c, 0) for c in env.delivered_checks()}
+    print(f"[scripted_demo] cup at {robot.object('cup')[0].round(3)}, checks {checks}, env success {env.success[0]}")
+
 
 def pickup_actions(env):
     robot = Robot(env)
@@ -628,6 +750,7 @@ DEMOS = {
     "g1d_pour_beans_measuring_cups": cup_to_cup_actions,
     "g1d_general_pickup": pickup_actions,
     "g1d_stack_blocks": stack_actions,
+    "g1d_deliver_cup_to_lounge": deliver_cup_actions,
 }
 
 

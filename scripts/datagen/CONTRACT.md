@@ -25,8 +25,8 @@
 ## 观测与动作
 
 - **16 维向量的顺序**：左臂 7 个关节、左夹爪、右臂 7 个关节、右夹爪。左右臂各自的关节顺序以质检单里的 `joint_names` 为准；G1-D 是 shoulder_pitch、shoulder_roll、shoulder_yaw、elbow、wrist_roll、wrist_pitch、wrist_yaw。关节角单位是 rad。
-- **身体自由度（腰、升降、底盘）不在 16 维向量里**，已有数据集都没有录。仿真支持它们作为可选的动作键：`waist_joint_state` [偏航, 俯仰] rad（官方 12 WaistYaw、14 WaistPitch，仿真关节 `torso_Joint`、`Yaw_Joint`）、`lift_joint_state` [升降柱高度] m（两级 `LZ_*_Joint` 各一半），以及只在 `g1d_mobile` 上有的 `base_velocity` [vx, vyaw]（底盘坐标系，m/s、rad/s）。不发腰和升降就保持，不发底盘就停车。env 配置打开 `observation.robot.body_states` 才进观测，同时多一个只在 state 里的 `base_pose` [x, y, yaw]（相对回合起点）。录制（`collect.py` 的 `state_keys`）和 LeRobot 导出都还只认 16 维，要录身体自由度先改本契约、录制器和转换器。
-- **夹爪 state**：两指关节实测位置的均值，换算到 0（闭合）到 1（张开）。被物体挡住时，读数停在物体宽度对应的开度上，不裁剪。由 env 配置里的 `observation.robot.ee_state: measured` 打开，G1-D 的七个配置（`g1d`、`g1d_counter`、`g1d_lab`、`g1d_school`、`g1d_shenzhen_lab`、`g1d_beans_collect`、`g1d_mobile`）都已打开。不写这个键时仍是上一步的指令值，这是 RoboDojo 原来的行为，X5 等任务不受影响。
+- **身体自由度（腰、升降、底盘）不在 16 维向量里**，已有数据集都没有录。仿真支持它们作为可选的动作键：`waist_joint_state` [偏航, 俯仰] rad（官方 12 WaistYaw、14 WaistPitch，仿真关节 `torso_Joint`、`Yaw_Joint`）、`lift_joint_state` [升降柱高度] m（两级 `LZ_*_Joint` 各一半），以及只在 `g1d_mobile` 上有的 `base_velocity` [vx, vyaw]（底盘坐标系，m/s、rad/s）。不发腰和升降就保持，不发底盘就停车。env 配置打开 `observation.robot.body_states` 才进观测，同时多一个只在 state 里的 `base_pose` [x, y, yaw]（相对回合起点）。录制（`collect.py` 的 `state_keys`）和 LeRobot 导出都还只认 16 维，要录身体自由度先改本契约、录制器和转换器。移动操作任务 `g1d_deliver_cup_to_lounge`（env 配置 `g1d_counter_mobile`）因此目前只用于评估和脚本专家演示，不能按本契约采集。
+- **夹爪 state**：两指关节实测位置的均值，换算到 0（闭合）到 1（张开）。被物体挡住时，读数停在物体宽度对应的开度上，不裁剪。由 env 配置里的 `observation.robot.ee_state: measured` 打开，G1-D 的八个配置（`g1d`、`g1d_counter`、`g1d_lab`、`g1d_school`、`g1d_shenzhen_lab`、`g1d_beans_collect`、`g1d_mobile`、`g1d_counter_mobile`）都已打开。不写这个键时仍是上一步的指令值，这是 RoboDojo 原来的行为，X5 等任务不受影响。
 - **夹爪 action**：指令值，刻度同上，执行前裁剪到 [0, 1]。
 - **机械臂 action**：关节位置目标，30 Hz。仿真在每个动作内部做插值，与真机控制器的跟踪方式不同（见 README「控制对齐」）。
 - **帧对齐**：第 t 帧的图像和 state 都是在执行 `action[t]` 之前采集的。

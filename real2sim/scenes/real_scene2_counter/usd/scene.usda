@@ -25,10 +25,15 @@ def Xform "World"
     {
     }
 
+    def "Lounge" (
+        prepend references = @./lounge.usda@
+    )
+    {
+    }
+
     def "Lights" (
         prepend references = @./lights.usda@
     )
     {
     }
 }
-

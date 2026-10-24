@@ -10,7 +10,7 @@
   "slab": 0.063
  },
  "columns": {
-  "left_w": 0.45,
+  "left_w": 1.0,
   "left_front": -0.261,
   "right_front": -0.251
  },
@@ -33,10 +33,80 @@
   1.502,
   1.792
  ],
+ "lounge": {
+  "wall_y": 0.419,
+  "x_range": [
+   -7.29,
+   -2.216
+  ],
+  "table_top_z": 0.75,
+  "table_r": 0.418,
+  "tables": {
+   "blue": [
+    -3.589,
+    -2.142
+   ],
+   "white": [
+    -6.216,
+    -2.481
+   ]
+  },
+  "chairs": [
+   {
+    "index": 0,
+    "xy": [
+     -4.336,
+     -2.207
+    ],
+    "yaw_deg": 5
+   },
+   {
+    "index": 0,
+    "xy": [
+     -3.654,
+     -2.889
+    ],
+    "yaw_deg": 85
+   },
+   {
+    "index": 0,
+    "xy": [
+     -2.85,
+     -2.272
+    ],
+    "yaw_deg": 170
+   },
+   {
+    "index": 0,
+    "xy": [
+     -3.524,
+     -1.395
+    ],
+    "yaw_deg": 265
+   },
+   {
+    "index": 1,
+    "xy": [
+     -5.566,
+     -2.106
+    ],
+    "yaw_deg": 210
+   },
+   {
+    "index": 1,
+    "xy": [
+     -5.566,
+     -2.856
+    ],
+    "yaw_deg": 150
+   }
+  ]
+ },
  "layers": {
   "scene": "scene.usda",
   "background": "background.usda",
   "table": "counter.usda",
+  "lounge": "lounge.usda",
   "lights": "lights.usda"
  }
 }

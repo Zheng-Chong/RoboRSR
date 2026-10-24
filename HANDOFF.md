@@ -14,7 +14,7 @@
   - 头部用双目的左眼 `cam_head`（棋盘格标定 fx≈279.5，宇树合同外参），两个腕部相机 fx≈314；投影到真机画面核对过（误差 0.4–3.6 px）。
   - 关节驱动参数（刚度 4400、阻尼 40）和夹爪力是拍定的，没做系统辨识。同事把"相机+动作标定工具包"作为 `g1d_calib_toolkit_20261019.zip` 传到了仓库根目录，还没接入。
   - 构建：`python scripts/g1d/build_asset.py`（读 `real2sim/robot/g1d_v4`）。下载官方资产后先跑一次 `utils/update_embodiment_config_path.py`。
-- **场景**（`real2sim/scenes/`）：env 配置 `g1d` 是办公室，`g1d_counter` 是吧台，`g1d_lab` 是公司实验室，`g1d_school` 是学校实验室绿幕桌，`g1d_shenzhen_lab` 是深圳实验室办公桌。前三个从照片拟合，尺度靠先验；学校的来自同事用真机相机画面拟合的 MuJoCo 孪生；深圳实验室是第一个按平台登记、用卷尺定尺度的场景（卷尺三项通过，站位和叠图待做）。其余都没有卷尺实测，都没有叠图验收。状态汇总：`python scripts/scenes/acceptance.py`（目前全部 pending）。新场景先在数采平台登记（≥ 5 张照片 + 卷尺实测，写 `registration.json`），再按 `real2sim/scenes/SKILL.md` 交给 coding agent 建模。新场景先在数采平台「登记场景」（至少 5 张照片 + 卷尺实测，写 `real2sim/scenes/<场景>/registration.json`），再按 `real2sim/scenes/SKILL.md` 建模。
+- **场景**（`real2sim/scenes/`）：env 配置 `g1d` 是办公室，`g1d_counter` 是吧台（移动版 `g1d_counter_mobile` 加了左侧客区，见「最近任务」第一节），`g1d_lab` 是公司实验室，`g1d_school` 是学校实验室绿幕桌，`g1d_shenzhen_lab` 是深圳实验室办公桌。前三个从照片拟合，尺度靠先验；学校的来自同事用真机相机画面拟合的 MuJoCo 孪生；深圳实验室是第一个按平台登记、用卷尺定尺度的场景（卷尺三项通过，站位和叠图待做）。其余都没有卷尺实测，都没有叠图验收。状态汇总：`python scripts/scenes/acceptance.py`（目前全部 pending）。新场景先在数采平台登记（≥ 5 张照片 + 卷尺实测，写 `registration.json`），再按 `real2sim/scenes/SKILL.md` 交给 coding agent 建模。新场景先在数采平台「登记场景」（至少 5 张照片 + 卷尺实测，写 `real2sim/scenes/<场景>/registration.json`），再按 `real2sim/scenes/SKILL.md` 建模。
 - **物体**：每件资产的来源和匹配程度看 `real2sim/ASSETS.md`。按数采平台的登记（`real2sim/objects/<id>/spec.json` + 照片）给实物建模，交给 coding agent 时按 `scripts/objects/SKILL.md`；平台物体页生成的「建模任务」文本第一行就指向它。
   - 量杯、塑料马克杯、红豆有实测尺寸和质量。
   - 共享资产库缺 `measuring_cup`、`plastic_mug`，以及量杯任务的布局。
@@ -25,6 +25,7 @@
   - 拾取、叠块：三个场景 seed 0 都成功。
   - 杯对杯倒豆、量杯对倒：部分 seed 成功。
   - 壶倒杯：5.6 mm 的豆子会堵住 13 mm 的壶嘴。
+  - 移动送杯 `g1d_deliver_cup_to_lounge`（`g1d_counter_mobile`）：seed 0 前 4 个布局 4/4。
 - **数据**：所有数据集登记在 `scripts/datagen/registry.json`。目前有 2 份办公室量杯全量倒豆数据，各 100 条，LeRobot v3.0，都是按旧的 legacy 格式导出的：
   - 固定朝向的一份，已上传 ModelScope 私有仓库；
   - 随机左右手、随机朝向、大范围位置的一份，也已上传 ModelScope 私有仓库（单独的仓库）。
@@ -35,6 +36,20 @@
 
 ## 最近任务
 
+### 吧台客区 + 第一个移动操作任务（2026-10-23/24，`chongzheng/scene-counter-lounge-mobile`）
+
+- **用户要求**：把吧台旁边的客区（3 张照片：墙纸凹龛、圆桌、蓝色扶手椅）加进吧台场景，做成支持移动操作的场景。用户选定：从移动版分支开（已在 `main` 里）、加一个跨区任务并带脚本专家、椅子做成可推动的刚体、暂时没有卷尺，尺度按先验。
+- **场景**（`real2sim/scenes/real_scene2_counter/`，细节见其 `PLAN.md`「左侧客区」）：新增 `fit_lounge.py`，三张照片 `reference/lounge{1,2,3}.jpg` 联合拟合三台相机、凹龛和圆桌（31 个像素约束，最大 12.7 px），尺度只来自「圆桌高 0.75 m」。凹龛宽 5.07 m，在吧台左木柱左侧；吧台左木柱宽从假设的 0.45 m 改为 1.0 m（两组照片的下限）。新增 `usd/lounge.usda`（墙纸和灯带贴图从照片透视校正、两张圆桌、垃圾桶、静态碰撞体），房间扩到 x = −9.84、y = −5.5，客区上方加两块顶灯（未标定）。椅子不在场景 USD 里，摆位写在 `usd/build_params.json` 的 `lounge.chairs`。
+- **椅子** `Rigid/lounge_chair/00000`（蓝）、`00001`（白，只换颜色）：`scripts/objects/make_lounge_chair.py`，尺寸按照片估计，7 kg。`RigidObject` 新增布局键 `physics.mass_cap`（默认仍截到 0.5 kg，只有椅子放开），否则椅子 0.5 kg 一碰就飞。
+- **env 配置** `g1d_counter_mobile`（`env_cfg/g1d_counter_mobile.yml`、`env_cfg/robot/g1d_counter_mobile.yml`）：移动版 G1-D，起点和升降柱同 `g1d_counter`，`body_states` 打开。`build_asset.py` 的 `SCENES` 加了它，`LOUNGE_TASKS` 给它生成客区任务布局（seed 0–2 各 10 个，按 `任务/seed/序号` 定种子）。
+- **任务** `g1d_deliver_cup_to_lounge`：从台面拿塑料杯（`plastic_cup/00000`，\(|x|\) 0.06–0.16 m 随机左右、y −0.46 ~ −0.38），送到客区圆桌放下。判据（`delivered_checks()`）：杯心在桌心半径 −4 cm 内、高度没掉到地上、杯口朝上 15° 内、两个夹爪都张开。1500 步。
+- **脚本专家**（`scripted_demo.deliver_cup_actions`）：侧抓（同倒豆的 `cup_grasp`；俯抓会把 30 g 塑料杯夹滑，第一次 GPU 运行就是空手开过去的），抬 8 cm，后退 0.7 m，挑椅子之间最朝向出发点的空档，开过去时把升降柱降到 0.07 m，转向圆桌，按到桌后实测的手–杯偏移放下，张开后沿手指退出再抬手。`Robot.drive` 是 `base_velocity` 的转向 + 直行控制器。
+- **框架修复**：`func_parser.is_all_gripper_open` 归一化时没看 `gripper_move.sign`，G1-D 的 Dex1-1（sign −1，正向闭合）全开时算成 0，永远判不过；改成和 `obs_manager._to_gripper_scale` 一致。X5、Franka 的 sign 都是 1，结果不变。之前没有 G1-D 任务用到它。
+- **验证**：
+  - 本机：`check.sh`（ruff 0.11.7、41 passed 1 skipped、任务清单）；`build_scene.py` + `check_scene.py` 19/20（唯一 FAIL 是吧台站位的固定提醒）；`scene_parts.py` 重新生成 `parts.json`。
+  - `5090-2` 隔离目录 `/data/robodojo-runs/counter-lounge-20261023-163001`（1 号卡，和 `owam-server` 共用；其余 7 张卡被另一位同事的 `gpu_hold.py` 占着）：两把椅子 `check_object.py` OK；脚本专家 `--env_cfg_type g1d_counter_mobile --seed 0` 前 4 个布局 4/4 成功（左手 1 个、右手 3 个），`_result.json` `success_rate` 1.0、`eval_time` 4。头部相机截图在本机 `output/deliver_head.jpg`（不入库）。
+  - 没跑：完整 `build_asset.py`（服务器缺 `g1d_v4`/`unitree_ros`，布局用 `build_lounge_layouts` 单独生成），seed 1、2，`body_probe.py`，椅子被推开的专门测试。
+- **共享资产库没动**：`lounge_chair`、新的 `Room/real_scene2`（带客区）、`Eval_Layout/RoboDojo/g1d_counter_mobile/` 都只在隔离目录里。装库要先征得用户同意；新 `real_scene2` 也会改变 `g1d_counter` 的画面左侧（原来是一面刷漆墙加挂画），吧台本身几何不变。
 ### RSI 协议初版 `rsi/AGENTS.md`（2026-10-24，直接推 `main`，只有文档）
 
 - **用户要求**：① RoboDojo 评测用到的随机资产，生产数据时必须保留（第一规则；用户原话里的"拼车"按语音误识别理解为"评测"）；② 给 coding agent 能做泛化的操作（探索边际），避免押题、抄答案；③ 多 agent：一个改进数据、一个改进评测，二者对抗、不能互相通信；④ 写成类似 AGENT.md 的东西，给定模型、训练资源、评测平台就能跑 RSI。
@@ -365,7 +380,9 @@
 - **G1-D 移动版**：
   - 共享资产库还没有 `g1d_mobile_dex1.urdf` 和 `Eval_Layout/RoboDojo/g1d_mobile/`，要在隔离目录跑完整的 `build_asset.py` 验证后，经用户同意再装；
   - 录制（`collect.py` 的 `state_keys`）、LeRobot 导出和 XPolicyLab 的 `_robot_info.json` 都只认 16 维，要采带身体自由度的数据，先定契约再改录制器和转换器；
-  - 还没有用到底盘的任务；底盘撞桌、撞椅只靠领先量限幅，没有专门测；轮子只是外观，不转；
+  - 第一个用到底盘的任务是 `g1d_deliver_cup_to_lounge`（见「最近任务」第一节）；底盘撞桌、撞椅只靠领先量限幅，没有专门测；轮子只是外观，不转；
+  - 客区尺度只来自「圆桌高 0.75 m」，吧台左木柱宽 1.0 m 是下限估计，椅子尺寸和 7 kg 都是估计；下次去现场按 `real_scene2_counter/PLAN.md`「需要实测的尺寸」第 5 项量；
+  - 脚本专家的绕行只挑椅子空档，不做路径规划：路线上有别的障碍时会撞上；
   - 真机升降是速度接口，部署端要按官方 PD 示例把 `lift_joint_state` 换成 `HeightAdjust`；真机 `rt/hispeed_state` 高度的零点和仿真 0（最低）是否一致没核对；底盘加减速、腰和升降的动力学都没做辨识。
 
 - **主工作区里未提交的改动**（10-20 晚核对）：`CLAUDE.md`、`HANDOFF.md`、`README.md`、`real2sim/scenes/SKILL.md`、`scripts/g1d/export_office_beans.py`，主要是「服务器切到 5090-2」那次的文档改动；主工作区的本地 `main` 还停在 `a694da5`，落后 `origin/main`。物体 SKILL 已随 PR #5 合并。
@@ -408,10 +425,11 @@
 3. 去现场按 `real2sim/scenes/SKILL.md` 采集（ChArUco 标定板照片、卷尺、灯光、机器人相机画面），在平台「登记场景」录入，回来跑 `overlay.py` 和 `acceptance.py`。
 4. 给 XPolicyLab 提 PR，注册 `g1d*` 的动作维度；然后用一个 LeRobot 策略在 `--env-cfg g1d_beans_collect` 下走通"外部训练 → 本仓库评估"的整条链。
 5. 学校场景：用户重建 sys01 连接后拷真机画面做叠图（`overlay.py --env-cfg g1d_school`）；要用学校场景做任务时，再写杯盘布局和任务。
-6. G1-D 移动版：PR 合并后，在隔离目录跑完整 `build_asset.py` 和 `body_probe.py`（两个版本），征得同意再装共享库；要做移动操作任务或采身体自由度数据时，先改 CONTRACT。
+6. G1-D 移动版：在隔离目录跑完整 `build_asset.py` 和 `body_probe.py`（两个版本），征得同意再装共享库（连同 `lounge_chair`、带客区的 `real_scene2`、`g1d_counter_mobile` 布局）；送杯任务再跑 seed 1、2；要采身体自由度数据时，先改 CONTRACT 和录制器（`base_velocity`、`lift_joint_state` 还不进 16 维录制）。
 
 ## 最近历史
 
+- 2026-10-24：吧台场景加左侧客区（3 张照片拟合，墙纸凹龛、两张圆桌、可推动的扶手椅刚体）；新增移动版配置 `g1d_counter_mobile` 和第一个移动操作任务 `g1d_deliver_cup_to_lounge`（吧台拿杯送到客区圆桌），脚本专家 seed 0 前 4 个布局 4/4；修复 `is_all_gripper_open` 对 G1-D 夹爪方向判反。
 - 2026-10-24：RSI 协议初版 `rsi/AGENTS.md` + `rsi/rsi.example.yaml`：官方评测资产保留、只许泛化不许押题、数据方和评测方对抗且只经裁判交换分档成绩；统计出房间和杂物几乎全是官方保留资产。
 - 2026-10-23：上海实验室 `real_scene3_lab` 的墙面不再贴照片，改成纯色饰面加门、白板、电视；角落放了一台由 URDF 烘焙的静态 G1-D（`usd/g1d.usdc`）。离线检查通过，Isaac 和共享库待做。
 - 2026-10-23：数采平台任务抽屉加「泛化随机方案」，新增 X5 布局生成器 `scripts/datagen/x5_layouts.py`（接手另一会话未提交的实现；相机扰动改为只转角度，平移会让部分环境出图全黑）；`5090-2` 端到端验证 10/10 正常。

@@ -25,6 +25,11 @@
   "wall": {
    "parts": [
     {
+     "path": "Background/WallLeft/upper",
+     "material": "wall_paint",
+     "uv_m": null
+    },
+    {
      "path": "Background/WallBack",
      "material": "wall_paint",
      "uv_m": null

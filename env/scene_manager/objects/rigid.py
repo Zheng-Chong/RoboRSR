@@ -63,7 +63,8 @@ class RigidObject(SingleRigidPrim, SingleGeometryPrim):
         self.default_pos = default_pos
         self.default_ori = default_ori
         self.scale = scale
-        self.mass = min(self.physics_config.get("mass", 0.5), 0.5)
+        # tabletop objects are capped at 0.5 kg; furniture the robot pushes (lounge chairs) raises it in its layout
+        self.mass = min(self.physics_config.get("mass", 0.5), self.physics_config.get("mass_cap", 0.5))
         self.visible = self.visual_config.get("visible", True)
 
         self.physics_material_path = find_unique_string_name(

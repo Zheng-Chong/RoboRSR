@@ -135,6 +135,21 @@ def main():
         ),
     )
 
+    lounge = params["lounge"]
+    tops = {n: round(float(b[1][2]), 4) for n, b in cb.items() if n.startswith("Table_") and n.endswith("_top")}
+    add(
+        "lounge table tops at table_top_z",
+        len(tops) == len(lounge["tables"]) and all(abs(z - lounge["table_top_z"]) < 1e-4 for z in tops.values()),
+        dict(table_top_z=lounge["table_top_z"], tops=tops),
+    )
+    big = {}
+    for p in colliders:
+        if str(p.GetPath()).startswith("/World/Lounge"):
+            n = len({tuple(v) for v in np.round(np.array(UsdGeom.Mesh(p).GetPointsAttr().Get()), 6)})
+            if n > 64:
+                big[str(p.GetPath())] = n
+    add("lounge colliders within the PhysX GPU convex limit (<= 64 vertices)", not big, dict(over=big))
+
     lights = [p for p in st.Traverse() if p.HasAPI(UsdLux.LightAPI)]
     add("lights present", len(lights) >= 2, dict(lights=[str(p.GetPath()) for p in lights]))
 

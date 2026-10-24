@@ -165,6 +165,21 @@ def main():
         view = render(scene, eye=eye, target=None, hfov_deg=fit["hfov_deg"], size=(1024, 768), R=R)
         rows.append(np.hstack([cv2.imread(str(HERE / "reference" / name)), cv2.cvtColor(view, cv2.COLOR_RGB2BGR)]))
     cv2.imwrite(str(HERE / "preview" / "compare_photo.jpg"), np.vstack(rows), [cv2.IMWRITE_JPEG_QUALITY, 85])
+    # lounge photos through the cameras of fit_lounge.py (its frame is the scene frame shifted to the lounge corner);
+    # the chairs are layout objects, not in the scene USD
+    lounge = json.loads((HERE / "fit_lounge.json").read_text())
+    params = json.loads((USD / "build_params.json").read_text())
+    origin = np.array([params["lounge"]["x_range"][1], params["lounge"]["wall_y"], 0.0])
+    hfov = math.degrees(2 * math.atan(512 / lounge["focal_px"]))
+    rows = []
+    for name, cam in lounge["cameras"].items():
+        R = cv2.Rodrigues(np.array(cam["rvec"]))[0]
+        eye = -R.T @ np.array(cam["tvec"]) + origin
+        view = render(scene, eye=eye, target=None, hfov_deg=hfov, size=(1024, 768), R=R)
+        rows.append(np.hstack([cv2.imread(str(HERE / "reference" / name)), cv2.cvtColor(view, cv2.COLOR_RGB2BGR)]))
+    cv2.imwrite(str(HERE / "preview" / "compare_lounge.jpg"), np.vstack(rows), [cv2.IMWRITE_JPEG_QUALITY, 80])
+    plan = render(scene, eye=(-3.0, -2.2, 9.0), target=(-3.0, -2.19, 0.0), hfov_deg=80, size=(1024, 768))
+    cv2.imwrite(str(HERE / "preview" / "plan.jpg"), cv2.cvtColor(plan, cv2.COLOR_RGB2BGR))
     # Estimated G1-D head camera: root 0.20 m behind the counter edge, head 0.15 m ahead of the waist, ~1.25 m high,
     # pitched 47.6 deg down (scripts/g1d/left_robot_config.yml), wide-angle ~96 deg h-FOV as in the sim config.
     eye = np.array([0.0, -0.35, 1.25])

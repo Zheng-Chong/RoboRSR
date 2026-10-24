@@ -25,6 +25,7 @@ import argparse
 import colorsys
 import copy
 import json
+import math
 from pathlib import Path
 import random
 import shutil
@@ -48,6 +49,7 @@ SCENES = {  # env config: (scene dir, Room category, Room position, object (x, y
     "g1d_mobile": ("real_scene1_office", "real_scene1", [0.0, -0.29, 0.0], (0.0, 0.0)),  # same start pose as g1d
     # floor cabinet: the chassis cannot go under it, so the robot stands 7 cm further back (root y=-0.80)
     "g1d_counter": ("real_scene2_counter", "real_scene2", [-0.35, -0.32, 0.0], (0.0, -0.07)),
+    "g1d_counter_mobile": ("real_scene2_counter", "real_scene2", [-0.35, -0.32, 0.0], (0.0, -0.07)),  # + its lounge
     "g1d_lab": ("real_scene3_lab", "real_scene3", [0.0, -0.257, 0.0], (0.0, 0.0)),
     # school green-screen table: robot 0.19 m behind the edge (root y=-0.79), 0.083 m left of the table centre, lift at
     # zero (the torso keeps its fitted height over this table, see env_cfg/robot/g1d_school.yml)
@@ -275,7 +277,12 @@ def move_into_real_scene(layout, xy, room, room_pos, table_top):
     shift_objects(layout, (*xy, table_top - (table["default_pos"][2] + table["scale"][2] / 2)))
     layout.pop("Ground", None)
     layout.pop("Background", None)
-    layout["Room"] = {
+    layout["Room"] = room_entry(room, room_pos, table_top)
+    return layout
+
+
+def room_entry(room, room_pos, table_top):
+    return {
         "default": room,
         "default_pos": room_pos,
         "default_ori": [1.0, 0.0, 0.0, 0.0],
@@ -283,7 +290,6 @@ def move_into_real_scene(layout, xy, room, room_pos, table_top):
         "collision": False,  # the USD carries its own static colliders (floor box included)
         "table_height": table_top,  # for the layout stability check
     }
-    return layout
 
 
 def swap_bottle_for_pitcher(layout, assets, layout_index, table_top):
@@ -489,6 +495,73 @@ def randomize_objects(layout, rules, table_top, assets, seed):
     return layout
 
 
+# Mobile tasks in a scene's lounge (Room usd/build_params.json "lounge"), drawn per layout from a seeded RNG rather than
+# from a benchmark task's layouts: env config: {task: generator}; LOUNGE_LAYOUTS layouts in each seed folder.
+LOUNGE_SEEDS, LOUNGE_LAYOUTS = (0, 1, 2), 10
+# cup on the free countertop in front of g1d_counter's root (0, -0.80), |x| on either side: the arm on that side grasps
+# it from the outside (the cup pours' side grasp, scripted_demo.cup_grasp)
+CUP_X, CUP_Y = (0.06, 0.16), (-0.46, -0.38)
+CHAIR_JITTER, CHAIR_YAW_JITTER = 0.05, 10.0  # m, deg about each chair's photo pose
+
+
+def _yaw_quat(deg):
+    a = math.radians(deg) / 2
+    return [math.cos(a), 0.0, 0.0, math.sin(a)]
+
+
+def deliver_cup_layout(assets, room, room_pos, params, rng):
+    """The plastic cup somewhere on the countertop in front of the robot, any yaw; the lounge chairs (rigid, at their
+    real mass so the chassis pushes rather than flings them) at their photo poses, jittered."""
+
+    def entry(cat, idx, label, xy, yaw, plane, z_base):
+        meta = json.loads((assets / f"Object/RoboDojo/Rigid/{cat}/{idx:05d}/metadata.json").read_text())
+        physics = dict(meta["physics"], type="rigid")
+        if cat == "lounge_chair":
+            physics["mass_cap"] = physics["mass"]
+        return {
+            "category": cat,
+            "category_idx": idx,
+            "label": label,
+            "default_pos": [*map(float, xy), z_base + meta["physics"]["size"][2] / 2 + 1e-3],
+            "default_ori": _yaw_quat(yaw),
+            "scale": [1.0, 1.0, 1.0],
+            "physics": physics,
+            "visual": {},
+            "relative_plane": plane,
+            # the layout check also fails anything resting > 5 cm below the tabletop: floor furniture is left out
+            "need_check_stable": plane != "ground",
+        }
+
+    top = params["table"]["top_z"]
+    cup_xy = (rng.choice((-1, 1)) * rng.uniform(*CUP_X), rng.uniform(*CUP_Y))
+    chairs = []
+    for i, chair in enumerate(params["lounge"]["chairs"]):
+        xy = [c + o + rng.uniform(-CHAIR_JITTER, CHAIR_JITTER) for c, o in zip(chair["xy"], room_pos)]
+        yaw = chair["yaw_deg"] + rng.uniform(-CHAIR_YAW_JITTER, CHAIR_YAW_JITTER)
+        chairs.append(entry("lounge_chair", chair["index"], f"chair_{i}", xy, yaw, "ground", 0.0))
+    return {
+        "Rigid": {
+            "plastic_cup": [entry("plastic_cup", 0, "cup", cup_xy, rng.uniform(0, 360), "Table", top)],
+            "lounge_chair": chairs,
+        },
+        "Room": room_entry(room, room_pos, top),
+    }
+
+
+LOUNGE_TASKS = {"g1d_counter_mobile": {"g1d_deliver_cup_to_lounge": deliver_cup_layout}}
+
+
+def build_lounge_layouts(assets, config, room, room_pos, dst):
+    params = json.loads((assets / "Room" / room / "usd" / "build_params.json").read_text())
+    for task, make in LOUNGE_TASKS.get(config, {}).items():
+        for seed in LOUNGE_SEEDS:
+            (dst / str(seed)).mkdir(parents=True, exist_ok=True)
+            for i in range(LOUNGE_LAYOUTS):
+                layout = make(assets, room, room_pos, params, random.Random(f"{task}/{seed}/{i}"))
+                (dst / str(seed) / f"{task}_{i}.json").write_text(json.dumps(layout, indent=4))
+        print(f"wrote {len(LOUNGE_SEEDS) * LOUNGE_LAYOUTS} {task} layouts to {dst}")
+
+
 def _layout_sort_key(path):
     tail = path.stem.rpartition("_")[2]
     return str(path.parent), int(tail) if tail.isdigit() else -1, path.stem
@@ -539,6 +612,7 @@ def build_layouts(assets):
                         (out.parent / f"{task}_{seq}.json").write_text(json.dumps(shifted, indent=4))
                         counts[key] = seq + 1
         print(f"wrote {sum(counts.values())} G1-D task layouts to {dst}")
+        build_lounge_layouts(assets, config, room, room_pos, dst)
 
 
 def main():

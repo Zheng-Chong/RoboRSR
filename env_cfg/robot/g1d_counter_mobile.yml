@@ -1,0 +1,12 @@
+robots:
+  - {
+    robot_type: arm,
+    # G1-D Flagship in the counter scene with its lounge (real_scene2): starts at the counter as g1d_counter does.
+    robot_name: g1d_mobile,
+    coupled: True,
+    need_planner: False,
+    default_root_pos: [0.0, -0.80, 0.1115],
+    default_root_rot: [0.707, 0, 0, 0.707],
+    # Countertop 0.833 m is 0.153 m above the office table: raise the lift column by as much.
+    init_joint_pos: {LZ_mt_Joint: 0.0765, LZ_it_Joint: 0.0765}
+  }
