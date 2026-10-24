@@ -64,7 +64,7 @@
 - **用户要求**：墙面不要用贴图；角落里那台 G1-D 直接放一个 G1-D 模型过去。
 - **墙面**（`build_scene.py` 的 `WALL_SPANS`、`MULLIONS`、`DOOR`、`BOARDS`、`TV`）：四张墙面照片贴图和抠图补色的代码都删了。墙改成纯色饰面，颜色取照片中值：南墙是玻璃隔断（不透明绿灰色，带竖框）、白墙和一扇白门；北墙是白墙，挂一块黑边白板和一块黑屏；东西两面是深灰吸音板加踢脚线，挂黑边白板；西墙 y > 2.5 是白墙。位置由照片像素反投影得到，表格见 `PLAN.md`「墙面（v3）」。墙面网格带米制 UV，平台换材质可以用；材质库里实验室的 4 个照片墙条目换成 `paint`、`acoustic` 两个（`library.json` 只动了这几条，`test_server.py` 跟着改）。
 - **G1-D**：用 `real2sim/robot/g1d_v4/g1_d_full_dex1_v4.urdf` 做正运动学（两肘 1.2 rad，手臂下垂和 p3 一致；其余关节为 0），材质和仿真里的 G1-D 一致（机身、手臂、底盘、升降柱哑光金属，夹爪、头、腰、轮子和前臂一圈黑色，规则抄自 `env/robot_manager/robot_config/g1d.py`；URDF 里的蓝白色是 CAD 默认色，仿真不用），每个网格单独抽稀，共约 5.5 万面，写成二进制层 `usd/g1d.usdc`（1.2 MB，走 LFS），由 `/Background/Furniture/g1d_0` 引用，位置 (−2.22, 2.92)、面朝 −Y。碰撞体是底盘、上身两个盒子；它不是 articulation，不会动。位置取 p3（p2 偏 0.4–0.7 m）。构建要多装 `fast-simplification`（`PLAN.md` 里的命令已更新）。
-- **验证**：`check_scene.py` 24/24；`preview.py` 的四张照片对比里墙面分段和照片对得上，p3 视角下 G1-D 和照片里的机器人重合；`parts.json` 的墙面识别为 6 块（玻璃、门、竖框按名字排除）；本机 `check.sh` 46 passed、1 skipped。10-24 在 `5090-2` 隔离目录 `/data/robodojo-runs/lab-walls-20261024-1314/`（GPU 0；`Assets/` 拷自 `lab-furniture-install-20261022-085858`，只换了 `Room/real_scene3/`）验证：`render_scenes.py` 正常；`g1d_lab` seed 0 的拾取、叠块、量杯倒豆都是 1.0、`eval_time` 1。之后（用户指出夹爪不是黑的）改了 G1-D 的材质，重跑 `render_scenes.py` 和拾取 seed 0（1.0），头部相机里角落那台和工作的那台外观一致。**没装共享库**，平台预览（`preview/`、`scene.glb`）也没更新。
+- **验证**：`check_scene.py` 24/24；`preview.py` 的四张照片对比里墙面分段和照片对得上，p3 视角下 G1-D 和照片里的机器人重合；`parts.json` 的墙面识别为 6 块（玻璃、门、竖框按名字排除）；本机 `check.sh` 46 passed、1 skipped。10-24 在 `5090-2` 隔离目录 `/data/robodojo-runs/lab-walls-20261024-1314/`（GPU 0；`Assets/` 拷自 `lab-furniture-install-20261022-085858`，只换了 `Room/real_scene3/`）验证：`render_scenes.py` 正常；`g1d_lab` seed 0 的拾取、叠块、量杯倒豆都是 1.0、`eval_time` 1。之后（用户指出夹爪不是黑的）改了 G1-D 的材质，重跑 `render_scenes.py` 和拾取 seed 0（1.0），头部相机里角落那台和工作的那台外观一致。10-24 经用户同意装进共享库 `5090-2:/data/robodojo-assets/Assets/Room/real_scene3/`（和隔离目录 `diff -r` 一致，布局没动、也没有布局引用旧墙面路径），旧版备份 `/data/robodojo-assets/backups/backup-shared-20261024-135419.tgz`；平台部署机只替换了这个场景 `preview/` 下的五个展示文件（旧的在 `/root/RoboDojo/.cache/lab-preview-before-walls-20261024-135438/`），部署机检出没快进（上面有别的会话没提交的改动），所以平台抽屉里的检查数和材质库条目还是旧的。
 - **坑**：其他卡满载时，只给 `--device cuda:N` 不够，RTX 会用所有卡渲染，Vulkan 报显存不足后进程卡死（要 `kill -9`）。要加 Kit 参数 `--/renderer/multiGpu/enabled=false --/renderer/multiGpu/maxGpuCount=1 --/renderer/activeGpu=N`；`scripted_demo` 通过 `main(extra_kit_args=...)` 传。
 
 ### 数采平台：上游榜单任务的泛化随机方案 + X5 布局生成器（2026-10-23，直接推 `main`）
@@ -373,7 +373,7 @@
   - 写死位置的任务（`play_tic_tac_toe`、`cover_blocks`、`press_by_number`、`swap_blocks`、两个传送带任务等）位置随机不起作用，只能换实例、外观和干扰物；
   - 生成的布局还没有专家能解（仓库里没有 X5 脚本专家），现在只能当评测集用；
   - 页面没在浏览器里验证，平台没部署。
-- **上海实验室 v3（纯色墙 + G1-D）**：Isaac 渲染和三个脚本演示都通过了（10-24），还没装共享库。征得用户同意后，把隔离目录 `lab-walls-20261024-1314` 里的 `Assets/Room/real_scene3/` 换进共享库（先备份），再更新平台的 `preview/`（`export_glb.py`、`render_scenes.py`）。
+- **上海实验室 v3**：已装共享库、平台预览已换；部署机检出快进后，平台的场景抽屉和材质库才会显示 v3 的检查结果和墙面材质。
 - **真机模型的仿真评测**：Motus eps222 在上海实验室 0/20，原因还没拆开（起始姿态、仿真画面与真机差异、杯位分布都可能）。要继续，先试双臂下垂的真机起始姿态（`remote_policy.py` 目前不支持设起始姿态），再在同一批布局上跑脚本专家做对照。服务端重启见「最近任务」第一节。
 
 - **榜单基线**：10-22 16:35 停止，54 个任务只完成 6 个（见「最近任务」）；是否续跑等用户决定。续跑时 pi0.5 策略 + Isaac 同卡约 25 GB，一卡一组；OpenWAM 策略卡和仿真卡要分开。`/data` 剩约 192 GB（91%），另一会话的 `g1d_green_table/` 占 1.4 TB。官方榜单页面是 JS 渲染，没抓到公开分数，要和自测基线对照需手动查 robodojo-benchmark.com/LeaderBoard。dsw-4 根分区 100% 满（19 GB），训练数据和产出要放 `/mnt/data`。
@@ -432,7 +432,7 @@
 
 - 2026-10-24：吧台场景加左侧客区（3 张照片拟合，墙纸凹龛、两张圆桌、可推动的扶手椅刚体）；新增移动版配置 `g1d_counter_mobile` 和第一个移动操作任务 `g1d_deliver_cup_to_lounge`（吧台拿杯送到客区圆桌），脚本专家 seed 0 前 4 个布局 4/4；修复 `is_all_gripper_open` 对 G1-D 夹爪方向判反。
 - 2026-10-24：RSI 协议初版 `rsi/AGENTS.md` + `rsi/rsi.example.yaml`：官方评测资产保留、只许泛化不许押题、数据方和评测方对抗且只经裁判交换分档成绩；统计出房间和杂物几乎全是官方保留资产。
-- 2026-10-23：上海实验室 `real_scene3_lab` 的墙面不再贴照片，改成纯色饰面加门、白板、电视；角落放了一台由 URDF 烘焙的静态 G1-D（`usd/g1d.usdc`）。离线检查通过；10-24 在 `5090-2` 跑 Isaac 渲染和三个脚本演示，全部通过；共享库待装。
+- 2026-10-23：上海实验室 `real_scene3_lab` 的墙面不再贴照片，改成纯色饰面加门、白板、电视；角落放了一台由 URDF 烘焙的静态 G1-D（`usd/g1d.usdc`）。离线检查通过；10-24 在 `5090-2` 跑 Isaac 渲染和三个脚本演示，全部通过，经用户同意装进共享库并更新平台预览。
 - 2026-10-23：数采平台任务抽屉加「泛化随机方案」，新增 X5 布局生成器 `scripts/datagen/x5_layouts.py`（接手另一会话未提交的实现；相机扰动改为只转角度，平移会让部分环境出图全黑）；`5090-2` 端到端验证 10/10 正常。
 - 2026-10-23：真机 Motus 倒豆模型（ModelScope `Vincia/WanVlmMask-G1DPourBeansGenEps222-AbsQpos16-30000`）在上海实验室仿真量杯倒豆 0/20（夹爪总是夹空）；新增 `g1d_lab_beans_collect`，收入 `scripts/g1d/remote_policy.py`。
 - 2026-10-22：启动榜单冲分（20 天）：5090-2 建基线运行目录，拉齐官方 Assets、OpenWAM / pi0.5 官方 checkpoint 和两套推理环境，冒烟通过后启动两个模型 54 个任务的全量基线评测；确认 20 个榜单任务没有官方训练数据。

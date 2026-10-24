@@ -129,9 +129,10 @@ uv run --no-project --python 3.11 --with usd-core --with trimesh --with numpy --
   - Isaac（10-24，`5090-2` 隔离目录 `/data/robodojo-runs/lab-walls-20261024-1314/`，GPU 0）：`Assets/` 是 `lab-furniture-install-20261022-085858` 的完整拷贝，只把 `Room/real_scene3/` 换成 v3。`render_scenes.py` 退出码 0，没有报错，`g1d.usdc` 正常加载和渲染。`g1d_lab` 的 seed 0：拾取、叠块、量杯倒豆都是 `success_rate` 1.0、`eval_time` 1；头部相机左上角能看到角落的 G1-D。机器人视觉网格的 "Unresolved reference" 警告是机器人 USD 本身的问题，v2 那一轮也有。
   - 坑：只给 `--device cuda:0` 时，RTX 仍会用所有卡渲染，别的卡满载时 Vulkan 报显存不足，进程卡死（TERM 杀不掉，要 `kill -9`）。要加 Kit 参数 `--/renderer/multiGpu/enabled=false --/renderer/multiGpu/maxGpuCount=1 --/renderer/activeGpu=0`。`scripted_demo.py` 会自己追加 `--kit_args`，要通过 `main(extra_kit_args=...)` 传进去。
 
+  - 10-24 经用户同意装进共享库 `5090-2:/data/robodojo-assets/Assets/Room/real_scene3/`，旧版备份 `/data/robodojo-assets/backups/backup-shared-20261024-135419.tgz`。
+
 ## 未覆盖
 
-- v3 还没装进共享库。
 - 玻璃隔断是不透明色块，大角度看没有透视和反射。
 
 - 家具没有卷尺实测，尺寸按常见规格；没有在 PhysX 里试过机器人或移动底盘碰到家具。
