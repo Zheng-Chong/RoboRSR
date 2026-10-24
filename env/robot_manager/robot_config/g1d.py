@@ -75,6 +75,10 @@ def _spawn_g1d(prim_path, cfg, *args, **kwargs):
     return prim
 
 
+# Dex1-1 pad (Link{1,2}_3) of each finger joint; RobotManager puts a ContactSensor on them for the grip force.
+FINGER_PADS = {f"{s}_dex1_finger_joint_{i}": f"{s}_dex1_finger_link_{i}_tip" for s in ("left", "right") for i in (1, 2)}
+
+
 def get_robot_config(mobile=False):
     # Unitree G1-D with Dex1-1 grippers; URDFs built by scripts/g1d/build_asset.py. Tabletop (robot g1d, official
     # Standard version): chassis fixed. Mobile (robot g1d_mobile, Flagship): the chassis on virtual planar joints.
@@ -118,6 +122,7 @@ def get_robot_config(mobile=False):
             asset_path=f"{ROBOTS_PATH}/g1d/{name}.urdf",
             usd_dir=f"{ROBOTS_PATH}/g1d/{'usd_mobile' if mobile else 'usd'}",  # reused while the URDF/config hash matches
             fix_base=True,
+            activate_contact_sensors=True,  # FINGER_PADS
             merge_fixed_joints=False,  # keep d435_link / *_dex1_base_link for cameras and the EE frame
             joint_drive=sim_utils.UrdfConverterCfg.JointDriveCfg(
                 gains=sim_utils.UrdfConverterCfg.JointDriveCfg.PDGainsCfg(stiffness=0.0, damping=0.0)
@@ -158,8 +163,10 @@ def get_robot_config(mobile=False):
             ),
             "gripper": ImplicitActuatorCfg(
                 joint_names_expr=[".*_dex1_finger_joint_.*"],
-                effort_limit_sim=20.0,  # Dex1-1 rating per finger
-                stiffness=1e4,  # full force within 2 mm, so thin handles are still squeezed before the stroke ends
+                # Real Dex1-1: motor PD kp=5 N*m/rad, target clipped 0.18 rad ahead (teleop); at ~8.3 mm/rad per
+                # finger (assumed linear, uncalibrated) that is ~3.6e4 N/m and ~55 N per finger. Not measured.
+                effort_limit_sim=55.0,
+                stiffness=3.6e4,
                 damping=100,
             ),
         },

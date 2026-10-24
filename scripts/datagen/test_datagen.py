@@ -182,6 +182,7 @@ class ContractTests(unittest.TestCase):
             robot_list=[robot],
             get_joint=lambda robot, env_idx_list: {0: np.zeros(7)},
             get_end_effector_real_val=lambda robot, env_idx_list: {0: np.array([0.0070, 0.0086])},
+            get_gripper_force=lambda robot, env_idx_list: {0: np.array([18.0, 17.5])},
             restore_name=lambda key: key[: -len("_joint_state")],
             get_robot_by_gripper_name=lambda name: robot,
             control_manager=SimpleNamespace(prev_control=[{"left_ee_joint_state": {"position": [CLOSED, CLOSED]}}]),
@@ -193,6 +194,7 @@ class ContractTests(unittest.TestCase):
         # commanded closed (0), the fingers stopped on a ~4 cm object (mean joint 0.0078 m)
         np.testing.assert_allclose(measured["state"]["left_ee_joint_state"], [(CLOSED - 0.0078) / (CLOSED - OPEN)])
         self.assertEqual(measured["action"]["left_ee_joint_state"], [0.0])
+        np.testing.assert_allclose(measured["gripper_force"]["left_ee"], [18.0, 17.5])  # outside obs["state"]
         self.assertEqual(self.obs("command")["state"]["left_ee_joint_state"], [0.0])
         with self.assertRaisesRegex(ValueError, "ee_state"):
             self.obs("both")
