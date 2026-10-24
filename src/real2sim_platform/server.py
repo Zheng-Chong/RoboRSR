@@ -575,6 +575,20 @@ def scan_objects(assets, tasks, keep):
     return found
 
 
+def object_delete_blocker(oid, docs):
+    """Why `oid` cannot be deleted from the platform, or "": objects a task, a generator, the asset library or a variant
+    depends on live in code and the shared library, so they are removed in the repo."""
+    auto = next((d["auto"] for d in docs if d["id"] == oid), None) or {}
+    if auto.get("tasks"):
+        return f"任务 {'、'.join(auto['tasks'])} 在用这个物体，先在任务配置里换掉"
+    variants = [d["id"] for d in docs if d["id"] != oid and (d.get("auto") or {}).get("variant_of") == oid]
+    if variants:
+        return f"它有泛化变体 {'、'.join(variants)}，先删变体"
+    if auto.get("generator") or auto.get("in_library"):
+        return "已建模的物体由代码和共享资产库管理（scripts/objects 的生成脚本、Assets/Object），请在仓库里删除"
+    return ""
+
+
 def clutter_categories(assets):
     """{category: instances} of the Clutter library (Object/RoboDojo/Clutter/, indexed by its clutter.yml), the pool a
     task config's Clutter section draws distractors from."""
@@ -1166,9 +1180,13 @@ class Handler(BaseHTTPRequestHandler):
                     error = "已建模的场景由代码管理（USD、build_asset.py 的 SCENES、env 配置），请在仓库里删除"
                     return self.send_json({"error": error}, 409)
                 shutil.rmtree(folder)
+        if kind == "object" and OBJECT_ID.fullmatch(id_):
+            error = object_delete_blocker(id_, self.store.list("object"))
+            if error:
+                return self.send_json({"error": error}, 409)
         self.store.delete(kind, id_)
         if kind == "object" and OBJECT_ID.fullmatch(id_):
-            (OBJECTS_DIR / id_ / "spec.json").unlink(missing_ok=True)
+            shutil.rmtree(OBJECTS_DIR / id_, ignore_errors=True)  # spec, photos, renders: left behind they re-list the object
         elif kind == "task" and TASK_ID.fullmatch(id_):
             (TASKS_DIR / id_ / "registration.json").unlink(missing_ok=True)
         elif kind == "embodiment" and EMBODIMENT_ID.fullmatch(id_):

@@ -152,6 +152,12 @@
 - **全量评测（13:40 启动）**：`bench.sh` → `robodojo.sh benchmark --eval-num native --tasks-file leaderboard_tasks.txt`（54 个任务，去掉 `g1d_*`）。OpenWAM run id `baseline_openwam_20261022`，策略 GPU 0/2/3，仿真 GPU 4/5/6（策略 25 GB，不能和 Isaac 同卡），预计每组约 16 h；pi0.5 run id `baseline_pi05_20261022`，GPU 7 单卡串行，实测 `align_blocks` 50 回合约 25 min，全量约 22 h。汇总在 `smoke_results/<run id>.md`，日志 `logs/bench_*.log`。GPU 1 是 `owam-server`（另一会话）。
 - **16:35 按用户要求停止**（两个 `bench.sh` 会话组和 4 个残留 Isaac 客户端都已结束，GPU 0、2–7 释放，`owam-server` 未动）。停止时完整跑完的任务（成功率 / 回合）：OpenWAM `imitate_sorting_sequence` 0/50、`pour_by_language` 0/50；pi0.5 `align_blocks` 0/50、`arrange_largest_number` 0/25、`arrange_largest_number_random` 0/25、`build_tower` 0.48/50。中途停下的（`_result.json` 只有部分回合，不能当基线）：OpenWAM `play_tic_tac_toe` 0.1/40、`classify_objects_by_language` 0/30、`play_stacking_toy` 0/20；pi0.5 `classify_objects` 0.1/10。续跑：pi0.5 是串行模式，每个任务写一次 `smoke_results/baseline_pi05_20261022.json`（已有 4 个 PASS），同一 `bench.sh` 加 `--resume` 即可跳过；OpenWAM 是并行模式，summary 只在全部结束时写，停止时没有生成，`--resume` 不起作用，要从 `leaderboard_tasks.txt` 去掉已完成的 2 个任务另做任务列表。中途停下的任务都会整任务重跑。
 
+### 数采平台：物体删除（2026-10-24，`chongzheng/object-delete`）
+
+- **问题**：物体抽屉只有「删除登记」，被任务用到的物体根本没按钮；而且只删 `spec.json`，`real2sim/objects/<id>/` 下的照片和渲染图还在，扫描会把物体又列出来。
+- **做法**：`DELETE /api/items?kind=object` 整目录删除（登记、照片、渲染图）；被任务使用、有泛化变体、有生成脚本或已在共享资产库的物体回 409（这类物体在代码和共享库里，要在仓库删）。抽屉按钮改名「删除物体」，上述情况显示为不可点并在悬停提示里写原因。没有加管理员限制（和原来的「删除登记」一致，未建模物体任何成员都能删），要收紧的话在 `do_DELETE` 加和场景相同的 403。
+- **验证**：`object_delete_blocker` 五种情形单测、前端脚本 `node --check`；没有端到端点击验证，`ruff` 本机未装所以没跑 `check.sh` 的 lint 段。
+
 ### 数采平台：管理员删除场景（2026-10-22，直接推 `main`）
 
 - **用户要求**：场景重建里加删除，只有管理员能删。

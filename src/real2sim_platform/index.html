@@ -1668,6 +1668,17 @@ function modelingBrief(d) {  // the task for a coding agent that builds this twi
     `4. 提交生成脚本、${dir}/ 下的 spec.json 和照片、real2sim/ASSETS.md；装进服务器共享资产库前先征得同意。`,
   ].filter((line) => line !== null).join('\n');
 }
+function objDeleteBlocker(d) {
+  const a = d.auto, variants = variantsOf(d.id).map((v) => v.id);
+  if ((a.tasks || []).length) return `任务 ${a.tasks.join('、')} 在用这个物体`;
+  if (variants.length) return `它有泛化变体 ${variants.join('、')}，先删变体`;
+  if (a.generator || a.in_library) return '已建模的物体由代码和共享资产库管理，请在仓库里删除';
+  return '';
+}
+function objDeleteButton(d) {
+  const why = objDeleteBlocker(d);
+  return `<button class="btn" type="button" data-id="${esc(d.id)}" ${why ? `disabled title="${esc(why)}"` : 'onclick="removeObject(this.dataset.id)"'}>${ic('trash')}删除物体</button>`;
+}
 function drawerObject(d) {
   const a = d.auto, c = dimCheck(d), rs = evalStages(OBJ_STAGES, d), photos = a.photos || [], renders = a.renders || [];
   const variants = variantsOf(d.id), parent = baseOf(d);
@@ -1680,7 +1691,7 @@ function drawerObject(d) {
     : `<div class="hero empty-hero">${ic('image', 'ic-lg')}${emptyText}</div>`);
   return {
     title: objName(d), sub: `${d.id} · ${a.in_library ? '资产库已有' : a.built ? '已建好，未装共享库' : '还没建模'}${a.generator ? ` · ${a.generator}` : ''}`,
-    actions: !(a.tasks || []).length ? `<button class="btn" type="button" data-id="${esc(d.id)}" onclick="removeDoc('object', this.dataset.id)">${ic('trash')}删除登记</button>` : '',
+    actions: objDeleteButton(d),
     body: `${materialList()}${parent ? `<div class="callout">${ic('grid')}<div>这是 ${link('object', parent.id)}（${esc(objName(parent))}）的泛化变体，在物体页收在它的卡片里。</div></div>` : ''}
     ${a.built ? '' : brief}${sec('实物 vs 仿真', `<div class="compare">
       <figure><figcaption>${ic('camera')}实物照片 <span class="muted small">${photos.length} 张</span><span class="sp"></span>
@@ -2643,6 +2654,15 @@ async function removeDoc(kind, id) {
   S[kind] = S[kind].filter((x) => x.id !== id);
   closeDrawer();
   toast('已删除');
+}
+async function removeObject(id) {
+  if (!confirm(`删除物体 ${id}？登记信息和 real2sim/objects/${id}/ 下的照片、渲染图会一起删除，不能恢复。`)) return;
+  try {
+    await api(`/api/items?kind=object&id=${encodeURIComponent(id)}`, {method: 'DELETE'});
+  } catch (err) { return toast(`删除失败：${err.message}`, true); }
+  S.object = S.object.filter((x) => x.id !== id);
+  closeDrawer();
+  toast(`已删除物体 ${id}`);
 }
 async function removeScene(id) {
   if (!confirm(`删除场景 ${id}？登记信息和 real2sim/scenes/${id}/ 下的照片会一起删除，不能恢复。`)) return;
