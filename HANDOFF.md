@@ -36,6 +36,22 @@
 
 ## 最近任务
 
+### RSI 新资产：ManiTwin 干扰物 390 个、Poly Haven HDR 40 张（2026-10-24，直接推 `main`）
+
+- **用户要求**：新的干扰物和实例最重要，去网上找现成的模型库；按"先 ManiTwin 补干扰物、Poly Haven 补 HDR、GSO 第二批"的顺序做。
+- **调研**（细节见 `rsi/AGENTS.md` 第八节）：ManiTwin-100K（Apache-2.0，已放出 4259 个、484 类，GLB / USDZ 加抓取、功能点标注）；GSO（CC-BY 4.0，1030 个扫描件，鞋 254 个、玩具 147 个）；Poly Haven（CC0，521 个模型、997 张 HDR）；OmniObject3D、Objaverse-LVIS、Infinigen 可以补充。BEHAVIOR-1K、Lightwheel、ABO 的许可证不能用。**RoboDojo 的杂物库是在 ManiTwin 的工作目录里做的**（`Clutter/clutter.yml` 的 `source_root: /home/pc/ManiTwin/...`），所以导入 ManiTwin 必须去重。
+- **代码**：
+  - `scripts/objects/manitwin.py`：`select` 按尺寸筛、尺寸去重、规范类别名；`convert` 引用 ManiTwin 模型、关掉它自带的穹顶灯、落到 z = 0、生成减面的凸分解碰撞体、写元数据和描述。
+  - `scripts/scenes/polyhaven_hdris.py`：按下载量取室内 HDR。
+  - `rsi_assets.py`：`link` 用软链接合并资产目录；`scan` 改为统计**三套**官方评测集（`arx_x5/{0,1,2}`，各 54 个任务、2690 个布局；之前只算了 seed 0）。
+  - `layout_manager.py`：不稳定时多打印一行 `Unstable actors`。
+  - 测试：`scripts/objects/test_manitwin.py`（已加进 `check.sh`）、`test_link`。
+  - `rsi/assets/imported.json`：记录 390 个物体、40 张 HDR 的来源和许可证。
+- **结果**：ManiTwin 选出 765 个（尺寸不合适 1032 个、疑似 RoboDojo 原物 647 个，主要是球、瓶、杯、酒瓶、花瓶、眼镜、笔、碗）→ 转换 762 个 → 地面检查通过 450 个（多半失败是生成资产的"朝上"方向不是自然摆放姿态）→ 剔掉倾斜超过 1.5° 的剩 390 个。分池（官方资产加新资产）：T0 937 项；干扰物训练池 280 个、考场池 115 个；HDR 训练池 24 张、考场池 16 张。**材质成了新缺口**：三套评测集用掉了官方 504 种里的 494 种，训练池只剩 6 种。
+- **服务器**：资产在 `5090-2:/data/robodojo-runs/rsi-assets-20261024/`（`extra_obj/`、`extra_hdr/`、`extra_rejected/`，ManiTwin 标注的 git 克隆 `mt_git/`）；运行目录 `rsi-pool-20261024/` 的 `Assets/` 是官方资产加这两个目录的软链接合并。共享库没动。
+- **验证**：本机 `check.sh` 51 passed 1 skipped。`5090-2`：在桌面上做密集筛查（`stack_bowls_random` 80 个布局，每个 18–22 个干扰物，共 1597 次摆放），不稳定的只有 `correction_tape/00901`（6 次）和 `cutting_board/00900`（2 次），两者地面检查都有 1.7–2° 倾斜，据此加上 1.5° 门槛；剔除后重新做最终验证（25 个布局）：`eval_time` 25，没有不稳定的，没有报错，画面里新物体的贴图正常。
+- **没做**：GSO（鞋、玩具）；材质（Poly Haven 贴图转 MDL）；房间变体；任务物体的新实例（还要补任务需要的元数据）；生成资产的稳定姿态自动修正（能救回一部分不稳定物体）。
+
 ### RSI 资产分池（规则 1 严格口径）+ 干扰物池、新实例、换色缩放接入 X5 布局生成器（2026-10-24，直接推 `main`）
 
 - **用户要求**：先确定干扰物能用多少；房间不单独做，换桌面和墙面；HDR 和物体实例怎么补；然后按计划实现（先做分池和 T0 过滤，再接干扰物池、新实例、换色缩放；房间变体之后再做）。规则 1 的口径由用户选了**严格**：评测布局里用过的，加上没有官方数据的任务（`_random`、开放任务）配置里能抽到的编号，都算榜单保留资产。
@@ -455,7 +471,7 @@
 
 ## 下一会话
 
-0. RSI：先读 `rsi/AGENTS.md`（资产分池已完成，见「最近任务」第一节）。下一步：房间变体（用池子里带纹理的材质给 `Simple_Room` 换墙面，新房间进 `Assets/Room` 后重跑 `rsi_assets.py scan`）；新干扰物和新实例；12 个 `_random` 任务基础版的 X5 脚本专家。随机方案平台部署后在浏览器里走一遍；调低灯光 / HDR 默认范围避免过曝。
+0. RSI：先读 `rsi/AGENTS.md`。资产分池、ManiTwin 干扰物、Poly Haven HDR 已完成（见「最近任务」前两节），新资产在 `5090-2:/data/robodojo-runs/rsi-assets-20261024/`，用 `rsi_assets.py link` 合并进运行目录。下一步按优先级：材质（Poly Haven PBR 贴图转 MDL，官方材质被三套评测集用完了）→ 房间变体（新材质给 `Simple_Room` 换墙面）→ GSO 的鞋和玩具 → 任务物体的新实例 → 12 个 `_random` 任务基础版的 X5 脚本专家。每次加完新资产都要重跑 `rsi_assets.py scan` 并把 `pools.json` 入库。
 0. 榜单：基线已停（16:35，用户要求），先问用户是否续跑；续跑后收两份基线（`smoke_results/baseline_*_20261022.md`，核对每个任务 `eval_time >= 1`），按任务对比 OpenWAM / pi0.5 / 有无官方数据；看失败视频做归类；然后开始把 `collect.py` 和插件接口推广到 dual X5，按优先级给无官方数据的任务写专家。
 0. 实现平台登记的 `g1d_pour_beans_any_cups`：在平台任务抽屉复制「实现任务」文本交给 coding agent（输入 `real2sim/tasks/g1d_pour_beans_any_cups/registration.json`）。
 0. 深圳实验室（已合并、部署，共享库待补装）：去现场量站位、拍头部 / 腕部画面做叠图（`overlay.py --env-cfg g1d_shenzhen_lab`）。
@@ -469,6 +485,7 @@
 
 ## 最近历史
 
+- 2026-10-24：RSI 导入 ManiTwin 干扰物 390 个（尺寸去重、地面和桌面两道稳定性筛查）、Poly Haven 室内 HDR 40 张；T0 改为统计三套官方评测集（seed 0/1/2），材质成为新缺口（504 种里 494 种被评测用掉）。
 - 2026-10-24：RSI 资产分池 `rsi/assets/pools.json`（规则 1 严格口径，T0 813 项），X5 布局生成器和平台接入分池、干扰物池、新实例、换色缩放白名单；`5090-2` 上 `hang_mugs_random` 10 个布局验证正常。严格口径下现成的房间、干扰物、新实例几乎为零，要造新资产。
 - 2026-10-24：办公室场景的墙面、柜子、椅子按照片返工（南墙腰线白板墙板、窗台高度、玻璃展示柜 + 木门高柜 + 活动柜、两款办公椅、木纹贴图），离线检查和 15 视角叠图核对通过；`5090-2` 上 Isaac 渲染和三个 `g1d` 脚本演示通过后，经用户同意装进共享库，平台预览已换。
 - 2026-10-24：吧台场景补天花板和客区顶部；平台重建的渲染图和 3D 模型不再先显示旧缓存；数采平台部署到 `0d8c8c3`（部署机上别人未提交的改动先存补丁、快进后放回，冲突两处手工合并）。

@@ -84,3 +84,20 @@ def test_scan_and_audit():
     write(out / "stack_bowls_0.json", layout("Simple_Room_nolight", "material_0122", 1))
     write(out / "stack_bowls_1.json", layout("Simple_Room_teal", "material_0122", 11))
     assert R.audit(out, result, "train") == {"stack_bowls_1.json": ["Rigid:bowl/11", "room:Simple_Room_teal"]}
+
+
+def test_link():
+    base, extra, out = (Path(tempfile.mkdtemp()) for _ in range(3))
+    write(base / "Object/RoboDojo/Clutter/pen/00000/metadata.json", {})
+    write(base / "Room/Simple_Room/base0.usd", {})
+    write(extra / "Object/RoboDojo/Clutter/pen/00900/metadata.json", {})
+    write(extra / "Object/RoboDojo/Clutter/kettle/00900/metadata.json", {})
+    write(extra / "Background/studio.hdr", {})
+    (out / "Eval_Layout").mkdir()  # a run's own folder stays
+    R.link([base, extra], out)
+    pen = out / "Object/RoboDojo/Clutter/pen"
+    assert pen.is_dir() and not pen.is_symlink()  # in both trees: merged one level down
+    assert (pen / "00000").resolve() == (base / "Object/RoboDojo/Clutter/pen/00000").resolve()
+    assert (pen / "00900").is_symlink() and (out / "Object/RoboDojo/Clutter/kettle").is_symlink()
+    assert (out / "Room").is_symlink() and (out / "Background/studio.hdr").exists()
+    assert not (out / "Eval_Layout").is_symlink()

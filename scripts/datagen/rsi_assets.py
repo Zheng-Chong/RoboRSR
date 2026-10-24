@@ -1,7 +1,7 @@
 """Asset tiers of rsi/AGENTS.md rule 1: what the benchmark keeps for itself, and how the rest splits between the data
 agent (train) and the exam agent (exam).
 
-    T0 (reserved)  in an official eval layout (Eval_Layout/RoboDojo/arx_x5/0), or in the config of a task without
+    T0 (reserved)  in an official eval layout (Eval_Layout/RoboDojo/arx_x5/{0,1,2}), or in the config of a task without
                    official training data (the _random variants, the open tasks), but never in the official training
                    data: nobody generates with it
     seen           in the official training data (eval layouts and configs of the 34 tasks it covers): both
@@ -12,6 +12,9 @@ clutter:<category>/<index>, <Section>:<category>/<index> for task-object section
 
     python scripts/datagen/rsi_assets.py scan --assets Assets          # writes rsi/assets/pools.json
     python scripts/datagen/rsi_assets.py audit --assets Assets --layouts <seed folder> --pool train
+    python scripts/datagen/rsi_assets.py link --base <official Assets> --extra <new assets> ... --out <run>/Assets
+link merges asset trees with symlinks (new objects from scripts/objects/manitwin.py, HDRs from
+scripts/scenes/polyhaven_hdris.py) without copying or touching either; entries already in --out stay as they are.
 """
 
 import argparse
@@ -30,6 +33,7 @@ OFFICIAL_TRAIN_TASKS = frozenset(
     "put_bottles_into_dustbin sort_nesting_dolls_by_size stack_blocks stack_bowls store_laptop_and_headphones swap_T "
     "swap_blocks sweep_blocks".split()
 )
+OFFICIAL_SEEDS = ("0", "1", "2")  # the benchmark's eval layout folders under Eval_Layout/RoboDojo/arx_x5
 SECTIONS = ("Rigid", "Geometry", "Articulation", "Garment")
 TRAIN_SHARE = 0.7
 MAX_DISTRACTOR_M = (
@@ -100,13 +104,13 @@ def config_instances(task):
 
 
 def scan(assets):
-    folder = Path(assets) / "Eval_Layout" / "RoboDojo" / "arx_x5" / "0"
+    folders = [Path(assets) / "Eval_Layout" / "RoboDojo" / "arx_x5" / s for s in OFFICIAL_SEEDS]
     seen = set().union(*(config_instances(t) for t in OFFICIAL_TRAIN_TASKS))
     upstream = [p.stem for p in (ROOT / "task" / "RoboDojo" / "config").glob("*.yml")]
     upstream = [t for t in upstream if not t.startswith(("_", "g1d_")) and t not in OFFICIAL_TRAIN_TASKS]
     evaluated = set().union(*(config_instances(t) for t in upstream))  # what the benchmark-only configs can draw
     task_categories = set()
-    for f in sorted(folder.glob("*.json")):
+    for f in sorted(p for folder in folders for p in folder.glob("*.json")):
         task, _, index = f.stem.rpartition("_")
         if not index.isdigit():
             continue
@@ -135,7 +139,7 @@ def scan(assets):
         else:
             dropped.append(asset_id)
     return {
-        "source": str(folder.relative_to(Path(assets))),
+        "source": [str(f.relative_to(Path(assets))) for f in folders if f.is_dir()],
         "official_train_tasks": len(OFFICIAL_TRAIN_TASKS),
         "seen": sorted(seen),
         "t0": sorted(t0),
@@ -169,6 +173,28 @@ def audit(layout_dir, pools, pool):
     return bad
 
 
+def link(trees, out):
+    """Merge directory trees into `out` with symlinks: a name only one tree has is linked whole, a directory several
+    trees have becomes a real directory merged one level down; two files of the same name are refused."""
+    out.mkdir(parents=True, exist_ok=True)
+    names = {}
+    for tree in trees:
+        for p in sorted(tree.iterdir()):
+            names.setdefault(p.name, []).append(p.resolve())
+    for name, sources in names.items():
+        target = out / name
+        if target.exists() or target.is_symlink():
+            if target.is_dir() and not target.is_symlink() and all(s.is_dir() for s in sources):
+                link(sources, target)
+            continue
+        if len(sources) == 1:
+            target.symlink_to(sources[0])
+        elif all(s.is_dir() for s in sources):
+            link(sources, target)
+        else:
+            raise SystemExit(f"{target}: more than one tree has a file named {name}")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -179,8 +205,14 @@ def main(argv=None):
     a.add_argument("--assets", type=Path, required=True)
     a.add_argument("--layouts", type=Path, required=True)
     a.add_argument("--pool", choices=("train", "exam"), required=True)
+    m = sub.add_parser("link")
+    m.add_argument("--base", type=Path, required=True)
+    m.add_argument("--extra", type=Path, nargs="+", required=True)
+    m.add_argument("--out", type=Path, required=True)
     args = ap.parse_args(argv)
-    if args.cmd == "scan":
+    if args.cmd == "link":
+        link([args.base, *args.extra], args.out)
+    elif args.cmd == "scan":
         result = scan(args.assets)
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(result, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

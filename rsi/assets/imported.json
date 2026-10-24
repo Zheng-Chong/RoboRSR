@@ -1,0 +1,3809 @@
+{
+ "objects": {
+  "dataset": "ManiTwin/ManiTwin-100K (huggingface.co/datasets/ManiTwin/ManiTwin-100K)",
+  "license": "Apache-2.0",
+  "converted_by": "scripts/objects/manitwin.py",
+  "count": 390,
+  "items": [
+   {
+    "id": "Clutter/acrylic_vase/00901",
+    "source": "acrylic_vase/001",
+    "extents_m": [
+     0.173,
+     0.1178,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/adapter/00900",
+    "source": "adapter/000",
+    "extents_m": [
+     0.0569,
+     0.07,
+     0.0548
+    ]
+   },
+   {
+    "id": "Clutter/adapter/00901",
+    "source": "adapter/001",
+    "extents_m": [
+     0.0295,
+     0.05,
+     0.019
+    ]
+   },
+   {
+    "id": "Clutter/agate_mortar/00900",
+    "source": "agate_mortar/001",
+    "extents_m": [
+     0.12,
+     0.1056,
+     0.0705
+    ]
+   },
+   {
+    "id": "Clutter/agate_mortar/00901",
+    "source": "agate_mortar/002",
+    "extents_m": [
+     0.1078,
+     0.12,
+     0.0746
+    ]
+   },
+   {
+    "id": "Clutter/agate_pestle/00900",
+    "source": "agate_pestle/002",
+    "extents_m": [
+     0.15,
+     0.1315,
+     0.1097
+    ]
+   },
+   {
+    "id": "Clutter/agate_pestle/00901",
+    "source": "agate_pestle/003",
+    "extents_m": [
+     0.12,
+     0.1158,
+     0.085
+    ]
+   },
+   {
+    "id": "Clutter/air_fryer/00900",
+    "source": "air_fryer/000",
+    "extents_m": [
+     0.2482,
+     0.25,
+     0.2243
+    ]
+   },
+   {
+    "id": "Clutter/air_purifier/00901",
+    "source": "air_purifier/001",
+    "extents_m": [
+     0.056,
+     0.1298,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/all_purpose_spray_bottle/00900",
+    "source": "all-purpose_spray_bottle/002",
+    "extents_m": [
+     0.0678,
+     0.0924,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/all_purpose_spray_bottle/00901",
+    "source": "all-purpose_spray_bottle/003",
+    "extents_m": [
+     0.0636,
+     0.0911,
+     0.22
+    ]
+   },
+   {
+    "id": "Clutter/aluminum_dustpan/00900",
+    "source": "aluminum_dustpan/000",
+    "extents_m": [
+     0.2129,
+     0.0311,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/aluminum_dustpan/00901",
+    "source": "aluminum_dustpan/003",
+    "extents_m": [
+     0.15,
+     0.0268,
+     0.0962
+    ]
+   },
+   {
+    "id": "Clutter/aluminum_pins/00900",
+    "source": "aluminum_pins/000",
+    "extents_m": [
+     0.0782,
+     0.078,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/aluminum_step_stool/00900",
+    "source": "aluminum_step_stool/004",
+    "extents_m": [
+     0.1909,
+     0.25,
+     0.1289
+    ]
+   },
+   {
+    "id": "Clutter/anchors/00901",
+    "source": "anchors/002",
+    "extents_m": [
+     0.15,
+     0.0319,
+     0.094
+    ]
+   },
+   {
+    "id": "Clutter/angle_bracket/00900",
+    "source": "angle_bracket/000",
+    "extents_m": [
+     0.0613,
+     0.1,
+     0.0881
+    ]
+   },
+   {
+    "id": "Clutter/ankle_weight/00900",
+    "source": "ankle_weight/000",
+    "extents_m": [
+     0.1128,
+     0.12,
+     0.0596
+    ]
+   },
+   {
+    "id": "Clutter/anniversary_clock/00900",
+    "source": "anniversary_clock/000",
+    "extents_m": [
+     0.178,
+     0.1781,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/anti_skid_stool/00900",
+    "source": "anti-skid_stool/006",
+    "extents_m": [
+     0.25,
+     0.2493,
+     0.2136
+    ]
+   },
+   {
+    "id": "Clutter/antique/00901",
+    "source": "antique/001",
+    "extents_m": [
+     0.0625,
+     0.15,
+     0.0552
+    ]
+   },
+   {
+    "id": "Clutter/apple_corer/00901",
+    "source": "apple_corer/001",
+    "extents_m": [
+     0.18,
+     0.1794,
+     0.0407
+    ]
+   },
+   {
+    "id": "Clutter/apple_slicer/00900",
+    "source": "apple_slicer/000",
+    "extents_m": [
+     0.0936,
+     0.15,
+     0.0485
+    ]
+   },
+   {
+    "id": "Clutter/apple_slicer/00901",
+    "source": "apple_slicer/001",
+    "extents_m": [
+     0.15,
+     0.1317,
+     0.0865
+    ]
+   },
+   {
+    "id": "Clutter/ash_bucket/00900",
+    "source": "ash_bucket/003",
+    "extents_m": [
+     0.2043,
+     0.1808,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/ash_bucket/00901",
+    "source": "ash_bucket/004",
+    "extents_m": [
+     0.18,
+     0.1798,
+     0.1268
+    ]
+   },
+   {
+    "id": "Clutter/ash_tray_bin/00900",
+    "source": "ash_tray_bin/000",
+    "extents_m": [
+     0.0489,
+     0.0644,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/ash_tray_bin/00901",
+    "source": "ash_tray_bin/001",
+    "extents_m": [
+     0.0672,
+     0.0674,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/assembly_small_tank/00900",
+    "source": "assembly_small_tank/000",
+    "extents_m": [
+     0.0913,
+     0.2,
+     0.1153
+    ]
+   },
+   {
+    "id": "Clutter/assembly_small_tank/00901",
+    "source": "assembly_small_tank/001",
+    "extents_m": [
+     0.1188,
+     0.2,
+     0.1457
+    ]
+   },
+   {
+    "id": "Clutter/atomic_clock/00900",
+    "source": "atomic_clock/000",
+    "extents_m": [
+     0.1089,
+     0.12,
+     0.0702
+    ]
+   },
+   {
+    "id": "Clutter/attachment_clip/00900",
+    "source": "attachment_clip/000",
+    "extents_m": [
+     0.0341,
+     0.15,
+     0.0639
+    ]
+   },
+   {
+    "id": "Clutter/attachment_clip/00901",
+    "source": "attachment_clip/002",
+    "extents_m": [
+     0.15,
+     0.0436,
+     0.1055
+    ]
+   },
+   {
+    "id": "Clutter/audio_receiver_remote/00900",
+    "source": "audio_receiver_remote/001",
+    "extents_m": [
+     0.0331,
+     0.0132,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/axle/00901",
+    "source": "axle/007",
+    "extents_m": [
+     0.1136,
+     0.15,
+     0.1344
+    ]
+   },
+   {
+    "id": "Clutter/backpack/00901",
+    "source": "backpack/002",
+    "extents_m": [
+     0.2352,
+     0.0716,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/banana/00900",
+    "source": "banana/000",
+    "extents_m": [
+     0.0422,
+     0.18,
+     0.0808
+    ]
+   },
+   {
+    "id": "Clutter/banana/00901",
+    "source": "banana/001",
+    "extents_m": [
+     0.049,
+     0.18,
+     0.0579
+    ]
+   },
+   {
+    "id": "Clutter/bellows/00900",
+    "source": "bellows/000",
+    "extents_m": [
+     0.2499,
+     0.1589,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/bellows/00901",
+    "source": "bellows/001",
+    "extents_m": [
+     0.1499,
+     0.1252,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/bike_bottle_cage/00900",
+    "source": "bike_bottle_cage/000",
+    "extents_m": [
+     0.1068,
+     0.18,
+     0.1082
+    ]
+   },
+   {
+    "id": "Clutter/binders/00900",
+    "source": "binders/000",
+    "extents_m": [
+     0.1624,
+     0.0346,
+     0.21
+    ]
+   },
+   {
+    "id": "Clutter/bolt/00900",
+    "source": "bolt/001",
+    "extents_m": [
+     0.0314,
+     0.028,
+     0.1
+    ]
+   },
+   {
+    "id": "Clutter/bolt/00901",
+    "source": "bolt/002",
+    "extents_m": [
+     0.0493,
+     0.0371,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/box/00900",
+    "source": "box/001",
+    "extents_m": [
+     0.15,
+     0.144,
+     0.0938
+    ]
+   },
+   {
+    "id": "Clutter/brush/00900",
+    "source": "brush/000",
+    "extents_m": [
+     0.0226,
+     0.0759,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/button/00900",
+    "source": "button/000",
+    "extents_m": [
+     0.08,
+     0.0712,
+     0.0798
+    ]
+   },
+   {
+    "id": "Clutter/cable/00900",
+    "source": "cable/001",
+    "extents_m": [
+     0.2697,
+     0.2701,
+     0.3
+    ]
+   },
+   {
+    "id": "Clutter/cafeteria_tray/00900",
+    "source": "cafeteria_tray/000",
+    "extents_m": [
+     0.25,
+     0.03,
+     0.1756
+    ]
+   },
+   {
+    "id": "Clutter/cake_cover/00900",
+    "source": "cake_cover/000",
+    "extents_m": [
+     0.1481,
+     0.1477,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/cake_pan/00900",
+    "source": "cake_pan/003",
+    "extents_m": [
+     0.2,
+     0.2,
+     0.0458
+    ]
+   },
+   {
+    "id": "Clutter/cake_pans/00900",
+    "source": "cake_pans/000",
+    "extents_m": [
+     0.1259,
+     0.1282,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/cake_pans/00901",
+    "source": "cake_pans/001",
+    "extents_m": [
+     0.15,
+     0.15,
+     0.0498
+    ]
+   },
+   {
+    "id": "Clutter/cake_server/00900",
+    "source": "cake_server/000",
+    "extents_m": [
+     0.0554,
+     0.0511,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/cake_server/00901",
+    "source": "cake_server/001",
+    "extents_m": [
+     0.0286,
+     0.073,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/cake_stand/00900",
+    "source": "cake_stand/000",
+    "extents_m": [
+     0.1363,
+     0.1365,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/camera/00900",
+    "source": "camera/001",
+    "extents_m": [
+     0.1211,
+     0.15,
+     0.0908
+    ]
+   },
+   {
+    "id": "Clutter/camera/00901",
+    "source": "camera/002",
+    "extents_m": [
+     0.1356,
+     0.15,
+     0.099
+    ]
+   },
+   {
+    "id": "Clutter/cameras/00901",
+    "source": "cameras/001",
+    "extents_m": [
+     0.1504,
+     0.18,
+     0.1017
+    ]
+   },
+   {
+    "id": "Clutter/can_punch/00900",
+    "source": "can_punch/000",
+    "extents_m": [
+     0.0233,
+     0.0805,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/candle/00900",
+    "source": "candle/000",
+    "extents_m": [
+     0.0316,
+     0.0317,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/candle/00901",
+    "source": "candle/002",
+    "extents_m": [
+     0.0442,
+     0.057,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/candle_holder/00900",
+    "source": "candle_holder/000",
+    "extents_m": [
+     0.0938,
+     0.0934,
+     0.28
+    ]
+   },
+   {
+    "id": "Clutter/candle_holder/00901",
+    "source": "candle_holder/002",
+    "extents_m": [
+     0.1739,
+     0.1971,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/candy_dish/00900",
+    "source": "candy_dish/000",
+    "extents_m": [
+     0.12,
+     0.12,
+     0.064
+    ]
+   },
+   {
+    "id": "Clutter/candy_dish/00901",
+    "source": "candy_dish/001",
+    "extents_m": [
+     0.1794,
+     0.18,
+     0.1559
+    ]
+   },
+   {
+    "id": "Clutter/canning_funnel/00900",
+    "source": "canning_funnel/000",
+    "extents_m": [
+     0.1254,
+     0.15,
+     0.0579
+    ]
+   },
+   {
+    "id": "Clutter/canning_funnel/00901",
+    "source": "canning_funnel/001",
+    "extents_m": [
+     0.1503,
+     0.1366,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/canning_rack/00900",
+    "source": "canning_rack/000",
+    "extents_m": [
+     0.25,
+     0.2009,
+     0.1206
+    ]
+   },
+   {
+    "id": "Clutter/canning_rack/00901",
+    "source": "canning_rack/001",
+    "extents_m": [
+     0.1496,
+     0.0281,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/canteen_tray/00900",
+    "source": "canteen_tray/000",
+    "extents_m": [
+     0.25,
+     0.0228,
+     0.176
+    ]
+   },
+   {
+    "id": "Clutter/cap/00901",
+    "source": "cap/003",
+    "extents_m": [
+     0.1563,
+     0.22,
+     0.121
+    ]
+   },
+   {
+    "id": "Clutter/car_brush/00900",
+    "source": "car_brush/001",
+    "extents_m": [
+     0.1974,
+     0.35,
+     0.3416
+    ]
+   },
+   {
+    "id": "Clutter/car_nozzle/00900",
+    "source": "car_nozzle/000",
+    "extents_m": [
+     0.0395,
+     0.0906,
+     0.22
+    ]
+   },
+   {
+    "id": "Clutter/car_nozzle/00901",
+    "source": "car_nozzle/002",
+    "extents_m": [
+     0.0243,
+     0.15,
+     0.0529
+    ]
+   },
+   {
+    "id": "Clutter/carafe/00901",
+    "source": "carafe/002",
+    "extents_m": [
+     0.1275,
+     0.1276,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/carpenter_square/00900",
+    "source": "carpenter_square/000",
+    "extents_m": [
+     0.1391,
+     0.0137,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/carpenter_square/00901",
+    "source": "carpenter_square/001",
+    "extents_m": [
+     0.0119,
+     0.15,
+     0.127
+    ]
+   },
+   {
+    "id": "Clutter/carpet_shampoo_jug/00900",
+    "source": "carpet_shampoo_jug/001",
+    "extents_m": [
+     0.0639,
+     0.1424,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/carpet_shampoo_jug/00901",
+    "source": "carpet_shampoo_jug/003",
+    "extents_m": [
+     0.0833,
+     0.119,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/casserole_dish/00900",
+    "source": "casserole_dish/000",
+    "extents_m": [
+     0.1558,
+     0.3,
+     0.062
+    ]
+   },
+   {
+    "id": "Clutter/cast_iron_mortar/00900",
+    "source": "cast_iron_mortar/000",
+    "extents_m": [
+     0.0904,
+     0.1075,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/cast_iron_mortar/00901",
+    "source": "cast_iron_mortar/005",
+    "extents_m": [
+     0.1658,
+     0.2,
+     0.1897
+    ]
+   },
+   {
+    "id": "Clutter/cast_iron_pestle/00900",
+    "source": "cast_iron_pestle/000",
+    "extents_m": [
+     0.1113,
+     0.131,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/cast_iron_pestle/00901",
+    "source": "cast_iron_pestle/003",
+    "extents_m": [
+     0.1498,
+     0.151,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/ceiling_fan_tool/00900",
+    "source": "ceiling_fan_tool/000",
+    "extents_m": [
+     0.15,
+     0.0476,
+     0.0982
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_base/00900",
+    "source": "ceramic_base/000",
+    "extents_m": [
+     0.1365,
+     0.158,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_base/00901",
+    "source": "ceramic_base/001",
+    "extents_m": [
+     0.1103,
+     0.0979,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_colander/00900",
+    "source": "ceramic_colander/000",
+    "extents_m": [
+     0.15,
+     0.1499,
+     0.0737
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_colander/00901",
+    "source": "ceramic_colander/004",
+    "extents_m": [
+     0.1237,
+     0.15,
+     0.0681
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_fruit/00901",
+    "source": "ceramic_fruit/001",
+    "extents_m": [
+     0.25,
+     0.2487,
+     0.0802
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_hob_scraper/00900",
+    "source": "ceramic_hob_scraper/000",
+    "extents_m": [
+     0.0614,
+     0.0389,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_mortar/00900",
+    "source": "ceramic_mortar/000",
+    "extents_m": [
+     0.0924,
+     0.12,
+     0.0901
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_mortar/00901",
+    "source": "ceramic_mortar/001",
+    "extents_m": [
+     0.1033,
+     0.1134,
+     0.12
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_pestle/00900",
+    "source": "ceramic_pestle/000",
+    "extents_m": [
+     0.0947,
+     0.12,
+     0.1071
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_pestle/00901",
+    "source": "ceramic_pestle/001",
+    "extents_m": [
+     0.12,
+     0.0986,
+     0.0786
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_pitcher/00900",
+    "source": "ceramic_pitcher/002",
+    "extents_m": [
+     0.193,
+     0.2315,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_pitcher/00901",
+    "source": "ceramic_pitcher/003",
+    "extents_m": [
+     0.143,
+     0.1838,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_pots/00900",
+    "source": "ceramic_pots/000",
+    "extents_m": [
+     0.0548,
+     0.12,
+     0.0766
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_pots/00901",
+    "source": "ceramic_pots/001",
+    "extents_m": [
+     0.1562,
+     0.1935,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_statues/00901",
+    "source": "ceramic_statues/001",
+    "extents_m": [
+     0.1009,
+     0.0797,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/ceramic_vase/00900",
+    "source": "ceramic_vase/000",
+    "extents_m": [
+     0.1894,
+     0.1294,
+     0.3
+    ]
+   },
+   {
+    "id": "Clutter/cereal_bowl/00900",
+    "source": "cereal_bowl/007",
+    "extents_m": [
+     0.15,
+     0.1497,
+     0.0983
+    ]
+   },
+   {
+    "id": "Clutter/cereal_bowl/00901",
+    "source": "cereal_bowl/008",
+    "extents_m": [
+     0.18,
+     0.1678,
+     0.1005
+    ]
+   },
+   {
+    "id": "Clutter/cereal_containers/00900",
+    "source": "cereal_containers/000",
+    "extents_m": [
+     0.0886,
+     0.1827,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/cereal_containers/00901",
+    "source": "cereal_containers/001",
+    "extents_m": [
+     0.0788,
+     0.1784,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/chamberstick/00900",
+    "source": "chamberstick/000",
+    "extents_m": [
+     0.17,
+     0.18,
+     0.0996
+    ]
+   },
+   {
+    "id": "Clutter/chamberstick/00901",
+    "source": "chamberstick/002",
+    "extents_m": [
+     0.15,
+     0.1207,
+     0.0818
+    ]
+   },
+   {
+    "id": "Clutter/champagne_bucket/00900",
+    "source": "champagne_bucket/002",
+    "extents_m": [
+     0.22,
+     0.2,
+     0.1442
+    ]
+   },
+   {
+    "id": "Clutter/chandelier/00900",
+    "source": "chandelier/000",
+    "extents_m": [
+     0.1551,
+     0.1553,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/charger_plate/00900",
+    "source": "charger_plate/000",
+    "extents_m": [
+     0.15,
+     0.0379,
+     0.0291
+    ]
+   },
+   {
+    "id": "Clutter/charging_dock/00900",
+    "source": "charging_dock/000",
+    "extents_m": [
+     0.2375,
+     0.25,
+     0.1627
+    ]
+   },
+   {
+    "id": "Clutter/charging_dock/00901",
+    "source": "charging_dock/001",
+    "extents_m": [
+     0.1068,
+     0.0645,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/cheese_harp/00900",
+    "source": "cheese_harp/002",
+    "extents_m": [
+     0.0786,
+     0.0125,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/cheese_wire/00901",
+    "source": "cheese_wire/001",
+    "extents_m": [
+     0.2329,
+     0.264,
+     0.3
+    ]
+   },
+   {
+    "id": "Clutter/cherry_stoner/00900",
+    "source": "cherry_stoner/000",
+    "extents_m": [
+     0.1171,
+     0.1171,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/cherry_stoner/00901",
+    "source": "cherry_stoner/001",
+    "extents_m": [
+     0.0716,
+     0.1846,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/chess_pieces/00900",
+    "source": "chess_pieces/001",
+    "extents_m": [
+     0.0741,
+     0.0743,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/chestnuts/00900",
+    "source": "chestnuts/000",
+    "extents_m": [
+     0.15,
+     0.107,
+     0.1385
+    ]
+   },
+   {
+    "id": "Clutter/china_cap/00900",
+    "source": "china_cap/001",
+    "extents_m": [
+     0.15,
+     0.1499,
+     0.1419
+    ]
+   },
+   {
+    "id": "Clutter/chip_and_dip_server/00900",
+    "source": "chip_and_dip_server/000",
+    "extents_m": [
+     0.2423,
+     0.25,
+     0.1895
+    ]
+   },
+   {
+    "id": "Clutter/chip_and_dip_server/00901",
+    "source": "chip_and_dip_server/002",
+    "extents_m": [
+     0.12,
+     0.12,
+     0.0319
+    ]
+   },
+   {
+    "id": "Clutter/cigarette_bin/00900",
+    "source": "cigarette_bin/000",
+    "extents_m": [
+     0.1114,
+     0.1122,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/cigarette_bin/00901",
+    "source": "cigarette_bin/001",
+    "extents_m": [
+     0.0507,
+     0.0508,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/citrus_juicer/00900",
+    "source": "citrus_juicer/000",
+    "extents_m": [
+     0.1638,
+     0.18,
+     0.1111
+    ]
+   },
+   {
+    "id": "Clutter/citrus_reamer/00900",
+    "source": "citrus_reamer/000",
+    "extents_m": [
+     0.1285,
+     0.061,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/clamp/00901",
+    "source": "clamp/001",
+    "extents_m": [
+     0.0204,
+     0.1405,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/clay_mortar/00900",
+    "source": "clay_mortar/000",
+    "extents_m": [
+     0.122,
+     0.1304,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/clay_mortar/00901",
+    "source": "clay_mortar/001",
+    "extents_m": [
+     0.109,
+     0.1168,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/clay_pestle/00900",
+    "source": "clay_pestle/000",
+    "extents_m": [
+     0.1054,
+     0.1198,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/clay_pestle/00901",
+    "source": "clay_pestle/005",
+    "extents_m": [
+     0.1117,
+     0.1185,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/clay_pot/00900",
+    "source": "clay_pot/000",
+    "extents_m": [
+     0.0989,
+     0.1,
+     0.0864
+    ]
+   },
+   {
+    "id": "Clutter/clay_pot/00901",
+    "source": "clay_pot/001",
+    "extents_m": [
+     0.1413,
+     0.18,
+     0.1189
+    ]
+   },
+   {
+    "id": "Clutter/cleaning_bucket/00900",
+    "source": "cleaning_bucket/003",
+    "extents_m": [
+     0.2358,
+     0.2313,
+     0.3
+    ]
+   },
+   {
+    "id": "Clutter/clip/00901",
+    "source": "clip/001",
+    "extents_m": [
+     0.0263,
+     0.12,
+     0.0743
+    ]
+   },
+   {
+    "id": "Clutter/clips/00900",
+    "source": "clips/000",
+    "extents_m": [
+     0.0483,
+     0.0204,
+     0.08
+    ]
+   },
+   {
+    "id": "Clutter/clips/00901",
+    "source": "clips/001",
+    "extents_m": [
+     0.0434,
+     0.0168,
+     0.08
+    ]
+   },
+   {
+    "id": "Clutter/clock/00901",
+    "source": "clock/001",
+    "extents_m": [
+     0.1152,
+     0.0569,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/clocks/00901",
+    "source": "clocks/001",
+    "extents_m": [
+     0.1999,
+     0.0209,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/clothes_pins/00901",
+    "source": "clothes_pins/001",
+    "extents_m": [
+     0.0133,
+     0.0285,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/coal_bucket/00900",
+    "source": "coal_bucket/000",
+    "extents_m": [
+     0.1945,
+     0.2022,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/coaster/00900",
+    "source": "coaster/000",
+    "extents_m": [
+     0.1036,
+     0.12,
+     0.0789
+    ]
+   },
+   {
+    "id": "Clutter/cocktail_shaker/00900",
+    "source": "cocktail_shaker/000",
+    "extents_m": [
+     0.0756,
+     0.0758,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/cocktail_shaker/00901",
+    "source": "cocktail_shaker/001",
+    "extents_m": [
+     0.0647,
+     0.0731,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/coffee_canisters/00900",
+    "source": "coffee_canisters/000",
+    "extents_m": [
+     0.1253,
+     0.134,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/coffee_canisters/00901",
+    "source": "coffee_canisters/001",
+    "extents_m": [
+     0.113,
+     0.1139,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/coffee_filter_holder/00900",
+    "source": "coffee_filter_holder/000",
+    "extents_m": [
+     0.0351,
+     0.18,
+     0.115
+    ]
+   },
+   {
+    "id": "Clutter/coffee_filter_holder/00901",
+    "source": "coffee_filter_holder/001",
+    "extents_m": [
+     0.25,
+     0.0475,
+     0.1051
+    ]
+   },
+   {
+    "id": "Clutter/coffee_grinder/00900",
+    "source": "coffee_grinder/000",
+    "extents_m": [
+     0.1838,
+     0.0996,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/coffee_grinder/00901",
+    "source": "coffee_grinder/003",
+    "extents_m": [
+     0.1188,
+     0.133,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/coffee_pot/00900",
+    "source": "coffee_pot/000",
+    "extents_m": [
+     0.0926,
+     0.1599,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/coffee_pot/00901",
+    "source": "coffee_pot/001",
+    "extents_m": [
+     0.1298,
+     0.1877,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/coffee_spoon/00901",
+    "source": "coffee_spoon/001",
+    "extents_m": [
+     0.0445,
+     0.021,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/coffee_tray/00900",
+    "source": "coffee_tray/001",
+    "extents_m": [
+     0.0791,
+     0.13,
+     0.0655
+    ]
+   },
+   {
+    "id": "Clutter/colander/00900",
+    "source": "colander/001",
+    "extents_m": [
+     0.1543,
+     0.18,
+     0.1023
+    ]
+   },
+   {
+    "id": "Clutter/colanders/00900",
+    "source": "colanders/003",
+    "extents_m": [
+     0.141,
+     0.18,
+     0.0934
+    ]
+   },
+   {
+    "id": "Clutter/colanders/00901",
+    "source": "colanders/004",
+    "extents_m": [
+     0.1239,
+     0.15,
+     0.059
+    ]
+   },
+   {
+    "id": "Clutter/collapsible_stool/00900",
+    "source": "collapsible_stool/000",
+    "extents_m": [
+     0.0858,
+     0.0863,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/collapsible_stool/00901",
+    "source": "collapsible_stool/001",
+    "extents_m": [
+     0.1246,
+     0.2,
+     0.1637
+    ]
+   },
+   {
+    "id": "Clutter/collar/00900",
+    "source": "collar/000",
+    "extents_m": [
+     0.1471,
+     0.18,
+     0.1399
+    ]
+   },
+   {
+    "id": "Clutter/collar/00901",
+    "source": "collar/001",
+    "extents_m": [
+     0.25,
+     0.1115,
+     0.1314
+    ]
+   },
+   {
+    "id": "Clutter/collection_tray/00900",
+    "source": "collection_tray/002",
+    "extents_m": [
+     0.15,
+     0.0974,
+     0.1096
+    ]
+   },
+   {
+    "id": "Clutter/collection_tray/00901",
+    "source": "collection_tray/005",
+    "extents_m": [
+     0.2208,
+     0.25,
+     0.0481
+    ]
+   },
+   {
+    "id": "Clutter/compost_bucket/00900",
+    "source": "compost_bucket/000",
+    "extents_m": [
+     0.2306,
+     0.2078,
+     0.3
+    ]
+   },
+   {
+    "id": "Clutter/compost_bucket/00901",
+    "source": "compost_bucket/001",
+    "extents_m": [
+     0.1995,
+     0.2,
+     0.1837
+    ]
+   },
+   {
+    "id": "Clutter/condiment_jars/00900",
+    "source": "condiment_jars/000",
+    "extents_m": [
+     0.0602,
+     0.0716,
+     0.1
+    ]
+   },
+   {
+    "id": "Clutter/cookbook_stand/00901",
+    "source": "cookbook_stand/002",
+    "extents_m": [
+     0.2,
+     0.1035,
+     0.1532
+    ]
+   },
+   {
+    "id": "Clutter/cookie_scoop/00900",
+    "source": "cookie_scoop/000",
+    "extents_m": [
+     0.0503,
+     0.18,
+     0.0271
+    ]
+   },
+   {
+    "id": "Clutter/cookie_scoop/00901",
+    "source": "cookie_scoop/001",
+    "extents_m": [
+     0.0532,
+     0.18,
+     0.0244
+    ]
+   },
+   {
+    "id": "Clutter/cookie_sheet/00900",
+    "source": "cookie_sheet/000",
+    "extents_m": [
+     0.15,
+     0.0565,
+     0.0496
+    ]
+   },
+   {
+    "id": "Clutter/copper_mortar/00900",
+    "source": "copper_mortar/000",
+    "extents_m": [
+     0.1015,
+     0.1487,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/copper_mortar/00901",
+    "source": "copper_mortar/001",
+    "extents_m": [
+     0.0909,
+     0.1267,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/copper_pestle/00900",
+    "source": "copper_pestle/000",
+    "extents_m": [
+     0.1045,
+     0.1487,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/copper_pestle/00901",
+    "source": "copper_pestle/001",
+    "extents_m": [
+     0.1369,
+     0.2,
+     0.1923
+    ]
+   },
+   {
+    "id": "Clutter/copper_pitcher/00900",
+    "source": "copper_pitcher/000",
+    "extents_m": [
+     0.1504,
+     0.2081,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/copper_pitcher/00901",
+    "source": "copper_pitcher/001",
+    "extents_m": [
+     0.207,
+     0.2117,
+     0.28
+    ]
+   },
+   {
+    "id": "Clutter/copper_vase/00900",
+    "source": "copper_vase/000",
+    "extents_m": [
+     0.1553,
+     0.1555,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/copper_vase/00901",
+    "source": "copper_vase/001",
+    "extents_m": [
+     0.1854,
+     0.1189,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/cord_clip/00900",
+    "source": "cord_clip/000",
+    "extents_m": [
+     0.0497,
+     0.12,
+     0.0619
+    ]
+   },
+   {
+    "id": "Clutter/cord_clip/00901",
+    "source": "cord_clip/001",
+    "extents_m": [
+     0.1008,
+     0.15,
+     0.0494
+    ]
+   },
+   {
+    "id": "Clutter/cord_holder/00900",
+    "source": "cord_holder/000",
+    "extents_m": [
+     0.2,
+     0.0833,
+     0.1998
+    ]
+   },
+   {
+    "id": "Clutter/cord_hook/00900",
+    "source": "cord_hook/000",
+    "extents_m": [
+     0.0378,
+     0.25,
+     0.1305
+    ]
+   },
+   {
+    "id": "Clutter/corkscrew/00900",
+    "source": "corkscrew/000",
+    "extents_m": [
+     0.0638,
+     0.1924,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/corner_brush/00900",
+    "source": "corner_brush/000",
+    "extents_m": [
+     0.0608,
+     0.18,
+     0.1217
+    ]
+   },
+   {
+    "id": "Clutter/corner_brush/00901",
+    "source": "corner_brush/001",
+    "extents_m": [
+     0.15,
+     0.0455,
+     0.1113
+    ]
+   },
+   {
+    "id": "Clutter/corner_hamper/00900",
+    "source": "corner_hamper/001",
+    "extents_m": [
+     0.1225,
+     0.1236,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/corner_hamper/00901",
+    "source": "corner_hamper/002",
+    "extents_m": [
+     0.1009,
+     0.1179,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/cover/00900",
+    "source": "cover/000",
+    "extents_m": [
+     0.0101,
+     0.15,
+     0.0816
+    ]
+   },
+   {
+    "id": "Clutter/crab_cracker/00900",
+    "source": "crab_cracker/000",
+    "extents_m": [
+     0.0424,
+     0.0838,
+     0.22
+    ]
+   },
+   {
+    "id": "Clutter/crab_cracker/00901",
+    "source": "crab_cracker/001",
+    "extents_m": [
+     0.0308,
+     0.0841,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/cream_pitcher/00900",
+    "source": "cream_pitcher/000",
+    "extents_m": [
+     0.1418,
+     0.18,
+     0.1492
+    ]
+   },
+   {
+    "id": "Clutter/creamer/00900",
+    "source": "creamer/000",
+    "extents_m": [
+     0.12,
+     0.1039,
+     0.1098
+    ]
+   },
+   {
+    "id": "Clutter/crevice_tool/00900",
+    "source": "crevice_tool/000",
+    "extents_m": [
+     0.0509,
+     0.25,
+     0.0473
+    ]
+   },
+   {
+    "id": "Clutter/crystal_pitcher/00901",
+    "source": "crystal_pitcher/001",
+    "extents_m": [
+     0.1141,
+     0.167,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/cup/00900",
+    "source": "cup/001",
+    "extents_m": [
+     0.1014,
+     0.1403,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/cup/00901",
+    "source": "cup/008",
+    "extents_m": [
+     0.0887,
+     0.12,
+     0.0664
+    ]
+   },
+   {
+    "id": "Clutter/cylinder_vase/00900",
+    "source": "cylinder_vase/001",
+    "extents_m": [
+     0.0551,
+     0.0555,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/deck_brush/00900",
+    "source": "deck_brush/001",
+    "extents_m": [
+     0.25,
+     0.0716,
+     0.0703
+    ]
+   },
+   {
+    "id": "Clutter/deck_brush/00901",
+    "source": "deck_brush/004",
+    "extents_m": [
+     0.25,
+     0.063,
+     0.0972
+    ]
+   },
+   {
+    "id": "Clutter/decorative_pitcher/00900",
+    "source": "decorative_pitcher/000",
+    "extents_m": [
+     0.1836,
+     0.25,
+     0.227
+    ]
+   },
+   {
+    "id": "Clutter/decorative_pitcher/00901",
+    "source": "decorative_pitcher/001",
+    "extents_m": [
+     0.1473,
+     0.1594,
+     0.22
+    ]
+   },
+   {
+    "id": "Clutter/decorative_stones/00900",
+    "source": "decorative_stones/001",
+    "extents_m": [
+     0.1983,
+     0.1959,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/decorative_vase/00901",
+    "source": "decorative_vase/004",
+    "extents_m": [
+     0.1509,
+     0.1511,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/delicate_wash_bottle/00900",
+    "source": "delicate_wash_bottle/002",
+    "extents_m": [
+     0.0615,
+     0.1297,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/delicate_wash_bottle/00901",
+    "source": "delicate_wash_bottle/005",
+    "extents_m": [
+     0.111,
+     0.0574,
+     0.22
+    ]
+   },
+   {
+    "id": "Clutter/desk_clock/00900",
+    "source": "desk_clock/000",
+    "extents_m": [
+     0.1391,
+     0.044,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/desk_organizers/00900",
+    "source": "desk_organizers/000",
+    "extents_m": [
+     0.25,
+     0.1709,
+     0.2083
+    ]
+   },
+   {
+    "id": "Clutter/desk_organizers/00901",
+    "source": "desk_organizers/001",
+    "extents_m": [
+     0.25,
+     0.1794,
+     0.2361
+    ]
+   },
+   {
+    "id": "Clutter/desktop_bin/00901",
+    "source": "desktop_bin/002",
+    "extents_m": [
+     0.076,
+     0.18,
+     0.1006
+    ]
+   },
+   {
+    "id": "Clutter/dessert_bowl/00900",
+    "source": "dessert_bowl/001",
+    "extents_m": [
+     0.1349,
+     0.1349,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/detailing_wand/00900",
+    "source": "detailing_wand/000",
+    "extents_m": [
+     0.0885,
+     0.2027,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/deviled_egg_tray/00900",
+    "source": "deviled_egg_tray/000",
+    "extents_m": [
+     0.2442,
+     0.0647,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/diaper_pail/00900",
+    "source": "diaper_pail/000",
+    "extents_m": [
+     0.1019,
+     0.1318,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/diaper_pail/00901",
+    "source": "diaper_pail/001",
+    "extents_m": [
+     0.1264,
+     0.1515,
+     0.3
+    ]
+   },
+   {
+    "id": "Clutter/digital_scale/00900",
+    "source": "digital_scale/000",
+    "extents_m": [
+     0.25,
+     0.1859,
+     0.1716
+    ]
+   },
+   {
+    "id": "Clutter/digital_scale/00901",
+    "source": "digital_scale/001",
+    "extents_m": [
+     0.1505,
+     0.2251,
+     0.3
+    ]
+   },
+   {
+    "id": "Clutter/digital_thermometer/00900",
+    "source": "digital_thermometer/000",
+    "extents_m": [
+     0.0236,
+     0.15,
+     0.0179
+    ]
+   },
+   {
+    "id": "Clutter/digital_thermometer/00901",
+    "source": "digital_thermometer/001",
+    "extents_m": [
+     0.0136,
+     0.15,
+     0.0237
+    ]
+   },
+   {
+    "id": "Clutter/digital_timer/00901",
+    "source": "digital_timer/001",
+    "extents_m": [
+     0.12,
+     0.0298,
+     0.0659
+    ]
+   },
+   {
+    "id": "Clutter/dinner_fork/00901",
+    "source": "dinner_fork/001",
+    "extents_m": [
+     0.0273,
+     0.18,
+     0.0206
+    ]
+   },
+   {
+    "id": "Clutter/dinner_knife/00901",
+    "source": "dinner_knife/002",
+    "extents_m": [
+     0.0179,
+     0.0259,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/dip_bowl/00900",
+    "source": "dip_bowl/000",
+    "extents_m": [
+     0.1291,
+     0.15,
+     0.0822
+    ]
+   },
+   {
+    "id": "Clutter/dish/00900",
+    "source": "dish/000",
+    "extents_m": [
+     0.1639,
+     0.25,
+     0.0489
+    ]
+   },
+   {
+    "id": "Clutter/dish_brush/00901",
+    "source": "dish_brush/001",
+    "extents_m": [
+     0.121,
+     0.12,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/dish_soap_bottle/00900",
+    "source": "dish_soap_bottle/001",
+    "extents_m": [
+     0.0967,
+     0.0569,
+     0.22
+    ]
+   },
+   {
+    "id": "Clutter/dish_soap_bottle/00901",
+    "source": "dish_soap_bottle/008",
+    "extents_m": [
+     0.0839,
+     0.0602,
+     0.22
+    ]
+   },
+   {
+    "id": "Clutter/dishwasher_detergent_bottle/00900",
+    "source": "dishwasher_detergent_bottle/000",
+    "extents_m": [
+     0.1473,
+     0.0591,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/dishwasher_detergent_bottle/00901",
+    "source": "dishwasher_detergent_bottle/001",
+    "extents_m": [
+     0.0988,
+     0.0493,
+     0.22
+    ]
+   },
+   {
+    "id": "Clutter/divider/00900",
+    "source": "divider/000",
+    "extents_m": [
+     0.027,
+     0.0958,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/divider/00901",
+    "source": "divider/001",
+    "extents_m": [
+     0.0532,
+     0.0477,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/dog_chew_toy/00900",
+    "source": "dog_chew_toy/000",
+    "extents_m": [
+     0.2,
+     0.2,
+     0.0648
+    ]
+   },
+   {
+    "id": "Clutter/dog_chew_toy/00901",
+    "source": "dog_chew_toy/002",
+    "extents_m": [
+     0.0515,
+     0.0532,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/donut_maker/00901",
+    "source": "donut_maker/001",
+    "extents_m": [
+     0.1742,
+     0.25,
+     0.2429
+    ]
+   },
+   {
+    "id": "Clutter/door_handle/00901",
+    "source": "door_handle/002",
+    "extents_m": [
+     0.3,
+     0.0784,
+     0.0971
+    ]
+   },
+   {
+    "id": "Clutter/dough_scraper/00900",
+    "source": "dough_scraper/000",
+    "extents_m": [
+     0.0252,
+     0.1327,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/dragon_fruit/00900",
+    "source": "dragon_fruit/000",
+    "extents_m": [
+     0.0801,
+     0.12,
+     0.1042
+    ]
+   },
+   {
+    "id": "Clutter/drain_cleaner_bottle/00900",
+    "source": "drain_cleaner_bottle/002",
+    "extents_m": [
+     0.0547,
+     0.1091,
+     0.22
+    ]
+   },
+   {
+    "id": "Clutter/drain_cleaner_bottle/00901",
+    "source": "drain_cleaner_bottle/005",
+    "extents_m": [
+     0.0975,
+     0.0625,
+     0.22
+    ]
+   },
+   {
+    "id": "Clutter/drip_trays/00900",
+    "source": "drip_trays/001",
+    "extents_m": [
+     0.0728,
+     0.0155,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/drip_trays/00901",
+    "source": "drip_trays/003",
+    "extents_m": [
+     0.25,
+     0.1204,
+     0.1969
+    ]
+   },
+   {
+    "id": "Clutter/dry_measuring_cup/00900",
+    "source": "dry_measuring_cup/001",
+    "extents_m": [
+     0.1206,
+     0.18,
+     0.1209
+    ]
+   },
+   {
+    "id": "Clutter/dumbbell/00900",
+    "source": "dumbbell/002",
+    "extents_m": [
+     0.0962,
+     0.25,
+     0.0949
+    ]
+   },
+   {
+    "id": "Clutter/dumbbell/00901",
+    "source": "dumbbell/004",
+    "extents_m": [
+     0.25,
+     0.0884,
+     0.0922
+    ]
+   },
+   {
+    "id": "Clutter/dust_bin/00901",
+    "source": "dust_bin/002",
+    "extents_m": [
+     0.1955,
+     0.0931,
+     0.22
+    ]
+   },
+   {
+    "id": "Clutter/dutch_oven/00900",
+    "source": "dutch_oven/000",
+    "extents_m": [
+     0.2375,
+     0.25,
+     0.1376
+    ]
+   },
+   {
+    "id": "Clutter/easels/00900",
+    "source": "easels/003",
+    "extents_m": [
+     0.1125,
+     0.15,
+     0.1022
+    ]
+   },
+   {
+    "id": "Clutter/egg_carton/00900",
+    "source": "egg_carton/000",
+    "extents_m": [
+     0.25,
+     0.1969,
+     0.098
+    ]
+   },
+   {
+    "id": "Clutter/egg_ring/00900",
+    "source": "egg_ring/000",
+    "extents_m": [
+     0.1298,
+     0.1928,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/egg_separator/00900",
+    "source": "egg_separator/000",
+    "extents_m": [
+     0.082,
+     0.12,
+     0.0309
+    ]
+   },
+   {
+    "id": "Clutter/egg_slicer/00900",
+    "source": "egg_slicer/000",
+    "extents_m": [
+     0.0995,
+     0.18,
+     0.1181
+    ]
+   },
+   {
+    "id": "Clutter/egg_slicer/00901",
+    "source": "egg_slicer/002",
+    "extents_m": [
+     0.1475,
+     0.1484,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/electric_whisk/00901",
+    "source": "electric_whisk/001",
+    "extents_m": [
+     0.0637,
+     0.25,
+     0.0562
+    ]
+   },
+   {
+    "id": "Clutter/enamel_bucket/00900",
+    "source": "enamel_bucket/000",
+    "extents_m": [
+     0.1742,
+     0.169,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/enamel_bucket/00901",
+    "source": "enamel_bucket/001",
+    "extents_m": [
+     0.1625,
+     0.1527,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/enamel_colander/00900",
+    "source": "enamel_colander/001",
+    "extents_m": [
+     0.1301,
+     0.15,
+     0.0731
+    ]
+   },
+   {
+    "id": "Clutter/enamel_colander/00901",
+    "source": "enamel_colander/002",
+    "extents_m": [
+     0.1253,
+     0.15,
+     0.071
+    ]
+   },
+   {
+    "id": "Clutter/enamel_vase/00900",
+    "source": "enamel_vase/000",
+    "extents_m": [
+     0.1607,
+     0.1611,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/enamel_vase/00901",
+    "source": "enamel_vase/001",
+    "extents_m": [
+     0.1463,
+     0.1462,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/espresso_maker/00900",
+    "source": "espresso_maker/000",
+    "extents_m": [
+     0.0968,
+     0.1781,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/espresso_maker/00901",
+    "source": "espresso_maker/001",
+    "extents_m": [
+     0.0983,
+     0.1625,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/exhaust_vent/00900",
+    "source": "exhaust_vent/000",
+    "extents_m": [
+     0.0597,
+     0.097,
+     0.3
+    ]
+   },
+   {
+    "id": "Clutter/extension_tube/00900",
+    "source": "extension_tube/000",
+    "extents_m": [
+     0.1235,
+     0.1386,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/extension_tube/00901",
+    "source": "extension_tube/002",
+    "extents_m": [
+     0.138,
+     0.18,
+     0.0808
+    ]
+   },
+   {
+    "id": "Clutter/fig/00901",
+    "source": "fig/009",
+    "extents_m": [
+     0.284,
+     0.3,
+     0.1184
+    ]
+   },
+   {
+    "id": "Clutter/fingerboard/00901",
+    "source": "fingerboard/012",
+    "extents_m": [
+     0.28,
+     0.0659,
+     0.0665
+    ]
+   },
+   {
+    "id": "Clutter/fishing_net/00900",
+    "source": "fishing_net/000",
+    "extents_m": [
+     0.18,
+     0.099,
+     0.0671
+    ]
+   },
+   {
+    "id": "Clutter/flange_gasket/00900",
+    "source": "flange_gasket/001",
+    "extents_m": [
+     0.1499,
+     0.0119,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/foam_roller/00900",
+    "source": "foam_roller/000",
+    "extents_m": [
+     0.0716,
+     0.25,
+     0.0737
+    ]
+   },
+   {
+    "id": "Clutter/foam_roller/00901",
+    "source": "foam_roller/001",
+    "extents_m": [
+     0.0526,
+     0.15,
+     0.0517
+    ]
+   },
+   {
+    "id": "Clutter/fork/00901",
+    "source": "fork/001",
+    "extents_m": [
+     0.0313,
+     0.0245,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/galvanized_bucket/00900",
+    "source": "galvanized_bucket/002",
+    "extents_m": [
+     0.2467,
+     0.25,
+     0.1609
+    ]
+   },
+   {
+    "id": "Clutter/galvanized_bucket/00901",
+    "source": "galvanized_bucket/003",
+    "extents_m": [
+     0.15,
+     0.1481,
+     0.0786
+    ]
+   },
+   {
+    "id": "Clutter/galvanized_pan/00900",
+    "source": "galvanized_pan/000",
+    "extents_m": [
+     0.15,
+     0.15,
+     0.0345
+    ]
+   },
+   {
+    "id": "Clutter/galvanized_pan/00901",
+    "source": "galvanized_pan/002",
+    "extents_m": [
+     0.2,
+     0.2,
+     0.0446
+    ]
+   },
+   {
+    "id": "Clutter/garlic_rocker/00900",
+    "source": "garlic_rocker/000",
+    "extents_m": [
+     0.0479,
+     0.18,
+     0.0579
+    ]
+   },
+   {
+    "id": "Clutter/garnish_tool/00901",
+    "source": "garnish_tool/001",
+    "extents_m": [
+     0.2275,
+     0.25,
+     0.147
+    ]
+   },
+   {
+    "id": "Clutter/gimbal_stabilizer/00900",
+    "source": "gimbal_stabilizer/000",
+    "extents_m": [
+     0.1464,
+     0.1732,
+     0.3
+    ]
+   },
+   {
+    "id": "Clutter/gimbal_stabilizer/00901",
+    "source": "gimbal_stabilizer/001",
+    "extents_m": [
+     0.1347,
+     0.1089,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/glass/00900",
+    "source": "glass/001",
+    "extents_m": [
+     0.0707,
+     0.0708,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/glass/00901",
+    "source": "glass/002",
+    "extents_m": [
+     0.066,
+     0.0661,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/glass_cleaner_bottle/00900",
+    "source": "glass_cleaner_bottle/000",
+    "extents_m": [
+     0.0663,
+     0.0958,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/glass_cleaner_bottle/00901",
+    "source": "glass_cleaner_bottle/001",
+    "extents_m": [
+     0.0648,
+     0.0986,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/glass_cubes/00900",
+    "source": "glass_cubes/000",
+    "extents_m": [
+     0.1166,
+     0.15,
+     0.0935
+    ]
+   },
+   {
+    "id": "Clutter/glass_cubes/00901",
+    "source": "glass_cubes/001",
+    "extents_m": [
+     0.0539,
+     0.0542,
+     0.08
+    ]
+   },
+   {
+    "id": "Clutter/golf_tee/00900",
+    "source": "golf_tee/000",
+    "extents_m": [
+     0.0488,
+     0.0492,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/gooseberry/00901",
+    "source": "gooseberry/006",
+    "extents_m": [
+     0.1502,
+     0.2,
+     0.1441
+    ]
+   },
+   {
+    "id": "Clutter/hand_clamp/00900",
+    "source": "hand_clamp/000",
+    "extents_m": [
+     0.2533,
+     0.3,
+     0.0727
+    ]
+   },
+   {
+    "id": "Clutter/hand_sanitizer_bottle/00900",
+    "source": "hand_sanitizer_bottle/001",
+    "extents_m": [
+     0.0821,
+     0.062,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/heat_sink/00900",
+    "source": "heat_sink/001",
+    "extents_m": [
+     0.0445,
+     0.15,
+     0.0221
+    ]
+   },
+   {
+    "id": "Clutter/ink_bottles/00900",
+    "source": "ink_bottles/001",
+    "extents_m": [
+     0.1115,
+     0.0771,
+     0.12
+    ]
+   },
+   {
+    "id": "Clutter/ink_bottles/00901",
+    "source": "ink_bottles/005",
+    "extents_m": [
+     0.0708,
+     0.0709,
+     0.1
+    ]
+   },
+   {
+    "id": "Clutter/ink_cartridges/00901",
+    "source": "ink_cartridges/002",
+    "extents_m": [
+     0.0266,
+     0.12,
+     0.1117
+    ]
+   },
+   {
+    "id": "Clutter/ink_marker/00900",
+    "source": "ink_marker/000",
+    "extents_m": [
+     0.0817,
+     0.2,
+     0.0447
+    ]
+   },
+   {
+    "id": "Clutter/insert/00900",
+    "source": "insert/000",
+    "extents_m": [
+     0.0927,
+     0.0929,
+     0.12
+    ]
+   },
+   {
+    "id": "Clutter/insert/00901",
+    "source": "insert/002",
+    "extents_m": [
+     0.0887,
+     0.12,
+     0.0921
+    ]
+   },
+   {
+    "id": "Clutter/kitchen_timer/00900",
+    "source": "kitchen_timer/000",
+    "extents_m": [
+     0.1302,
+     0.1303,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/kitchen_timer/00901",
+    "source": "kitchen_timer/001",
+    "extents_m": [
+     0.0908,
+     0.0542,
+     0.12
+    ]
+   },
+   {
+    "id": "Clutter/kongming_lock/00900",
+    "source": "kongming_lock/000",
+    "extents_m": [
+     0.2,
+     0.2,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/lamp/00900",
+    "source": "lamp/000",
+    "extents_m": [
+     0.1184,
+     0.0913,
+     0.28
+    ]
+   },
+   {
+    "id": "Clutter/lamp/00901",
+    "source": "lamp/001",
+    "extents_m": [
+     0.1288,
+     0.1643,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/lantern/00900",
+    "source": "lantern/002",
+    "extents_m": [
+     0.1346,
+     0.1196,
+     0.3
+    ]
+   },
+   {
+    "id": "Clutter/lantern/00901",
+    "source": "lantern/003",
+    "extents_m": [
+     0.1049,
+     0.1286,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/lasagna_pan/00900",
+    "source": "lasagna_pan/001",
+    "extents_m": [
+     0.25,
+     0.2185,
+     0.0569
+    ]
+   },
+   {
+    "id": "Clutter/latch/00901",
+    "source": "latch/001",
+    "extents_m": [
+     0.0968,
+     0.18,
+     0.0585
+    ]
+   },
+   {
+    "id": "Clutter/laundry_brush/00900",
+    "source": "laundry_brush/000",
+    "extents_m": [
+     0.076,
+     0.18,
+     0.1029
+    ]
+   },
+   {
+    "id": "Clutter/laundry_brush/00901",
+    "source": "laundry_brush/001",
+    "extents_m": [
+     0.25,
+     0.1077,
+     0.0994
+    ]
+   },
+   {
+    "id": "Clutter/laundry_bucket/00901",
+    "source": "laundry_bucket/004",
+    "extents_m": [
+     0.25,
+     0.25,
+     0.2295
+    ]
+   },
+   {
+    "id": "Clutter/laundry_soap_dispenser/00900",
+    "source": "laundry_soap_dispenser/000",
+    "extents_m": [
+     0.056,
+     0.0933,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/laundry_soap_dispenser/00901",
+    "source": "laundry_soap_dispenser/001",
+    "extents_m": [
+     0.0548,
+     0.0974,
+     0.12
+    ]
+   },
+   {
+    "id": "Clutter/laundry_starch_spray/00900",
+    "source": "laundry_starch_spray/000",
+    "extents_m": [
+     0.0701,
+     0.0847,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/laundry_starch_spray/00901",
+    "source": "laundry_starch_spray/002",
+    "extents_m": [
+     0.082,
+     0.1033,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/laundry_trunk/00900",
+    "source": "laundry_trunk/002",
+    "extents_m": [
+     0.1631,
+     0.1633,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/lava_rock_mortar/00900",
+    "source": "lava_rock_mortar/001",
+    "extents_m": [
+     0.1463,
+     0.15,
+     0.0923
+    ]
+   },
+   {
+    "id": "Clutter/lemonade_pitcher/00900",
+    "source": "lemonade_pitcher/000",
+    "extents_m": [
+     0.1043,
+     0.1243,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/lemonade_pitcher/00901",
+    "source": "lemonade_pitcher/002",
+    "extents_m": [
+     0.1515,
+     0.1677,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/letters/00900",
+    "source": "letters/000",
+    "extents_m": [
+     0.0261,
+     0.2,
+     0.1905
+    ]
+   },
+   {
+    "id": "Clutter/letters/00901",
+    "source": "letters/001",
+    "extents_m": [
+     0.25,
+     0.0448,
+     0.2372
+    ]
+   },
+   {
+    "id": "Clutter/library_kick_stool/00900",
+    "source": "library_kick_stool/000",
+    "extents_m": [
+     0.1997,
+     0.2,
+     0.1843
+    ]
+   },
+   {
+    "id": "Clutter/lid/00900",
+    "source": "lid/001",
+    "extents_m": [
+     0.1497,
+     0.25,
+     0.0722
+    ]
+   },
+   {
+    "id": "Clutter/lidded_bin/00900",
+    "source": "lidded_bin/004",
+    "extents_m": [
+     0.1313,
+     0.1313,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/lidded_bin/00901",
+    "source": "lidded_bin/005",
+    "extents_m": [
+     0.1991,
+     0.1878,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/locating_pin/00901",
+    "source": "locating_pin/001",
+    "extents_m": [
+     0.0571,
+     0.0572,
+     0.12
+    ]
+   },
+   {
+    "id": "Clutter/lock/00900",
+    "source": "lock/000",
+    "extents_m": [
+     0.0213,
+     0.0607,
+     0.12
+    ]
+   },
+   {
+    "id": "Clutter/loofah_sponge/00900",
+    "source": "loofah_sponge/001",
+    "extents_m": [
+     0.2564,
+     0.1536,
+     0.3
+    ]
+   },
+   {
+    "id": "Clutter/mango/00901",
+    "source": "mango/001",
+    "extents_m": [
+     0.0831,
+     0.15,
+     0.1039
+    ]
+   },
+   {
+    "id": "Clutter/markers/00900",
+    "source": "markers/000",
+    "extents_m": [
+     0.0159,
+     0.15,
+     0.0215
+    ]
+   },
+   {
+    "id": "Clutter/markers/00901",
+    "source": "markers/001",
+    "extents_m": [
+     0.0187,
+     0.15,
+     0.019
+    ]
+   },
+   {
+    "id": "Clutter/mini_remote_control_helicopter/00900",
+    "source": "mini_remote_control_helicopter/002",
+    "extents_m": [
+     0.1886,
+     0.2,
+     0.074
+    ]
+   },
+   {
+    "id": "Clutter/mobile_wide_angle_lens/00901",
+    "source": "mobile_wide-angle_lens/003",
+    "extents_m": [
+     0.1387,
+     0.3,
+     0.1356
+    ]
+   },
+   {
+    "id": "Clutter/mouse/00900",
+    "source": "mouse/005",
+    "extents_m": [
+     0.0635,
+     0.12,
+     0.0511
+    ]
+   },
+   {
+    "id": "Clutter/mouse/00901",
+    "source": "mouse/009",
+    "extents_m": [
+     0.0382,
+     0.12,
+     0.044
+    ]
+   },
+   {
+    "id": "Clutter/music_box/00901",
+    "source": "music_box/002",
+    "extents_m": [
+     0.1418,
+     0.1055,
+     0.3
+    ]
+   },
+   {
+    "id": "Clutter/nail_clipper/00900",
+    "source": "nail_clipper/000",
+    "extents_m": [
+     0.0363,
+     0.12,
+     0.0773
+    ]
+   },
+   {
+    "id": "Clutter/nail_clipper/00901",
+    "source": "nail_clipper/001",
+    "extents_m": [
+     0.0372,
+     0.15,
+     0.1139
+    ]
+   },
+   {
+    "id": "Clutter/pantene/00900",
+    "source": "pantene/000",
+    "extents_m": [
+     0.0719,
+     0.0923,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/pantene/00901",
+    "source": "pantene/007",
+    "extents_m": [
+     0.066,
+     0.0694,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/peach/00901",
+    "source": "peach/001",
+    "extents_m": [
+     0.05,
+     0.0476,
+     0.0423
+    ]
+   },
+   {
+    "id": "Clutter/pencil_case/00900",
+    "source": "pencil_case/000",
+    "extents_m": [
+     0.027,
+     0.18,
+     0.1021
+    ]
+   },
+   {
+    "id": "Clutter/phone_ring_holder/00900",
+    "source": "phone_ring_holder/001",
+    "extents_m": [
+     0.2,
+     0.1194,
+     0.1897
+    ]
+   },
+   {
+    "id": "Clutter/phone_ring_holder/00901",
+    "source": "phone_ring_holder/005",
+    "extents_m": [
+     0.2896,
+     0.2548,
+     0.3
+    ]
+   },
+   {
+    "id": "Clutter/photo_frame/00900",
+    "source": "photo_frame/004",
+    "extents_m": [
+     0.1407,
+     0.1184,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/pilates_ring/00900",
+    "source": "pilates_ring/000",
+    "extents_m": [
+     0.15,
+     0.0212,
+     0.1327
+    ]
+   },
+   {
+    "id": "Clutter/pilates_ring/00901",
+    "source": "pilates_ring/001",
+    "extents_m": [
+     0.061,
+     0.12,
+     0.1104
+    ]
+   },
+   {
+    "id": "Clutter/pin_shaft/00900",
+    "source": "pin_shaft/000",
+    "extents_m": [
+     0.25,
+     0.189,
+     0.0663
+    ]
+   },
+   {
+    "id": "Clutter/pine_cone/00900",
+    "source": "pine_cone/008",
+    "extents_m": [
+     0.2545,
+     0.2433,
+     0.3
+    ]
+   },
+   {
+    "id": "Clutter/pinpad/00900",
+    "source": "pinpad/000",
+    "extents_m": [
+     0.1424,
+     0.0644,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/pinpad/00901",
+    "source": "pinpad/001",
+    "extents_m": [
+     0.0913,
+     0.0332,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/pipe_fitting/00900",
+    "source": "pipe_fitting/002",
+    "extents_m": [
+     0.1135,
+     0.15,
+     0.1411
+    ]
+   },
+   {
+    "id": "Clutter/pipe_fitting/00901",
+    "source": "pipe_fitting/003",
+    "extents_m": [
+     0.15,
+     0.0641,
+     0.1067
+    ]
+   },
+   {
+    "id": "Clutter/plush/00900",
+    "source": "plush/000",
+    "extents_m": [
+     0.0916,
+     0.12,
+     0.0756
+    ]
+   },
+   {
+    "id": "Clutter/plush/00901",
+    "source": "plush/001",
+    "extents_m": [
+     0.1312,
+     0.15,
+     0.0793
+    ]
+   },
+   {
+    "id": "Clutter/power_bank/00901",
+    "source": "power_bank/003",
+    "extents_m": [
+     0.1051,
+     0.0304,
+     0.12
+    ]
+   },
+   {
+    "id": "Clutter/profile_bracket/00901",
+    "source": "profile_bracket/001",
+    "extents_m": [
+     0.119,
+     0.18,
+     0.1499
+    ]
+   },
+   {
+    "id": "Clutter/purse/00901",
+    "source": "purse/001",
+    "extents_m": [
+     0.28,
+     0.108,
+     0.1731
+    ]
+   },
+   {
+    "id": "Clutter/resistor/00900",
+    "source": "resistor/000",
+    "extents_m": [
+     0.0264,
+     0.12,
+     0.026
+    ]
+   },
+   {
+    "id": "Clutter/roller_skate/00900",
+    "source": "roller_skate/000",
+    "extents_m": [
+     0.1186,
+     0.2788,
+     0.28
+    ]
+   },
+   {
+    "id": "Clutter/roller_skate/00901",
+    "source": "roller_skate/001",
+    "extents_m": [
+     0.1645,
+     0.2358,
+     0.28
+    ]
+   },
+   {
+    "id": "Clutter/silicone_gun/00900",
+    "source": "silicone_gun/002",
+    "extents_m": [
+     0.058,
+     0.3,
+     0.157
+    ]
+   },
+   {
+    "id": "Clutter/silicone_gun/00901",
+    "source": "silicone_gun/003",
+    "extents_m": [
+     0.0453,
+     0.0959,
+     0.3
+    ]
+   },
+   {
+    "id": "Clutter/slender_shaft/00900",
+    "source": "slender_shaft/000",
+    "extents_m": [
+     0.0239,
+     0.15,
+     0.0239
+    ]
+   },
+   {
+    "id": "Clutter/slingshot/00900",
+    "source": "slingshot/000",
+    "extents_m": [
+     0.0704,
+     0.0786,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/slingshot/00901",
+    "source": "slingshot/002",
+    "extents_m": [
+     0.187,
+     0.1745,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/slipper/00900",
+    "source": "slipper/000",
+    "extents_m": [
+     0.0691,
+     0.25,
+     0.0861
+    ]
+   },
+   {
+    "id": "Clutter/small_mirror/00900",
+    "source": "small_mirror/004",
+    "extents_m": [
+     0.1056,
+     0.1218,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/small_mirror/00901",
+    "source": "small_mirror/005",
+    "extents_m": [
+     0.1585,
+     0.1745,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/spoon/00900",
+    "source": "spoon/001",
+    "extents_m": [
+     0.0368,
+     0.15,
+     0.0584
+    ]
+   },
+   {
+    "id": "Clutter/sports_waist_pack/00901",
+    "source": "sports_waist_pack/001",
+    "extents_m": [
+     0.25,
+     0.2424,
+     0.1411
+    ]
+   },
+   {
+    "id": "Clutter/spring/00900",
+    "source": "spring/000",
+    "extents_m": [
+     0.0286,
+     0.0302,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/spring/00901",
+    "source": "spring/001",
+    "extents_m": [
+     0.0451,
+     0.0451,
+     0.1
+    ]
+   },
+   {
+    "id": "Clutter/spring_roll/00900",
+    "source": "spring_roll/000",
+    "extents_m": [
+     0.0736,
+     0.3,
+     0.0778
+    ]
+   },
+   {
+    "id": "Clutter/standard_weight/00900",
+    "source": "standard_weight/000",
+    "extents_m": [
+     0.0837,
+     0.0838,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/standard_weight/00901",
+    "source": "standard_weight/001",
+    "extents_m": [
+     0.0688,
+     0.0689,
+     0.12
+    ]
+   },
+   {
+    "id": "Clutter/stapler/00900",
+    "source": "stapler/000",
+    "extents_m": [
+     0.0365,
+     0.15,
+     0.0596
+    ]
+   },
+   {
+    "id": "Clutter/stapler/00901",
+    "source": "stapler/002",
+    "extents_m": [
+     0.0316,
+     0.12,
+     0.045
+    ]
+   },
+   {
+    "id": "Clutter/staplers/00900",
+    "source": "staplers/000",
+    "extents_m": [
+     0.037,
+     0.12,
+     0.081
+    ]
+   },
+   {
+    "id": "Clutter/sweatband/00900",
+    "source": "sweatband/000",
+    "extents_m": [
+     0.1157,
+     0.15,
+     0.0966
+    ]
+   },
+   {
+    "id": "Clutter/sweatband/00901",
+    "source": "sweatband/001",
+    "extents_m": [
+     0.15,
+     0.0695,
+     0.0482
+    ]
+   },
+   {
+    "id": "Clutter/swimming_earplugs/00900",
+    "source": "swimming_earplugs/001",
+    "extents_m": [
+     0.12,
+     0.1072,
+     0.0671
+    ]
+   },
+   {
+    "id": "Clutter/table_tennis_racket/00901",
+    "source": "table_tennis_racket/005",
+    "extents_m": [
+     0.0151,
+     0.1341,
+     0.25
+    ]
+   },
+   {
+    "id": "Clutter/tape/00900",
+    "source": "tape/000",
+    "extents_m": [
+     0.0595,
+     0.25,
+     0.1108
+    ]
+   },
+   {
+    "id": "Clutter/terminal_block/00900",
+    "source": "terminal_block/000",
+    "extents_m": [
+     0.1,
+     0.0712,
+     0.0716
+    ]
+   },
+   {
+    "id": "Clutter/terminal_block/00901",
+    "source": "terminal_block/001",
+    "extents_m": [
+     0.086,
+     0.0824,
+     0.12
+    ]
+   },
+   {
+    "id": "Clutter/tooling_plate/00900",
+    "source": "tooling_plate/000",
+    "extents_m": [
+     0.1714,
+     0.135,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/toothpaste/00900",
+    "source": "toothpaste/004",
+    "extents_m": [
+     0.0369,
+     0.0715,
+     0.18
+    ]
+   },
+   {
+    "id": "Clutter/toothpaste/00901",
+    "source": "toothpaste/007",
+    "extents_m": [
+     0.0549,
+     0.0368,
+     0.15
+    ]
+   },
+   {
+    "id": "Clutter/voltage_tester/00900",
+    "source": "voltage_tester/000",
+    "extents_m": [
+     0.3,
+     0.0294,
+     0.0487
+    ]
+   },
+   {
+    "id": "Clutter/wedge_block/00900",
+    "source": "wedge_block/000",
+    "extents_m": [
+     0.05,
+     0.15,
+     0.0429
+    ]
+   },
+   {
+    "id": "Clutter/wedge_block/00901",
+    "source": "wedge_block/002",
+    "extents_m": [
+     0.068,
+     0.15,
+     0.1166
+    ]
+   },
+   {
+    "id": "Clutter/wind_up_frog_toy/00900",
+    "source": "wind-up_frog_toy/006",
+    "extents_m": [
+     0.1294,
+     0.1268,
+     0.2
+    ]
+   },
+   {
+    "id": "Clutter/windmill_toy/00900",
+    "source": "windmill_toy/007",
+    "extents_m": [
+     0.223,
+     0.1559,
+     0.25
+    ]
+   }
+  ]
+ },
+ "hdrs": {
+  "dataset": "Poly Haven (polyhaven.com)",
+  "license": "CC0-1.0",
+  "fetched_by": "scripts/scenes/polyhaven_hdris.py",
+  "count": 40,
+  "items": [
+   {
+    "file": "polyhaven_brown_photostudio_02_2k.hdr",
+    "id": "brown_photostudio_02",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_studio_small_09_2k.hdr",
+    "id": "studio_small_09",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_studio_small_08_2k.hdr",
+    "id": "studio_small_08",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_studio_small_03_2k.hdr",
+    "id": "studio_small_03",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_photo_studio_01_2k.hdr",
+    "id": "photo_studio_01",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_fireplace_2k.hdr",
+    "id": "fireplace",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_cayley_interior_2k.hdr",
+    "id": "cayley_interior",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_brown_photostudio_01_2k.hdr",
+    "id": "brown_photostudio_01",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_christmas_photo_studio_01_2k.hdr",
+    "id": "christmas_photo_studio_01",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_photo_studio_loft_hall_2k.hdr",
+    "id": "photo_studio_loft_hall",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_studio_small_02_2k.hdr",
+    "id": "studio_small_02",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_lebombo_2k.hdr",
+    "id": "lebombo",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_studio_small_05_2k.hdr",
+    "id": "studio_small_05",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_studio_small_04_2k.hdr",
+    "id": "studio_small_04",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_studio_small_01_2k.hdr",
+    "id": "studio_small_01",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_autoshop_01_2k.hdr",
+    "id": "autoshop_01",
+    "authors": {
+     "Oliksiy Yakovlyev": "All"
+    }
+   },
+   {
+    "file": "polyhaven_artist_workshop_2k.hdr",
+    "id": "artist_workshop",
+    "authors": {
+     "Oliksiy Yakovlyev": "All"
+    }
+   },
+   {
+    "file": "polyhaven_blue_photo_studio_2k.hdr",
+    "id": "blue_photo_studio",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_studio_country_hall_2k.hdr",
+    "id": "studio_country_hall",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_studio_small_07_2k.hdr",
+    "id": "studio_small_07",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_paul_lobe_haus_2k.hdr",
+    "id": "paul_lobe_haus",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_empty_warehouse_01_2k.hdr",
+    "id": "empty_warehouse_01",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_christmas_photo_studio_04_2k.hdr",
+    "id": "christmas_photo_studio_04",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_neon_photostudio_2k.hdr",
+    "id": "neon_photostudio",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_royal_esplanade_2k.hdr",
+    "id": "royal_esplanade",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_metro_noord_2k.hdr",
+    "id": "metro_noord",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_studio_small_06_2k.hdr",
+    "id": "studio_small_06",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_blocky_photo_studio_2k.hdr",
+    "id": "blocky_photo_studio",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_veranda_2k.hdr",
+    "id": "veranda",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_ballroom_2k.hdr",
+    "id": "ballroom",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_peppermint_powerplant_2k.hdr",
+    "id": "peppermint_powerplant",
+    "authors": {
+     "Andreas Mischok": "All"
+    }
+   },
+   {
+    "file": "polyhaven_hotel_room_2k.hdr",
+    "id": "hotel_room",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_christmas_photo_studio_05_2k.hdr",
+    "id": "christmas_photo_studio_05",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_poly_haven_studio_2k.hdr",
+    "id": "poly_haven_studio",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_cyclorama_hard_light_2k.hdr",
+    "id": "cyclorama_hard_light",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_empty_play_room_2k.hdr",
+    "id": "empty_play_room",
+    "authors": {
+     "Greg Zaal": "Photography",
+     "Jarod Guest": "Processing"
+    }
+   },
+   {
+    "file": "polyhaven_colorful_studio_2k.hdr",
+    "id": "colorful_studio",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_christmas_photo_studio_07_2k.hdr",
+    "id": "christmas_photo_studio_07",
+    "authors": {
+     "Sergej Majboroda": "All"
+    }
+   },
+   {
+    "file": "polyhaven_wooden_lounge_2k.hdr",
+    "id": "wooden_lounge",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   },
+   {
+    "file": "polyhaven_rostock_laage_airport_2k.hdr",
+    "id": "rostock_laage_airport",
+    "authors": {
+     "Greg Zaal": "All"
+    }
+   }
+  ]
+ }
+}

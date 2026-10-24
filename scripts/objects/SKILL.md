@@ -189,6 +189,20 @@ CUDA_VISIBLE_DEVICES=<卡> PYTHONPATH=. python scripts/objects/check_object.py o
 - 装好之后：`ASSETS.md`「共享库」一栏改成「已装」；在本机重跑 `.agent/ops.local.md` 里的元数据镜像命令，刷新部署机的资产库镜像，再在平台点「同步项目数据」。平台会按 `measurements_mm` 自动核对尺寸，物体页的「尺寸 / 质量核对」应当变成通过。
 - 没装共享库、但要让平台先看到：把 `metadata.json`、`description.json` 手动放进部署机镜像的同一 id 目录，并记进 `.agent/ops.local.md`。镜像命令会整体替换镜像目录，下次重跑时手动放的文件会被删掉。
 
+## 从公开库批量导入（RSI 的干扰物和实例）
+
+和上面"按平台登记建一件实物"不同，这是成批导入，给 `rsi/AGENTS.md` 的训练池和考场池补资产。不装共享库，新资产单独放一个目录，用 `scripts/datagen/rsi_assets.py link` 合并进运行目录的 `Assets/`。
+
+- **ManiTwin-100K**（`scripts/objects/manitwin.py`，Apache-2.0）：
+  1. 标注：在 GPU 服务器上用 `GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://hf-mirror.com/datasets/ManiTwin/ManiTwin-100K` 一次拉下全部 json。逐个文件下载会被镜像站限流（HTTP 429）。
+  2. `select`：按尺寸筛（最长边 3–30 cm、最短边 ≥ 5 mm），跳过 `_tmp` 类别，类别名改成合法的 USD prim 名；尺寸和任何 RoboDojo 物体相近的不收（RoboDojo 的杂物库就是从 ManiTwin 做的）。
+  3. 只下载选中物体的 `base_rescaled.usdz`（并发 4 个）。说明文档里写的 `base_rescale` 是错的，有少数物体没有 usdz。
+  4. `convert`：把模型整个引用进 `/World/visual`，关掉它自带的穹顶灯，平移到底面落在 z = 0；碰撞体用减到约 2000 面的网格做凸分解；元数据按实际网格计算。编号从 900 起。
+  5. 用 `check_object.py` 做落地检查。它是按"原点在物体中心"写的，判定的 `z` 和"期望值"对不上，这里要按"原点在底面"来读：`|z| ≤ 5 mm`、倾斜 < 1.5°、速度 < 0.01 m/s 才收。
+  6. 再在桌面上做一次密集筛查：每个布局放 18–22 个，跑保持姿态的策略；`layout_manager` 会打印 `Unstable actors`，出现过的物体都剔掉。
+  - 10-24 的结果：4259 个里选出 765 个，转换 762 个，地面检查通过 450 个，剔掉倾斜超过 1.5° 的以后剩 390 个；桌面筛查里出问题的只有两个轻微倾斜的物体。
+- **Poly Haven HDR**（`scripts/scenes/polyhaven_hdris.py`，CC0）：在本机下载（服务器连不上外网），打包传到服务器。macOS 的 `tar` 会带上 `._*` 文件，解压后要删掉。
+
 ## 重建已有物体
 
 `spec.json` 的 `tasks` 不为空，或资产库里已经有这个 id 时：
