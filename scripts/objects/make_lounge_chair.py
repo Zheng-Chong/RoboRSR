@@ -6,7 +6,7 @@ assets the G1-D chassis can push aside.
 - lounge_chair/00001: the same chair in off-white (the chairs of the next table, only partly in the photos).
 Not registered on the Real2Sim platform and nothing measured: every size below is estimated from the photos against
 the lounge fit (fit_lounge.py, table top assumed 0.75 m); the mass is a typical value for such a chair. The white
-chair's real shell is rounder; only its colour differs here.
+chairs are a different, rounder model in the photos; only the colour differs here.
 
 Usage:
     python scripts/objects/make_lounge_chair.py [RIGID_DIR]    # default Assets/Object/RoboDojo/Rigid
@@ -15,8 +15,12 @@ Writes RIGID_DIR/lounge_chair/<index>/{object.usdz, metadata.json, description.j
 needs.
 
 Frame: Z up, metres, origin at bbox centre; the chair faces +X (seat front), its back toward -X.
-USD:   /root (RigidBodyAPI) -> visual/model (shell), visual/seat, visual/leg_N
-                            -> collision/hull_NN (seat, shell segments, legs; each <= 64 vertices)
+Shape (lounge2/3 photos): a U in plan, straight front, half-round back. An upholstered tub base runs all round under
+the inset seat cushion; one shell wraps back and sides, its top sloping down toward the arms' front; at the sides'
+front it reaches down to the base, behind that a slot with rounded ends opens between base and shell. Four tapered,
+splayed oak legs.
+USD:   /root (RigidBodyAPI) -> visual/model (shell + base), visual/seat (cushion), visual/leg_N
+                            -> collision/hull_NN (base, cushion, legs, shell pieces; each <= 64 vertices)
 The runtime caps rigid masses at 0.5 kg unless the layout entry's physics sets `mass_cap`
 (env/scene_manager/objects/rigid.py); layouts with these chairs set it to MASS.
 """
@@ -38,13 +42,17 @@ import make_plastic_cups as pc  # noqa: E402  (add_collision, metadata)
 
 RIGID_DIR = Path(__file__).resolve().parents[2] / "Assets/Object/RoboDojo/Rigid"
 CHAIR = dict(
-    SEAT_W=0.50, SEAT_D=0.48, SEAT_Z=(0.40, 0.47),  # cushion, estimated
-    SHELL_R=0.30, SHELL_T=0.035,  # tub shell outer radius in plan and wall thickness, estimated
-    SHELL_CX=-0.02,  # shell centre in plan, a little behind the seat centre
-    BACK_Z=(0.55, 0.80),  # back band: the slot between it and the seat is the opening seen from behind
-    ARM_Z=(0.47, 0.68), ARM_DEG=(55, 125),  # armrests (from the seat front side round to the back), deg from -X
-    BACK_DEG=125,  # the back band spans +-BACK_DEG about -X
+    # plan: a U, straight front at FRONT_X, half-round back about (BACK_CX, 0) of radius R (width 2R), estimated
+    FRONT_X=0.26, BACK_CX=-0.01, R=0.29,
+    BASE_Z=(0.30, 0.455),  # upholstered tub base all round under the seat, estimated
+    CUSHION_Z=0.48, CUSHION_IN=0.055,  # seat cushion top, inset from the outline (inside the shell wall)
+    SHELL_T=0.05,  # shell wall thickness
+    TOP_Z=(0.80, 0.68),  # shell top edge at the back and at the arms' front: one line sloping forward
+    SLOT_Z=0.58, SLOT_X=0.02,  # the opening between base and shell: behind SLOT_X, up to SLOT_Z; rounded ends
+    SLOT_ROUND=0.05,  # m of outline over which the slot's ends round off
+    ARM_FRONT=0.02,  # the arms' front edge this far behind the seat front
     LEG_R=(0.016, 0.024), LEG_SPLAY=0.03,  # tapered legs (bottom, top radius) and their outward splay at the floor
+    LEGS=((0.20, 0.22), (-0.20, 0.20)),  # (x, |y|) of the front and back legs' tops, under the base
     MASS=7.0,  # estimated, a typical upholstered armchair
     FRICTION=(0.5, 0.4),  # static, dynamic: wood feet on terrazzo, estimated; low enough that a push slides it
 )  # fmt: skip
@@ -53,41 +61,93 @@ OAK = (0.55, 0.33, 0.15)
 HULL_MAX = 64
 
 
-def box(x0, x1, y0, y1, z0, z1):
-    p = np.array([(x, y, z) for z in (z0, z1) for y in (y0, y1) for x in (x0, x1)], float)
-    f = [(0, 2, 3), (0, 3, 1), (4, 5, 7), (4, 7, 6), (0, 1, 5), (0, 5, 4)]
-    f += [(2, 6, 7), (2, 7, 3), (0, 4, 6), (0, 6, 2), (1, 3, 7), (1, 7, 5)]
-    return p, f
-
-
 def frustum(c0, c1, r0, r1, n=10):
-    """Closed n-gon frustum from centre c0 (radius r0) to c1 (radius r1), outward winding for c1 above c0."""
+    """Closed n-gon frustum from centre c0 (radius r0) to c1 (radius r1)."""
     a = np.linspace(0, 2 * np.pi, n, endpoint=False)
     ring = np.c_[np.cos(a), np.sin(a), np.zeros(n)]
-    p = np.r_[np.asarray(c0) + r0 * ring, np.asarray(c1) + r1 * ring, [c0], [c1]]
-    f = []
-    for i in range(n):
-        j = (i + 1) % n
-        f += [(i, j, n + j), (i, n + j, n + i), (2 * n, j, i), (2 * n + 1, n + i, n + j)]
-    return p, f
+    bot, top = np.asarray(c0) + r0 * ring, np.asarray(c1) + r1 * ring
+    return orient([band(bot, top, closed=True), fan(bot), fan(top)])
 
 
-def arc_band(cx, r_out, r_in, a0, a1, z0, z1, n):
-    """Closed annular-sector solid about (cx, 0) between angles a0 < a1 (rad, from +X), heights z0..z1."""
-    a = np.linspace(a0, a1, n)
-    rings = []
-    for r, z in ((r_out, z0), (r_out, z1), (r_in, z1), (r_in, z0)):
-        rings.append(np.c_[cx + r * np.cos(a), r * np.sin(a), np.full(n, z)])
-    p = np.concatenate(rings)
-    f = []
-    for k in range(4):  # outer wall, top, inner wall, bottom: ring k to ring k+1
-        s, t = k * n, ((k + 1) % 4) * n
-        for i in range(n - 1):
-            f += [(s + i, s + i + 1, t + i + 1), (s + i, t + i + 1, t + i)]
-    for i in (0, n - 1):  # end caps
-        q = [i, n + i, 2 * n + i, 3 * n + i]
-        f += [(q[0], q[1], q[2]), (q[0], q[2], q[3])] if i else [(q[0], q[2], q[1]), (q[0], q[3], q[2])]
-    return p, f
+def band(lo, hi, closed=False):
+    """Quads between two matching rows of points (each N x 3), own vertices so normals smooth along it only."""
+    n = len(lo)
+    p = np.r_[lo, hi]
+    idx = [(i, (i + 1) % n) for i in range(n if closed else n - 1)]
+    return p, [t for i, j in idx for t in ((i, j, n + j), (i, n + j, n + i))]
+
+
+def fan(poly):
+    """Triangle fan over a convex polygon (N x 3)."""
+    return poly, [(0, i, i + 1) for i in range(1, len(poly) - 1)]
+
+
+def prism(poly, z0, z1):
+    """Closed prism over the convex polygon `poly` (N x 2): smooth sides, flat caps."""
+    n = len(poly)
+    bot, top = np.c_[poly, np.full(n, z0)], np.c_[poly, np.full(n, z1)]
+    return orient([band(bot, top, closed=True), fan(bot), fan(top)])
+
+
+def orient(pieces):
+    """Turn each piece's faces outward relative to the solid's centroid, then merge."""
+    centre = np.concatenate([p for p, _ in pieces]).mean(0)
+    out = []
+    for p, f in pieces:
+        tri = p[np.array(f)]
+        normals = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+        outward = np.einsum("ij,ij->i", normals, tri.mean(1) - centre).sum() > 0
+        out.append((p, f if outward else [t[::-1] for t in f]))
+    return merge(out)
+
+
+def u_outline(inset=0.0, step=0.02):
+    """The chair's U in plan, `inset` in from the outer edge: points from the front left round the back to the front
+    right (counter-clockwise seen from above), with their outward normals."""
+    g = CHAIR
+    r, cx, xf = g["R"] - inset, g["BACK_CX"], g["FRONT_X"] - g["ARM_FRONT"]
+    side = np.linspace(xf, cx, max(int((xf - cx) / step), 2), endpoint=False)
+    arc = np.linspace(np.pi / 2, 3 * np.pi / 2, max(int(np.pi * r / step), 8))
+    pts = np.r_[np.c_[side, np.full(len(side), r)], np.c_[cx + r * np.cos(arc), r * np.sin(arc)]]
+    pts = np.r_[pts, np.c_[side[::-1], np.full(len(side), -r)]]
+    nrm = np.r_[np.tile([0, 1.0], (len(side), 1)), np.c_[np.cos(arc), np.sin(arc)], np.tile([0, -1.0], (len(side), 1))]
+    return pts, nrm
+
+
+def shell():
+    """The wall wrapping back and sides: its top slopes from TOP_Z[0] at the back to TOP_Z[1] at the arms' front; its
+    bottom sits on the base at the sides' front and rises to SLOT_Z behind SLOT_X (the slot), with rounded ends.
+    Returns the solid and its per-sample rings (for convex collision pieces)."""
+    g = CHAIR
+    out, nrm = u_outline()
+    inner = out - g["SHELL_T"] * nrm
+    back_x, xf = g["BACK_CX"] - g["R"], g["FRONT_X"] - g["ARM_FRONT"]
+    top = g["TOP_Z"][1] + (g["TOP_Z"][0] - g["TOP_Z"][1]) * (xf - out[:, 0]) / (xf - back_x)
+    s = np.clip((g["SLOT_X"] - out[:, 0]) / g["SLOT_ROUND"], 0.0, 1.0)
+    s = np.sin(np.pi / 2 * s)  # quarter-round slot ends
+    bottom = g["BASE_Z"][1] + (g["SLOT_Z"] - g["BASE_Z"][1]) * s
+    rings = np.stack([np.c_[out, bottom], np.c_[out, top], np.c_[inner, top], np.c_[inner, bottom]])  # 4 x n x 3
+    sides = [band(rings[k], rings[(k + 1) % 4]) for k in range(4)]  # outer wall, top, inner wall, bottom
+    caps = [fan(rings[:, i]) for i in (0, -1)]  # the arms' front ends
+    return orient_shell(sides, caps, rings), rings
+
+
+def orient_shell(sides, caps, rings):
+    """Like orient, but outward relative to the wall's own mid-surface (the U wraps round the centroid)."""
+    mid = rings.mean(0)  # n x 3: middle of each cross-section
+    out = []
+    for p, f in sides + caps:
+        tri = p[np.array(f)]
+        normals = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+        c = tri.mean(1)
+        near = mid[np.argmin(np.linalg.norm(c[:, None, :2] - mid[None, :, :2], axis=2), axis=1)]
+        d = c - near
+        if p.shape[0] == 4:  # an end cap: outward along the outline, away from the wall
+            k = np.argmin(np.linalg.norm(mid - c.mean(0), axis=1))
+            d = np.repeat([mid[k] - mid[1 if k == 0 else -2]], len(c), axis=0)
+        outward = np.einsum("ij,ij->i", normals, d).sum() > 0
+        out.append((p, f if outward else [t[::-1] for t in f]))
+    return merge(out)
 
 
 def merge(parts):
@@ -101,29 +161,25 @@ def merge(parts):
 
 def build():
     g = CHAIR
-    deg = np.deg2rad
-    ro, ri, cx = g["SHELL_R"], g["SHELL_R"] - g["SHELL_T"], g["SHELL_CX"]
-    back = (np.pi - deg(g["BACK_DEG"]), np.pi + deg(g["BACK_DEG"]))
-    arms = [(np.pi - deg(g["ARM_DEG"][1]), np.pi - deg(g["ARM_DEG"][0]))]
-    arms.append((np.pi + deg(g["ARM_DEG"][0]), np.pi + deg(g["ARM_DEG"][1])))
-    shell = [arc_band(cx, ro, ri, *back, *g["BACK_Z"], 40)]
-    shell += [arc_band(cx, ro, ri, a0, a1, *g["ARM_Z"], 12) for a0, a1 in arms]
-    sx, sy = g["SEAT_D"] / 2, g["SEAT_W"] / 2
-    seat = box(-sx, sx, -sy, sy, *g["SEAT_Z"])
-    z_leg = g["SEAT_Z"][0]
+    wall, rings = shell()
+    full, _ = u_outline(step=0.06)
+    full[0, 0] = full[-1, 0] = g["FRONT_X"]  # the base runs to the seat front
+    base = prism(full, *g["BASE_Z"])
+    cushion_poly, _ = u_outline(g["CUSHION_IN"], step=0.06)
+    cushion = prism(cushion_poly, g["BASE_Z"][1] - 0.01, g["CUSHION_Z"])
     legs = []
-    for x, y in ((sx - 0.06, sy - 0.06), (sx - 0.06, -sy + 0.06), (-sx + 0.06, sy - 0.06), (-sx + 0.06, -sy + 0.06)):
-        out = np.array([x, y]) / np.hypot(x, y) * g["LEG_SPLAY"]
-        legs.append(frustum((x + out[0], y + out[1], 0.0), (x, y, z_leg), *g["LEG_R"]))
-    parts = {"model": merge(shell), "seat": seat}
+    for (x, y), sign in ((leg, sign) for leg in g["LEGS"] for sign in (1, -1)):
+        top = np.array([x, sign * y, g["BASE_Z"][0]])
+        out = np.r_[top[:2] / np.hypot(*top[:2]) * g["LEG_SPLAY"], 0.0]
+        legs.append(frustum(top + out - [0, 0, top[2]], top, *g["LEG_R"]))
+    parts = {"model": merge([wall, base]), "seat": cushion}
     parts.update({f"leg_{i}": leg for i, leg in enumerate(legs)})
     for name, (p, f) in parts.items():
         assert mp.signed_volume(p, f) > 0, f"{name} has inward-facing winding"
-    hulls = [seat[0]] + [leg[0] for leg in legs]
-    for band, n in zip(shell, (40, 12, 12)):  # split each band into convex pieces of <= 8 arc steps
-        p = band[0].reshape(4, n, 3)
-        for i in range(0, n - 1, 4):
-            hulls.append(p[:, i : min(i + 5, n)].reshape(-1, 3))
+    hulls = [np.unique(part[0], axis=0) for part in (base, cushion, *legs)]  # faces split their vertices
+    n = rings.shape[1]
+    for i in range(0, n - 1, 6):  # the wall in pieces of <= 7 samples (28 vertices), each nearly convex
+        hulls.append(rings[:, i : min(i + 7, n)].reshape(-1, 3))
     assert all(len(h) <= HULL_MAX for h in hulls)
     return dict(parts=parts, hulls=hulls)
 
@@ -207,7 +263,7 @@ def save(rigid_dir, idx, c):
     colour, rgb = COLOURS[idx]
     write_usdz(d / "object.usdz", c, rgb)
     faces = [f for _, fs in parts.values() for f in fs]
-    contact_r = float(np.hypot(CHAIR["SEAT_D"], CHAIR["SEAT_W"]) / 2)
+    contact_r = float(np.hypot(*CHAIR["LEGS"][0]))  # front leg feet
     meta = pc.metadata(uid, dict(pts=every + shift, faces=faces, contact_r=contact_r), CHAIR["MASS"], shift)
     del meta["physics"]["friction"]
     meta["physics"]["static_friction"], meta["physics"]["dynamic_friction"] = CHAIR["FRICTION"]

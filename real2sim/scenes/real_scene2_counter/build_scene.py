@@ -341,9 +341,10 @@ class Layer:
         self.pmats[key] = pm
         return pm
 
-    def mesh(self, path, m, mat=None, smooth=False, uv=None, guide=False):
+    def mesh(self, path, m, mat=None, smooth=False, uv=None, guide=False, normals=None):
+        """`normals`: per-vertex normals to keep as given (vertices are not merged, so hard edges stay hard)."""
         m = m.copy()
-        if smooth:
+        if smooth and normals is None:
             m.merge_vertices()
         um = UsdGeom.Mesh.Define(self.stage, f"{self.rootpath}/{path}")
         pts = (m.vertices * SCALE).astype(np.float32)
@@ -352,7 +353,10 @@ class Layer:
         um.CreateFaceVertexIndicesAttr(Vt.IntArray(m.faces.reshape(-1).tolist()))
         um.CreateSubdivisionSchemeAttr(UsdGeom.Tokens.none)
         um.CreateExtentAttr(Vt.Vec3fArray([Gf.Vec3f(*map(float, pts.min(0))), Gf.Vec3f(*map(float, pts.max(0)))]))
-        if smooth:
+        if normals is not None:
+            um.CreateNormalsAttr(Vt.Vec3fArray.FromNumpy(np.asarray(normals, np.float32)))
+            um.SetNormalsInterpolation(UsdGeom.Tokens.vertex)
+        elif smooth:
             um.CreateNormalsAttr(Vt.Vec3fArray.FromNumpy(m.vertex_normals.astype(np.float32)))
             um.SetNormalsInterpolation(UsdGeom.Tokens.vertex)
         else:
@@ -919,7 +923,8 @@ def add_chairs(L):
         rot = trimesh.transformations.rotation_matrix(math.radians(yaw), [0, 0, 1])[:3, :3]
         for name, (p, f) in parts.items():
             m = trimesh.Trimesh((p - centre) @ rot.T + [x, y, 0.0], f, process=False)
-            L.mesh(f"chair_{i}/{name}", m, "chair_oak" if name.startswith("leg") else f"chair_{idx}", smooth=True)
+            mat = "chair_oak" if name.startswith("leg") else f"chair_{idx}"
+            L.mesh(f"chair_{i}/{name}", m, mat, normals=chair.mp.vertex_normals(p, [list(t) for t in f]) @ rot.T)
 
 
 def add_lights(L):

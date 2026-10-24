@@ -80,6 +80,7 @@
   - 没跑：完整 `build_asset.py`（服务器缺 `g1d_v4`/`unitree_ros`，布局用 `build_lounge_layouts` 单独生成），seed 1、2，`body_probe.py`，椅子被推开的专门测试。
 - **10-24 下午补**（用户：顶部太假、3D 预览没更新）：房间加 3.20 m 穿孔木天花板、客区木吊顶做实并用自发光底面、白色石膏带和筒灯灯槽，木柱和木柜墙顶到天花板，顶灯挪到天花板（吧台画面会略暗一点）；改完隔离目录里送杯 seed 0 布局 0 仍然成功。平台 `/file` 对 `.glb` 和 `preview/` 下的渲染图改为 `no-cache`（原来的 `stale-while-revalidate` 让重建后的第一次打开总是旧模型），实拍照片和视频不变。
 - **椅子进预览**：椅子在仿真里是布局刚体，不在 Room 里，所以场景渲染和平台 3D 预览原来没有椅子。`build_scene.py` 另写 `usd/chairs.usda`（和资产同一份几何，`make_lounge_chair.build()`，按 `build_params.json` 的标称摆位）和 `usd/preview.usda`（= `scene.usda` + 椅子）；`export_glb.py`、`render_scenes.py` 有 `preview.usda` 时用它。仿真用的 `real_scene2.usd`、`scene.usda` 不变。
+- **椅子按照片重建结构**（10-24 傍晚，用户：结构和照片不一样）：原来是一条后背带加两段分开的矮扶手、下面一块平座板；改成平面 U 形、一圈软包底座托内嵌坐垫、一片连续弧形壳（顶边后高前低，两侧前段落到底座，后面一道圆角镂空）。各面组顶点分开，硬边不再被平滑法线抹掉；`build_scene.py` 的 `mesh()` 加 `normals=` 让预览椅子用资产的法线。隔离目录里重新生成资产，`check_object.py` 两把 OK。
 - **共享资产库没动**：`lounge_chair`、新的 `Room/real_scene2`（带客区）、`Eval_Layout/RoboDojo/g1d_counter_mobile/` 都只在隔离目录里。装库要先征得用户同意；新 `real_scene2` 也会改变 `g1d_counter` 的画面左侧（原来是一面刷漆墙加挂画），吧台本身几何不变。
 ### RSI 协议初版 `rsi/AGENTS.md`（2026-10-24，直接推 `main`，只有文档）
 
